@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import github.anandb.netbeans.model.TaskRecord;
+import github.anandb.netbeans.pattern.PriorityPattern;
 
 /**
  * Pure todo.txt serialization/parsing for {@link TaskRecord}.
@@ -171,7 +172,7 @@ public final class TaskTxtCodec {
         String priority = null;
         if (line.startsWith("(") && line.length() > 2 && line.charAt(2) == ')') {
             String p = line.substring(1, 2).toUpperCase(java.util.Locale.ROOT);
-            if (p.matches("[A-Z]")) {
+            if (PriorityPattern.matches(p)) {
                 priority = p;
                 line = line.substring(3).stripLeading();
             }
@@ -278,7 +279,7 @@ public final class TaskTxtCodec {
             return null;
         }
         String p = priority.trim().toUpperCase(java.util.Locale.ROOT);
-        return p.matches("[A-Z]") ? p : null;
+        return PriorityPattern.matches(p) ? p : null;
     }
 
     /** Extracts a date-only (YYYY-MM-DD) prefix from an ISO timestamp, or null. */

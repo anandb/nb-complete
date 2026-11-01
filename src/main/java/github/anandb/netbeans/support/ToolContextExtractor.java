@@ -4,9 +4,10 @@ import java.io.File;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.databind.JsonNode;
+
+import github.anandb.netbeans.pattern.PiAgentCommandPattern;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
@@ -174,9 +175,7 @@ public final class ToolContextExtractor {
         return null;
     }
 
-    // PI agent title pattern: "Current agent requested bash command '...' (matched '*')."
-    private static final Pattern PI_AGENT_CMD_PATTERN =
-            Pattern.compile("Current agent requested bash command '(.+?)' ");
+    // PI agent title: "Current agent requested bash command '...' (matched '*')."
 
     /**
      * Extracts the command from PI agent permission request title.
@@ -194,7 +193,7 @@ public final class ToolContextExtractor {
             }
         }
         if (title != null) {
-            Matcher m = PI_AGENT_CMD_PATTERN.matcher(title);
+            Matcher m = PiAgentCommandPattern.matcher(title);
             if (m.find()) {
                 return m.group(1);
             }

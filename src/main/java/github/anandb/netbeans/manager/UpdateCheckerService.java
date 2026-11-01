@@ -16,7 +16,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Level;
 import java.util.prefs.Preferences;
 import java.util.function.Supplier;
-import java.util.regex.Pattern;
 
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
@@ -38,6 +37,8 @@ import github.anandb.netbeans.support.AppLinks;
 import github.anandb.netbeans.support.BrowserUtils;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.pattern.OfferableVersionPattern;
+import github.anandb.netbeans.pattern.ReleaseSuffixPattern;
 import github.anandb.netbeans.support.PreferenceKeys;
 
 @ServiceProvider(service = UpdateCheckerControl.class)
@@ -58,12 +59,6 @@ public class UpdateCheckerService implements UpdateCheckerControl {
      * same core with an explicit {@code -RELEASE} / {@code .RELEASE}. Milestones
      * ({@code -M1}), release candidates, snapshots and any other qualifier are skipped.
      */
-    private static final Pattern OFFERABLE_VERSION =
-            Pattern.compile("\\d+(?:\\.\\d+)*(?:[-.]RELEASE)?", Pattern.CASE_INSENSITIVE);
-
-    /** The {@code -RELEASE} qualifier is not part of the ordering key. */
-    private static final Pattern RELEASE_SUFFIX =
-            Pattern.compile("[-.]RELEASE$", Pattern.CASE_INSENSITIVE);
 
     /** Cached singleton — populated lazily from Lookup. */
     private static volatile UpdateCheckerService instance;
@@ -363,7 +358,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
      * {@code -RELEASE} qualifier, i.e. something the update channel may offer.
      */
     static boolean isOfferableVersion(String version) {
-        return version != null && OFFERABLE_VERSION.matcher(version.trim()).matches();
+        return OfferableVersionPattern.matches(version);
     }
 
     /** Highest offerable version in {@code versions}, or {@code null} when there is none. */
@@ -423,14 +418,14 @@ public class UpdateCheckerService implements UpdateCheckerControl {
 
     /** The dotted numeric part of a version, without {@code -RELEASE} or any qualifier. */
     private static String numericCore(String version) {
-        String unqualified = RELEASE_SUFFIX.matcher(version.trim()).replaceFirst("");
+        String unqualified = ReleaseSuffixPattern.stripFrom(version);
         int qualifier = unqualified.indexOf('-');
         return qualifier > 0 ? unqualified.substring(0, qualifier) : unqualified;
     }
 
     /** True when a dash qualifier other than {@code -RELEASE} remains. */
     private static boolean isPreRelease(String version) {
-        return RELEASE_SUFFIX.matcher(version.trim()).replaceFirst("").indexOf('-') > 0;
+        return ReleaseSuffixPattern.stripFrom(version).indexOf('-') > 0;
     }
 
     private void showNotification(String latestVersion, String downloadUrl, String notesUrl) {

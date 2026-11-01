@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.regex.Pattern;
+
 import javax.swing.Box;
 import javax.swing.JPanel;
 
@@ -13,6 +13,7 @@ import github.anandb.netbeans.support.PluginSettings;
 import org.openide.util.NbBundle;
 
 import github.anandb.netbeans.model.MessageType;
+import github.anandb.netbeans.pattern.ToolPrefixPattern;
 
 /**
  * Combines individual tool/thought bubbles into a single "Execution Steps"
@@ -24,7 +25,6 @@ import github.anandb.netbeans.model.MessageType;
 // CombinedActivitySpec; the combination merge logic stays imperative.
 public final class ToolThoughtCombiner {
 
-    private static final Pattern TOOL_PREFIX = Pattern.compile("(?i)TOOL:?\\s*");
     private ToolThoughtCombiner() {
     }
 
@@ -128,7 +128,7 @@ public final class ToolThoughtCombiner {
                         }
                         // For "read" tool segments, skip body content — show header only
                         if ("tool".equals(role) && segTitle != null) {
-                            String stripped = TOOL_PREFIX.matcher(segTitle).replaceFirst("").trim();
+                            String stripped = ToolPrefixPattern.stripPrefix(segTitle);
                             int pos = stripped.indexOf(' ');
                             String firstWord = (pos > 1) ? stripped.substring(0, pos) : stripped;
                             if ("read".equalsIgnoreCase(firstWord)

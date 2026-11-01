@@ -11,13 +11,13 @@ import java.util.Locale;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.prefs.Preferences;
-import java.util.regex.Pattern;
 
 import org.apache.commons.exec.CommandLine;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 
 import github.anandb.netbeans.model.HarnessCatalog;
+import github.anandb.netbeans.pattern.PathSeparatorPattern;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
@@ -25,7 +25,6 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 public final class BinaryResolver {
 
     private static final Logger LOG = Logger.from(BinaryResolver.class);
-    private static final Pattern PATH_SPLIT = Pattern.compile(Pattern.quote(File.pathSeparator));
 
     /** ACP harness binaries that cannot carry auth tokens on MCP server URLs.
      *  The embedded MCP server skips token enforcement when one of these runs.
@@ -299,7 +298,7 @@ public final class BinaryResolver {
         }
         String pathEnv = System.getenv("PATH");
         if (pathEnv != null) {
-            for (String dir : PATH_SPLIT.split(pathEnv)) {
+            for (String dir : PathSeparatorPattern.split(pathEnv)) {
                 dirs.add(new ProbeDir(new File(dir), false));
             }
         }
@@ -869,7 +868,7 @@ public final class BinaryResolver {
         if (isBlank(pathEnv)) {
             return false;
         }
-        for (String p : PATH_SPLIT.split(pathEnv)) {
+        for (String p : PathSeparatorPattern.split(pathEnv)) {
             File f = new File(p, command);
             if (f.exists() && f.canExecute()) {
                 return true;

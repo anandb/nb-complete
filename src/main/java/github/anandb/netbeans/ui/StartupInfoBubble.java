@@ -6,7 +6,6 @@ import java.awt.Font;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -15,6 +14,10 @@ import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
 import org.openide.util.NbBundle;
+
+import github.anandb.netbeans.pattern.BannerPattern;
+import github.anandb.netbeans.pattern.ContextBlockPattern;
+import github.anandb.netbeans.pattern.ExtensionsBlockPattern;
 
 /**
  * Compact info bubble displayed when a session starts. Shows version,
@@ -30,13 +33,6 @@ import org.openide.util.NbBundle;
 class StartupInfoBubble extends JPanel {
 
     private static final long serialVersionUID = 1L;
-    /** Matches an {@code <agent> v<version>} banner line (e.g. "pi v0.84.4",
-     *  "pi-agent v1.2"). The agent token is captured so detection and display
-     *  stay in sync with whatever harness emits the banner — no hardcoded
-     *  prefix. */
-    private static final Pattern BANNER_PATTERN = Pattern.compile("^(\\S+) v(\\S+)$");
-    private static final Pattern CONTEXT_PATTERN = Pattern.compile("## Context\\s*\n((?:- .+\n?)+)", Pattern.MULTILINE);
-    private static final Pattern EXTENSION_PATTERN = Pattern.compile("## Extensions\\s*\n((?:- .+\n?(?:  - .+\n?)*)*)", Pattern.MULTILINE);
 
     StartupInfoBubble(String text) {
         setLayout(new BorderLayout());
@@ -106,7 +102,7 @@ class StartupInfoBubble extends JPanel {
     }
 
     private static String extractBannerLabel(String text) {
-        Matcher m = BANNER_PATTERN.matcher(text);
+        Matcher m = BannerPattern.matcher(text);
         if (m.find()) {
             return m.group(1) + " v" + m.group(2).trim();
         }
@@ -115,7 +111,7 @@ class StartupInfoBubble extends JPanel {
 
     private static List<String> extractContextFiles(String text) {
         List<String> files = new ArrayList<>();
-        Matcher m = CONTEXT_PATTERN.matcher(text);
+        Matcher m = ContextBlockPattern.matcher(text);
         if (m.find()) {
             String block = m.group(1);
             for (String line : block.split("\n")) {
@@ -130,7 +126,7 @@ class StartupInfoBubble extends JPanel {
 
     private static List<String[]> extractExtensions(String text) {
         List<String[]> extensions = new ArrayList<>();
-        Matcher m = EXTENSION_PATTERN.matcher(text);
+        Matcher m = ExtensionsBlockPattern.matcher(text);
         if (m.find()) {
             String block = m.group(1);
             String currentName = null;
@@ -176,7 +172,7 @@ class StartupInfoBubble extends JPanel {
         }
         int firstNl = text.indexOf('\n');
         String firstLine = firstNl >= 0 ? text.substring(0, firstNl) : text;
-        if (!BANNER_PATTERN.matcher(firstLine).matches()) {
+        if (!BannerPattern.matches(firstLine)) {
             return false;
         }
         return text.contains("## Context") && text.contains("## Extensions");

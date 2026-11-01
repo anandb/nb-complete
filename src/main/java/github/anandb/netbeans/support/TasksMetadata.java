@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
+import github.anandb.netbeans.pattern.TitleSanitizePattern;
 import org.openide.util.NbPreferences;
 
 /**
@@ -32,7 +33,7 @@ public final class TasksMetadata {
     }
 
     private static String sanitize(String repoId) {
-        return repoId == null ? "" : repoId.replaceAll("[^A-Za-z0-9._-]", "_");
+        return repoId == null ? "" : TitleSanitizePattern.sanitize(repoId);
     }
 
     public static void put(String repoId, String tasksPath, String displayName) {

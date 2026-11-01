@@ -10,12 +10,12 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.logging.Level;
-import java.util.regex.Pattern;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
 import javax.swing.JFileChooser;
 
 import github.anandb.netbeans.model.Message;
+import github.anandb.netbeans.pattern.TitleSanitizePattern;
 import github.anandb.netbeans.support.Logger;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
@@ -40,8 +40,6 @@ final class ConversationExporter {
 
     /** Export writes run off the EDT on their own processor. */
     private static final RequestProcessor EXPORT_RP = new RequestProcessor("ACP-Export", 1);
-    private static final Pattern INVALID_TITLE_PATTERN =
-            Pattern.compile("[^a-zA-Z0-9._-]");
 
     private ConversationExporter() { }
 
@@ -243,7 +241,7 @@ final class ConversationExporter {
      */
     static String defaultFileName(String title) {
         if (title != null && !title.startsWith("New Session")) {
-            return INVALID_TITLE_PATTERN.matcher(title).replaceAll("_") + ".md";
+            return TitleSanitizePattern.sanitize(title) + ".md";
         }
         return "session.md";
     }

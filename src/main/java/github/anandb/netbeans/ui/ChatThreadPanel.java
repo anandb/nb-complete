@@ -22,7 +22,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Consumer;
-import java.util.regex.Pattern;
 
 import org.openide.util.NbBundle;
 
@@ -54,6 +53,7 @@ import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.model.HarnessCatalog;
+import github.anandb.netbeans.pattern.SectionSplitPattern;
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.GlobalOpencodeConfig;
 import github.anandb.netbeans.support.Logger;
@@ -72,7 +72,6 @@ public class ChatThreadPanel extends JPanel {
     // --- Static constants ---
     private static final Logger LOG = Logger.from(ChatThreadPanel.class);
     private static final long serialVersionUID = 1L;
-    private static final Pattern SECTION_SPLIT = Pattern.compile("(?m)^---[ \\t]*$");
 
     // --- UI components ---
     private final JPanel messagesContainer;
@@ -379,7 +378,7 @@ public class ChatThreadPanel extends JPanel {
     /** Process message sections on EDT (shared by addMessage and setMessages). */
     private void processMessageSections(ProcessedMessage pm, String text, String role, boolean wasAtBottom) {
         if (text == null) return;
-        String[] parts = SECTION_SPLIT.split(text);
+        String[] parts = SectionSplitPattern.split(text);
         MessageBubble lastBubble = findLastNonIgnorableBubble();
 
         for (String part : parts) {

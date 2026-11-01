@@ -1,10 +1,12 @@
 package github.anandb.netbeans.ui;
 
 import java.util.Locale;
-import java.util.regex.Pattern;
+
 import javax.swing.Icon;
 import org.openide.util.NbBundle;
 import org.apache.commons.lang3.StringUtils;
+
+import github.anandb.netbeans.pattern.ToolPrefixPattern;
 
 /**
  * Resolves header icons and formatted titles for collapsible panes.
@@ -14,8 +16,6 @@ import org.apache.commons.lang3.StringUtils;
 // and resolves tag (read/write/edit/...) to NbBundle string. Migration target:
 // CollapsibleHeaderSpec; the tag→i18n resolver stays imperative.
 final class CollapsibleHeaderRenderer {
-
-    private static final Pattern TOOL_PREFIX = Pattern.compile("(?i)TOOL:?\\s*");
 
     private CollapsibleHeaderRenderer() {
     }
@@ -57,7 +57,7 @@ final class CollapsibleHeaderRenderer {
             return NbBundle.getMessage(CollapsibleHeaderRenderer.class, "LBL_ThinkingProcess");
         }
 
-        String stripped = TOOL_PREFIX.matcher(rawTitle).replaceFirst("").trim();
+        String stripped = ToolPrefixPattern.stripPrefix(rawTitle);
 
         if (stripped.isEmpty() || "Tool".equalsIgnoreCase(stripped) || "Tool Call".equalsIgnoreCase(stripped)) {
             return NbBundle.getMessage(CollapsibleHeaderRenderer.class, "LBL_ToolFallback");

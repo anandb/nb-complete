@@ -1,7 +1,8 @@
 package github.anandb.netbeans.project.mdproject;
 
-import java.util.regex.Pattern;
 import javax.swing.Action;
+
+import github.anandb.netbeans.pattern.HiddenNamePattern;
 import org.netbeans.spi.project.ui.LogicalViewProvider;
 import org.netbeans.spi.project.ui.support.CommonProjectActions;
 import org.openide.filesystems.FileObject;
@@ -22,13 +23,6 @@ import org.openide.util.lookup.Lookups;
 public final class MdLogicalViewProvider implements LogicalViewProvider {
 
     private static final String ICON = "github/anandb/netbeans/ui/icons/mdproject.svg";
-
-    /** Files matching this name pattern are hidden from the project tree. */
-    private static final Pattern HIDDEN_NAMES = Pattern.compile(
-        "(?i)^\\.(?!gitignore|gitattributes|editorconfig|npmrc|hgignore)"  // dotfiles except common ones
-        + "|^Thumbs\\.db$|^Desktop\\.ini$|^\\.DS_Store$"
-        + "|\\.(?:swp|swo|bak|~)$"                                  // editor swap/backup
-    );
 
     private final MdProject project;
 
@@ -63,7 +57,7 @@ public final class MdLogicalViewProvider implements LogicalViewProvider {
     private DataFilter createFilter() {
         return (DataObject dob) -> {
             FileObject fo = dob.getPrimaryFile();
-            if (HIDDEN_NAMES.matcher(fo.getNameExt()).find()) {
+            if (HiddenNamePattern.isHidden(fo.getNameExt())) {
                 return false;
             }
             return !MdProjectIgnoredFiles.isIgnored(project, fo);

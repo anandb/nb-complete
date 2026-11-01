@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
-import java.util.regex.Pattern;
 
 import javax.imageio.ImageIO;
 import javax.swing.AbstractButton;
@@ -34,6 +33,8 @@ import javax.swing.JPanel;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 
+import github.anandb.netbeans.pattern.TableCellSplitPattern;
+import github.anandb.netbeans.pattern.TableSeparatorPattern;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
@@ -116,12 +117,6 @@ public class UIUtils {
     }
 
     private UIUtils() {}
-
-    // Table separator row patterns - compiled once, avoid String.matches() per cell
-    /** Standard Markdown table separator cell: optional leading colon, one or
-     *  more dashes, optional trailing colon. Replaces five separate patterns. */
-    private static final Pattern CELL_SEPARATOR = Pattern.compile("^:?-+:?$");
-    private static final Pattern CELL_SPLIT = Pattern.compile("(?<!\\\\)\\|");
 
     public static JButton createToolbarButton(String iconName, String toolTip, ActionListener l) {
         return createToolbarButton(iconName, PluginSettings.getToolbarIconSize(), toolTip, l);
@@ -469,7 +464,7 @@ public class UIUtils {
             }
             content = content.substring(1, content.length() - 1);
         }
-        String[] cells = CELL_SPLIT.split(content, -1);
+        String[] cells = TableCellSplitPattern.split(content, -1);
         List<String> rowCells = new ArrayList<>();
         for (String cell : cells) {
             rowCells.add(cell.replace("\\|", "|"));
@@ -479,7 +474,7 @@ public class UIUtils {
 
     public static boolean isSeparatorRow(List<String> row) {
         for (String cell : row) {
-            if (!CELL_SEPARATOR.matcher(cell).matches()) {
+            if (!TableSeparatorPattern.matches(cell)) {
                 return false;
             }
         }

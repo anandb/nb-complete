@@ -5,7 +5,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
+
+import github.anandb.netbeans.pattern.GitDiffTargetPattern;
+import github.anandb.netbeans.pattern.SinceFilterPattern;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
@@ -13,16 +15,6 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
  * Registers MCP tools for git operations: status, diff, log, and file history.
  */
 public class GitToolProvider {
-
-    /** Accepts git revision tokens only (hashes, refs, ranges like a..b,
-     *  HEAD~1, ref:path). Rejects option injection — a leading '-' would let
-     *  a caller smuggle git flags such as --output into the diff command. */
-    private static final Pattern SAFE_DIFF_TARGET = Pattern.compile("^[A-Za-z0-9._/~^:-]+$");
-
-    /** Accepts date filters for git_log (ISO dates or relative forms like
-     *  "2 weeks ago"). A leading '-' would smuggle git flags, so it is
-     *  rejected; the value is bound as a single --since=<value> token. */
-    private static final Pattern SINCE_PATTERN = Pattern.compile("^[A-Za-z0-9 .:/_+~-]+$");
 
     public void registerTools(McpTools mcpTools) {
         registerGitStatus(mcpTools);
@@ -73,7 +65,7 @@ public class GitToolProvider {
                         if (isBlank(target)) {
                             return VcsToolSupport.run(repo.dir(), "Git", "git", "diff");
                         }
-                        Map<String, Object> targetErr = VcsToolSupport.invalidRevision(target, SAFE_DIFF_TARGET);
+                        Map<String, Object> targetErr = VcsToolSupport.invalidRevision(target, GitDiffTargetPattern::matches);
                         if (targetErr != null) {
                             return targetErr;
                         }
@@ -100,7 +92,7 @@ public class GitToolProvider {
                         if (!maxCount.ok()) {
                             return maxCount.error();
                         }
-                        Map<String, Object> sinceErr = VcsToolSupport.invalidSince(args.since(), SINCE_PATTERN);
+                        Map<String, Object> sinceErr = VcsToolSupport.invalidSince(args.since(), SinceFilterPattern::matches);
                         if (sinceErr != null) {
                             return sinceErr;
                         }

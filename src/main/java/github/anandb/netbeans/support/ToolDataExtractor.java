@@ -2,14 +2,22 @@ package github.anandb.netbeans.support;
 
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
 import github.anandb.netbeans.model.ModelRecords.MessageClassification;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.SessionUpdate;
+import github.anandb.netbeans.pattern.HtmlCommentPattern;
+import github.anandb.netbeans.pattern.MetadataBlockPattern;
+import github.anandb.netbeans.pattern.McpTitlePrefixPattern;
+import github.anandb.netbeans.pattern.ToolTitlePrefixPattern;
+import github.anandb.netbeans.pattern.SkillContentPattern;
+import github.anandb.netbeans.pattern.CompressedContextPattern;
+import github.anandb.netbeans.pattern.PathTagPattern;
+import github.anandb.netbeans.pattern.FilePathJsonPattern;
 
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -35,30 +43,22 @@ public final class ToolDataExtractor {
         maxTitleLength = Math.max(20, max);
     }
 
-    private static final Pattern[] METADATA_PATTERNS = {
-        Pattern.compile("<!--.*?-->", Pattern.DOTALL),
-        Pattern.compile("<metadata>.*?</metadata>", Pattern.DOTALL)
-    };
-
     /**
      * goose reports no {@code kind} on the initial tool_call; it puts the kind in the
      * title instead ("edit · &lt;path&gt;", "shell · &lt;command&gt;"). MCP tools arrive as
      * "nb: &lt;tool name&gt;".
      */
-    private static final Pattern TITLE_PREFIX = Pattern.compile("^([a-z][a-z0-9_-]*)\\s+\\u00b7\\s+");
-    private static final Pattern MCP_TITLE_PREFIX = Pattern.compile("^(?:nb|mcp):\\s*");
-
     /** rawInput keys that carry the target file of a read/edit tool call. */
     private static final String[] RAW_INPUT_PATH_KEYS = {"path", "filePath", "file_path"};
 
     /** Tool kinds that Claude Code sends with nothing but the tool name. */
     private static final Set<String> DETAIL_LESS_KINDS = Set.of("read", "edit", "other", "execute");
 
-    private static final List<Pair<String, Pattern>> TOOL_CONTENT_PATTERNS = List.of(
-        Pair.of("skill", Pattern.compile("<skill_content name=\"([^\"]{2,})\"")),
-        Pair.of("context", Pattern.compile("(Compressed [\\d]+ messages) into")),
-        Pair.of("", Pattern.compile("<path>([^<]{10,})</path>")),
-        Pair.of("", Pattern.compile("\"filePath\"\\s*:\\s*\"([^\"]{10,})\""))
+    private static final List<Pair<String, Function<String, Matcher>>> TOOL_CONTENT_PATTERNS = List.of(
+        Pair.of("skill", SkillContentPattern::matcher),
+        Pair.of("context", CompressedContextPattern::matcher),
+        Pair.of("", PathTagPattern::matcher),
+        Pair.of("", FilePathJsonPattern::matcher)
     );
 
     private ToolDataExtractor() {}
@@ -117,14 +117,7 @@ public final class ToolDataExtractor {
     }
 
     public static String stripMetadata(String text) {
-        String stripped = text;
-        if (isNotBlank(stripped)) {
-            for (Pattern pattern : METADATA_PATTERNS) {
-                stripped = pattern.matcher(stripped).replaceAll("");
-            }
-        }
-
-        return stripped;
+        return MetadataBlockPattern.stripFrom(HtmlCommentPattern.stripFrom(text));
     }
 
     public static String extractToolTitle(String messageId, String rawText,
@@ -141,7 +134,7 @@ public final class ToolDataExtractor {
         String identifier = extractIdentifier(update);
         if (isBlank(identifier) && rawText != null) {
             for (var entry : TOOL_CONTENT_PATTERNS) {
-                Matcher m = entry.getValue().matcher(rawText);
+                Matcher m = entry.getValue().apply(rawText);
                 if (m.find()) {
                     identifier = m.group(1);
                     if (isNotBlank(entry.getKey())) {
@@ -235,21 +228,21 @@ public final class ToolDataExtractor {
 
     /** The kind goose puts in its title prefix, or null when the title carries none. */
     private static String titleKind(String title) {
-        Matcher m = TITLE_PREFIX.matcher(defaultString(title));
+        Matcher m = ToolTitlePrefixPattern.matcher(defaultString(title));
         if (m.find()) {
             return m.group(1);
         }
-        return MCP_TITLE_PREFIX.matcher(defaultString(title)).find() ? "mcp" : null;
+        return McpTitlePrefixPattern.matcher(defaultString(title)).find() ? "mcp" : null;
     }
 
     /** The detail half of goose's "&lt;kind&gt; · &lt;detail&gt;" title, so the kind is not repeated. */
     private static String titleDetail(String title) {
         String text = defaultString(title);
-        Matcher m = TITLE_PREFIX.matcher(text);
+        Matcher m = ToolTitlePrefixPattern.matcher(text);
         if (m.find()) {
             return text.substring(m.end());
         }
-        Matcher mcp = MCP_TITLE_PREFIX.matcher(text);
+        Matcher mcp = McpTitlePrefixPattern.matcher(text);
         return mcp.find() ? text.substring(mcp.end()) : text;
     }
 

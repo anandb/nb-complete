@@ -5,7 +5,6 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.io.File;
-import java.util.regex.Pattern;
 
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
@@ -20,12 +19,12 @@ import javax.swing.event.DocumentListener;
 import org.openide.WizardDescriptor;
 import org.openide.util.NbBundle;
 
+import github.anandb.netbeans.pattern.ProjectNamePattern;
+
 /**
  * Visual panel for entering the project name and location.
  */
 final class MdProjectPanelVisual extends JPanel {
-
-    private static final Pattern VALID_NAME_PATTERN = Pattern.compile("\\w[\\w\\-.]*");
 
     private final JTextField nameField;
     private final JTextField folderField;
@@ -108,7 +107,7 @@ final class MdProjectPanelVisual extends JPanel {
             errorLabel.setText(NbBundle.getMessage(MdProjectPanelVisual.class, "ERR_EmptyName"));
             return false;
         }
-        if (!VALID_NAME_PATTERN.matcher(name).matches()) {
+        if (!ProjectNamePattern.matches(name)) {
             errorLabel.setText(NbBundle.getMessage(MdProjectPanelVisual.class, "ERR_InvalidName"));
             return false;
         }

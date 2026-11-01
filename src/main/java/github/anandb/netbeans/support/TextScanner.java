@@ -1,15 +1,12 @@
 package github.anandb.netbeans.support;
 
-import java.util.regex.Pattern;
+import github.anandb.netbeans.pattern.AsciiArtPattern;
 
 /**
  * Utility class for scanning text for specific patterns like ASCII art.
  */
 public class TextScanner {
     private static final Logger LOG = Logger.from(TextScanner.class);
-
-    // Combined range for Box Drawing (2500-257F) and Block Elements (2580-259F)
-    private static final Pattern ASCII_ART_PATTERN = Pattern.compile("[\\u2500-\\u259F]|[-=]{5,}");
 
     private TextScanner() {}
 
@@ -25,7 +22,7 @@ public class TextScanner {
         }
         // Scan only first 512 chars — ASCII art appears at start, avoids O(n) on full text
         int limit = Math.min(text.length(), 512);
-        boolean match = ASCII_ART_PATTERN.matcher(text.subSequence(0, limit)).find();
+        boolean match = AsciiArtPattern.matcher(text.subSequence(0, limit)).find();
         if (match) {
             LOG.fine("ASCII Art detected in text (length: {0})", text.length());
         }

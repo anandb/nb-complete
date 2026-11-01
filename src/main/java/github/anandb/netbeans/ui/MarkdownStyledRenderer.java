@@ -5,9 +5,11 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
+
 import javax.swing.JTextPane;
 
+import github.anandb.netbeans.pattern.TableCellSplitPattern;
+import github.anandb.netbeans.pattern.TableSeparatorPattern;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import javax.swing.BorderFactory;
 import javax.swing.text.BadLocationException;
@@ -28,11 +30,6 @@ import javax.swing.text.StyledDocument;
 // is NOT ported to withStyle.
 public final class MarkdownStyledRenderer {
 
-    private static final Pattern SEPARATOR_PATTERN = Pattern.compile("^:?-+:?$");
-
-    /** Splits a markdown table row on unescaped `|`. Pre-compiled to avoid
-     *  Pattern compilation on every row of every rendered table (AGENTS.md). */
-    private static final Pattern CELL_SPLIT = Pattern.compile("(?<!\\\\)\\|");
 
     /** Max characters per table cell. Longer content truncated with '\u2026'. */
     private static final int MAX_CELL_WIDTH = 55;
@@ -248,7 +245,7 @@ public final class MarkdownStyledRenderer {
         List<List<String>> rows = new ArrayList<>();
         int maxCols = 0;
         for (String line : tableBuffer) {
-            String[] cells = CELL_SPLIT.split(line, -1);
+            String[] cells = TableCellSplitPattern.split(line, -1);
             List<String> row = new ArrayList<>();
             for (int i = 0; i < cells.length; i++) {
                 if (i == 0 || i == cells.length - 1) {
@@ -328,7 +325,7 @@ public final class MarkdownStyledRenderer {
     private static boolean isSeparatorRow(List<String> row) {
         for (String cell : row) {
             String trimmed = cell.trim();
-            if (!trimmed.isEmpty() && !SEPARATOR_PATTERN.matcher(trimmed).matches()) {
+            if (!trimmed.isEmpty() && !TableSeparatorPattern.matches(trimmed)) {
                 return false;
             }
         }

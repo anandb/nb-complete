@@ -14,6 +14,7 @@ import github.anandb.netbeans.contract.TaskInput;
 import github.anandb.netbeans.contract.TaskRepositoryControl;
 import github.anandb.netbeans.model.TaskRecord;
 import github.anandb.netbeans.model.TaskStatus;
+import github.anandb.netbeans.pattern.PriorityPattern;
 import github.anandb.netbeans.support.Logger;
 
 /**
@@ -80,7 +81,7 @@ public class TaskToolProvider {
                             "Repository file is not readable: " + tasksPath + ". Check file permissions.");
                     }
                     String priority = emptyIfNull(args.priority());
-                    if (!priority.isEmpty() && !priority.matches("[A-Z]")) {
+                    if (!priority.isEmpty() && !PriorityPattern.matches(priority)) {
                         return Map.of("status", "error", "message",
                             "Invalid priority '" + args.priority() + "'. Priority must be a single uppercase letter A-Z.");
                     }

@@ -1,10 +1,12 @@
 package github.anandb.netbeans.support;
 
+import github.anandb.netbeans.pattern.GlobPattern;
+import github.anandb.netbeans.pattern.ShellOperatorPattern;
+import github.anandb.netbeans.pattern.WhitespacePattern;
 import java.io.File;
 import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 /**
  * Restricts {@code run_command} with an allowlist and a denylist of executable
@@ -18,13 +20,8 @@ import java.util.regex.Pattern;
  */
 public final class RunCommandPolicy {
 
-    /** Shell control operators and command substitution. */
-    private static final Pattern SHELL_OPERATORS = Pattern.compile("[;&|<>`]|\\$\\(");
-
     /** A single glob star, which matches every executable name. */
     private static final String MATCH_ALL = "*";
-
-    private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 
     private RunCommandPolicy() {
     }
@@ -59,10 +56,10 @@ public final class RunCommandPolicy {
         if (command == null || command.isBlank()) {
             return "command is required";
         }
-        if (SHELL_OPERATORS.matcher(command).find()) {
+        if (ShellOperatorPattern.containsOperator(command)) {
             return "Shell operators are not allowed while a run_command allowlist is set.";
         }
-        String first = WHITESPACE.split(command.trim(), 2)[0];
+        String first = WhitespacePattern.split(command.trim(), 2)[0];
         if (first.indexOf('=') >= 0) {
             return "Environment assignments are not allowed while a run_command allowlist is set.";
         }
@@ -101,30 +98,11 @@ public final class RunCommandPolicy {
     /** Matches an executable name against glob patterns ({@code *} and {@code ?}). */
     private static boolean matchesAny(String executable, Set<String> patterns) {
         for (String pattern : patterns) {
-            if (Pattern.compile(globToRegex(pattern)).matcher(executable).matches()) {
+            if (GlobPattern.compile(pattern).matches(executable)) {
                 return true;
             }
         }
         return false;
-    }
-
-    /** Converts a simple glob to a regex, escaping every other character. */
-    private static String globToRegex(String glob) {
-        StringBuilder regex = new StringBuilder(glob.length() * 2);
-        for (int i = 0; i < glob.length(); i++) {
-            char c = glob.charAt(i);
-            switch (c) {
-                case '*' -> regex.append(".*");
-                case '?' -> regex.append('.');
-                default -> {
-                    if ("\\[](){}<>^$|.+".indexOf(c) >= 0) {
-                        regex.append('\\');
-                    }
-                    regex.append(c);
-                }
-            }
-        }
-        return regex.toString();
     }
 
     /** Last path segment, lower-cased, so {@code ./mvnw} matches {@code mvnw}. */

@@ -34,7 +34,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.prefs.PreferenceChangeListener;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -77,6 +77,9 @@ import org.openide.NotifyDescriptor;
 import org.openide.DialogDisplayer;
 
 import github.anandb.netbeans.contract.StashDiffControl;
+import github.anandb.netbeans.pattern.FatalPrefixPattern;
+import github.anandb.netbeans.pattern.StashNamePattern;
+import github.anandb.netbeans.pattern.StashRefPattern;
 import github.anandb.netbeans.support.LanguageResolver;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.ToolCallDiffParser.FileChange;
@@ -93,9 +96,6 @@ import org.openide.util.NbPreferences;
 @ServiceProvider(service = StashDiffControl.class)
 public final class StashDiffAction extends AbstractAction implements Presenter.Toolbar, StashDiffControl {
 
-    private static final Pattern STASH_NAME = Pattern.compile("stash@\\{(\\d+)\\}");
-    private static final Pattern STASH_REF_PATTERN = Pattern.compile("stash@\\{\\d+\\}.*");
-    private static final Pattern FATAL_PREFIX = Pattern.compile("(?m)^fatal: ");
 
 
     private static final Logger LOG = Logger.from(StashDiffAction.class);
@@ -189,7 +189,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         String displayName = node.getDisplayName();
         LOG.info("Selected stash: displayName=\"{0}\", repo={1}", displayName, repoDir.getAbsolutePath());
 
-        Matcher m = STASH_NAME.matcher(displayName);
+        Matcher m = StashNamePattern.matcher(displayName);
         if (!m.find()) {
             LOG.warn("Display name \"{0}\" does not match stash pattern", displayName);
             return;
@@ -205,7 +205,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         Node node = lookup.lookup(Node.class);
         if (node == null) return null;
         String name = node.getDisplayName();
-        return (name != null && STASH_REF_PATTERN.matcher(name).matches()) ? node : null;
+        return (name != null && StashRefPattern.matches(name)) ? node : null;
     }
 
     // --- Git helpers ---
@@ -259,7 +259,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
     }
 
     private static String stripFatal(String output) {
-        return FATAL_PREFIX.matcher(output).replaceAll("");
+        return FatalPrefixPattern.stripFrom(output);
     }
 
     /** Simulate a 3-way merge in-memory using git merge-file. Returns merged content. */

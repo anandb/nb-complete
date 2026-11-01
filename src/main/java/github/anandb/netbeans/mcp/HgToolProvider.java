@@ -5,7 +5,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
+
+import github.anandb.netbeans.pattern.HgDiffTargetPattern;
+import github.anandb.netbeans.pattern.SinceFilterPattern;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
@@ -18,16 +20,6 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
  * option flags cannot be smuggled into the argv.
  */
 public class HgToolProvider {
-
-    /** Accepts revision tokens only (hashes, tags, "tip", "."). Rejects option
-     *  injection — a leading '-' would let a caller smuggle hg flags such as
-     *  --config into the diff command. */
-    private static final Pattern SAFE_HG_TARGET = Pattern.compile("^[A-Za-z0-9._/~^:+-]+$");
-
-    /** Accepts date filters for hg_log (ISO dates or relative forms like
-     *  "2 weeks ago"). A leading '-' would smuggle hg flags, so it is
-     *  rejected; the value is bound as a single --date=>{value} token. */
-    private static final Pattern SINCE_PATTERN = Pattern.compile("^[A-Za-z0-9 .:/_+~-]+$");
 
     /** One-line template shared by hg_log and hg_file_hist (tab-separated). */
     private static final String LOG_TEMPLATE =
@@ -80,7 +72,7 @@ public class HgToolProvider {
                         if (isBlank(target)) {
                             return VcsToolSupport.run(repo.dir(), "Hg", "hg", "diff");
                         }
-                        Map<String, Object> targetErr = VcsToolSupport.invalidRevision(target, SAFE_HG_TARGET);
+                        Map<String, Object> targetErr = VcsToolSupport.invalidRevision(target, HgDiffTargetPattern::matches);
                         if (targetErr != null) {
                             return targetErr;
                         }
@@ -108,7 +100,7 @@ public class HgToolProvider {
                         if (!maxCount.ok()) {
                             return maxCount.error();
                         }
-                        Map<String, Object> sinceErr = VcsToolSupport.invalidSince(args.since(), SINCE_PATTERN);
+                        Map<String, Object> sinceErr = VcsToolSupport.invalidSince(args.since(), SinceFilterPattern::matches);
                         if (sinceErr != null) {
                             return sinceErr;
                         }

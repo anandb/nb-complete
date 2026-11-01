@@ -6,12 +6,12 @@ import java.awt.Component;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.border.EmptyBorder;
 
+import github.anandb.netbeans.pattern.CodeFencePattern;
 import github.anandb.netbeans.support.PluginSettings;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
@@ -20,10 +20,6 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 // Migration target: BubbleContentSpec; the per-MessageType render dispatch
 // stays imperative until the DSL can express it declaratively.
 class BubbleContentRenderer {
-
-    private static final Pattern CODE_BLOCK_PATTERN = Pattern.compile(
-        "```([\\w\\-\\+\\#\\.]*)\\R?(.*?)(?:```(?=\\R|$)|$)", Pattern.DOTALL
-    );
 
     private final JPanel segments;
     private final StringBuilder text;
@@ -162,7 +158,7 @@ class BubbleContentRenderer {
         lastRenderedTextLength = currentLen;
         lastRenderedTextHash = currentHash;
 
-        Matcher matcher = CODE_BLOCK_PATTERN.matcher(text);
+        Matcher matcher = CodeFencePattern.matcher(text);
 
         int currentCompIdx = 0;
 

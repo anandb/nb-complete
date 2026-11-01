@@ -39,6 +39,7 @@ import org.netbeans.api.project.Project;
 import github.anandb.netbeans.contract.TaskRepositoryControl;
 import github.anandb.netbeans.model.TaskRecord;
 import github.anandb.netbeans.model.TaskStatus;
+import github.anandb.netbeans.pattern.PriorityPattern;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 /**
@@ -274,7 +275,7 @@ public final class TaskIssueController implements IssueController {
             return NATO[13]; // N = November
         }
         String p = letter.trim().toUpperCase(java.util.Locale.ROOT);
-        if (p.matches("[A-Z]")) {
+        if (PriorityPattern.matches(p)) {
             return NATO[p.charAt(0) - 'A'];
         }
         return NATO[13];

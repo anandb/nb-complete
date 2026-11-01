@@ -4,7 +4,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.regex.Pattern;
+import java.util.function.Predicate;
 
 import github.anandb.netbeans.support.VcsUtils;
 
@@ -77,15 +77,15 @@ final class VcsToolSupport {
         return new ResolvedCount(value, null);
     }
 
-    static Map<String, Object> invalidSince(String since, Pattern pattern) {
-        if (since != null && !isSafeToken(since, pattern)) {
+    static Map<String, Object> invalidSince(String since, Predicate<String> allowed) {
+        if (since != null && !isSafeToken(since, allowed)) {
             return Map.of("status", "error", "message", "Invalid since filter: " + since);
         }
         return null;
     }
 
-    static Map<String, Object> invalidRevision(String target, Pattern pattern) {
-        if (!isSafeToken(target, pattern)) {
+    static Map<String, Object> invalidRevision(String target, Predicate<String> allowed) {
+        if (!isSafeToken(target, allowed)) {
             return Map.of("status", "error", "message", "Invalid diff target: " + target);
         }
         return null;
@@ -93,8 +93,8 @@ final class VcsToolSupport {
 
     /** Hyphens may appear inside a token (ISO dates, HEAD~1-style). A leading
      *  '-' is an option flag and must not reach argv. */
-    private static boolean isSafeToken(String value, Pattern pattern) {
-        return !value.startsWith("-") && pattern.matcher(value).matches();
+    private static boolean isSafeToken(String value, Predicate<String> allowed) {
+        return !value.startsWith("-") && allowed.test(value);
     }
 
     static ResolvedPath historyPath(String repoDir, String path) {

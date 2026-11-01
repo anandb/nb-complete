@@ -12,7 +12,6 @@ import java.beans.PropertyChangeListener;
 import java.util.Collections;
 import java.util.Set;
 import java.util.WeakHashMap;
-import java.util.regex.Pattern;
 import javax.swing.AbstractAction;
 import javax.swing.JEditorPane;
 import javax.swing.JTabbedPane;
@@ -23,6 +22,8 @@ import javax.swing.event.ChangeListener;
 import org.openide.modules.OnStart;
 import org.openide.nodes.Node;
 import org.openide.windows.TopComponent;
+
+import github.anandb.netbeans.pattern.HtmlStripPatterns;
 
 /**
  * Adds a right-click context menu to the Test Results window
@@ -43,15 +44,6 @@ import org.openide.windows.TopComponent;
 public class TestResultsContextMenu implements Runnable, PropertyChangeListener, ChangeListener, ContainerListener {
 
     private static final String RESULTS_TC_ID = "gsf-testrunner-results"; // NOI18N
-
-    /** Matches HTML tags but NOT comparison text like {@code expected:<1>}. */
-    private static final Pattern HTML_TAG = Pattern.compile("<(?=[a-zA-Z/!])[^>]*>");
-    private static final Pattern HTML_NBSP = Pattern.compile("&nbsp;");
-    private static final Pattern HTML_LT = Pattern.compile("&lt;");
-    private static final Pattern HTML_GT = Pattern.compile("&gt;");
-    private static final Pattern HTML_AMP = Pattern.compile("&amp;");
-    private static final Pattern HTML_QUOT = Pattern.compile("&quot;");
-    private static final Pattern HTML_APOS = Pattern.compile("&#39;");
 
     /** Trees we already hooked, keyed weakly so we never double-install. */
     private static final Set<JTree> HOOKED = Collections.newSetFromMap(new WeakHashMap<JTree, Boolean>());
@@ -256,16 +248,6 @@ public class TestResultsContextMenu implements Runnable, PropertyChangeListener,
      * is preserved.
      */
     static String stripHtml(String text) {
-        if (text == null) {
-            return null;
-        }
-        String s = HTML_TAG.matcher(text).replaceAll("");
-        s = HTML_NBSP.matcher(s).replaceAll(" ");
-        s = HTML_LT.matcher(s).replaceAll("<");
-        s = HTML_GT.matcher(s).replaceAll(">");
-        s = HTML_AMP.matcher(s).replaceAll("&");
-        s = HTML_QUOT.matcher(s).replaceAll("\"");
-        s = HTML_APOS.matcher(s).replaceAll("'");
-        return s;
+        return HtmlStripPatterns.stripHtml(text);
     }
 }

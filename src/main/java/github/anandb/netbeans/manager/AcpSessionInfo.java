@@ -1,5 +1,6 @@
 package github.anandb.netbeans.manager;
 
+import github.anandb.netbeans.pattern.TitleSanitizePattern;
 import github.anandb.netbeans.support.Logger;
 
 /**
@@ -42,6 +43,6 @@ public final class AcpSessionInfo {
         // Strip @scope prefix if present (e.g. "@geohar/pi-acp" -> "pi-acp")
         int slash = harnessName.lastIndexOf('/');
         String raw = slash >= 0 ? harnessName.substring(slash + 1) : harnessName;
-        return raw.replaceAll("[^a-zA-Z0-9._-]", "_");
+        return TitleSanitizePattern.sanitize(raw);
     }
 }

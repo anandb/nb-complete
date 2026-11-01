@@ -3,9 +3,9 @@ package github.anandb.netbeans.manager;
 import java.io.File;
 import java.util.LinkedHashSet;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 import github.anandb.netbeans.contract.VcsIgnoreStrategy;
+import github.anandb.netbeans.pattern.SwapFilePattern;
 
 /**
  * Fallback strategy when no VCS is detected. Walks the filesystem and
@@ -13,9 +13,6 @@ import github.anandb.netbeans.contract.VcsIgnoreStrategy;
  * output directories).
  */
 public class NoVcsIgnoreStrategy implements VcsIgnoreStrategy {
-
-    /** Matches vim swap/backup files: *.swp, *.swo, *~ */
-    private static final Pattern SWAP_PATTERN = Pattern.compile(".*\\.(?:swp|swo)$|.*~$");
 
     /** Directories to skip during filesystem walk. */
     private static final Set<String> SKIP_DIRS = Set.of(
@@ -42,7 +39,7 @@ public class NoVcsIgnoreStrategy implements VcsIgnoreStrategy {
         // Hidden files
         if (name.startsWith(".")) return true;
         // Swap files
-        if (SWAP_PATTERN.matcher(name).matches()) return true;
+        if (SwapFilePattern.matches(name)) return true;
         // Skip known junk directories
         File parent = file.getParentFile();
         while (parent != null && !parent.equals(projectRoot)) {
@@ -61,7 +58,7 @@ public class NoVcsIgnoreStrategy implements VcsIgnoreStrategy {
                 if (name.startsWith(".") || SKIP_DIRS.contains(name)) continue;
                 walk(root, child, result);
             } else {
-                if (SWAP_PATTERN.matcher(name).matches()) continue;
+                if (SwapFilePattern.matches(name)) continue;
                 String rel = relativize(root, child);
                 if (rel != null) {
                     result.add(rel);

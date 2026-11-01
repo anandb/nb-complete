@@ -22,6 +22,7 @@ import com.vladsch.flexmark.parser.Parser;
 import com.vladsch.flexmark.util.data.MutableDataSet;
 
 import github.anandb.netbeans.model.Message;
+import github.anandb.netbeans.pattern.TitleSanitizePattern;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
 import static org.apache.commons.lang3.StringUtils.isBlank;
@@ -453,7 +454,7 @@ final class HtmlConversationExporter {
      */
     static String defaultFileName(String title) {
         if (title != null && !title.startsWith("New Session")) {
-            return title.replaceAll("[^a-zA-Z0-9._-]", "_") + ".html";
+            return TitleSanitizePattern.sanitize(title) + ".html";
         }
         return "session.html";
     }

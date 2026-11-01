@@ -14,6 +14,7 @@ import org.openide.filesystems.FileUtil;
 import org.openide.util.Lookup;
 import org.openide.util.RequestProcessor;
 
+import github.anandb.netbeans.pattern.GlobPattern;
 import github.anandb.netbeans.support.FileAccessGuard;
 import github.anandb.netbeans.support.SecretPaths;
 import github.anandb.netbeans.support.PluginSettings;
@@ -421,8 +422,8 @@ public class FileSystemToolProvider {
                         // per file (recompiles on every call) and left regex
                         // metacharacters unescaped, so a crafted filePattern
                         // could backtrack catastrophically (ReDoS).
-                        Pattern globPattern = (fileGlob != null && !fileGlob.isEmpty())
-                                ? compileGlob(fileGlob) : null;
+                        GlobPattern globPattern = (fileGlob != null && !fileGlob.isEmpty())
+                                ? GlobPattern.compile(fileGlob) : null;
                         List<Map<String, Object>> matches = new ArrayList<>();
                         for (Project p : projects) {
                             File projectDirFile = FileUtil.toFile(p.getProjectDirectory());
@@ -444,7 +445,7 @@ public class FileSystemToolProvider {
                                     }
                                     if (globPattern != null) {
                                         String fileName = file.getFileName().toString();
-                                        if (!globPattern.matcher(fileName).matches()) {
+                                        if (!globPattern.matches(fileName)) {
                                             return FileVisitResult.CONTINUE;
                                         }
                                     }
@@ -480,30 +481,6 @@ public class FileSystemToolProvider {
                 });
     }
 
-    /**
-     * Converts a simple glob ({@code *} = any run, {@code ?} = any single char)
-     * to a compiled Pattern. Every other character — including regex
-     * metacharacters like {@code [ ( { + .} — is escaped literally, so a
-     * crafted filePattern can neither inject regex syntax nor backtrack
-     * catastrophically.
-     */
-    private static Pattern compileGlob(String glob) {
-        StringBuilder sb = new StringBuilder(glob.length() * 2);
-        for (int i = 0; i < glob.length(); i++) {
-            char c = glob.charAt(i);
-            switch (c) {
-                case '*' -> sb.append(".*");
-                case '?' -> sb.append('.');
-                default -> {
-                    if ("\\[](){}<>^$|.?*+-=".indexOf(c) >= 0) {
-                        sb.append('\\');
-                    }
-                    sb.append(c);
-                }
-            }
-        }
-        return Pattern.compile(sb.toString());
-    }
     private void registerListDirectory(McpTools mcpTools) {
         ObjectNode schema = ToolSchema.object()
                 .str("dirPath", "Absolute path to directory")

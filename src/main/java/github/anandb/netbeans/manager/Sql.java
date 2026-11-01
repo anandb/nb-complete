@@ -13,10 +13,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.h2.tools.RunScript;
 import org.openide.util.NbBundle;
+
+import github.anandb.netbeans.pattern.SqlNamePattern;
+import github.anandb.netbeans.pattern.SqlSlotPattern;
 
 /**
  * The store's SQL, kept out of the Java source: DDL in {@code schema.sql}, statements
@@ -47,8 +49,6 @@ final class Sql {
     }
 
     private static final String QUERIES = "queries.sql";
-    private static final Pattern NAME = Pattern.compile("(?m)^--\\s*name:\\s*([a-z0-9_]+)\\s*$");
-    private static final Pattern SLOT = Pattern.compile("\\{\\{([a-zA-Z0-9_]+)}}");
     private static final Map<String, String> BLOCKS = new LinkedHashMap<>();
 
     private Sql() {}
@@ -104,7 +104,7 @@ final class Sql {
     }
 
     private static String expand(String name, String template, Map<String, Slot> slots, List<Object> params) {
-        Matcher m = SLOT.matcher(template);
+        Matcher m = SqlSlotPattern.matcher(template);
         StringBuilder out = new StringBuilder(template.length());
         while (m.find()) {
             String key = m.group(1);
@@ -130,7 +130,7 @@ final class Sql {
     /** Splits {@code -- name: <key>} blocks; the text before the first marker is a header. */
     private static Map<String, String> parse(String script) {
         Map<String, String> blocks = new LinkedHashMap<>();
-        Matcher m = NAME.matcher(script);
+        Matcher m = SqlNamePattern.matcher(script);
         String name = null;
         int start = 0;
         while (m.find()) {

@@ -6,6 +6,7 @@ import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.util.Locale;
 
+import github.anandb.netbeans.pattern.PriorityPattern;
 import org.netbeans.modules.bugtracking.spi.IssuePriorityInfo;
 import org.netbeans.modules.bugtracking.spi.IssuePriorityProvider;
 
@@ -29,7 +30,7 @@ public final class TaskPriorityProvider implements IssuePriorityProvider<TaskIss
     @Override
     public String getPriorityID(TaskIssue i) {
         String p = i.getRecord() == null ? null : i.getRecord().priority();
-        if (p != null && p.trim().toUpperCase(Locale.ROOT).matches("[A-Z]")) {
+        if (p != null && PriorityPattern.matches(p.trim().toUpperCase(Locale.ROOT))) {
             return p.trim().toUpperCase(Locale.ROOT);
         }
         return "N";

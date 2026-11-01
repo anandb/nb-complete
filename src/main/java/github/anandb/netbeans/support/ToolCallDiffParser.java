@@ -3,9 +3,10 @@ package github.anandb.netbeans.support;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.databind.JsonNode;
+
+import github.anandb.netbeans.pattern.HunkHeaderPattern;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
@@ -270,8 +271,6 @@ public final class ToolCallDiffParser {
 
     // --- Unified diff parser ---
 
-    private static final Pattern HUNK_HEADER = Pattern.compile(
-            "^@@\\s+-(\\d+)(?:,\\d+)?\\s+\\+(\\d+)(?:,\\d+)?\\s+@@");
 
     public record DiffPair(String oldContent, String newContent) {}
 
@@ -292,7 +291,7 @@ public final class ToolCallDiffParser {
                 continue;
             }
 
-            Matcher m = HUNK_HEADER.matcher(line);
+            Matcher m = HunkHeaderPattern.matcher(line);
             if (m.find()) {
                 if (inHunk && (!oldLines.isEmpty() || !newLines.isEmpty())) {
                     pairs.add(new DiffPair(String.join("\n", oldLines), String.join("\n", newLines)));

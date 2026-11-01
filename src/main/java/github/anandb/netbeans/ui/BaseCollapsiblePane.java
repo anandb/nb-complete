@@ -14,7 +14,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.regex.Pattern;
 
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
@@ -29,6 +28,7 @@ import javax.swing.JPopupMenu;
 import org.openide.util.NbBundle;
 import org.apache.commons.lang3.StringUtils;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.pattern.ToolPrefixPattern;
 import github.anandb.netbeans.support.ToolDataExtractor;
 
 /**
@@ -40,7 +40,6 @@ import github.anandb.netbeans.support.ToolDataExtractor;
 // expand/collapse animation, title row, param/output sub-panels. Migration
 // target: CollapsibleHeaderSpec + CollapsibleBodySpec; the toggle timer stays imperative.
 public abstract class BaseCollapsiblePane extends RoundedPanel {
-    private static final Pattern TOOL_PREFIX = Pattern.compile("(?i)TOOL:?\\s*");
     private static final Logger LOG = Logger.from(BaseCollapsiblePane.class);
     private static final long serialVersionUID = 1L;
 
@@ -317,7 +316,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
             return;
         }
 
-        String stripped = TOOL_PREFIX.matcher(rawTitle).replaceFirst("").trim();
+        String stripped = ToolPrefixPattern.stripPrefix(rawTitle);
 
         if (stripped.isEmpty() || "Tool".equalsIgnoreCase(stripped) || "Tool Call".equalsIgnoreCase(stripped)) {
             headerLabel.setText(CollapsibleHeaderRenderer.formatTitle(rawTitle));
