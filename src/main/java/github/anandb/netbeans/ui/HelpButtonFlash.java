@@ -1,10 +1,15 @@
 package github.anandb.netbeans.ui;
 
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.Timer;
 import github.anandb.netbeans.support.TimingConstants;
@@ -22,29 +27,29 @@ final class HelpButtonFlash {
 
     private static final String KEY_TIMER = "HelpButtonFlash.timer";
     private static final String KEY_LISTENER = "HelpButtonFlash.listener";
-    private static final String KEY_ORIG_OPAQUE = "HelpButtonFlash.origOpaque";
-    private static final String KEY_ORIG_FILLED = "HelpButtonFlash.origContentAreaFilled";
-    private static final String KEY_ORIG_BG = "HelpButtonFlash.origBackground";
+    private static final String KEY_ORIG_ICON = "HelpButtonFlash.origIcon";
+    /** Extra space around the glyph for the highlight pill. */
+    private static final int PILL_PAD = 2;
+    /** Highlight opacity: clearly visible, still see-through. */
+    private static final int PILL_ALPHA = 90;
+    private static final int PILL_ARC = 8;
 
     private HelpButtonFlash() {}
 
     /**
-     * Flashes the given button with alternating highlight/background for
-     * {@code TimingConstants.HELP_FLASH_TICKS} ticks, then restores.
+     * Flashes the given button with an alternating translucent pill behind its icon for
+     * {@code TimingConstants.HELP_FLASH_TICKS} ticks, then restores the icon.
      *
      * @param button the button to flash
      */
     static void flash(JButton button) {
         stop(button);
-        ColorTheme theme = ThemeManager.getCurrentTheme();
-        Color flashBg = theme.isDark()
-                ? new Color(128, 128, 128, 180)
-                : new Color(66, 133, 244, 180);
-
-        // Remember the original appearance so stop() can restore it exactly.
-        button.putClientProperty(KEY_ORIG_OPAQUE, button.isOpaque());
-        button.putClientProperty(KEY_ORIG_FILLED, button.isContentAreaFilled());
-        button.putClientProperty(KEY_ORIG_BG, button.getBackground());
+        Icon original = button.getIcon();
+        if (original == null) {
+            return;
+        }
+        button.putClientProperty(KEY_ORIG_ICON, original);
+        Color flashColor = flashColor();
 
         Timer timer = new Timer(TimingConstants.HELP_FLASH_INTERVAL_MS, new ActionListener() {
             private int tick = 0;
@@ -53,14 +58,7 @@ final class HelpButtonFlash {
             public void actionPerformed(ActionEvent e) {
                 tick++;
                 boolean highlight = tick % 2 == 0;
-                if (highlight) {
-                    button.setOpaque(true);
-                    button.setBackground(flashBg);
-                    button.setContentAreaFilled(true);
-                } else {
-                    button.setOpaque(false);
-                    button.setContentAreaFilled(false);
-                }
+                button.setIcon(highlight ? new FlashIcon(original, flashColor) : original);
                 button.repaint();
                 if (tick >= TimingConstants.HELP_FLASH_TICKS) {
                     stop(button);
@@ -81,7 +79,7 @@ final class HelpButtonFlash {
         timer.start();
     }
 
-    /** Stops any running flash on the button and restores its appearance. */
+    /** Stops any running flash on the button and restores its icon. */
     static void stop(JButton button) {
         Timer timer = (Timer) button.getClientProperty(KEY_TIMER);
         if (timer != null && timer.isRunning()) {
@@ -95,22 +93,50 @@ final class HelpButtonFlash {
             button.putClientProperty(KEY_LISTENER, null);
         }
 
-        // Restore the pre-flash appearance, if we captured one.
-        Object origOpaque = button.getClientProperty(KEY_ORIG_OPAQUE);
-        Object origFilled = button.getClientProperty(KEY_ORIG_FILLED);
-        Object origBg = button.getClientProperty(KEY_ORIG_BG);
-        if (origOpaque instanceof Boolean) {
-            button.setOpaque((Boolean) origOpaque);
+        Object original = button.getClientProperty(KEY_ORIG_ICON);
+        if (original instanceof Icon icon) {
+            button.setIcon(icon);
         }
-        if (origFilled instanceof Boolean) {
-            button.setContentAreaFilled((Boolean) origFilled);
-        }
-        if (origBg instanceof Color) {
-            button.setBackground((Color) origBg);
-        }
-        button.putClientProperty(KEY_ORIG_OPAQUE, null);
-        button.putClientProperty(KEY_ORIG_FILLED, null);
-        button.putClientProperty(KEY_ORIG_BG, null);
+        button.putClientProperty(KEY_ORIG_ICON, null);
         button.repaint();
+    }
+
+    /** Theme accent at a translucent alpha; the button itself stays transparent. */
+    private static Color flashColor() {
+        Color accent = ThemeManager.getCurrentTheme().accent();
+        if (accent == null) {
+            accent = new Color(66, 133, 244);
+        }
+        return new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), PILL_ALPHA);
+    }
+
+    /** Paints a rounded translucent pill, then the delegate glyph on top. */
+    private record FlashIcon(Icon delegate, Color color) implements Icon {
+
+        @Override
+        public void paintIcon(Component c, Graphics g, int x, int y) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                        RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(color);
+                g2.fillRoundRect(x - PILL_PAD, y - PILL_PAD,
+                        getIconWidth() + PILL_PAD * 2, getIconHeight() + PILL_PAD * 2,
+                        PILL_ARC, PILL_ARC);
+            } finally {
+                g2.dispose();
+            }
+            delegate.paintIcon(c, g, x, y);
+        }
+
+        @Override
+        public int getIconWidth() {
+            return delegate.getIconWidth();
+        }
+
+        @Override
+        public int getIconHeight() {
+            return delegate.getIconHeight();
+        }
     }
 }

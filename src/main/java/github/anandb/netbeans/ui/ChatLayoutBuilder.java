@@ -114,29 +114,46 @@ final class ChatLayoutBuilder {
     /**
      * Ink width fraction of each header asset at its own viewBox size, measured by
      * rasterizing the SVG and taking the alpha bounding box (240 px render):
-     * lock 0.75, coffee 0.95, mini-assistant 0.717, help 0.817.
+     * lock 0.75, mini-assistant 0.717.
      * <p>
-     * The coffee cup is the visual reference for the row. The line-art glyphs leave a lot of
-     * padding, so drawing them at the toolbar size makes them read smaller than the
-     * break-mode icons. Their icon size is derived from these fractions so their ink ends up
-     * as wide as the coffee cup's (24 px vs 22.8 px at the default 24 px toolbar size).
+     * The line-art glyphs leave a lot of padding, so at the toolbar size their ink reads
+     * narrower than the padlock's solid body. The padlock is drawn from these fractions so
+     * its ink ends up as wide as the mini-assistant glyph at the default toolbar size.
      */
-    private static final double BREAK_MODE_INK_WIDTH = 0.95;
+    private static final double LOCK_INK_WIDTH = 0.75;
     private static final double MINI_ASSISTANT_INK_WIDTH = 0.717;
-    private static final double HELP_INK_WIDTH = 0.817;
 
-    private static int lineArtIconSize(double inkWidthFraction) {
+    private static int lockIconSize() {
         int base = PluginSettings.getToolbarIconSize();
-        return Math.max(1, Math.round((float) (base * BREAK_MODE_INK_WIDTH / inkWidthFraction)));
+        return Math.max(1, Math.round((float) (base * MINI_ASSISTANT_INK_WIDTH / LOCK_INK_WIDTH)));
     }
 
     /**
      * The padlock's ink fills its square box, so it is geometrically centered yet reads low —
-     * the body outweighs the shackle. Lift it by ~8% of the icon size (2 px at the default
-     * 24 px) for optical centering with the mini-assistant and help glyphs.
+     * the body outweighs the shackle. Lift it by ~8% of its own size for optical centering
+     * with the mini-assistant and help glyphs.
      */
     private static int lockRisePx() {
-        return Math.max(1, Math.round(PluginSettings.getToolbarIconSize() * 0.08f));
+        return Math.max(1, Math.round(lockIconSize() * 0.08f));
+    }
+
+    /**
+     * Replaces the factory's full-size padlock with the smaller, optically raised one.
+     * The factory sized the button from the original asset, so the preferred size is
+     * recalculated after the swap.
+     */
+    private static void applyLockIcon(PulsingToggleButton button) {
+        Icon lock = ThemeManager.getIcon("lock.svg", lockIconSize());
+        if (lock == null) {
+            return;
+        }
+        int rise = lockRisePx();
+        button.setIcon(new RaisedIcon(lock, rise));
+        Icon disabled = ImageUtilities.createDisabledIcon(lock);
+        if (disabled != null) {
+            button.setDisabledIcon(new RaisedIcon(disabled, rise));
+        }
+        UIUtils.recalcToolbarButtonSize(button);
     }
 
     JPanel buildHeader() {
@@ -408,7 +425,7 @@ final class ChatLayoutBuilder {
 
         String userGuideUrl = AppLinks.userGuideUrl();
 
-        helpBtn = UIUtils.createToolbarButton("help.svg", lineArtIconSize(HELP_INK_WIDTH),
+        helpBtn = UIUtils.createToolbarButton("help.svg",
             NbBundle.getMessage(AssistantTopComponent.class, "HINT_QuickstartGuide"), null);
         helpBtn.setContentAreaFilled(false);
         helpBtn.setBorderPainted(false);
@@ -467,14 +484,15 @@ final class ChatLayoutBuilder {
         });
 
         PulsingToggleButton breakModeBtn = UIUtils.createToggleToolbarButton("lock.svg", "take-break.svg",
-                NbBundle.getMessage(ChatLayoutBuilder.class, "HINT_BreakModeOff"), lockRisePx());
+                NbBundle.getMessage(ChatLayoutBuilder.class, "HINT_BreakModeOff"));
+        applyLockIcon(breakModeBtn);
         this.breakModeBtn = breakModeBtn;
         breakModeBtn.setSelected(PermissionAutoAllow.isEnabled());
         updateBreakModeTooltip(breakModeBtn);
         breakModeBtn.addActionListener(e -> onBreakModeToggled(breakModeBtn));
 
         JButton launchMiniAssistantBtn = UIUtils.createToolbarButton("mini-assistant.svg",
-            lineArtIconSize(MINI_ASSISTANT_INK_WIDTH), "Launch Mini Assistant", null);
+            "Launch Mini Assistant", null);
         this.launchMiniAssistantBtn = launchMiniAssistantBtn;
         launchMiniAssistantBtn.setContentAreaFilled(false);
         launchMiniAssistantBtn.setBorderPainted(false);
