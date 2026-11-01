@@ -5,6 +5,7 @@ import java.awt.Container;
 import java.util.List;
 
 import javax.swing.JLabel;
+import javax.swing.JButton;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -211,5 +212,65 @@ class PlanPanelTest {
         // Clicking the header after a clear must not resurrect the old plan.
         toggleHeader(panel);
         assertFalse(panel.isVisible());
+    }
+
+    @Test
+    void closeButtonHidesThePlanUntilTheNextPlanArrives() {
+        PlanPanel panel = new PlanPanel();
+        panel.setEntries("s1", sample());
+        assertTrue(panel.isVisible(), "precondition: a plan opens the slideout");
+
+        closeButton(panel).doClick();
+
+        assertFalse(panel.isVisible(), "the close button must hide the slideout");
+        panel.setEntries("s1", sample());
+        assertFalse(panel.isVisible(), "a replayed identical plan must stay closed");
+        panel.setEntries("s1", List.of(new PlanEntry("high", "pending", "Different step")));
+        assertTrue(panel.isVisible(), "a changed plan re-opens it");
+    }
+
+    @Test
+    void dismissedPlanSurvivesSessionReloadAndStatusOnlyUpdates() {
+        PlanPanel panel = new PlanPanel();
+        List<PlanEntry> plan = List.of(
+                new PlanEntry("high", "in-progress", "Analyze config"),
+                new PlanEntry("low", "pending", "Ship it"));
+        panel.setEntries("s1", plan);
+        closeButton(panel).doClick();
+        assertFalse(panel.isVisible());
+
+        // session/load clears the panel, then replays the plan updates.
+        panel.clear();
+        panel.setEntries("s1", plan);
+        assertFalse(panel.isVisible(), "reload replay must not reopen a dismissed plan");
+
+        panel.setEntries("s1", List.of(
+                new PlanEntry("high", "completed", "Analyze config"),
+                new PlanEntry("low", "completed", "Ship it")));
+        assertFalse(panel.isVisible(), "status-only progress must not reopen it");
+
+        panel.setEntries("s2", plan);
+        assertTrue(panel.isVisible(), "the dismissal is scoped to its session");
+    }
+
+    private static JButton closeButton(PlanPanel panel) {
+        JButton button = findButton((Container) panel.getComponent(0));
+        assertNotNull(button, "the header must expose a close button");
+        return button;
+    }
+
+    private static JButton findButton(Container container) {
+        for (java.awt.Component child : container.getComponents()) {
+            if (child instanceof JButton button) {
+                return button;
+            }
+            if (child instanceof Container nested) {
+                JButton button = findButton(nested);
+                if (button != null) {
+                    return button;
+                }
+            }
+        }
+        return null;
     }
 }

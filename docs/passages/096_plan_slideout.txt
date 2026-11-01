@@ -12,7 +12,7 @@ When the agent emits a plan — its step list for the task in hand — the steps
 
 The slideout opens automatically when a plan is first created or when the agent adds more steps. An update that keeps the same number of steps preserves whatever you last chose, so collapsing it does not make it reopen on every progress update. Starting or loading a session clears it.
 
-Click anywhere on the header — the title, the chevron, the counter or the progress bar — to collapse or expand it.
+Click anywhere on the header — the title, the chevron, the counter or the progress bar — to collapse or expand it. The **×** button at the right end of the header closes the slideout; the dismissal is remembered for that session and plan, so reloading the session or a status-only progress update does not bring it back. A plan whose steps change opens the slideout again, and the state lasts for the current IDE session.
 
 > [[Thinking and Tool Responses]]
 > [[Pinned Messages]]

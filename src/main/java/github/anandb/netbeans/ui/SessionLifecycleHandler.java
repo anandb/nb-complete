@@ -294,7 +294,7 @@ public class SessionLifecycleHandler implements SessionListener {
                     if (planSessionId != null && !planSessionId.equals(currentId)) {
                         return;
                     }
-                    planPanel.setEntries(entries);
+                    planPanel.setEntries(planSessionId, entries);
                 });
             }
         });

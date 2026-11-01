@@ -15,13 +15,16 @@ import java.awt.font.TextAttribute;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.Icon;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -69,8 +72,16 @@ public class PlanPanel extends JPanel {
     private final MiniProgressBar progressBar = new MiniProgressBar();
     private final JPanel rowsPanel = new JPanel();
     private final JScrollPane rowsScroll;
+    private final JButton closeButton;
     /** Current entries, kept so expanding/collapsing re-renders from them. */
     private List<PlanEntry> entries = List.of();
+    /**
+     * Plans the user closed, keyed by session id. The value is the step signature
+     * (contents and priorities, not statuses), so a reload replay or a status-only
+     * update stays hidden while a genuinely new plan reopens the slideout.
+     */
+    private final Map<String, String> dismissedPlans = new HashMap<>();
+    private String sessionId;
     private boolean expanded;
 
     public PlanPanel() {
@@ -115,6 +126,17 @@ public class PlanPanel extends JPanel {
         // containers are traversed recursively.
         wireToggleRecursively(header, toggle);
 
+        // Added after the toggle wiring so a click on the close button hides the
+        // slideout instead of also expanding/collapsing it.
+        closeButton = UIUtils.createToolbarButton("plan-close.svg", ICON_SIZE,
+                NbBundle.getMessage(PlanPanel.class, "TT_HidePlan"), e -> hidePlan());
+        closeButton.setContentAreaFilled(false);
+        closeButton.setBorderPainted(false);
+        closeButton.getAccessibleContext().setAccessibleName(
+                NbBundle.getMessage(PlanPanel.class, "ACSN_HidePlan"));
+        barSlot.add(Box.createHorizontalStrut(2));
+        barSlot.add(closeButton);
+
         rowsPanel.setOpaque(false);
         rowsPanel.setLayout(new BoxLayout(rowsPanel, BoxLayout.Y_AXIS));
         // leading inset: visible gap between the panel's left edge and the row text/icons;
@@ -133,11 +155,26 @@ public class PlanPanel extends JPanel {
      * sizing method — this runs from the session-update pipeline.
      */
     public void setEntries(List<PlanEntry> entries) {
+        setEntries(null, entries);
+    }
+
+    /**
+     * As above, with the session the plan belongs to. A plan the user closed for
+     * this session stays hidden when {@code session/load} replays the same steps;
+     * a changed plan (different steps or priorities) reopens the slideout.
+     */
+    public void setEntries(String sessionId, List<PlanEntry> entries) {
+        this.sessionId = sessionId;
         List<PlanEntry> previous = this.entries;
         this.entries = entries == null ? List.of() : List.copyOf(entries);
         if (this.entries.isEmpty()) {
             clear();
             return;
+        }
+        String signature = planSignature(this.entries);
+        boolean dismissed = sessionId != null && signature.equals(dismissedPlans.get(sessionId));
+        if (!dismissed && sessionId != null) {
+            dismissedPlans.remove(sessionId);
         }
         // The slideout opens itself when a plan is created (first entries) or
         // populated further (more steps than before); a same-size refresh
@@ -212,10 +249,10 @@ public class PlanPanel extends JPanel {
                 theme.accent(), theme.tableBorder());
         progressBar.getAccessibleContext().setAccessibleName(
                 NbBundle.getMessage(PlanPanel.class, "ACSN_PlanProgress", done, total));
-        setVisible(true);
+        setVisible(!dismissed);
         revalidate();
         repaint();
-        LOG.fine("Plan slideout updated: {0} entries, {1} done", total, done);
+        LOG.fine("Plan slideout updated: {0} entries, {1} done, dismissed={2}", total, done, dismissed);
     }
 
     /**
@@ -237,6 +274,31 @@ public class PlanPanel extends JPanel {
         setVisible(false);
         revalidate();
         repaint();
+    }
+
+    /**
+     * Hides the slideout until the plan changes. The dismissal is remembered for the
+     * current session and its step signature, so a {@code session/load} replay or a
+     * status-only update does not reopen it. Entries are kept.
+     */
+    void hidePlan() {
+        if (sessionId != null && !entries.isEmpty()) {
+            dismissedPlans.put(sessionId, planSignature(entries));
+        }
+        setVisible(false);
+        revalidate();
+        repaint();
+        LOG.fine("Plan slideout hidden by the user");
+    }
+
+    /** Step identity of a plan: contents and priorities, ignoring status changes. */
+    private static String planSignature(List<PlanEntry> entries) {
+        StringBuilder signature = new StringBuilder(entries.size() * 32);
+        for (PlanEntry entry : entries) {
+            signature.append(entry.priority()).append('\u0001')
+                    .append(entry.content()).append('\u0002');
+        }
+        return signature.toString();
     }
 
     /**
