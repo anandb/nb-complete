@@ -6,7 +6,7 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-![Mini Assistant](../images/mini_assistant.png){style="max-width:100%;"}
+![Mini Assistant](../images/mini_assistant.webp){style="max-width:100%;"}
 
 The **Mini Assistant** is a compact, floating chat dialog that gives you quick access to the AI without needing the full sidebar panel. It shares the same session as the main assistant, so conversations stay in sync. You can disable it entirely under `Options > BeanBot > Actions > Enable Mini Assistant` — when disabled, "Send to Assistant" / "Ask Assistant" actions open the main sidebar instead.
 

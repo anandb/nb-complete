@@ -6,7 +6,7 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-![New Session Confirm Bar](../images/new_session_confirm.png){style="max-width:100%;"}
+![New Session Confirm Bar](../images/new_session_confirm.webp){style="max-width:100%;"}
 
 When you start a new session, a slide-in confirmation bar appears above the input area. On harnesses that can pick a model in-session it reads *"Select the agent, model and level below, then click Continue."* On [[Gemini Agent]], which has no in-session model dropdown, it reads *"Select the agent and level below, then click Continue."* The dropdowns stay locked until you confirm, so the session starts with the configuration you intend. Clicking **Continue** unlocks them and starts the session.
 

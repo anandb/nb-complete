@@ -38,6 +38,8 @@
         <netbeans.version>RELEASE220</netbeans.version>
         <dependency-check-maven.version>12.2.2</dependency-check-maven.version>
         <argLine></argLine>
+        <!-- Skip stitching/compiling the user guide (needs python3 + tweego). -->
+        <skipUserGuide>false</skipUserGuide>
     </properties>
 
     <dependencies>
@@ -568,15 +570,25 @@
                             <goal>run</goal>
                         </goals>
                         <configuration>
+                            <skip>${skipUserGuide}</skip>
                             <target>
                                 <echo>Stitching user guide passages and compiling HTML (docs/stitch.py)</echo>
-                                <exec executable="python3" failonerror="false">
+                                <exec executable="python3" failonerror="false" resultproperty="userGuide.exit">
                                     <arg value="${project.basedir}/docs/stitch.py"/>
                                 </exec>
+                                <fail message="User guide generation failed: docs/stitch.py exited ${userGuide.exit}. Fix the errors reported above. To skip the user guide (python3 + tweego not needed), add -DskipUserGuide=true to the Maven command, e.g. ./mvnw package -DskipUserGuide=true.">
+                                    <condition>
+                                        <not>
+                                            <equals arg1="${userGuide.exit}" arg2="0"/>
+                                        </not>
+                                    </condition>
+                                </fail>
                                 <!-- Copy the compiled (gzipped) HTML where the build resources pick it up.
                                      stitch.py writes User Guide.html.gz only; the plain HTML never
-                                     lingers in target/. stitch.py is failonerror=false, so a missing
-                                     source must not fail the build. -->
+                                     lingers in target/. stitch.py already failed above if it could not
+                                     produce the file, so the copy only guards against a missing gz
+                                     from a no-html stitch run; the release profile verifies the
+                                     file exists before anything is published. -->
                                 <mkdir dir="${project.build.directory}/generated-guide"/>
                                 <copy file="${project.build.directory}/User Guide.html.gz"
                                       tofile="${project.build.directory}/generated-guide/UserGuide.html.gz"
@@ -723,11 +735,13 @@
                                 </goals>
                                 <configuration>
                                     <target>
-                                        <!-- generate-user-guide runs stitch.py with failonerror=false so a
-                                             developer build without tweego still works. A release must not
-                                             publish a jar with no bundled guide, and `deploy` runs after
-                                             verify, so the check lives here: it fails the build before
-                                             anything is published, and no version is burned. -->
+                                        <!-- generate-user-guide fails the build when stitch.py exits
+                                             non-zero (including a missing tweego), and
+                                             -DskipUserGuide=true skips generation entirely. A
+                                             release must not publish a jar with no bundled guide, and
+                                             `deploy` runs after verify, so the check lives here: it
+                                             fails the build before anything is published, and no
+                                             version is burned. -->
                                         <fail message="Bundled user guide missing: ${project.build.directory}/generated-guide/UserGuide.html.gz (install tweego and re-run the build).">
                                             <condition>
                                                 <not>

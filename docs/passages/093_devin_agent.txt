@@ -23,7 +23,7 @@ The executable you configure in BeanBot is <code>devin</code>, run with the defa
 **Authentication** is worth setting up before you connect: the ACP server reads credentials from the `WINDSURF_API_KEY` environment variable when it is set, and otherwise uses the credentials stored by <code>devin auth login</code>. Run <code>devin auth login</code> once in a terminal, and be aware that a Windsurf key in your environment takes precedence over that stored login.
 
 Devin Agent in BeanBot supports:
-- **Editor Context**: Seamlessly injects the active editor state into agent prompts.
+- [[Editor Context->Automatic Context Capture]] Seamlessly injects the active editor state into agent prompts.
 - **[[MCP Tools]]**: Devin accepts a per-session MCP server, so BeanBot hands it the plugin's internal server automatically — no manual MCP registration is needed.
 - **Model Selection**: Exposed as an ACP config option, so the in-session model dropdown works. To pin a different default for every new session instead, pass <code>--model</code> under Process Arguments in <code>Options &gt; BeanBot</code>, or set `DEVIN_MODEL`.
 - **Agent / Mode List**: The agent selector is offered.
@@ -38,7 +38,7 @@ Devin Agent in BeanBot supports:
 
 > [[Post Install]]
 > [[Starting a Session]]
-> [[Choose Your Coding Harness]]
+> [[Onboarding]]
 > [[MCP Tools]]
 > [[Picking an Agent, Model and Thinking Level]]
 > [[Queuing Messages]]

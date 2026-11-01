@@ -26,9 +26,11 @@
   `generate-resources`) needs `python3` + `tweego` (Harlowe 3) to produce
   `target/generated-guide/UserGuide.html.gz` (the stitch output is gzipped; no plain
   HTML is left in `target/` — the IDE's HTML validator flags it), which is packaged into
-  the module jar. The antrun
-  `<exec>` is `failonerror="false"`, so a missing tweego only warns and the jar ships without
-  the guide. CI installs a pinned tweego release in `.github/workflows/release.yml`, and the
+  the module jar. A stitch failure (Harlowe temp-variable check, missing image,
+  tweego compile error) **fails the build** and prints the errors; `-DskipUserGuide=true`
+  skips stitching and the copy entirely (e.g. `./mvnw package -DskipUserGuide=true`) when
+  python3/tweego are unavailable. A missing tweego also fails the build; install it, or skip
+  with `-DskipUserGuide=true`. CI installs a pinned tweego release in `.github/workflows/release.yml`, and the
   `release` profile in `pom.xml` binds an antrun `verify-user-guide` check to the `verify`
   phase: it fails the build (before `deploy` publishes anything) when
   `target/generated-guide/UserGuide.html.gz` is missing or is not stitched HTML. Keep the
@@ -831,8 +833,10 @@ When editing it, use the split passage files — they are the source of truth:
 - **Passages**: `docs/passages/NNN_<name>.txt` — one file per page, numbered
   `001_`..`NNN_`, header line `:: Name {attrs}` followed by the body. The last
   passage number is the next one to use for new pages.
-- **Images**: `docs/images/<name>-N.png` — binary files; passage bodies
-  reference them as `![alt](../images/<name>-N.png){style="max-width:100%;"}`.
+- **Images**: `docs/images/<name>-N.webp` — binary files; passage bodies
+  reference them as `![alt](../images/<name>-N.webp){style="max-width:100%;"}`.
+  Screenshots are lossless WebP, photographs lossy `-quality 90`; `stitch.py`
+  inlines them as `data:image/webp;base64`.
 - **Tooling**: `docs/split.py` unpacks `User Guide.twee` into passages+images;
   `docs/stitch.py` reassembles them back into `User Guide.twee`.
 - **Bundled copy**: the Maven build also copies the gzipped compiled HTML to

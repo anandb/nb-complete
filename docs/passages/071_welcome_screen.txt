@@ -8,7 +8,7 @@
 
 When the assistant panel is opened with no session selected, you'll see the welcome screen instead of a chat thread. Click the **New Session** button (green plus icon) on the toolbar to begin a new conversation.
 
-![Welcome Screen Toolbar](../images/welcome_screen-1.png){style="max-width:100%;"}
+![Welcome Screen Toolbar](../images/welcome_screen-1.webp){style="max-width:100%;"}
 
 
 > [[Starting a Session]]

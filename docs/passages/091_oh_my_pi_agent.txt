@@ -23,14 +23,14 @@ Then run <code>omp</code> in a terminal and use <code>/login</code> to authentic
 The executable you configure in BeanBot is <code>omp</code>, run with the default launch argument <code>acp</code>.
 
 Oh My Pi Agent in BeanBot supports:
-- **Editor Context**: Seamlessly injects the active editor state into agent prompts.
+- [[Editor Context->Automatic Context Capture]] Seamlessly injects the active editor state into agent prompts.
 - **MCP Servers**: Automatically registers and injects the plug-in's [[MCP Tools]].
 - **[[Queuing Messages]]**: Queues and batches user prompts at turn end.
 - **Session Management**: Supports full session lists and state persistence.
 
 > [[Post Install]]
 > [[Starting a Session]]
-> [[Choose Your Coding Harness]]
+> [[Onboarding]]
 > [[MCP Tools]]
 > [[Permission Requests]]
 > [[Picking an Agent, Model and Thinking Level]]

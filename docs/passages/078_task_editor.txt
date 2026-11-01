@@ -6,7 +6,7 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-![Task Editor](../images/task_editor-1.png){style="max-width:100%;"}
+![Task Editor](../images/task_editor-1.webp){style="max-width:100%;"}
 
 The task editor opens when you create or edit a task from the NetBeans Tasks Dashboard or via the assistant toolbar. It has two sections separated by a divider.
 

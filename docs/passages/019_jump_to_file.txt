@@ -6,7 +6,7 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-![Jump to File dialog for searching files across open projects](../images/ide_enhancements-1.png){style="max-width:100%;"}
+![Jump to File dialog for searching files across open projects](../images/ide_enhancements-1.webp){style="max-width:100%;"}
 
 The **Jump to File** dialog (`Ctrl + Alt + J`, or `Cmd + Option + J` on Mac) lets you open any file across all open projects by typing part of its name. It matches case-insensitively by filename prefix, path substring, or glob patterns. Navigate with the arrow keys and press `Enter` to open.
 

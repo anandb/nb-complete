@@ -22,7 +22,7 @@ Requires **Node 24.16+ or 26.1+** — Node 26 is recommended, and the installer 
 The executable you configure in BeanBot is <code>openclaw</code>, run with the default launch argument <code>acp</code>.
 
 OpenClaw Agent in BeanBot supports:
-- **Editor Context**: Seamlessly injects the active editor state into agent prompts.
+- [[Editor Context->Automatic Context Capture]] Seamlessly injects the active editor state into agent prompts.
 - **[[Permission Requests]]**: Gateway exec-approval prompts during a turn are relayed into BeanBot's permission UI.
 - **Thinking Responses**: Model thinking streams into the chat as thought bubbles.
 - **[[Queuing Messages]]**: Queues and batches user prompts at turn end.
@@ -38,7 +38,7 @@ OpenClaw runs as a **bridge** rather than a full ACP-native runtime, so a few AC
 
 > [[Post Install]]
 > [[Starting a Session]]
-> [[Choose Your Coding Harness]]
+> [[Onboarding]]
 > [[MCP Tools]]
 > [[Permission Requests]]
 > [[Picking an Agent, Model and Thinking Level]]

@@ -32,7 +32,7 @@ HARLOWE_VERSION = "3.3.9"
 MD_IMG_RE = re.compile(
     r'!\[([^\]]*)\]\(([^)]+)\)(?:{([^}]*?)})?', re.IGNORECASE
 )
-EXT_MIME = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "gif": "image/gif"}
+EXT_MIME = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "gif": "image/gif", "webp": "image/webp"}
 
 POM_PATH = HERE.parent / "pom.xml"
 # The project's own version, not a dependency's: the <version> right after the
@@ -43,6 +43,57 @@ POM_VERSION_RE = re.compile(
 # "Last updated for BeanBot v1.26.0" in the Home passage; the trailing tail
 # catches suffixes like -SNAPSHOT or rc1 so the stamp never leaves a stale one.
 VERSION_STAMP_RE = re.compile(r"(Last updated for BeanBot v)[0-9][\w.\-]*")
+
+# Harlowe reads `_name` in passage text as a temp variable and prints
+# "There isn't a temp variable named _name" at play time. A name with no letter
+# (`alpha_1`) is not a variable; `_2beta`, `__b` and `_API_KEY` are.
+HARLOWE_TEMP_VAR_RE = re.compile(r"_[A-Za-z0-9_]+")
+PASSAGE_TAG_RE = re.compile(r"\[([^\]]*)\]\s*$")
+RAW_TAGS = {"script", "stylesheet"}
+# Regions where an underscore is literal, not passage text: fenced/inline
+# verbatim, HTML comments, HTML tags (attributes), and markdown link targets.
+FENCED_BLOCK_RE = re.compile(r"```.*?```", re.DOTALL)
+BACKTICK_SPAN_RE = re.compile(r"`[^`]*`", re.DOTALL)
+HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+RAW_BLOCK_RE = re.compile(r"<(style|script)\b.*?</\1>", re.DOTALL | re.IGNORECASE)
+MD_IMAGE_RE = re.compile(r"!\[[^\]]*\]\([^)]*\)(?:\{[^}]*\})?")
+MD_LINK_TARGET_RE = re.compile(r"\]\([^)]*\)")
+HTML_TAG_RE = re.compile(r"<[^>]*>")
+
+
+def _blank(match: re.Match) -> str:
+    """Remove a match but keep its newlines so reported line numbers stay true."""
+    return "\n" * match.group(0).count("\n")
+
+
+def _temp_vars(text: str, first_line: int):
+    text = FENCED_BLOCK_RE.sub(_blank, text)
+    text = BACKTICK_SPAN_RE.sub(_blank, text)
+    text = HTML_COMMENT_RE.sub(_blank, text)
+    text = RAW_BLOCK_RE.sub(_blank, text)
+    text = MD_IMAGE_RE.sub(_blank, text)
+    text = MD_LINK_TARGET_RE.sub("]", text)
+    text = HTML_TAG_RE.sub(_blank, text)
+    for offset, line in enumerate(text.splitlines()):
+        for match in HARLOWE_TEMP_VAR_RE.finditer(line):
+            token = match.group(0)
+            if any(ch.isalpha() for ch in token):
+                yield first_line + offset, token
+
+
+def find_temp_vars(passages_dir: Path = PASSAGES_DIR) -> list[str]:
+    """Return `file:line: token` for underscores Harlowe would read as variables."""
+    problems = []
+    for passage_file in sorted(passages_dir.glob("*.txt")):
+        lines = passage_file.read_text(encoding="utf-8").splitlines()
+        if not lines or not lines[0].startswith(":: "):
+            continue
+        tags = PASSAGE_TAG_RE.search(lines[0])
+        if tags and RAW_TAGS.intersection(tags.group(1).split()):
+            continue
+        for lineno, token in _temp_vars("\n".join(lines[1:]), first_line=2):
+            problems.append(f"{passage_file.name}:{lineno}: {token}")
+    return problems
 
 
 def img_to_base64(match: re.Match) -> str:
@@ -69,6 +120,13 @@ def pom_version() -> str | None:
 
 
 def stitch() -> str:
+    problems = find_temp_vars()
+    if problems:
+        raise SystemExit(
+            "Error: Harlowe reads these as temp variables (use &#95; inside "
+            "<code>, or backticks for verbatim text):\n"
+            + "\n".join(f"  {problem}" for problem in problems)
+        )
     version = pom_version()
     parts = []
     for passage_file in sorted(PASSAGES_DIR.glob("*.txt")):
@@ -100,8 +158,11 @@ def compile_html(twee_path: Path) -> Path | None:
     html_path = twee_path.with_suffix(".html")
     tweego_path = find_tweego()
     if not tweego_path:
-        print("Warning: tweego not found (set TWEEGO or add tweego to PATH), skipping HTML compilation")
-        return None
+        raise SystemExit(
+            "Error: tweego not found (set TWEEGO, add it to PATH, or install it at "
+            "~/apps/tweego/tweego). Install tweego, or skip the user guide with "
+            "-DskipUserGuide=true (e.g. ./mvnw package -DskipUserGuide=true)."
+        )
     cmd = [
         tweego_path,
         "-f", "harlowe-3",

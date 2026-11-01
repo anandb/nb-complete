@@ -3,10 +3,10 @@
 
 Output layout:
     docs/passages/NNN_<name>.txt       - one passage per file (header + body)
-    docs/images/<name>-N.png        - binary images extracted from base64 src
+    docs/images/<name>-N.<ext>      - binary images extracted from base64 src
 
 Inside passage files, embedded images are replaced with markdown links:
-    ![alt](../images/<name>-N.png){attr="value" ...}
+    ![alt](../images/<name>-N.<ext>){attr="value" ...}
 The optional { ... } block preserves extra img attributes (e.g. style).
 Run docs/stitch.py to reassemble the original twee file.
 """
@@ -22,7 +22,7 @@ IMAGES_DIR = HERE / "images"
 
 IMG_TAG_RE = re.compile(r'<img\s+([^>]*?)\s*/?>', re.IGNORECASE)
 ATTR_RE = re.compile(r'(\w+)\s*=\s*"([^"]*)"')
-SRC_B64_RE = re.compile(r'^data:image/(png|jpe?g|gif);base64,([A-Za-z0-9+/=]+)$')
+SRC_B64_RE = re.compile(r'^data:image/(png|jpe?g|gif|webp);base64,([A-Za-z0-9+/=]+)$')
 
 
 def sanitize(name: str) -> str:

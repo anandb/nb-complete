@@ -24,7 +24,7 @@ The executable you configure in BeanBot is <code>copilot</code>, run with the la
 **Authenticate first**: run <code>copilot login</code> once in a terminal (or use <code>/login</code> inside the CLI) with an active Copilot subscription. BeanBot cannot complete this for you. A fine-grained personal access token with the "Copilot Requests" permission also works via the `COPILOT_GITHUB_TOKEN`, `GH_TOKEN` or `GITHUB_TOKEN` environment variables.
 
 Copilot Agent in BeanBot supports:
-- **Editor Context**: the active editor state is attached to your prompts.
+- [[Editor Context->Automatic Context Capture]] the active editor state is attached to your prompts.
 - **[[MCP Tools]]**: Copilot accepts a per-session HTTP/SSE MCP server, so BeanBot hands it the plugin's internal server automatically — no manual MCP registration is needed.
 - **Model Selection**: exposed as an ACP config option, so the in-session model dropdown works.
 - **Agent / Mode List**: Copilot advertises three modes — **Agent**, **Plan** and **Autopilot** — and the selector is offered.
@@ -34,12 +34,12 @@ Copilot Agent in BeanBot supports:
 
 #### Limitations
 
-- **Permissions**: Copilot exposes its own <code>allow_all</code> permission config option. BeanBot drives mode and model through its own [[Permission Requests]] dialog and does not surface that toggle — leave <code>allow_all</code> off if you want to review changes first.
-- **Mode switching** goes through the generic config-option method rather than <code>session/set_mode</code>, so it works only where Copilot accepts a config change mid-session.
+- **Permissions**: Copilot exposes its own <code>allow&#95;all</code> permission config option. BeanBot drives mode and model through its own [[Permission Requests]] dialog and does not surface that toggle — leave <code>allow&#95;all</code> off if you want to review changes first.
+- **Mode switching** goes through the generic config-option method rather than <code>session/set&#95;mode</code>, so it works only where Copilot accepts a config change mid-session.
 
 > [[Post Install]]
 > [[Starting a Session]]
-> [[Choose Your Coding Harness]]
+> [[Onboarding]]
 > [[MCP Tools]]
 > [[Picking an Agent, Model and Thinking Level]]
 > [[Queuing Messages]]

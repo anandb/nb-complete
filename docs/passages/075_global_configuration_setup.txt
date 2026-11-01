@@ -20,7 +20,7 @@ When a config prompt was shown, a confirmation hint with an **OK** button appear
 
 > [[Configuration Template]]
 > [[Manage OpenCode Config in NetBeans]]
-> [[Choose Your Coding Harness]]
+> [[Onboarding]]
 > [[Post Install]]
 > [[Restarting the server]]
 

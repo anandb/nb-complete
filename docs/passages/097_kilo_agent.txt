@@ -23,7 +23,7 @@ The executable you configure in BeanBot is <code>kilo</code> — the alias <code
 **Authentication** is worth setting up before you connect: run <code>kilo auth login</code> in a terminal, or start <code>kilo</code> on its own and use <code>/connect</code> inside it. MCP servers are handed to Kilo per session with their headers forwarded, so no manual registration is needed.
 
 Kilo Code in BeanBot supports:
-- **Editor Context**: Seamlessly injects the active editor state into agent prompts.
+- [[Editor Context->Automatic Context Capture]] Seamlessly injects the active editor state into agent prompts.
 - **[[MCP Tools]]**: Kilo accepts a per-session MCP server, so BeanBot hands it the plugin's internal HTTP server automatically — no manual registration is needed.
 - **Model Selection**: Exposed as an ACP config option, so the in-session model dropdown works.
 - **Thinking Level**: Kilo reports each model's variants as a separate `effort` config option, so the thinking-level dropdown works with it.
@@ -40,7 +40,7 @@ Kilo Code in BeanBot supports:
 
 > [[Post Install]]
 > [[Starting a Session]]
-> [[Choose Your Coding Harness]]
+> [[Onboarding]]
 > [[MCP Tools]]
 > [[Picking an Agent, Model and Thinking Level]]
 > [[Queuing Messages]]

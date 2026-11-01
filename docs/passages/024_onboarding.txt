@@ -1,12 +1,12 @@
-:: Choose Your Coding Harness {"position":"887.5,1100","size":"100,100"}
+:: Onboarding {"position":"887.5,1100","size":"100,100"}
 
 
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Choose Your Coding Harness</div>
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Onboarding</div>
   <div>[[Index->Topic Index]]</div>
 </div>
 
-![The harness chooser listing installed and supported harnesses](../images/agent_selection.png){style="max-width:100%;"}
+![The harness chooser listing installed and supported harnesses](../images/agent_selection.webp){style="max-width:100%;"}
 
 The plugin works with several coding harnesses that speak the Agent Client Protocol: **Oh My Pi**, **OpenCode**, **Codex**, **OpenClaw**, **Pi**, **Goose**, **Cursor**, **Copilot**, **Claude**, **Hermes**, **Gemini**, **Devin**, **Kilo Code**, and **Cline**. When no harness binary is configured, the chat panel shows the **Coding Harness Configuration** screen instead of the normal input — it groups every supported harness by status so you can see at a glance what is ready to use.
 

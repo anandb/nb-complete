@@ -12,7 +12,5 @@ BeanBot is a NetBeans plugin that provides an AI assistant panel that lets you c
 
 > [[BeanBot (screenshot)->BeanBot]]
 > [[Pick Your Harness]]
-> [[Kilo Code Agent]]
-> [[Cline Agent]]
 
 To understand what the AI already knows about your code, read [[Automatic Context Capture]].

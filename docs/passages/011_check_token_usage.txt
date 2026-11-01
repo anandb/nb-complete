@@ -6,7 +6,7 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-![Check token usage](../images/check_token_usage.png){style="max-width:100%;"}
+![Check token usage](../images/check_token_usage.webp){style="max-width:100%;"}
 
 Click the **Currency/Token Stats** icon on the toolbar to open the token and cost panel. It summarises every harness from data captured locally in the IDE: session, message and active-day counts, plus total cost, per-day averages, per-session token averages and median, and the summed **Input**, **Output** and **Cache Read** figures. Pick a day window and filter to the current project or all projects, then press **Refresh**. Hover over the status label (which normally says "Ready") to view the context window fill level. This helps you decide when to run `/compact` to summarise the conversation and free up context.
 

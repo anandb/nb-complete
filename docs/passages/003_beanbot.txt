@@ -6,4 +6,4 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-![BeanBot screenshot](../images/beanbot-1.png){style="max-width:100%;"}
+![BeanBot screenshot](../images/beanbot-1.webp){style="max-width:100%;"}
