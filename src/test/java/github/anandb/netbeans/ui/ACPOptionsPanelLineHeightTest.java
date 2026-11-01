@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.awt.Component;
 import java.awt.Container;
@@ -36,9 +35,7 @@ class ACPOptionsPanelLineHeightTest {
 
     @BeforeEach
     void setUp() {
-        assumeTrue(System.getenv("DISPLAY") != null
-                        && !System.getenv("DISPLAY").isEmpty(),
-                "Skipping UI test: DISPLAY not set (headless environment)");
+        UiTestSupport.assumeGraphicsStack();
         editorPrefs = MimeLookup.getLookup(MimePath.EMPTY).lookup(Preferences.class);
         originalValue = editorPrefs.getFloat(SimpleValueNames.LINE_HEIGHT_CORRECTION, 1.0f);
     }

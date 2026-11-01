@@ -37,6 +37,8 @@ import javax.swing.Box;
 import javax.swing.border.TitledBorder;
 import javax.swing.border.EmptyBorder;
 
+import javax.swing.AbstractButton;
+import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -144,6 +146,8 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 
         createPendingRestartBar();
+        add(createScopeLegend());
+        add(Box.createVerticalStrut(2));
 
         jLabel1 = new JLabel();
         pathCombo = new JComboBox<>();
@@ -325,21 +329,21 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
             controller.changed();
         });
         systemPanel.add(fsPolicyCombo, UIUtils.createGbc(3, 2, 0.0, 0, GridBagConstraints.NONE,
-                GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
+                GridBagConstraints.EAST, new Insets(0, 0, 0, 12)));
 
         runCommandPolicyButton = new JButton(
                 NbBundle.getMessage(ACPOptionsPanel.class, "LBL_RunCommandPolicy"));
         runCommandPolicyButton.setToolTipText(tooltip("TT_RunCommandPolicy"));
         runCommandPolicyButton.addActionListener(evt -> editRunCommandPolicy());
         systemPanel.add(runCommandPolicyButton, UIUtils.createGbc(3, 3, 0.0, 0, GridBagConstraints.NONE,
-                GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
+                GridBagConstraints.EAST, new Insets(4, 0, 5, 12)));
 
         projectSwitchRestartCheckbox.setText(
                 scopedLabel("LBL_ProjectSwitchRestart", PluginSettings.Effect.IDE_RESTART));
         projectSwitchRestartCheckbox.setToolTipText(tooltip("TT_ProjectSwitchRestart"));
         projectSwitchRestartCheckbox.addActionListener(evt -> controller.changed());
         GridBagConstraints restartGbc = UIUtils.createGbc(0, 2, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                GridBagConstraints.WEST, new Insets(0, 12, 5, 0));
+                GridBagConstraints.SOUTHWEST, new Insets(0, 12, 1, 0));
         restartGbc.gridwidth = 2;
         systemPanel.add(projectSwitchRestartCheckbox, restartGbc);
 
@@ -349,8 +353,11 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         projectSwitchHintLabel.setForeground(UIManager.getColor("Label.disabledForeground"));
         projectSwitchHintLabel.setFont(projectSwitchHintLabel.getFont()
                 .deriveFont(Font.ITALIC, projectSwitchHintLabel.getFont().getSize() - 1f));
+        // Start under the checkbox text, not under the check glyph: the icon width and gap
+        // differ per LAF, so a fixed indent drifts with the look and feel.
+        int hintIndent = 12 + checkboxTextInset(projectSwitchRestartCheckbox);
         GridBagConstraints projectSwitchHintGbc = UIUtils.createGbc(0, 3, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                GridBagConstraints.WEST, new Insets(0, 32, 5, 0));
+                GridBagConstraints.NORTHWEST, new Insets(0, hintIndent, 5, 0));
         projectSwitchHintGbc.gridwidth = 3;
         systemPanel.add(projectSwitchHintLabel, projectSwitchHintGbc);
 
@@ -812,9 +819,26 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     }
 
     /**
-     * Permanent scope marker for an option whose value the running IDE only reads at
-     * startup (or at session creation). Appended to the control's own text so it is part
-     * of the accessible name and mirrors under RTL.
+     * Horizontal offset from a checkbox's left edge to the first character of its text.
+     * Some LAFs leave {@link AbstractButton#getIcon()} null and paint the glyph
+     * from {@code CheckBox.icon}, so both sources are consulted before falling back to the
+     * component insets alone.
+     */
+    static int checkboxTextInset(AbstractButton button) {
+        Icon icon = button.getIcon();
+        if (icon == null && UIManager.get("CheckBox.icon") instanceof Icon lafIcon) {
+            icon = lafIcon;
+        }
+        return button.getInsets().left
+                + (icon != null ? icon.getIconWidth() : 0)
+                + button.getIconTextGap();
+    }
+
+    /**
+     * Permanent footnote marker for an option whose value the running IDE only reads at
+     * startup (or at session creation). One character, appended to the control's own text
+     * so it is part of the accessible name and mirrors under RTL; {@link #createScopeLegend}
+     * explains the markers once at the top of the panel.
      */
     private static String scopeSuffix(PluginSettings.Effect effect) {
         return switch (effect) {
@@ -823,6 +847,15 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
             case SESSION_RELOAD -> NbBundle.getMessage(ACPOptionsPanel.class, "SCOPE_SessionReload");
             case IMMEDIATE -> "";
         };
+    }
+
+    /** One muted line explaining the footnote markers appended by {@link #scopedLabel}. */
+    private static JLabel createScopeLegend() {
+        JLabel legend = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "SCOPE_Legend"));
+        legend.setForeground(UIManager.getColor("Label.disabledForeground"));
+        legend.setFont(legend.getFont().deriveFont(Font.PLAIN, legend.getFont().getSize() - 1f));
+        legend.setAlignmentX(Component.CENTER_ALIGNMENT);
+        return legend;
     }
 
     /** Bundle label plus its permanent scope marker. */
