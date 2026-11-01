@@ -218,18 +218,19 @@ public class PlanPanel extends JPanel {
             badgeIcon.setIcon(null);
             headerLabel.setFullText(NbBundle.getMessage(PlanPanel.class, "LBL_Plan") + count);
             rowsScroll.setVisible(true);
-            // Cap the expanded list height in rows; the scrollpane absorbs the rest.
-            // Inter-row struts count too: 8 rows + the 7 gaps between them.
+            // Size the viewport from the rows themselves, never from the scrollpane's
+            // current preferred size: setPreferredSize() pins that value, so reading it
+            // back would freeze the slideout at the height of the first (often
+            // single-step) plan update. Inter-row struts count too.
+            int rowHeight = rowsPanel.getComponent(0).getPreferredSize().height;
+            int visibleRows = Math.min(rowCount, MAX_VISIBLE_ROWS);
+            int listHeight = rowHeight * visibleRows + ROW_GAP * Math.max(0, visibleRows - 1);
             Dimension preferred = rowsScroll.getPreferredSize();
-            int cap = rowsPanel.getComponentCount() > 0
-                    ? rowsPanel.getComponent(0).getPreferredSize().height * MAX_VISIBLE_ROWS
-                            + ROW_GAP * (MAX_VISIBLE_ROWS - 1)
-                    : preferred.height;
-            preferred.height = Math.min(preferred.height, cap);
+            preferred.height = listHeight;
             rowsScroll.setPreferredSize(preferred);
             // BoxLayout hands spare height to the scrollpane; pin the maximum
             // too so a stretched slideout still shows at most 8 rows.
-            rowsScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, preferred.height));
+            rowsScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, listHeight));
         } else {
             setChevron("plan-chevron-right.svg", "\u203A"); // › right chevron fallback
             if (activeIndex >= 0) {

@@ -204,6 +204,41 @@ class PlanPanelTest {
     }
 
     @Test
+    void expandedListGrowsWhenThePlanArrivesInSteps() {
+        // A harness may create the plan with one step and append the rest. The
+        // slideout must take its height from the rows every update instead of
+        // staying pinned at the height of the first one.
+        PlanPanel panel = new PlanPanel();
+        java.util.List<PlanEntry> growing = new java.util.ArrayList<>();
+        for (int i = 0; i < 6; i++) {
+            growing.add(new PlanEntry("p" + i, "pending", "entry " + i));
+            panel.setEntries(growing);
+        }
+        JScrollPane scroll = (JScrollPane) panel.getComponent(1);
+        Container rows = (Container) scroll.getViewport().getView();
+        int rowHeight = rows.getComponent(0).getPreferredSize().height;
+        assertEquals(6, growing.size());
+        assertTrue(scroll.getPreferredSize().height >= rowHeight * 6 + PlanPanel.ROW_GAP * 5,
+                "six steps need six visible rows, got " + scroll.getPreferredSize().height
+                        + " with row height " + rowHeight);
+
+        // Laid out inside a tall thread window the viewport really is six rows high,
+        // not a sliver with a one-row scrollbar squeezed into it.
+        panel.setSize(400, 600);
+        layoutTree(panel);
+        assertTrue(scroll.getHeight() >= rowHeight * 6 + PlanPanel.ROW_GAP * 5,
+                "laid-out scrollpane height " + scroll.getHeight());
+
+        // Growing past the cap stops at eight rows; the rest scrolls.
+        for (int i = 6; i < 12; i++) {
+            growing.add(new PlanEntry("p" + i, "pending", "entry " + i));
+            panel.setEntries(growing);
+        }
+        assertEquals(rowHeight * 8 + PlanPanel.ROW_GAP * 7, scroll.getPreferredSize().height,
+                "the cap still holds after the plan grows");
+    }
+
+    @Test
     void clearForgetsEntriesSoExpandDoesNotResurrect() {
         PlanPanel panel = new PlanPanel();
         panel.setEntries(sample());
