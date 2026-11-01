@@ -10,9 +10,13 @@
 - **Key Tech**: NetBeans API (RELEASE220), Flexmark, Jackson, RSyntaxTextArea, JUnit 5.
 
 ## Build Commands
-- Build: `./mvnw package` (runs checks & tests) | Clean: `./mvnw clean` | Quick: `./mvnw package -DskipTests`
-- Random test order: `./mvnw test -P random-test-order` runs Surefire classes in random order to surface
-  order-dependent tests; the log prints `-Dsurefire.runOrder.random.seed=<n>` to reproduce one run.
+- Build: `./mvnw package -P random-test-order` (runs checks & tests) | Clean: `./mvnw clean` |
+  Quick: `./mvnw package -DskipTests`
+- **Always run tests with `-P random-test-order`**: any command that executes the suite
+  (`./mvnw test`, `./mvnw verify`, `./mvnw package` without `-DskipTests`) MUST add the profile.
+  It runs Surefire classes in random order to surface order-dependent tests; the log prints
+  `-Dsurefire.runOrder.random.seed=<n>` to reproduce one run. A run without the profile is not
+  a valid verification of the suite.
 - **Always use `./mvnw`** (pinned Maven 3.9.x) and never system `mvn`: Maven 3.10 writes
   `maven-metadata-local.xml` into `central-publishing-maven-plugin`'s file:// staging repo,
   which gets bundled and Central rejects the deployment ("Bundle has content that does NOT
