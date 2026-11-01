@@ -1,6 +1,6 @@
 # Release Notes
 
-## Unreleased (1.29.2)
+## Unreleased (1.30.0)
 
 ### Features
 - **`run_command` can be restricted to allowlisted binaries**: *Options > BeanBot > System → Command Whitelist* opens a compact dialog with **Denied** and **Allowed** lists (one name or glob per line, `*` and `?` supported; matching is by executable name so `./mvnw` matches `mvnw`). Denied always wins, and a status line states when all commands are allowed or all denied. When either list is set, shell operators (`; | & > <`, `$(…)`), environment assignments and therefore command chaining are rejected, so an allowed binary cannot smuggle in another; both lists empty keeps the previous unrestricted behavior.
