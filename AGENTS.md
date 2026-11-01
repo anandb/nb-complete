@@ -186,8 +186,9 @@
   └──────────┘
 ```
 
-`manager/` and `mcp/` are peers: `manager/` orchestrates the session and process, `mcp/`
-serves the IDE tool set. Both are adapters over `contract/` ports and `model/` records.
+`manager/`, `mcp/` and `db/` are adapters over `contract/` ports and `model/` records.
+`manager/` orchestrates the session and process, `mcp/` serves the IDE tool set, and
+`db/` holds the H2 persistence (store + SQL loader).
 
 **Actual import edges** (verified; anything not listed is currently zero):
 
@@ -196,6 +197,7 @@ serves the IDE tool set. Both are adapters over `contract/` ports and `model/` r
 | `ui/` | `support/` (112), `model/` (60), `contract/` (48), `project/` (1 — `ui/platform/DefaultPlatformBridge` only) |
 | `manager/` | `support/` (59), `model/` (40), `contract/` (37), `mcp/` (2 — `ProcessManager` only) |
 | `mcp/` | `support/` (18), `contract/` (12), `model/` (4) |
+| `db/` | `model/` (11), `contract/` (4), `support/` (4), `pattern/` (2 — `Sql` only) |
 | `tasks/` | `model/` (9), `contract/` (8), `support/` (6), `ui/` (3 — deferred debt) |
 | `project/` | `support/` (8), `contract/` (3), `model/` (1) |
 | `support/` | `model/` (6 — incl. `HarnessCatalog` exception) |
@@ -632,7 +634,7 @@ divider and the input area (it must borrow space from the thread only).
 `ScrollController.isAtBottom()` uses a 150px sticky-zone tolerance (a 50px margin is too tight: adding a bubble shifts the viewport past it before `wasAtBottom` is captured). All content-modifying calls in `ChatThreadPanel` (`addSingleBubble`, `processMessageSections`, `stopStreaming`, stream timer) capture `wasAtBottom` BEFORE touching content; auto-scroll only fires when it is true. The stream timer (`Timer TimingConstants.STREAM_FLUSH_MS` ms) is the reference: it captures `wasAtBottom` before `flushUpdate()`.
 
 ### Usage Stats Store
-`manager/H2UsageStatsStore` implements `contract/UsageStatsStore`, `contract/SessionStore`,
+`db/H2UsageStatsStore` implements `contract/UsageStatsStore`, `contract/SessionStore`,
 `contract/PinnedMessageControl` and `contract/ModelListControl` over one H2 database under the NetBeans
 user directory. Every database operation runs on that class's single-thread executor, so an EDT caller
 enqueues and returns — never add a query that runs inline on the calling thread. The pin and model-list
@@ -672,9 +674,9 @@ the same JVM, and the new classloader's H2 cannot lock a file the old one still 
 surfaces as "Database may be already in use"). `close()` delegates to `shutdown()`, which closes the
 connection with three attempts and then stops the executor; `flush()` alone does not release the lock.
 
-The store's SQL does not live in the Java source. DDL is `manager/schema.sql` (all `IF NOT EXISTS`, so it runs
+The store's SQL does not live in the Java source. DDL is `db/schema.sql` (all `IF NOT EXISTS`, so it runs
 through H2's `RunScript` on every open, and once more when the legacy reset dropped tables); statements are
-`manager/queries.sql` in `-- name: <key>` blocks. `manager/Sql` loads and renders them: `{{slot}}` values are
+`db/queries.sql` in `-- name: <key>` blocks. `db/Sql` loads and renders them: `{{slot}}` values are
 code-controlled identifiers only (a column, a `CAPTURE_TABLES` entry, the window predicate), and `render()`
 fails fast when a statement's placeholder count disagrees with the parameters its slots produced — which is what
 removed the hand-counted bind repetitions the aggregates needed. Do NOT inline SQL back into the store, and do

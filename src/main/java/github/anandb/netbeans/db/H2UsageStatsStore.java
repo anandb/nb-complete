@@ -1,4 +1,4 @@
-package github.anandb.netbeans.manager;
+package github.anandb.netbeans.db;
 
 import github.anandb.netbeans.contract.ModelListControl;
 import github.anandb.netbeans.contract.PinnedMessageControl;

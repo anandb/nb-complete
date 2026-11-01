@@ -1,4 +1,4 @@
-package github.anandb.netbeans.manager;
+package github.anandb.netbeans.db;
 
 import java.util.List;
 import java.util.Map;
