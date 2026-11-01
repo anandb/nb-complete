@@ -1,5 +1,7 @@
 package github.anandb.netbeans.model;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -340,10 +342,25 @@ public final class HarnessCatalog {
         List.of()
     );
 
-    /** All supported harnesses, in the order offered during onboarding. */
+    /**
+     * All supported harnesses, in declaration order. User-facing lists are sorted
+     * explicitly with {@link #sortedByName()} or {@link #BY_DISPLAY_NAME}; do not rely
+     * on this order for presentation.
+     */
     public static final List<Harness> ALL =
             List.of(OMP, OPENCODE, CODEX, OPENCLAW, PI, GOOSE, CURSOR, COPILOT, CLAUDE, HERMES, GEMINI, DEVIN,
                     KILO, CLINE);
+
+    /** Alphabetical display-name order, case-insensitive. */
+    public static final Comparator<Harness> BY_DISPLAY_NAME =
+            Comparator.comparing(Harness::displayName, String.CASE_INSENSITIVE_ORDER);
+
+    /** All harnesses in alphabetical display-name order; {@link #ALL} keeps its own order. */
+    public static List<Harness> sortedByName() {
+        List<Harness> sorted = new ArrayList<>(ALL);
+        sorted.sort(BY_DISPLAY_NAME);
+        return sorted;
+    }
 
     /**
      * Post-selection activation guidance: how to authenticate a harness's CLI

@@ -346,6 +346,23 @@ Resolved — kept as regression guards:
   install metadata and `byId`/`byBinaryName` must keep resolving the v1 base entry.
 - Unknown, absent or non-numeric version keeps the catalog default (v1); never guess v2.
 
+### Harness Identity For Custom Binaries And Containers
+- `acpHarnessId` is written only by onboarding (`AssistantTopComponent.onHarnessSelected`)
+  and `ACPOptionsPanel.store()`. The Options **Harness** combo
+  (`support/HarnessSelection`) lets the user pin a catalog harness when the binary name
+  cannot identify it — the normal case for a container launcher (`docker`, `podman`,
+  `nerdctl`, `finch`) or a wrapper script.
+- Precedence: an explicit choice wins; `Auto-detect` derives the id from the binary
+  basename via `HarnessCatalog.byBinaryName`. A stored id the path cannot explain is an
+  explicit choice and must survive `load()` and later path edits; a conflict is surfaced
+  with a one-click switch, never auto-corrected.
+- `store()` must persist `HarnessSelection.harnessId/displayName`, not re-derive the id
+  from the basename when a harness is selected, and the combo must not copy a harness's
+  `launchArgs()` into Process Arguments — with a container launcher those arguments belong
+  to `docker`/`podman` and rewriting them corrupts the command.
+- Runtime resolution is unchanged: `ServerProcessLifecycle.initializeProtocol()` reads
+  `acpHarnessId` → `byId`, falls back to `byBinaryName`, then `UNKNOWN`.
+
 ### session/close Before session/load (Do Not Break)
 
 ACP forbids calling `session/close` on an agent that did not advertise

@@ -119,7 +119,8 @@ class OnboardingBubble extends JPanel {
         headerPanel.add(subtitle);
         content.add(headerPanel, BorderLayout.NORTH);
 
-        // Partition catalog harnesses into installed vs. uninstalled
+        // Partition catalog harnesses into installed vs. uninstalled, alphabetical within
+        // each group so the chooser does not depend on detection order.
         java.util.List<HarnessCatalog.Harness> installed = new java.util.ArrayList<>();
         java.util.List<HarnessCatalog.Harness> uninstalled = new java.util.ArrayList<>();
         for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
@@ -129,6 +130,8 @@ class OnboardingBubble extends JPanel {
                 uninstalled.add(h);
             }
         }
+        installed.sort(HarnessCatalog.BY_DISPLAY_NAME);
+        uninstalled.sort(HarnessCatalog.BY_DISPLAY_NAME);
         String activePath = BinaryResolver.findExecutablePathOrNull();
         String activeHarnessId = activePath != null ? activeHarnessIdFor(activePath) : null;
 

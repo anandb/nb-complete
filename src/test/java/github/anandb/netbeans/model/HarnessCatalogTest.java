@@ -28,7 +28,7 @@ class HarnessCatalogTest {
     }
 
     @Test
-    void onboardingOrderIncludesAllHarnesses() {
+    void allHarnessesExposeTheKnownIdSet() {
         Set<String> allIds = new HashSet<>(HarnessCatalog.ALL.stream()
                 .map(HarnessCatalog.Harness::id).toList());
         assertEquals(Set.of("omp", "opencode", "codex", "openclaw", "pi", "goose", "cursor", "copilot",
@@ -335,5 +335,16 @@ class HarnessCatalogTest {
         assertEquals("agent.svg", HarnessCatalog.harnessIconName(null));
         assertEquals("agent.svg", HarnessCatalog.harnessIconName("unknown-bin"));
         assertEquals("codex.svg", HarnessCatalog.harnessIconName("codex-acp"));
+    }
+
+    @Test
+    void sortedByNameIsAlphabetical() {
+        List<HarnessCatalog.Harness> sorted = HarnessCatalog.sortedByName();
+
+        assertEquals(HarnessCatalog.ALL.size(), sorted.size());
+        List<String> names = sorted.stream().map(HarnessCatalog.Harness::displayName).toList();
+        List<String> expected = new java.util.ArrayList<>(names);
+        expected.sort(String.CASE_INSENSITIVE_ORDER);
+        assertEquals(expected, names, "sortedByName must be alphabetical, case-insensitive");
     }
 }

@@ -14,6 +14,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.AcpFsPolicy;
+import github.anandb.netbeans.support.HarnessSelection;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.XmlUtils;
 import org.netbeans.api.editor.mimelookup.MimeLookup;
@@ -24,6 +25,7 @@ import org.openide.util.NbPreferences;
 
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -112,6 +114,10 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private JLabel argsLabel;
     private JTextField argsField;
     private JLabel argsHintLabel;
+    private JComboBox<HarnessSelection.Selection> harnessCombo;
+    private JLabel harnessHintLabel;
+    private JButton harnessUseDetectedButton;
+    private JPanel harnessHintRow;
     private JLabel iconLabel;
     private JTextField iconPathField;
     private JButton iconBrowseButton;
@@ -203,14 +209,14 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
                     argsField.setText(h.launchArgs());
                 }
                 updateGeminiModelHint();
-                controller.changed();
+                onPathChanged();
             }
         });
         pathCombo.getEditor().getEditorComponent().addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent evt) {
                 userEditedPath = true;
-                controller.changed();
+                onPathChanged();
             }
         });
         servicePanel.add(pathCombo, UIUtils.createGbc(1, row, 1.0, 0, GridBagConstraints.HORIZONTAL,
@@ -251,6 +257,48 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
                 GridBagConstraints.WEST, new Insets(0, 0, 5, 5));
         hintGbc.gridwidth = 2;
         servicePanel.add(argsHintLabel, hintGbc);
+
+        // A container launcher (docker/podman) can never name the harness inside the image,
+        // so the user's explicit choice is the normal path there. Placed after the args
+        // because those arguments belong to the launcher, not to the harness.
+        harnessCombo = new JComboBox<>();
+        harnessCombo.addItem(new HarnessSelection.Selection(HarnessCatalog.UNKNOWN, true));
+        for (HarnessCatalog.Harness harness : HarnessCatalog.sortedByName()) {
+            harnessCombo.addItem(new HarnessSelection.Selection(harness, false));
+        }
+        harnessCombo.setRenderer(new HarnessChoiceRenderer());
+        harnessCombo.setToolTipText(tooltip("TT_Harness"));
+        harnessCombo.addActionListener(evt -> {
+            refreshHarnessHint();
+            controller.changed();
+        });
+        JLabel harnessLabel = new JLabel(scopedLabel("LBL_Harness", PluginSettings.Effect.IDE_RESTART));
+        harnessLabel.setToolTipText(tooltip("TT_Harness"));
+        harnessLabel.setLabelFor(harnessCombo);
+        servicePanel.add(harnessLabel, UIUtils.createGbc(0, ++row, 0.0, 0, GridBagConstraints.NONE,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
+        servicePanel.add(harnessCombo, UIUtils.createGbc(1, row, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 0, 5, 5)));
+
+        harnessHintRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        harnessHintRow.setOpaque(false);
+        harnessHintLabel = new JLabel();
+        harnessHintLabel.setForeground(UIManager.getColor("Label.disabledForeground"));
+        harnessHintLabel.setFont(harnessHintLabel.getFont()
+                .deriveFont(Font.ITALIC, harnessHintLabel.getFont().getSize() - 1f));
+        harnessUseDetectedButton = new JButton();
+        harnessUseDetectedButton.setBorderPainted(false);
+        harnessUseDetectedButton.setContentAreaFilled(false);
+        harnessUseDetectedButton.setFocusPainted(false);
+        harnessUseDetectedButton.setMargin(new Insets(0, 0, 0, 0));
+        harnessUseDetectedButton.setForeground(UIManager.getColor("Label.foreground"));
+        harnessUseDetectedButton.addActionListener(evt -> useDetectedHarness());
+        harnessHintRow.add(harnessHintLabel);
+        harnessHintRow.add(harnessUseDetectedButton);
+        GridBagConstraints harnessHintGbc = UIUtils.createGbc(1, ++row, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 0, 5, 5));
+        harnessHintGbc.gridwidth = 2;
+        servicePanel.add(harnessHintRow, harnessHintGbc);
 
         useWslCheckbox = new JCheckBox();
         useWslCheckbox.setText(scopedLabel("LBL_UseWsl", PluginSettings.Effect.IDE_RESTART));
@@ -567,7 +615,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
             userEditedPath = true;
             pathCombo.getEditor().setItem(chooser.getSelectedFile().getAbsolutePath());
-            controller.changed();
+            onPathChanged();
         }
     }
 
@@ -670,6 +718,18 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         }
 
         argsField.setText(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get(PreferenceKeys.PROCESS_ARGUMENTS, "acp"));
+
+        // Stored id wins when the path cannot explain it (custom binary or container
+        // launcher); otherwise the state is Auto-detect with the path as the source.
+        HarnessSelection.Selection storedChoice = HarnessSelection.resolve(
+                NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get(PreferenceKeys.ACP_HARNESS_ID, null),
+                BinaryResolver.binaryNameFromPath(getExecutablePath()));
+        if (storedChoice.auto()) {
+            harnessCombo.setSelectedIndex(0);
+        } else {
+            harnessCombo.setSelectedItem(storedChoice);
+        }
+        refreshHarnessHint();
 
         preambleText = PluginSettings.getPreamble();
         echoCheckbox.setSelected(PluginSettings.isEchoUserInput());
@@ -810,6 +870,81 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
             argsHintLabel.setText("");
             argsHintLabel.setVisible(false);
         }
+    }
+
+    /** Harness detected from the current path, or {@link HarnessCatalog#UNKNOWN}. */
+    private HarnessCatalog.Harness detectedHarness() {
+        return HarnessSelection.detect(BinaryResolver.binaryNameFromPath(getExecutablePath()));
+    }
+
+    /** Renders the Auto item with the current detection result inline. */
+    private class HarnessChoiceRenderer extends DefaultListCellRenderer {
+        @Override
+        public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                boolean isSelected, boolean cellHasFocus) {
+            super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+            if (value instanceof HarnessSelection.Selection selection) {
+                setText(harnessChoiceLabel(selection));
+            }
+            return this;
+        }
+    }
+
+    /** Label for one combo entry; Auto names the detected harness when there is one. */
+    private String harnessChoiceLabel(HarnessSelection.Selection selection) {
+        if (!selection.auto()) {
+            return selection.harness().displayName();
+        }
+        HarnessCatalog.Harness detected = detectedHarness();
+        return detected == HarnessCatalog.UNKNOWN
+                ? NbBundle.getMessage(ACPOptionsPanel.class, "OPT_Harness_AutoDetectUnknown")
+                : NbBundle.getMessage(ACPOptionsPanel.class, "OPT_Harness_AutoDetect", detected.displayName());
+    }
+
+    /**
+     * Rewrites the hint for the current path and selection. An explicit choice is never
+     * replaced here; a mismatch is surfaced as a one-click switch instead.
+     */
+    private void refreshHarnessHint() {
+        if (harnessCombo == null) {
+            return;
+        }
+        String binaryName = BinaryResolver.binaryNameFromPath(getExecutablePath());
+        HarnessCatalog.Harness detected = HarnessSelection.detect(binaryName);
+        HarnessSelection.Selection selection =
+                (HarnessSelection.Selection) harnessCombo.getSelectedItem();
+        boolean auto = selection == null || selection.auto();
+        boolean conflict = !auto && detected != HarnessCatalog.UNKNOWN && detected != selection.harness();
+        if (conflict) {
+            harnessHintLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "HLP_HarnessConflict",
+                    detected.displayName(), selection.harness().displayName()));
+            harnessUseDetectedButton.setText(NbBundle.getMessage(ACPOptionsPanel.class,
+                    "BTN_HarnessUseDetected", detected.displayName()));
+        } else if (!auto) {
+            harnessHintLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "HLP_HarnessManual"));
+        } else if (detected != HarnessCatalog.UNKNOWN) {
+            harnessHintLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "HLP_HarnessDetected"));
+        } else if (HarnessSelection.launcherKind(binaryName) == HarnessSelection.Launcher.CONTAINER) {
+            harnessHintLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "HLP_HarnessContainer"));
+        } else {
+            harnessHintLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "HLP_HarnessNotDetected"));
+        }
+        harnessUseDetectedButton.setVisible(conflict);
+        harnessHintRow.revalidate();
+        harnessCombo.repaint();
+    }
+
+    /** Conflict shortcut: trust the binary name and drop back to Auto-detect. */
+    private void useDetectedHarness() {
+        harnessCombo.setSelectedIndex(0);
+        refreshHarnessHint();
+        controller.changed();
+    }
+
+    /** Path field changed: re-run detection without touching an explicit harness choice. */
+    private void onPathChanged() {
+        refreshHarnessHint();
+        controller.changed();
     }
 
     /** Returns the currently selected/entered executable path from the combo. */
@@ -999,14 +1134,14 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         String pathToSave = getExecutablePath();
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(PreferenceKeys.ACP_EXECUTABLE_PATH, pathToSave);
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(PreferenceKeys.PROCESS_ARGUMENTS, argsField.getText());
-        // Persist harness ID so the tooltip/icon can identify the agent
-        // even when acpExecutablePath is not resolvable (e.g. WSL paths).
+        // Persist the chosen harness, not just the one the file name implies: a custom
+        // binary or a container launcher (docker/podman) cannot reveal the harness.
         String binName = BinaryResolver.binaryNameFromPath(pathToSave);
-        HarnessCatalog.Harness h = binName != null ? HarnessCatalog.byBinaryName(binName) : null;
+        HarnessSelection.Selection choice = (HarnessSelection.Selection) harnessCombo.getSelectedItem();
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(
-                PreferenceKeys.ACP_HARNESS_ID, h != null ? h.id() : "");
+                PreferenceKeys.ACP_HARNESS_ID, HarnessSelection.harnessId(choice, binName));
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(
-                PreferenceKeys.ACP_HARNESS_DISPLAY_NAME, h != null ? h.displayName() : "");
+                PreferenceKeys.ACP_HARNESS_DISPLAY_NAME, HarnessSelection.displayName(choice, binName));
         if (PluginSettings.isPreambleTooLong(preambleText)) {
             // One preference value is capped at 8192 chars. Keep the previously
             // stored preamble and explain, instead of letting put() throw out of store().
