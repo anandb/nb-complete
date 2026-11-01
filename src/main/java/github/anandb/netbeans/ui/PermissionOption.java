@@ -175,4 +175,72 @@ record PermissionOption(String id, String name, String kind) {
         }
         return "";
     }
+
+    /**
+     * Option id that break mode answers with: the narrowest allow option in the row.
+     * <p>
+     * Scope stays at "once" on purpose. A request that only offers always/global/bypass
+     * variants returns {@code null} — the caller rejects it rather than silently turning a
+     * temporary toggle into a lasting policy change. Harnesses that send no options at all
+     * keep the legacy answer {@code "allow"}, which {@code AcpRequestRouter} maps to the ACP
+     * {@code once} outcome.
+     */
+    static String autoAllowId(JsonNode options) {
+        if (options == null || !options.isArray() || options.isEmpty()) {
+            return "allow";
+        }
+        PermissionOption once = null;
+        PermissionOption allow = null;
+        for (JsonNode node : options) {
+            PermissionOption option = fromJson(node);
+            if (!isAllow(option)) {
+                continue;
+            }
+            String lid = option.id() == null ? "" : option.id().toLowerCase(Locale.ROOT);
+            if (once == null && lid.contains("once")) {
+                once = option;
+            }
+            if (allow == null && !scopeWiderThanOnce(option, lid)) {
+                allow = option;
+            }
+        }
+        if (once != null) {
+            return once.id();
+        }
+        return allow == null ? null : allow.id();
+    }
+
+    /**
+     * True when the option grants more than one request. {@code session} is a scope of its own
+     * for the button row's mnemonics, so it is excluded here separately rather than folded into
+     * {@link #isAlways}.
+     */
+    private static boolean scopeWiderThanOnce(PermissionOption option, String lowerId) {
+        if (isAlways(option)) {
+            return true;
+        }
+        if (lowerId.contains("session")) {
+            return true;
+        }
+        String lname = option.name() == null ? "" : option.name().toLowerCase(Locale.ROOT);
+        return lowerId.isEmpty() && lname.contains("session");
+    }
+
+    /** Label of the option id {@link #autoAllowId} selected, or {@code null} when unknown. */
+    static String autoAllowName(JsonNode options, String id) {
+        if (options == null || !options.isArray() || id == null) {
+            return null;
+        }
+        for (JsonNode node : options) {
+            PermissionOption option = fromJson(node);
+            if (id.equals(option.id())) {
+                return option.name();
+            }
+        }
+        return null;
+    }
+
+    private static boolean isAllow(PermissionOption option) {
+        return option.kind() != null && option.kind().toLowerCase(Locale.ROOT).contains("allow");
+    }
 }

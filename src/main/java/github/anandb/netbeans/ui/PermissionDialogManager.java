@@ -15,6 +15,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.PermissionAutoAllow;
 import github.anandb.netbeans.support.ToolCallDiffParser.FileChange;
 import github.anandb.netbeans.support.ToolContextExtractor;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
@@ -119,6 +120,28 @@ final class PermissionDialogManager {
         if (isDescendant) {
             LOG.fine("Received permission request for sub-agent session {0} of current session {1}",
                     new Object[] { sessionId, currentId });
+        }
+
+        // Break mode: answer without surfacing the prompt. The user armed this mode through the
+        // header toggle (with a one-time confirmation), so the request is approved with the
+        // narrowest allow option and nothing steals focus.
+        if (PermissionAutoAllow.isEnabled()) {
+            JsonNode options = params.get("options");
+            String autoOption = PermissionOption.autoAllowId(options);
+            if (autoOption == null) {
+                LOG.info("Break mode: request for session {0} offers no allow option — rejecting",
+                        sessionId);
+                response.complete("reject");
+            } else {
+                LOG.info("Break mode: auto-approving session {0} with option {1}",
+                        new Object[] { sessionId, autoOption });
+                String label = PermissionOption.autoAllowName(options, autoOption);
+                addResultToChat(label != null ? label
+                        : NbBundle.getMessage(PermissionDialogManager.class, "MSG_PermissionAutoAllowed"),
+                        true);
+                response.complete(autoOption);
+            }
+            return;
         }
 
         JsonNode toolCall = null;

@@ -4,8 +4,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.ui.platform.SessionService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import github.anandb.netbeans.support.PermissionAutoAllow;
 
 import javax.swing.SwingUtilities;
 import java.lang.reflect.Field;
@@ -102,6 +108,52 @@ class PermissionDialogManagerTest {
         processNextRequestMethod = PermissionDialogManager.class
                 .getDeclaredMethod("processNextRequest");
         processNextRequestMethod.setAccessible(true);
+    }
+
+    @AfterEach
+    void disableBreakMode() {
+        PermissionAutoAllow.setEnabled(false);
+    }
+
+    // ===================================================================
+    // Break mode (auto-allow)
+    // ===================================================================
+
+    @Test
+    void testBreakModeAutoAllowsWithoutShowingPanel() throws Exception {
+        PermissionAutoAllow.setEnabled(true);
+        ObjectNode params = MAPPER.createObjectNode();
+        ArrayNode options = params.putArray("options");
+        options.addObject().put("optionId", "allow_always").put("name", "Always")
+                .put("kind", "allow_always");
+        options.addObject().put("optionId", "allow_once").put("name", "Allow once")
+                .put("kind", "allow_once");
+
+        CompletableFuture<String> response = new CompletableFuture<>();
+        onEDT(() -> manager.handlePermissionRequest(TEST_SESSION, params, response, () -> {}));
+
+        assertEquals("allow_once", response.get(5, TimeUnit.SECONDS));
+        assertEquals(0, permissionPanel.showRequestCount());
+        assertFalse(isRequestShowing());
+        assertTrue(requestQueue.isEmpty());
+        assertEquals(List.of("Allow once"), chatPanel.results);
+        assertEquals(List.of(true), chatPanel.allowedList);
+    }
+
+    @Test
+    void testBreakModeRejectsWhenNoAllowOptionExists() throws Exception {
+        PermissionAutoAllow.setEnabled(true);
+        ObjectNode params = MAPPER.createObjectNode();
+        params.putArray("options").addObject()
+                .put("optionId", "reject").put("name", "Reject").put("kind", "reject");
+
+        CompletableFuture<String> response = new CompletableFuture<>();
+        onEDT(() -> manager.handlePermissionRequest(TEST_SESSION, params, response, () -> {}));
+
+        assertEquals("reject", response.get(5, TimeUnit.SECONDS));
+        assertEquals(0, permissionPanel.showRequestCount());
+        assertTrue(requestQueue.isEmpty());
+        assertTrue(chatPanel.results.isEmpty());
     }
 
     /** Creates a PermissionRequestPanel mock that delegates to our spy. */
@@ -236,7 +288,7 @@ class PermissionDialogManagerTest {
         CompletableFuture<String> f1 = new CompletableFuture<>();
         CompletableFuture<String> f2 = new CompletableFuture<>();
         CompletableFuture<String> f3 = new CompletableFuture<>();
-        
+
         requestQueue.offer(buildShowTask("r1", f1, () -> {}));
         processNextOnEDT();
         requestQueue.offer(buildShowTask("r2", f2, () -> {}));

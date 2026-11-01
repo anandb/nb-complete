@@ -10,6 +10,7 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.KeyboardFocusManager;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.KeyEvent;
@@ -28,12 +29,15 @@ import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
+import javax.swing.JToggleButton;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
 import java.util.prefs.PreferenceChangeListener;
 
+import org.openide.DialogDisplayer;
+import org.openide.NotifyDescriptor;
 import org.openide.util.ImageUtilities;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
@@ -42,6 +46,7 @@ import org.openide.util.NbPreferences;
 import github.anandb.netbeans.support.AgentUtils;
 import github.anandb.netbeans.support.AppLinks;
 import github.anandb.netbeans.support.BinaryResolver;
+import github.anandb.netbeans.support.PermissionAutoAllow;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.UserGuideOpener;
@@ -88,6 +93,7 @@ final class ChatLayoutBuilder {
     private JButton refreshBtn;
     private JButton exportBtn;
     private JButton launchMiniAssistantBtn;
+    private PulsingToggleButton breakModeBtn;
     private PreferenceChangeListener miniAssistantPrefListener;
     private JPanel rightStatusPanel;
 
@@ -103,6 +109,34 @@ final class ChatLayoutBuilder {
         this.configPanelController = configPanelController;
         this.newSessionDebounceTimer = new Timer(300, e -> fireNewSession());
         this.newSessionDebounceTimer.setRepeats(false);
+    }
+
+    /**
+     * Ink width fraction of each header asset at its own viewBox size, measured by
+     * rasterizing the SVG and taking the alpha bounding box (240 px render):
+     * lock 0.75, coffee 0.95, mini-assistant 0.717, help 0.817.
+     * <p>
+     * The coffee cup is the visual reference for the row. The line-art glyphs leave a lot of
+     * padding, so drawing them at the toolbar size makes them read smaller than the
+     * break-mode icons. Their icon size is derived from these fractions so their ink ends up
+     * as wide as the coffee cup's (24 px vs 22.8 px at the default 24 px toolbar size).
+     */
+    private static final double BREAK_MODE_INK_WIDTH = 0.95;
+    private static final double MINI_ASSISTANT_INK_WIDTH = 0.717;
+    private static final double HELP_INK_WIDTH = 0.817;
+
+    private static int lineArtIconSize(double inkWidthFraction) {
+        int base = PluginSettings.getToolbarIconSize();
+        return Math.max(1, Math.round((float) (base * BREAK_MODE_INK_WIDTH / inkWidthFraction)));
+    }
+
+    /**
+     * The padlock's ink fills its square box, so it is geometrically centered yet reads low —
+     * the body outweighs the shackle. Lift it by ~8% of the icon size (2 px at the default
+     * 24 px) for optical centering with the mini-assistant and help glyphs.
+     */
+    private static int lockRisePx() {
+        return Math.max(1, Math.round(PluginSettings.getToolbarIconSize() * 0.08f));
     }
 
     JPanel buildHeader() {
@@ -374,7 +408,7 @@ final class ChatLayoutBuilder {
 
         String userGuideUrl = AppLinks.userGuideUrl();
 
-        helpBtn = UIUtils.createToolbarButton("help.svg",
+        helpBtn = UIUtils.createToolbarButton("help.svg", lineArtIconSize(HELP_INK_WIDTH),
             NbBundle.getMessage(AssistantTopComponent.class, "HINT_QuickstartGuide"), null);
         helpBtn.setContentAreaFilled(false);
         helpBtn.setBorderPainted(false);
@@ -432,8 +466,15 @@ final class ChatLayoutBuilder {
             helpPopup.show(helpBtn, 0, helpBtn.getHeight());
         });
 
+        PulsingToggleButton breakModeBtn = UIUtils.createToggleToolbarButton("lock.svg", "take-break.svg",
+                NbBundle.getMessage(ChatLayoutBuilder.class, "HINT_BreakModeOff"), lockRisePx());
+        this.breakModeBtn = breakModeBtn;
+        breakModeBtn.setSelected(PermissionAutoAllow.isEnabled());
+        updateBreakModeTooltip(breakModeBtn);
+        breakModeBtn.addActionListener(e -> onBreakModeToggled(breakModeBtn));
+
         JButton launchMiniAssistantBtn = UIUtils.createToolbarButton("mini-assistant.svg",
-            "Launch Mini Assistant", null);
+            lineArtIconSize(MINI_ASSISTANT_INK_WIDTH), "Launch Mini Assistant", null);
         this.launchMiniAssistantBtn = launchMiniAssistantBtn;
         launchMiniAssistantBtn.setContentAreaFilled(false);
         launchMiniAssistantBtn.setBorderPainted(false);
@@ -444,6 +485,7 @@ final class ChatLayoutBuilder {
 
         JPanel rightButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 2, 0));
         rightButtons.setOpaque(false);
+        rightButtons.add(breakModeBtn);
         rightButtons.add(launchMiniAssistantBtn);
         rightButtons.add(helpBtn);
         cwdRow.add(rightButtons, BorderLayout.EAST);
@@ -812,6 +854,68 @@ final class ChatLayoutBuilder {
                 ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_UnarchiveSession")
                 : NbBundle.getMessage(AssistantTopComponent.class, "HINT_ArchiveSession"));
         }
+    }
+
+    /**
+     * Applies the break-mode toggle. Arming it asks for confirmation first — the mode
+     * approves every permission request with "allow once" and shows no prompt, so the
+     * user must have seen that once. Releasing it never asks: going back to normal
+     * handling is not the risky direction.
+     */
+    private void onBreakModeToggled(PulsingToggleButton btn) {
+        if (btn.isSelected() && !confirmBreakMode()) {
+            btn.setSelected(false);
+            return;
+        }
+        PermissionAutoAllow.setEnabled(btn.isSelected());
+        updateBreakModeTooltip(btn);
+        if (btn.isSelected()) {
+            // One confident beat on arming; the icon then stays still.
+            btn.pulse();
+        } else {
+            btn.stopPulse();
+        }
+    }
+
+    private boolean confirmBreakMode() {
+        // The dialog takes focus; after it closes, X11 focus ownership can stay with the
+        // disposed dialog window, so key events are dropped until the user clicks again.
+        // Remember the pre-dialog focus owner and put it back when focus was lost.
+        KeyboardFocusManager kfm = KeyboardFocusManager.getCurrentKeyboardFocusManager();
+        Component focusBefore = kfm.getFocusOwner();
+        NotifyDescriptor.Confirmation confirm = new NotifyDescriptor.Confirmation(
+                NbBundle.getMessage(ChatLayoutBuilder.class, "MSG_ConfirmBreakMode"),
+                NbBundle.getMessage(ChatLayoutBuilder.class, "TITLE_ConfirmBreakMode"),
+                NotifyDescriptor.YES_NO_OPTION,
+                NotifyDescriptor.WARNING_MESSAGE);
+        boolean confirmed = DialogDisplayer.getDefault().notify(confirm) == NotifyDescriptor.YES_OPTION;
+        restoreFocusAfterDialog(focusBefore);
+        return confirmed;
+    }
+
+    /**
+     * Restores keyboard focus after a modal dialog. Only acts when focus is genuinely lost
+     * ({@code null} or a component in a window that is no longer showing); an intact focus
+     * owner is left alone so the dialog's own focus restoration wins.
+     */
+    private void restoreFocusAfterDialog(Component focusBefore) {
+        SwingUtilities.invokeLater(() -> {
+            Component owner = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+            if (owner != null && owner.isShowing()) {
+                return;
+            }
+            Component target = focusBefore != null && focusBefore.isShowing()
+                    ? focusBefore : topComponent;
+            target.requestFocusInWindow();
+        });
+    }
+
+    private void updateBreakModeTooltip(JToggleButton btn) {
+        String text = NbBundle.getMessage(ChatLayoutBuilder.class,
+                btn.isSelected() ? "HINT_BreakModeOn" : "HINT_BreakModeOff");
+        btn.setToolTipText(text);
+        btn.getAccessibleContext().setAccessibleName(text);
+        btn.getAccessibleContext().setAccessibleDescription(text);
     }
 
     /** Stops the debounce timer and unregisters the mini-assistant preference listener. */

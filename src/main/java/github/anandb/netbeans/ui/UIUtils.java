@@ -23,6 +23,7 @@ import java.util.logging.Level;
 import java.util.regex.Pattern;
 
 import javax.imageio.ImageIO;
+import javax.swing.AbstractButton;
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
@@ -150,6 +151,51 @@ public class UIUtils {
         return btn;
     }
 
+    /**
+     * Creates a latching toolbar button that shows one icon while released and another while
+     * pressed, and can pulse once to announce a state change. The button carries no action
+     * listener; callers register one, read {@link AbstractButton#isSelected()} to apply the
+     * state change, and call {@link PulsingToggleButton#pulse()} when the pressed state is
+     * meaningful.
+     */
+    public static PulsingToggleButton createToggleToolbarButton(String releasedIcon,
+            String pressedIcon, String toolTip) {
+        return createToggleToolbarButton(releasedIcon, pressedIcon, toolTip, 0);
+    }
+
+    /**
+     * As above, but raises the released-state icon by {@code releasedRise} pixels for optical
+     * centering (see {@link RaisedIcon}). The pressed icon is drawn as-is.
+     */
+    public static PulsingToggleButton createToggleToolbarButton(String releasedIcon,
+            String pressedIcon, String toolTip, int releasedRise) {
+        int iconSize = PluginSettings.getToolbarIconSize();
+        Icon rawReleased = ThemeManager.getIcon(releasedIcon, iconSize);
+        Icon pressed = ThemeManager.getIcon(pressedIcon, iconSize);
+        Icon released = rawReleased;
+        if (released != null && releasedRise > 0) {
+            released = new RaisedIcon(released, releasedRise);
+        }
+        PulsingToggleButton btn = new PulsingToggleButton(released, pressed);
+        if (rawReleased != null) {
+            Icon disabled = ImageUtilities.createDisabledIcon(rawReleased);
+            if (disabled != null && releasedRise > 0) {
+                disabled = new RaisedIcon(disabled, releasedRise);
+            }
+            btn.setDisabledIcon(disabled);
+        }
+        if (pressed != null) {
+            btn.setDisabledSelectedIcon(ImageUtilities.createDisabledIcon(pressed));
+        }
+        btn.setToolTipText(toolTip);
+        btn.getAccessibleContext().setAccessibleName(toolTip);
+        btn.getAccessibleContext().setAccessibleDescription(toolTip);
+        styleToolbarButton(btn);
+        btn.setContentAreaFilled(false);
+        btn.setBorderPainted(false);
+        return btn;
+    }
+
     public static AttentionButton createAttentionToolbarButton(String iconName, int iconSize, String toolTip, ActionListener l) {
         AttentionButton btn = new AttentionButton();
         Icon icon = ThemeManager.getIcon(iconName, iconSize);
@@ -211,7 +257,7 @@ public class UIUtils {
         return btn;
     }
 
-    public static void styleToolbarButton(JButton btn) {
+    public static void styleToolbarButton(AbstractButton btn) {
         btn.putClientProperty("JButton.buttonType", "toolBarButton");
         btn.setFocusPainted(false);
         btn.setRolloverEnabled(true);
@@ -222,7 +268,7 @@ public class UIUtils {
 
     /** Recalculate the preferred size of a toolbar button based on its current
      *  icon and text. Call after setting icon or text on a styled toolbar button. */
-    public static void recalcToolbarButtonSize(JButton btn) {
+    public static void recalcToolbarButtonSize(AbstractButton btn) {
         Icon icon = btn.getIcon();
         if (icon == null) {
             return;

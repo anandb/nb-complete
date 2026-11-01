@@ -25,4 +25,11 @@ class ThemeManagerTest {
         assertEquals(24, icon.getIconWidth());
         assertEquals(24, icon.getIconHeight());
     }
+
+    /** Both break-mode states must resolve; a missing asset silently renders a blank button. */
+    @Test
+    void testBreakModeIconsResolve() {
+        assertNotNull(ThemeManager.getIcon("lock.svg", 24));
+        assertNotNull(ThemeManager.getIcon("take-break.svg", 24));
+    }
 }
