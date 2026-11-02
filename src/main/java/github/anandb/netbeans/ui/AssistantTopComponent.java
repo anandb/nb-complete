@@ -42,6 +42,7 @@ import org.openide.util.Lookup;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import github.anandb.netbeans.contract.PermissionHandler;
+import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.model.Session;
@@ -506,6 +507,33 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 sessionService.get().renameSession(currentId, newTitle.trim());
             }
         }
+    }
+
+    /**
+     * Deletes a session on the agent and drops it from the dropdown. Deleting is permanent
+     * (unlike archiving), so it is confirmed first; the status line reports a refusal or a
+     * failed call instead of removing the row optimistically.
+     */
+    void deleteSession(String sessionId) {
+        if (isBlank(sessionId)) {
+            return;
+        }
+        SessionControl sc = sessionService.get();
+        if (!sc.canDeleteSession()) {
+            setStatus("STATUS_DeleteSessionUnsupported");
+            return;
+        }
+        String title = sc.getCustomTitle(sessionId, sessionId);
+        NotifyDescriptor confirm = new NotifyDescriptor.Confirmation(
+                NbBundle.getMessage(AssistantTopComponent.class, "MSG_ConfirmDeleteSession", title),
+                NbBundle.getMessage(AssistantTopComponent.class, "LBL_DeleteSession"),
+                NotifyDescriptor.OK_CANCEL_OPTION, NotifyDescriptor.WARNING_MESSAGE);
+        if (DialogDisplayer.getDefault().notify(confirm) != NotifyDescriptor.OK_OPTION) {
+            return;
+        }
+        sessionService.get().deleteSession(sessionId).thenAccept(deleted ->
+                SwingUtilities.invokeLater(() ->
+                        setStatus(deleted ? "STATUS_SessionDeleted" : "STATUS_DeleteSessionFailed")));
     }
 
     private String selectedIdToTitle(Session session) {

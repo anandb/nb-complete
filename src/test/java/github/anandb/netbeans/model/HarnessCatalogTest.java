@@ -164,6 +164,14 @@ class HarnessCatalogTest {
     }
 
     @Test
+    void onlyGooseRenamesSessionsOnTheServer() {
+        // ACP has no rename; goose implements _goose/unstable/session/rename.
+        assertTrue(HarnessCatalog.GOOSE.supportsSessionRename());
+        assertFalse(HarnessCatalog.OPENCODE.supportsSessionRename());
+        assertFalse(HarnessCatalog.UNKNOWN.supportsSessionRename());
+    }
+
+    @Test
     void unknownVersionKeepsCatalogCapabilities() {
         assertSame(HarnessCatalog.OPENCODE, HarnessCatalog.forAgentVersion(HarnessCatalog.OPENCODE, null));
         assertSame(HarnessCatalog.OPENCODE, HarnessCatalog.forAgentVersion(HarnessCatalog.OPENCODE, "  "));

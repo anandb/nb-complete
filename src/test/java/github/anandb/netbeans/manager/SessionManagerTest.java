@@ -1447,6 +1447,81 @@ class SessionManagerTest {
     }
 
     @Test
+    void renameSessionTellsAGooseHarnessTheNewName() {
+        when(processManager.getCapabilities()).thenReturn(HarnessCatalog.GOOSE);
+        when(processManager.sendRequest(eq("_goose/unstable/session/rename"), any(), eq(30L),
+                eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
+
+        sessionManager.renameSession("s1", "Named on the server");
+
+        ArgumentCaptor<Object> params = ArgumentCaptor.forClass(Object.class);
+        verify(processManager).sendRequest(eq("_goose/unstable/session/rename"), params.capture(),
+                eq(30L), eq(TimeUnit.SECONDS));
+        assertEquals("Named on the server", ((Map<?, ?>) params.getValue()).get("title"));
+    }
+
+    @Test
+    void renameSessionDoesNotUseTheExtensionForOtherHarnesses() {
+        when(processManager.getCapabilities()).thenReturn(HarnessCatalog.OPENCODE);
+
+        sessionManager.renameSession("s1", "Local only");
+
+        verify(processManager, never()).sendRequest(eq("_goose/unstable/session/rename"), any(),
+                anyLong(), any(TimeUnit.class));
+    }
+
+    @Test
+    void deleteSessionIsRefusedWhenTheAgentCannotDelete() throws Exception {
+        when(processManager.isSessionDeleteSupported()).thenReturn(false);
+
+        assertFalse(sessionManager.deleteSession("s1").get(5, TimeUnit.SECONDS),
+                "no capability means the row must not disappear locally");
+        verify(processManager, never()).sendRequest(eq("session/delete"), any(), anyLong(),
+                any(TimeUnit.class));
+    }
+
+    @Test
+    void deleteSessionDropsTheRowAndNotifies() throws Exception {
+        when(processManager.isSessionDeleteSupported()).thenReturn(true);
+        when(processManager.sendRequest(eq("session/delete"), any(), eq(30L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
+        cacheManager().setCachedSessions(
+                List.of(cachedSession("s1", "/p"), cachedSession("s2", "/p")), "unknown", false);
+        java.util.concurrent.atomic.AtomicReference<List<Session>> shown =
+                new java.util.concurrent.atomic.AtomicReference<>();
+        sessionManager.addSessionListener(new SessionListener() {
+            @Override public void onSessionListUpdated(List<Session> sessions) {
+                shown.set(sessions);
+            }
+            @Override public void onSessionStarted(String sessionId) { }
+            @Override public void onSessionLoaded(String id, List<SessionConfigOption> opts, boolean startup) { }
+            @Override public void onSessionLoading(boolean loading) { }
+            @Override public void onSessionError(String message) { }
+            @Override public void onSessionUpdate(SessionUpdate update) { }
+        });
+
+        assertTrue(sessionManager.deleteSession("s1").get(5, TimeUnit.SECONDS));
+
+        List<String> ids = cacheManager().getCachedSessions().stream().map(Session::id).toList();
+        assertEquals(List.of("s2"), ids, "the deleted row leaves the dropdown");
+        assertEquals(List.of("s2"), shown.get().stream().map(Session::id).toList(),
+                "the dropdown is rebuilt from what is left");
+    }
+
+    @Test
+    void aFailedDeleteKeepsTheRow() throws Exception {
+        when(processManager.isSessionDeleteSupported()).thenReturn(true);
+        when(processManager.sendRequest(eq("session/delete"), any(), eq(30L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("not found")));
+        cacheManager().setCachedSessions(List.of(cachedSession("s1", "/p")), "unknown", false);
+
+        assertFalse(sessionManager.deleteSession("s1").get(5, TimeUnit.SECONDS));
+        assertEquals(1, cacheManager().getCachedSessions().size(),
+                "a failed delete must not hide a session that still exists");
+    }
+
+    @Test
     void renameUnknownSessionStillSetsCustomTitle() {
         sessionManager.addSessionListener(mockListener());
         sessionManager.renameSession("missing", "Solo");

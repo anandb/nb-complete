@@ -7,6 +7,7 @@ import github.anandb.netbeans.support.MapperSupplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -18,6 +19,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -113,6 +115,36 @@ class SessionRpcClientTest {
         verify(processManager, never()).stopMessage(any());
         verify(processManager, never())
                 .sendRequest(eq("session/close"), any(), eq(30L), eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    void renameSessionUsesGoosesRenameExtension() {
+        when(processManager.sendRequest(eq("_goose/unstable/session/rename"), any(), eq(30L),
+                eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
+
+        client.renameSession("sid", "New name").join();
+
+        ArgumentCaptor<Object> params = ArgumentCaptor.forClass(Object.class);
+        verify(processManager).sendRequest(eq("_goose/unstable/session/rename"), params.capture(),
+                eq(30L), eq(TimeUnit.SECONDS));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> sent = (Map<String, Object>) params.getValue();
+        assertEquals("sid", sent.get("sessionId"));
+        assertEquals("New name", sent.get("title"));
+    }
+
+    @Test
+    void deleteSessionUsesTheStandardMethod() {
+        when(processManager.sendRequest(eq("session/delete"), any(), eq(30L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
+
+        client.deleteSession("sid").join();
+
+        ArgumentCaptor<Object> params = ArgumentCaptor.forClass(Object.class);
+        verify(processManager).sendRequest(eq("session/delete"), params.capture(), eq(30L),
+                eq(TimeUnit.SECONDS));
+        assertEquals("sid", ((Map<?, ?>) params.getValue()).get("sessionId"));
     }
 
     @Test

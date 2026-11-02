@@ -1345,6 +1345,7 @@ public class SessionManager implements SessionQuery, SessionControl {
             return;
         }
         setCustomTitle(sessionId, newTitle.trim());
+        renameOnServer(sessionId, newTitle.trim());
         // Update the cached session title so in-memory state is consistent
         Session s = cacheManager.getCachedSession(sessionId);
         if (s != null) {
@@ -1364,6 +1365,69 @@ public class SessionManager implements SessionQuery, SessionControl {
             cacheManager.setCachedSessions(updatedList, agentName(), tracksSessionsLocally());
         }
         notifySessionRenamed(sessionId);
+    }
+
+    /**
+     * ACP has no rename, so a harness that can retitle keeps the old name until the IDE
+     * restarts and the {@code /title} prompt's refresh is the only other path. Send the
+     * harness its name when it implements goose's extension; the local title is already
+     * applied, so a failure only leaves the two out of step until the next list.
+     */
+    private void renameOnServer(String sessionId, String title) {
+        if (!processManager.getCapabilities().supportsSessionRename()) {
+            return;
+        }
+        rpcClient.renameSession(sessionId, title).whenComplete((res, ex) -> {
+            if (ex != null) {
+                LOG.warn("Failed to rename session {0} on the server: {1}",
+                        sessionId, ExceptionUtils.getMessage(ex));
+            }
+        });
+    }
+
+    @Override
+    public boolean canDeleteSession() {
+        return processManager.isSessionDeleteSupported();
+    }
+
+    @Override
+    public CompletableFuture<Boolean> deleteSession(String sessionId) {
+        if (isBlank(sessionId)) {
+            return CompletableFuture.completedFuture(false);
+        }
+        if (!processManager.isSessionDeleteSupported()) {
+            LOG.info("Harness does not advertise session/delete; not deleting {0}", sessionId);
+            return CompletableFuture.completedFuture(false);
+        }
+        return rpcClient.deleteSession(sessionId).handle((res, ex) -> {
+            if (ex != null) {
+                LOG.warn("Failed to delete session {0}: {1}",
+                        sessionId, ExceptionUtils.getMessage(ex));
+                return false;
+            }
+            dropSessionLocally(sessionId);
+            return true;
+        });
+    }
+
+    /**
+     * Removes a session the server no longer has: close it when it is the active one, and
+     * rebuild the dropdown from the cache minus the row. A stale row would otherwise stay
+     * until the next {@code session/list}.
+     */
+    private void dropSessionLocally(String sessionId) {
+        if (sessionId.equals(currentSessionId)) {
+            closeSession();
+        }
+        StrategyRegistry.invalidateSession(sessionId);
+        List<Session> remaining = new ArrayList<>();
+        for (Session s : cacheManager.getCachedSessions()) {
+            if (!sessionId.equals(s.id())) {
+                remaining.add(s);
+            }
+        }
+        cacheManager.setCachedSessions(remaining, agentName(), tracksSessionsLocally());
+        notifySessionListUpdated(remaining);
     }
 
     @SuppressWarnings("unused") // parameter required by the Consumer<String> listener

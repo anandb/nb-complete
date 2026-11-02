@@ -68,6 +68,11 @@ class ServerProcessLifecycle {
      */
     private volatile boolean sessionCloseSupported;
     /**
+     * Whether this agent advertised {@code sessionCapabilities.delete}. Like {@code close},
+     * it is per connection, so a delete is gated on the handshake rather than the catalog.
+     */
+    private volatile boolean sessionDeleteSupported;
+    /**
      * Set when a {@code session/load} request fails with JSON-RPC
      * {@code -32601}. Some agents advertise {@code loadSession} but do not
      * implement the method; the flag is per server process and stops the client
@@ -109,6 +114,11 @@ class ServerProcessLifecycle {
     /** Whether the agent advertised {@code sessionCapabilities.close}. */
     boolean isSessionCloseSupported() {
         return sessionCloseSupported;
+    }
+
+    /** Whether the agent advertised {@code sessionCapabilities.delete}. */
+    boolean isSessionDeleteSupported() {
+        return sessionDeleteSupported;
     }
 
     /** True once {@code session/load} was rejected as an unknown method. */
@@ -300,6 +310,7 @@ class ServerProcessLifecycle {
             // A restart may land on a different harness, which must not inherit
             // the previous one's advertised capabilities.
             sessionCloseSupported = false;
+            sessionDeleteSupported = false;
             sessionLoadUnsupported = false;
             embeddedContextSupported = false;
 
@@ -447,6 +458,7 @@ class ServerProcessLifecycle {
                         JsonNode sessionCaps = res.get("agentCapabilities") == null
                                 ? null : res.get("agentCapabilities").get("sessionCapabilities");
                         sessionCloseSupported = sessionCaps != null && sessionCaps.has("close");
+                        sessionDeleteSupported = sessionCaps != null && sessionCaps.has("delete");
                         // Prompt capabilities decide how an attachment reaches the
                         // agent: embedded resources need embeddedContext, otherwise
                         // the client inlines text or sends a resource link.

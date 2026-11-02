@@ -536,6 +536,11 @@ public class ProcessManager implements ProcessControl {
         return serverLifecycle.isSessionCloseSupported();
     }
 
+    /** Whether the agent advertised {@code sessionCapabilities.delete}. */
+    public boolean isSessionDeleteSupported() {
+        return serverLifecycle.isSessionDeleteSupported();
+    }
+
     /** True once this server process rejected {@code session/load} as unknown. */
     public boolean isSessionLoadUnsupported() {
         return serverLifecycle.isSessionLoadUnsupported();

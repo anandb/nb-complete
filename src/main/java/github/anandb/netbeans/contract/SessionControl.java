@@ -45,8 +45,22 @@ public interface SessionControl extends SessionQuery {
     /** Switches the model for a session (ACP session/set_model; Hermes-style agents). */
     CompletableFuture<Void> setSessionModel(String sessionId, String modelId);
 
-    /** Renames a session. */
+    /** Renames a session. A harness that can retitle server-side learns the new name too. */
     void renameSession(String sessionId, String newTitle);
+
+    /**
+     * Deletes a session on the server and drops it from the list. Completes with
+     * {@code false} when the harness does not advertise {@code session/delete} or the call
+     * failed; the caller shows that instead of pretending the row is gone.
+     */
+    default CompletableFuture<Boolean> deleteSession(String sessionId) {
+        return CompletableFuture.completedFuture(false);
+    }
+
+    /** True when the harness advertised {@code session/delete}, so deleting is offered. */
+    default boolean canDeleteSession() {
+        return false;
+    }
 
     /** Registers a handler invoked after session/new response but before the
      *  preamble is sent. The handler receives (sessionId, configOptions) and

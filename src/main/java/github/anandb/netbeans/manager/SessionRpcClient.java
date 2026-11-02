@@ -49,6 +49,21 @@ final class SessionRpcClient {
         return processManager.sendRequest("session/list", params, 60, TimeUnit.SECONDS);
     }
 
+    /** goose's retitle extension: ACP has no rename, and the name must survive a reload. */
+    CompletableFuture<JsonNode> renameSession(String sessionId, String title) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("sessionId", sessionId);
+        params.put("title", title);
+        return processManager.sendRequest("_goose/unstable/session/rename", params, 30, TimeUnit.SECONDS);
+    }
+
+    /** Standard {@code session/delete}; the caller gates on the advertised capability. */
+    CompletableFuture<JsonNode> deleteSession(String sessionId) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("sessionId", sessionId);
+        return processManager.sendRequest("session/delete", params, 30, TimeUnit.SECONDS);
+    }
+
     CompletableFuture<JsonNode> createSession(String cwd) {
         Map<String, Object> params = new HashMap<>();
         params.put("cwd", cwd);

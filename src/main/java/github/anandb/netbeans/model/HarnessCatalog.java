@@ -104,6 +104,12 @@ public final class HarnessCatalog {
         public boolean supportsSessionSteer() {
             return "goose".equals(id);
         }
+
+        /** True when the harness retitles a session server-side
+         *  ({@code _goose/unstable/session/rename}); ACP itself has no rename. */
+        public boolean supportsSessionRename() {
+            return "goose".equals(id);
+        }
     }
 
     public static final Harness OPENCODE = new Harness(

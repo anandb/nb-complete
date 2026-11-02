@@ -688,6 +688,19 @@ divider and the input area (it must borrow space from the thread only).
   item: the replacement removes the object that was selected, which clears the
   combo selection, and the closed dropdown then renders blank or the old title.
 
+### Session Rename And Delete
+- ACP has no rename. goose implements `_goose/unstable/session/rename`, exposed as
+  `Harness.supportsSessionRename()` (id `goose` only). `SessionManager.renameSession` applies
+  the local title first, then tells such a harness; a failure is logged and does not revert,
+  because the dropdown already shows the new name and the next `session/list` would not.
+- `session/delete` is gated on `agentCapabilities.sessionCapabilities.delete`, captured per
+  connection by `ServerProcessLifecycle` exactly like `close`
+  (`ProcessManager.isSessionDeleteSupported()`). `SessionControl.canDeleteSession()` enables
+  the dropdown's "Delete Session…" item; `SessionManager.dropSessionLocally` closes the active
+  session, invalidates the strategy cache and rebuilds the dropdown. A failed or unsupported
+  call keeps the row — do NOT delete optimistically, or the user loses a live session's entry.
+- Deleting is confirmed and permanent, unlike the local archive (`setHidden`) flag.
+
 ### UI Sizing & Document Re-use
 - Bubbles use a cheap `JTextArea` during streaming (timer flush every `TimingConstants.STREAM_FLUSH_MS` ms).
 - `finalizeStreaming(expanded, immediate=false)` starts a cooldown timer (`TimingConstants.STREAM_FLUSH_MS` ms). New content

@@ -235,6 +235,12 @@ final class ChatLayoutBuilder {
                         archiveOthers.setEnabled(!otherIds.isEmpty());
                         archiveOthers.addActionListener(ev -> archiveSessions(otherIds, true));
                         add(archiveOthers);
+
+                        // ACP session/delete: the row is gone for good, unlike archiving.
+                        JMenuItem delete = new JMenuItem(NbBundle.getMessage(ChatLayoutBuilder.class, "LBL_DeleteSession"));
+                        delete.setEnabled(tmpSc.canDeleteSession());
+                        delete.addActionListener(ev -> topComponent.deleteSession(sessionId));
+                        add(delete);
                     }
 
                     addSeparator();
