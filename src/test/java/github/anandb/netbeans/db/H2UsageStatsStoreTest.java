@@ -41,6 +41,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.openide.modules.Places;
 import org.openide.util.NbPreferences;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -511,6 +512,60 @@ class H2UsageStatsStoreTest {
             assertTrue(rs.next());
             return rs.getString(1);
         }
+    }
+
+    private static long tableRows(String url, String table) throws SQLException {
+        try (Connection c = DriverManager.getConnection(url);
+                Statement st = c.createStatement();
+                ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM " + table)) {
+            return rs.next() ? rs.getLong(1) : -1L;
+        }
+    }
+
+    /**
+     * A version row that cannot be read is not a legacy database: the legacy branch
+     * drops every capture table, so reading 0 for a damaged or unreadable value would
+     * wipe the user's history over a fault that repaired itself on the next launch.
+     */
+    @Test
+    void anUnreadableSchemaVersionDisablesCaptureInsteadOfDroppingRows(@TempDir Path tempDir) throws SQLException {
+        String fileUrl = "jdbc:h2:" + tempDir.resolve("usage-junk-version").toAbsolutePath()
+                .toString().replace('\\', '/');
+        H2UsageStatsStore writer = new H2UsageStatsStore(fileUrl);
+        writer.recordMessage(new MessageEvent(att("s1", "omp", "m1", "/p"), NOW, MessageKind.USER));
+        assertEquals(1, writer.query(1, null, NOW).messages());
+        writer.shutdown();
+
+        try (Connection c = DriverManager.getConnection(fileUrl);
+                Statement st = c.createStatement()) {
+            st.execute("MERGE INTO usage_meta (meta_key, meta_value)"
+                    + " VALUES ('schema_version', 'not-a-number')");
+        }
+
+        H2UsageStatsStore reopened = new H2UsageStatsStore(fileUrl);
+        try {
+            assertEquals(0, reopened.query(1, null, NOW).messages(),
+                    "an unreadable version disables capture for the session");
+            assertEquals(1, tableRows(fileUrl, "message_event"),
+                    "it must not be mistaken for a legacy database: that branch drops every capture table");
+        } finally {
+            reopened.shutdown();
+        }
+    }
+
+    @Test
+    void readsAndWritesAfterCloseAnswerTheFallbackInsteadOfThrowing() {
+        store.recordMessage(new MessageEvent(att("s1", "omp", "m1", "/p"), NOW, MessageKind.USER));
+        assertEquals(1, store.query(1, null, NOW).messages());
+        store.shutdown();
+
+        // A late read (the usage dialog, a session update still in flight) must not
+        // surface RejectedExecutionException from the stopped executor.
+        assertDoesNotThrow(() -> store.query(1, null, NOW));
+        assertEquals(0, store.query(1, null, NOW).messages());
+        assertTrue(store.queryToolTotals(1, null, NOW).isEmpty());
+        assertDoesNotThrow(() -> store.recordMessage(
+                new MessageEvent(att("s2", "omp", "m1", "/p"), NOW, MessageKind.USER)));
     }
 
     @Test

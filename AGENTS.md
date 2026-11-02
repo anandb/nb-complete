@@ -721,6 +721,16 @@ database was unreachable). A failed open also makes `runPrefsMigration` return a
 database never surfaces as "some data could not be migrated" and preference keys stay put for the next
 launch. Do NOT re-add automatic retries or per-write failure logging.
 
+`DbLifecycle.readSchemaVersion` treats only an **absent** version row as legacy (0). An unreadable or
+non-positive value fails the open instead: the legacy branch (`dbVersion < 2`) drops every capture table, so
+answering 0 for a read error or a damaged value would wipe the usage history over a fault that heals on the
+next launch. `unavailable` is the right outcome — capture is disabled for the session and the rows survive.
+
+After `shutdown()` the executor is terminated, so `DbLifecycle.call()` and `runDb()` catch
+`RejectedExecutionException` and answer the fallback (FINE log) instead of throwing at the caller: a late
+read from the usage dialog, or a capture from a session update still in flight, is not an error. Keep that
+guard on both — a bare `dbExecutor.submit()`/`execute()` throws on the calling thread, which may be the EDT.
+
 `project/ACPShutdown` must call `UsageStatsStore.close()`. An in-place plugin upgrade loads the new module in
 the same JVM, and the new classloader's H2 cannot lock a file the old one still holds (`OverlappingFileLock`
 surfaces as "Database may be already in use"). `close()` delegates to `shutdown()`, which closes the

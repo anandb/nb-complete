@@ -14,6 +14,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.logging.Level;
 
 import github.anandb.netbeans.support.Logger;
@@ -214,12 +215,18 @@ final class DbLifecycle {
      * discovers the failure are dropped instead of retrying and logging.
      */
     void runDb(Runnable task) {
-        dbExecutor.execute(() -> {
-            if (!ensureDatabase()) {
-                return;
-            }
-            task.run();
-        });
+        try {
+            dbExecutor.execute(() -> {
+                if (!ensureDatabase()) {
+                    return;
+                }
+                task.run();
+            });
+        } catch (RejectedExecutionException e) {
+            // shutdown() already ran: a late capture has nowhere to go, and the
+            // caller (often the session pipeline) must not see it as a failure.
+            log.log(Level.FINE, "Store already shut down; dropping a queued write", e);
+        }
     }
 
     /**
@@ -340,17 +347,33 @@ final class DbLifecycle {
         return dropped;
     }
 
-    /** Reads the recorded schema version, or 0 for a legacy database. */
-    private int readSchemaVersion(Connection conn) {
+    /**
+     * Reads the recorded schema version. Only an <em>absent</em> row means legacy:
+     * the legacy branch drops every capture table, so a version that cannot be read
+     * must fail the open instead of being mistaken for one. Returning 0 for a read
+     * error would wipe the user's usage history over a transient fault.
+     */
+    private int readSchemaVersion(Connection conn) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(Sql.get("select_meta_value"))) {
             ps.setString(1, SCHEMA_VERSION_KEY);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return Integer.parseInt(rs.getString(1));
+                    String value = rs.getString(1);
+                    int version;
+                    try {
+                        version = Integer.parseInt(value == null ? "" : value.trim());
+                    } catch (NumberFormatException e) {
+                        version = -1;
+                    }
+                    if (version < 1) {
+                        // An absent row is the legacy marker; an explicit non-positive
+                        // value is damage, and reading it as legacy drops every table.
+                        throw new SQLException(
+                                "Unreadable usage-stats schema version: " + value, "90020", 90020);
+                    }
+                    return version;
                 }
             }
-        } catch (SQLException | NumberFormatException e) {
-            log.log(Level.FINE, "No usable schema version recorded; treating as legacy", e);
         }
         return 0;
     }
@@ -360,7 +383,14 @@ final class DbLifecycle {
         if (unavailable) {
             return fallback;
         }
-        Future<T> future = dbExecutor.submit(() -> ensureDatabase() ? task.call() : fallback);
+        Future<T> future;
+        try {
+            future = dbExecutor.submit(() -> ensureDatabase() ? task.call() : fallback);
+        } catch (RejectedExecutionException e) {
+            // shutdown() already ran: a late read is not an error, it has nowhere to go.
+            log.log(Level.FINE, "Store already shut down; answering from the fallback", e);
+            return fallback;
+        }
         try {
             return future.get();
         } catch (InterruptedException e) {
@@ -381,7 +411,7 @@ final class DbLifecycle {
             Thread.currentThread().interrupt();
         } catch (ExecutionException | java.util.concurrent.TimeoutException e) {
             log.log(Level.WARNING, "Timed out waiting for queued store writes", e);
-        } catch (java.util.concurrent.RejectedExecutionException e) {
+        } catch (RejectedExecutionException e) {
             // shutdown() already ran: nothing can be queued behind us.
             log.log(Level.FINE, "Store already shut down; skipping the flush barrier", e);
         }
