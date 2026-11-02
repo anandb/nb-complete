@@ -83,27 +83,20 @@ public class GitToolProvider {
                 new ToolExecutor<GitLogInput, Map<String, Object>>(GitLogInput.class) {
                     @Override
                     public Map<String, Object> execute(GitLogInput args) throws Exception {
-                        var repo = VcsToolSupport.resolveRepo(args.repoDir(), ".git",
-                                "No git repository found");
-                        if (!repo.ok()) {
-                            return repo.error();
-                        }
-                        var maxCount = VcsToolSupport.maxCount(args.maxCount(), 20, 1, 1000);
-                        if (!maxCount.ok()) {
-                            return maxCount.error();
-                        }
-                        Map<String, Object> sinceErr = VcsToolSupport.invalidSince(args.since(), SinceFilterPattern::matches);
-                        if (sinceErr != null) {
-                            return sinceErr;
+                        var log = VcsToolSupport.prepareLog(args.repoDir(), ".git",
+                                "No git repository found", args.maxCount(), args.since(),
+                                SinceFilterPattern::matches);
+                        if (!log.ok()) {
+                            return log.error();
                         }
                         List<String> command = new ArrayList<>(List.of("git", "log",
                                 "--no-color", "--date=iso-strict",
                                 "--pretty=format:%h%x09%ad%x09%an%x09%s",
-                                "--max-count=" + maxCount.value()));
-                        if (args.since() != null) {
-                            command.add("--since=" + args.since());
+                                "--max-count=" + log.maxCount()));
+                        if (log.since() != null) {
+                            command.add("--since=" + log.since());
                         }
-                        return VcsToolSupport.run(repo.dir(), "Git", command.toArray(new String[0]));
+                        return VcsToolSupport.run(log.repoDir(), "Git", command.toArray(new String[0]));
                     }
                 });
     }

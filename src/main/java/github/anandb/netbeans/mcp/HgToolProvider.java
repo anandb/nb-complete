@@ -91,25 +91,18 @@ public class HgToolProvider {
                 new ToolExecutor<HgLogInput, Map<String, Object>>(HgLogInput.class) {
                     @Override
                     public Map<String, Object> execute(HgLogInput args) throws Exception {
-                        var repo = VcsToolSupport.resolveRepo(args.repoDir(), ".hg",
-                                "No Mercurial repository found");
-                        if (!repo.ok()) {
-                            return repo.error();
-                        }
-                        var maxCount = VcsToolSupport.maxCount(args.maxCount(), 20, 1, 1000);
-                        if (!maxCount.ok()) {
-                            return maxCount.error();
-                        }
-                        Map<String, Object> sinceErr = VcsToolSupport.invalidSince(args.since(), SinceFilterPattern::matches);
-                        if (sinceErr != null) {
-                            return sinceErr;
+                        var log = VcsToolSupport.prepareLog(args.repoDir(), ".hg",
+                                "No Mercurial repository found", args.maxCount(), args.since(),
+                                SinceFilterPattern::matches);
+                        if (!log.ok()) {
+                            return log.error();
                         }
                         List<String> command = new ArrayList<>(List.of("hg", "log",
-                                LOG_TEMPLATE, "-l", String.valueOf(maxCount.value())));
-                        if (args.since() != null) {
-                            command.add("--date=>" + args.since());
+                                LOG_TEMPLATE, "-l", String.valueOf(log.maxCount())));
+                        if (log.since() != null) {
+                            command.add("--date=>" + log.since());
                         }
-                        return VcsToolSupport.run(repo.dir(), "Hg", command.toArray(new String[0]));
+                        return VcsToolSupport.run(log.repoDir(), "Hg", command.toArray(new String[0]));
                     }
                 });
     }

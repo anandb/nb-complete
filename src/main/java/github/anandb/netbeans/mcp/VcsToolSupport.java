@@ -44,6 +44,12 @@ final class VcsToolSupport {
         }
     }
 
+    record LogRequest(String repoDir, int maxCount, String since, Map<String, Object> error) {
+        boolean ok() {
+            return error == null;
+        }
+    }
+
     static String findRoot(String markerDir) {
         return VcsUtils.findRoot(ProjectPathGuard.firstOpenProjectRoot(), markerDir);
     }
@@ -133,6 +139,25 @@ final class VcsToolSupport {
             return new FileHistory(null, null, 0, count.error());
         }
         return new FileHistory(repo.dir(), histPath.relative(), count.value(), null);
+    }
+
+    /** Resolves a log tool's repo, max-count and since filter, so the git and hg
+     *  registrations differ only in their argv. */
+    static LogRequest prepareLog(String requestedDir, String markerDir, String notFoundMessage,
+            Integer requestedMaxCount, String since, Predicate<String> sinceAllowed) {
+        ResolvedRepo repo = resolveRepo(requestedDir, markerDir, notFoundMessage);
+        if (!repo.ok()) {
+            return new LogRequest(null, 0, since, repo.error());
+        }
+        ResolvedCount count = maxCount(requestedMaxCount, 20, 1, 1000);
+        if (!count.ok()) {
+            return new LogRequest(repo.dir(), 0, since, count.error());
+        }
+        Map<String, Object> sinceError = invalidSince(since, sinceAllowed);
+        if (sinceError != null) {
+            return new LogRequest(repo.dir(), count.value(), since, sinceError);
+        }
+        return new LogRequest(repo.dir(), count.value(), since, null);
     }
 
     static Map<String, Object> run(String repoDir, String vcsLabel, String... command) throws Exception {
