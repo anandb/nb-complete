@@ -1,5 +1,6 @@
 package github.anandb.netbeans.ui;
 
+import github.anandb.netbeans.model.ContextReport;
 import github.anandb.netbeans.model.UsageRecords.GroupTotals;
 import github.anandb.netbeans.model.UsageRecords.ToolTotals;
 import github.anandb.netbeans.model.UsageRecords.UsageSummary;
@@ -24,6 +25,49 @@ class TokenUsageDialogTest {
     private static UsageSummary sample() {
         return new UsageSummary(1293, 42972, 90, 137.33, 1.53, 2_800_000, 77_900,
                 167_600_000L, 9_700_000L, 3_412_600_000L);
+    }
+
+    private static ContextReport contextReport() {
+        return new ContextReport("openrouter", "claude-sonnet-4", 200_000, 160_000,
+                List.of(new ContextReport.Segment("system_prompt", "System prompt", null, 1_200),
+                        new ContextReport.Segment("tool", "read_file", "18 tools", 8_000),
+                        new ContextReport.Segment("conversation", "User turn 3", null, 150_800)),
+                false, true);
+    }
+
+    @Test
+    void contextSectionRendersTheLiveBreakdown() {
+        String html = TokenUsageDialog.renderSummaryHtml(sample(), List.of(), List.of(), List.of(),
+                contextReport(), ThemeManager.getCurrentTheme());
+
+        assertTrue(html.contains("CONTEXT WINDOW"));
+        assertTrue(html.contains("openrouter/claude-sonnet-4"));
+        assertTrue(html.contains("160,000"));
+        assertTrue(html.contains("200,000"));
+        assertTrue(html.contains("80%"), "the share of the window is shown next to the total");
+        assertTrue(html.contains("read_file (18 tools)"));
+        assertTrue(html.contains("18 tools"), "a segment's provenance is displayed");
+        assertTrue(html.contains("compacts the conversation first"));
+    }
+
+    @Test
+    void aProviderManagedContextIsNotDrawnAsAnEmptyBreakdown() {
+        ContextReport managed = new ContextReport("anthropic", "claude", 200_000, 0, List.of(), true, false);
+        String html = TokenUsageDialog.renderSummaryHtml(sample(), List.of(), List.of(), List.of(),
+                managed, ThemeManager.getCurrentTheme());
+
+        assertTrue(html.contains("CONTEXT WINDOW"));
+        assertTrue(html.contains("Provider-managed"));
+        assertFalse(html.contains("WHAT FILLS IT"), "there are no segments to list");
+        assertFalse(html.contains("compacts the conversation first"));
+    }
+
+    @Test
+    void withoutAReportNoContextSectionIsDrawn() {
+        String html = TokenUsageDialog.renderSummaryHtml(sample(), List.of(), List.of(), List.of(),
+                ThemeManager.getCurrentTheme());
+
+        assertFalse(html.contains("CONTEXT WINDOW"));
     }
 
     @Test

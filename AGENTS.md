@@ -776,6 +776,19 @@ divider and the input area (it must borrow space from the thread only).
 ### Auto-Scroll Contract
 `ScrollController.isAtBottom()` uses a 150px sticky-zone tolerance (a 50px margin is too tight: adding a bubble shifts the viewport past it before `wasAtBottom` is captured). All content-modifying calls in `ChatThreadPanel` (`addSingleBubble`, `processMessageSections`, `stopStreaming`, stream timer) capture `wasAtBottom` BEFORE touching content; auto-scroll only fires when it is true. The stream timer (`Timer TimingConstants.STREAM_FLUSH_MS` ms) is the reference: it captures `wasAtBottom` before `flushUpdate()`.
 
+### Live Context Report (`_goose/unstable/context/report`)
+- The Token panel's CONTEXT WINDOW block is the only place that reads the harness live:
+  `TokenUsageDialog.readContextReport()` runs on the stats worker (never the EDT) and asks
+  `contract/ContextReportQuery` → `SessionManager.reportContext` →
+  `SessionRpcClient.reportContext`. Makes no model call; goose measures with its local tokenizer.
+- `Harness.supportsContextReport()` (goose only) gates it, and `SessionManager` is registered
+  under both `SessionControl` and `ContextReportQuery` via `@ServiceProviders` — NetBeans'
+  `@ServiceProvider` is not repeatable in RELEASE220, so a second service needs the container.
+- A failed or unsupported report yields `null`, and the block is simply absent: the panel's
+  stored-history tables must never fail because the live RPC did. `providerManagesContext`
+  (Claude Code, Gemini CLI) shows "Provider-managed" instead of an empty segment list, and
+  `autoCompactionPending` is called out rather than looking like an oversized context.
+
 ### Usage Stats Store
 `db/H2UsageStatsStore` implements `contract/UsageStatsStore`, `contract/SessionStore`,
 `contract/PinnedMessageControl` and `contract/ModelListControl` over one H2 database under the NetBeans

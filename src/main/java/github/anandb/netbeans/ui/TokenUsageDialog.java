@@ -22,6 +22,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 import javax.swing.AbstractAction;
@@ -48,8 +49,10 @@ import org.openide.util.NbBundle;
 import org.openide.util.RequestProcessor;
 import org.netbeans.api.project.Project;
 
+import github.anandb.netbeans.contract.ContextReportQuery;
 import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.contract.UsageStatsStore;
+import github.anandb.netbeans.model.ContextReport;
 import github.anandb.netbeans.model.UsageRecords.GroupTotals;
 import github.anandb.netbeans.model.UsageRecords.ToolTotals;
 import github.anandb.netbeans.model.UsageRecords.UsageSummary;
@@ -57,6 +60,7 @@ import github.anandb.netbeans.model.UsageRecords.UsageSummary;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.UsageStatsFormat;
@@ -232,6 +236,34 @@ public class TokenUsageDialog extends JDialog {
         return sq != null && sq.getCurrentSessionId() != null;
     }
 
+    /** How long the panel waits for the live context report before showing the rest. */
+    private static final int CONTEXT_REPORT_TIMEOUT_SEC = 10;
+
+    /**
+     * The current session's live context breakdown, or null when this agent cannot report one.
+     * Runs on the stats worker: the call is an RPC to the harness, never on the EDT.
+     */
+    private static ContextReport readContextReport() {
+        ContextReportQuery query = Lookup.getDefault().lookup(ContextReportQuery.class);
+        SessionQuery sessions = Lookup.getDefault().lookup(SessionQuery.class);
+        if (query == null || sessions == null || !query.canReportContext()) {
+            return null;
+        }
+        String sessionId = sessions.getCurrentSessionId();
+        if (sessionId == null) {
+            return null;
+        }
+        try {
+            return query.reportContext(sessionId).get(CONTEXT_REPORT_TIMEOUT_SEC, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return null;
+        } catch (Exception e) {
+            LOG.fine("Context report unavailable: {0}", ExceptionUtils.getMessage(e));
+            return null;
+        }
+    }
+
     private void onRefresh(ActionEvent e) {
         if (!running.compareAndSet(false, true)) {
             return;
@@ -273,7 +305,9 @@ public class TokenUsageDialog extends JDialog {
                 List<ToolTotals> byTool = store != null
                         ? store.queryToolTotals(days, projectDir, System.currentTimeMillis())
                         : List.of();
-                String styledHtml = renderSummaryHtml(summary, byModel, byAgent, byTool, currentTheme);
+                ContextReport context = readContextReport();
+                String styledHtml = renderSummaryHtml(summary, byModel, byAgent, byTool, context,
+                        currentTheme);
                 SwingUtilities.invokeLater(() -> {
                     statsPane.setText(styledHtml);
                     autoSizeToContent();
@@ -401,6 +435,17 @@ public class TokenUsageDialog extends JDialog {
     static String renderSummaryHtml(UsageSummary summary, List<GroupTotals> byModel,
                                     List<GroupTotals> byAgent, List<ToolTotals> byTool,
                                     ColorTheme theme) {
+        return renderSummaryHtml(summary, byModel, byAgent, byTool, null, theme);
+    }
+
+    /**
+     * As {@link #renderSummaryHtml(UsageSummary, List, List, List, ColorTheme)}, plus the
+     * live CONTEXT WINDOW block when {@code context} is present (the harness can break down
+     * what the next request would send).
+     */
+    static String renderSummaryHtml(UsageSummary summary, List<GroupTotals> byModel,
+                                    List<GroupTotals> byAgent, List<ToolTotals> byTool,
+                                    ContextReport context, ColorTheme theme) {
         String bg = theme.toHtmlHex(theme.bubbleAssistant());
         String fg = theme.toHtmlHex(theme.assistantForeground());
         String borderColor = theme.toHtmlHex(theme.tableBorder());
@@ -452,8 +497,79 @@ public class TokenUsageDialog extends JDialog {
             appendToolHistogram(sb, byTool, teal, altBg);
         }
 
+        if (context != null) {
+            appendContextSection(sb, context, headerBg, altBg, teal);
+        }
+
         sb.append("</body></html>");
         return sb.toString();
+    }
+
+    /**
+     * The CONTEXT WINDOW block: model and limit, how much of the window the next request
+     * fills, and the non-overlapping segments that add up to it. A provider that keeps its
+     * own history has no breakdown to show, and a session past the compaction threshold says
+     * so instead of appearing merely large.
+     */
+    static void appendContextSection(StringBuilder sb, ContextReport report, String headerBg,
+                                     String altBg, String teal) {
+        appendSectionSeparator(sb, teal);
+        String model = report.provider() == null || report.provider().isBlank()
+                ? report.modelName()
+                : report.provider() + "/" + report.modelName();
+        List<String[]> rows = new ArrayList<>();
+        rows.add(new String[]{"LBL_ContextModel", model});
+        rows.add(new String[]{"LBL_ContextUsed", report.providerManagesContext()
+                ? NbBundle.getMessage(TokenUsageDialog.class, "LBL_ContextManaged")
+                : UsageStatsFormat.thousands(report.totalTokens()) + " / "
+                        + UsageStatsFormat.thousands(report.contextLimit())
+                        + " (" + report.usedPercent() + "%)"});
+        appendLocalizedTable(sb, "LBL_ContextWindow", headerBg, altBg, rows.toArray(new String[0][]));
+
+        if (!report.providerManagesContext() && report.usedPercent() > 0) {
+            sb.append("<table><tr><td style='border:0;padding:2px 1px;width:")
+              .append(report.usedPercent()).append("%;'>")
+              .append("<div style='height:10px;background:").append(teal).append(";'></div>")
+              .append("</td><td style='border:0;padding:2px 1px;'></td></tr></table>");
+        }
+        if (report.autoCompactionPending()) {
+            appendNote(sb, "LBL_ContextCompactionPending");
+        }
+        if (!report.segments().isEmpty()) {
+            appendSegmentsTable(sb, report, headerBg, altBg);
+        }
+    }
+
+    /** One row per segment: label (source in parentheses) and its tokens with the share. */
+    private static void appendSegmentsTable(StringBuilder sb, ContextReport report,
+                                            String headerBg, String altBg) {
+        sb.append("<table><tr><th colspan='2'>")
+          .append(escapeHtml(NbBundle.getMessage(TokenUsageDialog.class, "LBL_ContextSegments")))
+          .append("</th></tr>");
+        boolean alt = false;
+        for (ContextReport.Segment segment : report.segments()) {
+            String label = segment.source() == null || segment.source().isBlank()
+                    ? segment.label()
+                    : segment.label() + " (" + segment.source() + ")";
+            long total = report.totalTokens();
+            int percent = total <= 0 ? 0 : (int) Math.round(100.0 * segment.tokenCount() / total);
+            String style = alt ? " style='background-color: " + altBg + ";'" : "";
+            sb.append("<tr").append(style).append(">")
+              .append("<td style='white-space:nowrap;'>").append(escapeHtml(label)).append("</td>")
+              .append("<td style='text-align:right;white-space:nowrap;'>")
+              .append(UsageStatsFormat.thousands(segment.tokenCount()))
+              .append(" (").append(percent).append("%)")
+              .append("</td></tr>");
+            alt = !alt;
+        }
+        sb.append("</table>");
+    }
+
+    /** A single explanatory line under the context block. */
+    private static void appendNote(StringBuilder sb, String key) {
+        sb.append("<div style='margin:4px 0;'>")
+          .append(escapeHtml(NbBundle.getMessage(TokenUsageDialog.class, key)))
+          .append("</div>");
     }
 
     /**

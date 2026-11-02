@@ -49,6 +49,7 @@ import org.openide.util.NbPreferences;
 import org.openide.util.RequestProcessor;
 import org.openide.util.Lookup;
 import org.openide.util.lookup.ServiceProvider;
+import org.openide.util.lookup.ServiceProviders;
 
 import java.util.logging.Level;
 
@@ -56,6 +57,7 @@ import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.contract.SessionListener;
 import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.manager.strategy.StrategyRegistry;
+import github.anandb.netbeans.model.ContextReport;
 import github.anandb.netbeans.model.SessionState;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
@@ -94,8 +96,12 @@ import static org.apache.commons.text.StringEscapeUtils.unescapeHtml4;
  * reconnection attempts with linear backoff (3s, 6s, 9s). On successful
  * reconnection, the current session is automatically reloaded.
  */
-@ServiceProvider(service = SessionControl.class)
-public class SessionManager implements SessionQuery, SessionControl {
+@ServiceProviders({
+    @ServiceProvider(service = SessionControl.class),
+    @ServiceProvider(service = github.anandb.netbeans.contract.ContextReportQuery.class)
+})
+public class SessionManager implements SessionQuery, SessionControl,
+        github.anandb.netbeans.contract.ContextReportQuery {
 
 
     /** Returns the harness id configured for the current agent, or null. */
@@ -1404,6 +1410,49 @@ public class SessionManager implements SessionQuery, SessionControl {
     @Override
     public boolean canDeleteSession() {
         return processManager.isSessionDeleteSupported();
+    }
+
+    @Override
+    public boolean canReportContext() {
+        return processManager.getCapabilities().supportsContextReport();
+    }
+
+    @Override
+    public CompletableFuture<ContextReport> reportContext(String sessionId) {
+        if (isBlank(sessionId) || !canReportContext()) {
+            return CompletableFuture.completedFuture(null);
+        }
+        return rpcClient.reportContext(sessionId)
+                .thenApply(SessionManager::toContextReport)
+                .exceptionally(ex -> {
+                    LOG.warn("Failed to read the context report: {0}",
+                            ExceptionUtils.getMessage(ex));
+                    return null;
+                });
+    }
+
+    /** Maps goose's {@code context/report} response; unknown fields are ignored. */
+    static ContextReport toContextReport(JsonNode res) {
+        if (res == null || !res.isObject()) {
+            return null;
+        }
+        JsonNode model = res.path("model");
+        List<ContextReport.Segment> segments = new ArrayList<>();
+        for (JsonNode segment : res.path("segments")) {
+            segments.add(new ContextReport.Segment(
+                    segment.path("category").asText(""),
+                    segment.path("label").asText(""),
+                    segment.hasNonNull("source") ? segment.get("source").asText() : null,
+                    segment.path("tokenCount").asLong(0)));
+        }
+        return new ContextReport(
+                model.hasNonNull("provider") ? model.get("provider").asText() : null,
+                model.path("modelName").asText(""),
+                model.path("contextLimit").asLong(0),
+                res.path("totalTokens").asLong(0),
+                segments,
+                res.path("providerManagesContext").asBoolean(false),
+                res.path("autoCompactionPending").asBoolean(false));
     }
 
     @Override

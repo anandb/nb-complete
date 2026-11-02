@@ -57,6 +57,13 @@ final class SessionRpcClient {
         return processManager.sendRequest("_goose/unstable/session/rename", params, 30, TimeUnit.SECONDS);
     }
 
+    /** goose's context-window breakdown; makes no model call. */
+    CompletableFuture<JsonNode> reportContext(String sessionId) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("sessionId", sessionId);
+        return processManager.sendRequest("_goose/unstable/context/report", params, 30, TimeUnit.SECONDS);
+    }
+
     /** goose's live working-directory move: no process restart, no terminated sessions. */
     CompletableFuture<JsonNode> updateWorkingDirectory(String sessionId, String directory) {
         Map<String, Object> params = new HashMap<>();

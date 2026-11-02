@@ -65,6 +65,7 @@ import github.anandb.netbeans.model.MigrationReport;
 import github.anandb.netbeans.model.SessionMetadata;
 import github.anandb.netbeans.contract.ToolExecutor;
 import github.anandb.netbeans.contract.SessionListener;
+import github.anandb.netbeans.model.ContextReport;
 import github.anandb.netbeans.model.ModelsInfo;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
@@ -1469,6 +1470,57 @@ class SessionManagerTest {
 
         verify(processManager, never()).sendRequest(eq("_goose/unstable/session/rename"), any(),
                 anyLong(), any(TimeUnit.class));
+    }
+
+    @Test
+    void contextReportIsNotAskedOfAHarnessThatCannotReport() throws Exception {
+        when(processManager.getCapabilities()).thenReturn(HarnessCatalog.OPENCODE);
+
+        assertFalse(sessionManager.canReportContext());
+        assertNull(sessionManager.reportContext("s1").get(5, TimeUnit.SECONDS));
+        verify(processManager, never()).sendRequest(eq("_goose/unstable/context/report"), any(),
+                anyLong(), any(TimeUnit.class));
+    }
+
+    @Test
+    void contextReportMapsGoosesSegments() throws Exception {
+        when(processManager.getCapabilities()).thenReturn(HarnessCatalog.GOOSE);
+        JsonNode report = mapper.readTree("""
+                {"model":{"provider":"openrouter","modelName":"claude-sonnet-4","contextLimit":200000},
+                 "totalTokens":160000,
+                 "segments":[
+                   {"category":"system_prompt","label":"System prompt","tokenCount":1200},
+                   {"category":"tool","label":"read_file","source":"18 tools","tokenCount":8000},
+                   {"category":"conversation","label":"User turn 3","tokenCount":150800}],
+                 "providerManagesContext":false,
+                 "autoCompactionPending":true}
+                """);
+        when(processManager.sendRequest(eq("_goose/unstable/context/report"), any(), eq(30L),
+                eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(report));
+
+        ContextReport parsed = sessionManager.reportContext("s1").get(5, TimeUnit.SECONDS);
+
+        assertEquals("openrouter", parsed.provider());
+        assertEquals("claude-sonnet-4", parsed.modelName());
+        assertEquals(200000, parsed.contextLimit());
+        assertEquals(160000, parsed.totalTokens());
+        assertEquals(3, parsed.segments().size());
+        assertEquals("18 tools", parsed.segments().get(1).source());
+        assertEquals(8000, parsed.segments().get(1).tokenCount());
+        assertTrue(parsed.autoCompactionPending());
+        assertEquals(80, parsed.usedPercent());
+    }
+
+    @Test
+    void aFailedContextReportYieldsNull() throws Exception {
+        when(processManager.getCapabilities()).thenReturn(HarnessCatalog.GOOSE);
+        when(processManager.sendRequest(eq("_goose/unstable/context/report"), any(), eq(30L),
+                eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("boom")));
+
+        assertNull(sessionManager.reportContext("s1").get(5, TimeUnit.SECONDS),
+                "a diagnostic panel must not fail its refresh");
     }
 
     @Test

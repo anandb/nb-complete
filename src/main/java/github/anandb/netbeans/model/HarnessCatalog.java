@@ -117,6 +117,12 @@ public final class HarnessCatalog {
         public boolean supportsWorkingDirUpdate() {
             return "goose".equals(id);
         }
+
+        /** True when the harness can break down its context window
+         *  ({@code _goose/unstable/context/report}). */
+        public boolean supportsContextReport() {
+            return "goose".equals(id);
+        }
     }
 
     public static final Harness OPENCODE = new Harness(
