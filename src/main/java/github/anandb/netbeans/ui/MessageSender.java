@@ -195,7 +195,7 @@ public class MessageSender {
         boolean turnEnded = turnEndedCheck != null ? turnEndedCheck.getAsBoolean() : true;
         boolean midTurn = !sessionService.get().canSendMessage() || !turnEnded;
 
-        if (midTurn && !isPermissionPending() && trySteer(text, proc)) {
+        if (midTurn && !slash.forwarded() && !isPermissionPending() && trySteer(text, proc)) {
             return;
         }
         if (midTurn && queueForTurnEnd(text, proc)) {
@@ -212,6 +212,10 @@ public class MessageSender {
     /** Outcome of slash interception: a handled local command ends the send, while a
      *  forwarded one (`/compact`, `/dcp`) continues as a real send carrying its echo label. */
     private record SlashRouting(boolean handled, String forwardedEcho) {
+        /** A forwarded command (`/compact`, `/dcp`) is a real send, not a local UI action. */
+        boolean forwarded() {
+            return forwardedEcho != null;
+        }
     }
 
     /**

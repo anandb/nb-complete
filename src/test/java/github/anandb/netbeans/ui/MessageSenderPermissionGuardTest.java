@@ -188,6 +188,27 @@ class MessageSenderPermissionGuardTest {
     }
 
     @Test
+    void forwardedSlashCommandIsNeverSteered() throws Exception {
+        permissionPending(false);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.GOOSE);
+        when(proc.getActiveRunId(SESSION)).thenReturn("run-1");
+        when(proc.steerMessage(anyString(), anyString(), any()))
+                .thenReturn(new CompletableFuture<JsonNode>());
+        SessionControl midTurn = mock(SessionControl.class);
+        when(midTurn.canSendMessage()).thenReturn(false);
+        when(midTurn.getCurrentSessionId()).thenReturn(SESSION);
+        inject("sessionService", (SessionService) () -> midTurn);
+        MessageQueueManager queue = mock(MessageQueueManager.class);
+        sender.setQueueManager(queue);
+        input.append("/compact");
+
+        sender.sendMessage();
+
+        verify(proc, never()).steerMessage(anyString(), anyString(), any());
+        verify(queue).enqueue("/compact");
+    }
+
+    @Test
     void midTurnMessageIsQueuedForAQueueingHarness() throws Exception {
         permissionPending(false);
         when(proc.getCapabilities()).thenReturn(HarnessCatalog.GOOSE);
