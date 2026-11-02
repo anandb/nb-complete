@@ -587,6 +587,14 @@ still holding in-flight work. Do NOT make cancel+close unconditional again.
 - The ready handler must NOT auto-reload while an explicit session operation is in
   flight (`explicitSessionOps`): loading `currentSessionId` at that point can load the
   previous session over the new one and rebind back, killing the new session.
+- A harness that can move a session's cwd live (`Harness.supportsWorkingDirUpdate()`, goose
+  only, through `_goose/unstable/session/working-dir/update`) is NOT rebound at all: its
+  sessions carry their own cwd, so `SessionManager.prepareServerBind` skips
+  `ensureStartedIn` and the process keeps serving every session. Never reintroduce the
+  restart for goose — it terminates sessions for no benefit.
+- The live move itself is `SessionControl.changeWorkingDirectory` (cwd context menu) →
+  `SessionRpcClient.updateWorkingDirectory`; a success also rewrites the cached session and
+  its metadata, so the header and a later reload agree with the server.
 - Manual *Restart Server* and preference-driven restarts are independent of this gate.
 
 ### fs/read_text_file Line Windows

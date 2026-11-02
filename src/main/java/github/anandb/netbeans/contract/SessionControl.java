@@ -62,6 +62,19 @@ public interface SessionControl extends SessionQuery {
         return false;
     }
 
+    /** True when the harness can move a session's working directory without a restart. */
+    default boolean canChangeWorkingDirectory() {
+        return false;
+    }
+
+    /**
+     * Moves a session's working directory live (no process restart, no terminated sessions).
+     * Completes with {@code false} when the harness cannot do it or the call failed.
+     */
+    default CompletableFuture<Boolean> changeWorkingDirectory(String sessionId, String directory) {
+        return CompletableFuture.completedFuture(false);
+    }
+
     /** Registers a handler invoked after session/new response but before the
      *  preamble is sent. The handler receives (sessionId, configOptions) and
      *  runs on the async thread — it MUST block until configuration is complete.

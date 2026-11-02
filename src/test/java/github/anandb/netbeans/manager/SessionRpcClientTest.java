@@ -135,6 +135,22 @@ class SessionRpcClientTest {
     }
 
     @Test
+    void updateWorkingDirectoryUsesGoosesExtension() {
+        when(processManager.sendRequest(eq("_goose/unstable/session/working-dir/update"), any(),
+                eq(60L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
+
+        client.updateWorkingDirectory("sid", "/new/dir").join();
+
+        ArgumentCaptor<Object> params = ArgumentCaptor.forClass(Object.class);
+        verify(processManager).sendRequest(eq("_goose/unstable/session/working-dir/update"),
+                params.capture(), eq(60L), eq(TimeUnit.SECONDS));
+        Map<?, ?> sent = (Map<?, ?>) params.getValue();
+        assertEquals("sid", sent.get("sessionId"));
+        assertEquals("/new/dir", sent.get("workingDir"));
+    }
+
+    @Test
     void deleteSessionUsesTheStandardMethod() {
         when(processManager.sendRequest(eq("session/delete"), any(), eq(30L), eq(TimeUnit.SECONDS)))
                 .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));

@@ -839,9 +839,7 @@ public class SessionManager implements SessionQuery, SessionControl {
         // restarted server to finish initializing. When the setting is off, use
         // the v1.27.0 behaviour exactly: never start or rebind from a session
         // request, only wait for the server the startup/restart paths own.
-        CompletableFuture<Void> prepared = PluginSettings.isProjectSwitchRestartEnabled()
-                ? CompletableFuture.runAsync(() -> processManager.ensureStartedIn(new File(finalCwd)))
-                : CompletableFuture.completedFuture(null);
+        CompletableFuture<Void> prepared = prepareServerBind(finalCwd);
         return prepared
                 // Gate on the ACP server's readiness: MCP's waitForReady() returns
                 // immediately when the embedded MCP server is disabled, which let
@@ -913,8 +911,26 @@ public class SessionManager implements SessionQuery, SessionControl {
      * unbound server.
      */
     private CompletableFuture<Void> bindServerTo(String workingCwd) {
+        return prepareServerBind(workingCwd);
+    }
+
+    /**
+     * The experimental cwd binding before a session RPC, applied only when
+     * {@code projectSwitchRestart.enabled} is on. A harness that moves a session's working
+     * directory live needs no rebind: its sessions carry their own cwd, and restarting the
+     * process would terminate every session it serves. Any other harness rebinds the process,
+     * which restarts it.
+     */
+    private CompletableFuture<Void> prepareServerBind(String cwd) {
+        if (!PluginSettings.isProjectSwitchRestartEnabled()) {
+            return CompletableFuture.completedFuture(null);
+        }
+        if (processManager.getCapabilities().supportsWorkingDirUpdate()) {
+            LOG.log(Level.FINE, "Skipping server rebind: harness moves cwd per session ({0})", cwd);
+            return CompletableFuture.completedFuture(null);
+        }
         return CompletableFuture.runAsync(() ->
-                processManager.ensureStartedIn(workingCwd != null ? new File(workingCwd) : null));
+                processManager.ensureStartedIn(cwd != null ? new File(cwd) : null));
     }
 
     @Override
@@ -1388,6 +1404,42 @@ public class SessionManager implements SessionQuery, SessionControl {
     @Override
     public boolean canDeleteSession() {
         return processManager.isSessionDeleteSupported();
+    }
+
+    @Override
+    public boolean canChangeWorkingDirectory() {
+        return processManager.getCapabilities().supportsWorkingDirUpdate();
+    }
+
+    @Override
+    public CompletableFuture<Boolean> changeWorkingDirectory(String sessionId, String directory) {
+        if (isBlank(sessionId) || isBlank(directory) || !canChangeWorkingDirectory()) {
+            return CompletableFuture.completedFuture(false);
+        }
+        return rpcClient.updateWorkingDirectory(sessionId, directory).handle((res, ex) -> {
+            if (ex != null) {
+                LOG.warn("Failed to change working directory of {0} to {1}: {2}",
+                        sessionId, directory, ExceptionUtils.getMessage(ex));
+                return false;
+            }
+            Session cached = cacheManager.getCachedSession(sessionId);
+            if (cached != null) {
+                Session moved = new Session(cached.id(), cached.title(), directory, directory,
+                        cached.parentID(), cached.updatedAt(), cached.mcpServers(),
+                        cached.configOptions(), cached.models(), cached.modes());
+                cacheManager.cacheSession(moved);
+                List<Session> updatedList = new ArrayList<>(cacheManager.getCachedSessions());
+                for (int i = 0; i < updatedList.size(); i++) {
+                    if (sessionId.equals(updatedList.get(i).id())) {
+                        updatedList.set(i, moved);
+                        break;
+                    }
+                }
+                cacheManager.setCachedSessions(updatedList, agentName(), tracksSessionsLocally());
+            }
+            updateMetadata(sessionId, m -> new SessionMetadata(m.title(), m.usage(), m.hidden(), directory));
+            return true;
+        });
     }
 
     @Override

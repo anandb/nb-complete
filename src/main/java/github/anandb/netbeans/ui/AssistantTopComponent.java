@@ -20,6 +20,7 @@ import java.util.logging.Level;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -1024,7 +1025,43 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         JMenuItem locateItem = new JMenuItem(NbBundle.getMessage(AssistantTopComponent.class, "CTL_LocateInSystem"));
         locateItem.addActionListener(ev -> openCwdInSystemBrowser(cwd));
         popup.add(locateItem);
+
+        // Live cwd move for a harness that supports it: no restart, no terminated sessions.
+        JMenuItem changeDir = new JMenuItem(
+                NbBundle.getMessage(AssistantTopComponent.class, "LBL_ChangeWorkingDir"));
+        changeDir.setEnabled(sessionService.get().canChangeWorkingDirectory());
+        changeDir.addActionListener(ev -> changeWorkingDirectory(cwd));
+        popup.add(changeDir);
+
         popup.show(cwdLabel, e.getX(), e.getY());
+    }
+
+    /** Picks a directory and moves the current session there without restarting the harness. */
+    private void changeWorkingDirectory(String currentCwd) {
+        String sessionId = sessionService.get().getCurrentSessionId();
+        if (sessionId == null) {
+            return;
+        }
+        JFileChooser chooser = new JFileChooser(currentCwd);
+        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        chooser.setDialogTitle(NbBundle.getMessage(AssistantTopComponent.class, "TITLE_ChangeWorkingDir"));
+        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION
+                || chooser.getSelectedFile() == null) {
+            return;
+        }
+        String directory = chooser.getSelectedFile().getAbsolutePath();
+        String targetSession = sessionId;
+        sessionService.get().changeWorkingDirectory(targetSession, directory).thenAccept(changed ->
+                SwingUtilities.invokeLater(() -> {
+                    if (!changed) {
+                        setStatus("STATUS_WorkingDirUnsupported");
+                        return;
+                    }
+                    if (targetSession.equals(sessionService.get().getCurrentSessionId())) {
+                        updateCwdLabel(directory);
+                    }
+                    setStatus("STATUS_WorkingDirChanged");
+                }));
     }
 
     private void openCwdInSystemBrowser(String path) {

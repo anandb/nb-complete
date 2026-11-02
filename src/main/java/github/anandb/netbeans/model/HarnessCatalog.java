@@ -110,6 +110,13 @@ public final class HarnessCatalog {
         public boolean supportsSessionRename() {
             return "goose".equals(id);
         }
+
+        /** True when the harness moves a session's working directory live
+         *  ({@code _goose/unstable/session/working-dir/update}), so a cwd change needs no
+         *  process restart and terminates no sessions. */
+        public boolean supportsWorkingDirUpdate() {
+            return "goose".equals(id);
+        }
     }
 
     public static final Harness OPENCODE = new Harness(

@@ -1472,6 +1472,71 @@ class SessionManagerTest {
     }
 
     @Test
+    void changeWorkingDirectoryIsRefusedWithoutTheExtension() throws Exception {
+        when(processManager.getCapabilities()).thenReturn(HarnessCatalog.OPENCODE);
+
+        assertFalse(sessionManager.canChangeWorkingDirectory());
+        assertFalse(sessionManager.changeWorkingDirectory("s1", "/elsewhere").get(5, TimeUnit.SECONDS));
+        verify(processManager, never()).sendRequest(
+                eq("_goose/unstable/session/working-dir/update"), any(), anyLong(), any(TimeUnit.class));
+    }
+
+    @Test
+    void changeWorkingDirectoryMovesTheCachedSession() throws Exception {
+        when(processManager.getCapabilities()).thenReturn(HarnessCatalog.GOOSE);
+        when(processManager.sendRequest(eq("_goose/unstable/session/working-dir/update"), any(),
+                eq(60L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
+        Session seeded = cachedSession("s1", "/old");
+        cacheManager().cacheSession(seeded);
+        cacheManager().setCachedSessions(List.of(seeded), "unknown", false);
+
+        assertTrue(sessionManager.changeWorkingDirectory("s1", "/new").get(5, TimeUnit.SECONDS));
+
+        assertEquals("/new", cacheManager().getCachedSession("s1").cwd(),
+                "the header and a later reload must agree with the server");
+        ArgumentCaptor<Object> params = ArgumentCaptor.forClass(Object.class);
+        verify(processManager).sendRequest(eq("_goose/unstable/session/working-dir/update"),
+                params.capture(), eq(60L), eq(TimeUnit.SECONDS));
+        assertEquals("/new", ((Map<?, ?>) params.getValue()).get("workingDir"));
+    }
+
+    @Test
+    void projectSwitchSkipsTheServerRestartForAHarnessThatMovesCwd() throws Exception {
+        PluginSettings.setProjectSwitchRestartForTest(true);
+        try {
+            when(processManager.getCapabilities()).thenReturn(HarnessCatalog.GOOSE);
+
+            bindServerTo("/p");
+
+            verify(processManager, never()).ensureStartedIn(any());
+        } finally {
+            PluginSettings.setProjectSwitchRestartForTest(false);
+        }
+    }
+
+    @Test
+    void projectSwitchStillRebindsTheProcessForOtherHarnesses() throws Exception {
+        PluginSettings.setProjectSwitchRestartForTest(true);
+        try {
+            when(processManager.getCapabilities()).thenReturn(HarnessCatalog.OPENCODE);
+
+            bindServerTo("/p");
+
+            verify(processManager, timeout(2000)).ensureStartedIn(any());
+        } finally {
+            PluginSettings.setProjectSwitchRestartForTest(false);
+        }
+    }
+
+    /** Runs the private cwd-binding hook the session RPCs share. */
+    private void bindServerTo(String cwd) throws Exception {
+        Method bind = SessionManager.class.getDeclaredMethod("bindServerTo", String.class);
+        bind.setAccessible(true);
+        ((CompletableFuture<?>) bind.invoke(sessionManager, cwd)).get(5, TimeUnit.SECONDS);
+    }
+
+    @Test
     void deleteSessionIsRefusedWhenTheAgentCannotDelete() throws Exception {
         when(processManager.isSessionDeleteSupported()).thenReturn(false);
 

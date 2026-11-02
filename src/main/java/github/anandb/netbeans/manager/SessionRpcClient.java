@@ -57,6 +57,15 @@ final class SessionRpcClient {
         return processManager.sendRequest("_goose/unstable/session/rename", params, 30, TimeUnit.SECONDS);
     }
 
+    /** goose's live working-directory move: no process restart, no terminated sessions. */
+    CompletableFuture<JsonNode> updateWorkingDirectory(String sessionId, String directory) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("sessionId", sessionId);
+        params.put("workingDir", directory);
+        return processManager.sendRequest("_goose/unstable/session/working-dir/update", params,
+                60, TimeUnit.SECONDS);
+    }
+
     /** Standard {@code session/delete}; the caller gates on the advertised capability. */
     CompletableFuture<JsonNode> deleteSession(String sessionId) {
         Map<String, Object> params = new HashMap<>();
