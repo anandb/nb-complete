@@ -21,6 +21,7 @@ import github.anandb.netbeans.model.UsageRecords.ToolTotals;
 import github.anandb.netbeans.model.UsageRecords.UsageSummary;
 import github.anandb.netbeans.model.UsageRecords.UsageUpdateRow;
 import github.anandb.netbeans.support.MapperSupplier;
+import github.anandb.netbeans.support.SteerEchoes;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,7 +33,10 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
@@ -219,6 +223,36 @@ class StrategyRegistryCaptureTest {
             registry().handle(assistantChunk("ses_distinct", "msg-" + i), noopHandler());
         }
         assertEquals(3, store.messages.size());
+    }
+
+    /**
+     * The steer-echo skip must sit *after* capture: the text was typed by the user, so it
+     * still belongs in the stats even though the panel already drew it locally. Swapping the
+     * two statements in StrategyRegistry's user_message_chunk case would keep the display
+     * assertion below green and silently drop the message from the usage data.
+     */
+    @Test
+    void aSteeredEchoIsStillCapturedEvenThoughItIsNotDisplayed() {
+        SteerEchoes.clear();
+        SteerEchoes.expect("ses_capture", "steer_echo_capture_1");
+        github.anandb.netbeans.contract.UIHandler handler = noopHandler();
+
+        registry().handle(userChunk("steer_echo_capture_1", "hello"), handler);
+
+        verify(handler, never()).displayMessage(any());
+        assertEquals(1, store.messages.size(), "the steered message must still be counted");
+        assertEquals(MessageKind.USER, store.messages.get(0).kind());
+        assertEquals("ses_capture", store.messages.get(0).attribution().sessionId());
+        SteerEchoes.clear();
+    }
+
+    /** Builds the user_message_chunk goose replays for a steer, carrying the steer's id. */
+    private static SessionUpdate userChunk(String messageId, String text) {
+        JsonNode content = MAPPER.createObjectNode().put("type", "text").put("text", text);
+        SessionUpdate.UpdateData data = new SessionUpdate.UpdateData(MessageType.user_message_chunk,
+                null, null, messageId, content, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null);
+        return new SessionUpdate("2.0", "session/update", new SessionUpdate.Params("ses_capture", data));
     }
 
     private static SessionQuery streamingSessionQueryWithState(SessionState state) {
