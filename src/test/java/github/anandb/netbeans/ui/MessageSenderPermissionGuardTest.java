@@ -231,6 +231,7 @@ class MessageSenderPermissionGuardTest {
         assertEquals("hello", input.toString(), "the text goes back in the composer");
         assertEquals(List.of(file), attachmentManager.getAttachments(),
                 "the attachment goes back with it");
+        verify(chatPanel).removeMessageBubble(anyString());
     }
 
     @Test
@@ -245,6 +246,7 @@ class MessageSenderPermissionGuardTest {
 
         verify(statusController).updateButtonState(true);
         verify(statusController).armRunWatchdog();
+        verify(chatPanel).removeMessageBubble("echo-1");
         verify(chatPanel, never()).stopStreaming();
     }
 
@@ -265,9 +267,9 @@ class MessageSenderPermissionGuardTest {
 
     private void callOnPromptFailed(int gen, boolean steeringSend, String text) throws Exception {
         java.lang.reflect.Method m = MessageSender.class.getDeclaredMethod("onPromptFailed",
-                int.class, int.class, boolean.class, String.class, Throwable.class);
+                int.class, int.class, boolean.class, String.class, Throwable.class, String.class);
         m.setAccessible(true);
-        m.invoke(sender, gen, -1, steeringSend, text, new RuntimeException("boom"));
+        m.invoke(sender, gen, -1, steeringSend, text, new RuntimeException("boom"), "echo-1");
     }
 
     @Test

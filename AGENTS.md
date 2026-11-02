@@ -370,8 +370,13 @@ Resolved — kept as regression guards:
   (`sessionId`, `prompt` blocks, `expectedRunId`) and fails fast when no run id is known.
 - `MessageSender.trySteer()` takes the steer route only when the turn is in flight, no
   permission request is pending, the harness supports steering and a run id is known;
-  otherwise the queue branch handles it. A failed steer restores the text and does NOT
-  stop streaming. Local slash commands are intercepted BEFORE the mid-turn routing —
+  otherwise the queue branch handles it. A failed steer restores the text *and*
+  the attachments and drops its echo bubble (`ChatThreadPanel.removeMessageBubble`),
+  so a resend does not draw a second identical bubble — user bubbles never merge.
+  A failed mid-turn send keeps the turn alive only while the turn is still running
+  (`isMidTurn()` is re-read, the watchdog re-armed); if the turn ended in between it
+  tears the turn down like a turn-starting failure. Local slash commands are intercepted
+  BEFORE the mid-turn routing —
   they are UI actions and must never be steered or queued. Only the interception is early:
   the permission guard sits below it so local commands still work while a permission prompt
   is open, but every decision re-reads `isPermissionPending()` live (the request can arrive

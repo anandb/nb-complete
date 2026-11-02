@@ -270,6 +270,30 @@ public class ChatThreadPanel extends JPanel {
         queuedMessageIds.clear();
     }
 
+    /** Removes a bubble that was drawn locally but never reached the server, e.g. the echo of
+     *  a failed send. Runs on the EDT; the spacer that follows the bubble is dropped with it. */
+    public void removeMessageBubble(String messageId) {
+        if (messageId == null) {
+            return;
+        }
+        Component[] children = messagesContainer.getComponents();
+        for (int i = 0; i < children.length; i++) {
+            if (children[i] instanceof MessageBubble b && messageId.equals(b.getMessageId())) {
+                messagesContainer.remove(i);
+                Component next = i < messagesContainer.getComponentCount()
+                        ? messagesContainer.getComponent(i) : null;
+                if (next instanceof Box.Filler) {
+                    messagesContainer.remove(i);
+                }
+                queuedBubbles.remove(messageId);
+                queuedMessageIds.remove(messageId);
+                messagesContainer.revalidate();
+                messagesContainer.repaint();
+                return;
+            }
+        }
+    }
+
     public void addMessage(ProcessedMessage pm) {
         if (pm.isIgnorable()) {
             return;

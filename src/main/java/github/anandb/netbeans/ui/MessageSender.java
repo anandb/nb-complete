@@ -298,7 +298,8 @@ public class MessageSender {
 
     /** The prompt pieces assembled before the RPC. A forwarded slash command carries no
      *  attachments and no editor context. */
-    private record PromptPayload(boolean forwardedSlash, List<Map<String, Object>> fileBlocks) {
+    private record PromptPayload(boolean forwardedSlash, List<Map<String, Object>> fileBlocks,
+            String clientMessageId) {
     }
 
     /** Builds the file blocks, drops the attachments and draws the local echo. */
@@ -310,19 +311,21 @@ public class MessageSender {
         List<AttachedFile> attachedFiles = attachmentManager.getAttachments();
         List<Map<String, Object>> fileBlocks = isForwardedSlash
                 ? List.of() : attachmentManager.buildFileBlocks(embeddedContext);
+        // Client-generated correlation ID so the local echo bubble can be matched to the
+        // server-assigned message ID when it is echoed back — and dropped again if the
+        // send fails, which is why it travels with the payload.
+        String clientMessageId = UUID.randomUUID().toString();
         if (!isForwardedSlash) {
             attachmentManager.clear();
             paperclipUpdater.run();
-            // Client-generated correlation ID so the local echo bubble can be matched to the
-            // server-assigned message ID when it is echoed back.
             if (localEchoEnabled) {
-                drawLocalEcho(text, attachedFiles, UUID.randomUUID().toString());
+                drawLocalEcho(text, attachedFiles, clientMessageId);
             }
         }
         if (onUserMessageSentCallback != null) {
             onUserMessageSentCallback.run();
         }
-        return new PromptPayload(isForwardedSlash, fileBlocks);
+        return new PromptPayload(isForwardedSlash, fileBlocks, clientMessageId);
     }
 
     /** Turn-start bookkeeping: the auto-backup and the permission epoch. */
@@ -360,7 +363,8 @@ public class MessageSender {
                     SwingUtilities.invokeLater(() -> onPromptCompleted(gen, result));
                 })
                 .exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() -> onPromptFailed(gen, prevGen, steeringSend, text, ex));
+                    SwingUtilities.invokeLater(() ->
+                            onPromptFailed(gen, prevGen, steeringSend, text, ex, payload.clientMessageId()));
                     return null;
                 });
     }
@@ -403,13 +407,17 @@ public class MessageSender {
     /** Failure path for an accepted prompt, on the EDT. A failed mid-turn send must not end the
      *  turn UI: the harness's first turn is still running, so Stop, the stall watchdog and the
      *  streaming bubble stay up and the turn-end claim returns to the original prompt. */
-    private void onPromptFailed(int gen, int prevGen, boolean steeringSend, String messageText, Throwable ex) {
+    private void onPromptFailed(int gen, int prevGen, boolean steeringSend, String messageText,
+            Throwable ex, String echoMessageId) {
         if (gen != sendGeneration.get()) {
             LOG.info("Ignoring stale session/prompt error gen={0} current={1}",
                     gen, sendGeneration.get());
             return;
         }
         LOG.info("RPC exceptionally fired: {0}", ExceptionUtils.getMessage(ex));
+        // The echo bubble was never delivered: drop it so resending the restored text does
+        // not draw a second identical bubble (user bubbles never merge).
+        chatPanel.removeMessageBubble(echoMessageId);
         String reason = ExceptionUtils.getMessage(ex) != null
                 ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName();
         statusController.setStatus("STATUS_Error", reason);
@@ -532,13 +540,14 @@ public class MessageSender {
         paperclipUpdater.run();
         inputArea.setText("");
         final String echoText = text == null ? "" : text;
+        final String echoMessageId = UUID.randomUUID().toString();
         if (localEchoEnabled) {
             String rendered = buildEchoText(echoText, attachedFiles);
             chatPanel.addMessage(new ProcessedMessage.Builder()
                     .messageType(MessageType.user_message_chunk)
                     .text(rendered)
                     .rawText(rendered)
-                    .messageId(UUID.randomUUID().toString())
+                    .messageId(echoMessageId)
                     .build());
         }
         proc.steerMessage(sessionId, echoText, fileBlocks)
@@ -560,6 +569,9 @@ public class MessageSender {
                         if (inputArea.getText().isEmpty()) {
                             inputArea.setText(echoText);
                         }
+                        // The echo bubble was never delivered: drop it so resending does not
+                        // draw a second identical bubble (user bubbles never merge).
+                        chatPanel.removeMessageBubble(echoMessageId);
                         // The steer never landed, so the attachments go back in the composer
                         // with the text. AttachmentManager.add() keeps the size/count caps.
                         for (AttachedFile af : attachedFiles) {
