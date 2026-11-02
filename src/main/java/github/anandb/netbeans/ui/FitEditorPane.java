@@ -116,11 +116,6 @@ public class FitEditorPane extends JTextPane {
                 w = 500;
             }
 
-            // Cap the layout width so the computed height matches the width
-            // BoxLayout will actually assign (see getMaximumSize), preventing the
-            // bottom of long messages from being clipped on wide sidebars.
-            w = effectiveLayoutWidth(w);
-
             if (w == lastComputedWidth && lastComputedHeight > 0 && cachedSize != null) {
                 return cachedSize;
             }
@@ -190,7 +185,7 @@ public class FitEditorPane extends JTextPane {
                     View root = ui.getRootView(this);
                     if (root != null) {
                         Insets ins = getInsets();
-                        int cw = Math.max(1, effectiveLayoutWidth(width) - ins.left - ins.right);
+                        int cw = Math.max(1, width - ins.left - ins.right);
                         root.setSize(cw, Integer.MAX_VALUE);
                     }
                 }
@@ -204,46 +199,16 @@ public class FitEditorPane extends JTextPane {
 
     private volatile Dimension cachedMaxSize;
 
-    /** Maximum width a chat bubble may occupy, as a fraction of the monitor width.
-     *  Keeps bubbles at a readable column width instead of stretching across a wide
-     *  monitor. */
-    private static final double MAX_BUBBLE_WIDTH_FRACTION = 0.30;
-
-    /** Maximum width for a chat bubble, bounded to a readable fraction of the
-     *  monitor resolution.  Fallback to Short.MAX_VALUE when headless (no screen). */
-    private static volatile int maxBubbleWidth = -1;
-
-    private static int maxBubbleWidth() {
-        if (maxBubbleWidth < 0) {
-            try {
-                int screenW = Toolkit.getDefaultToolkit().getScreenSize().width;
-                maxBubbleWidth = Math.max(200, (int) (screenW * MAX_BUBBLE_WIDTH_FRACTION));
-            } catch (Exception ex) {
-                // Headless or no display: keep a large bounded fallback.
-                maxBubbleWidth = Short.MAX_VALUE;
-            }
-        }
-        return maxBubbleWidth;
-    }
-
-    /** The width the HTML view should be laid out at: the smaller of the available
-     *  width and the bubble width cap, so the computed height matches the width
-     *  that BoxLayout will actually give the component. */
-    private int effectiveLayoutWidth(int available) {
-        int cap = maxBubbleWidth();
-        return Math.min(available, cap);
-    }
-
     @Override
     public Dimension getMaximumSize() {
-        // Width is bounded to a readable fraction (30%) of the monitor resolution
-        // so a bubble can never stretch wider than that, even if BoxLayout is given
-        // excess space (which previously let a stale large width stick and ignore
-        // sidebar resizes). The preferred size height is used for the returned
-        // height. BoxLayout(Y_AXIS) stretches the component up to this maximum.
+        // No artificial width cap: BoxLayout(Y_AXIS) may stretch the pane to the width of
+        // the chat panel. A monitor-derived column width used to clip wide content (a table
+        // cannot shrink its columns past their minimum) and made sidebar resizes do nothing.
+        // Height still follows the preferred size, so the assigned width and the height
+        // computed for it stay in agreement.
         Dimension pref = getPreferredSize();
         if (cachedMaxSize == null) {
-            cachedMaxSize = new Dimension(maxBubbleWidth(), pref.height);
+            cachedMaxSize = new Dimension(Integer.MAX_VALUE, pref.height);
         } else {
             cachedMaxSize.height = pref.height;
         }
