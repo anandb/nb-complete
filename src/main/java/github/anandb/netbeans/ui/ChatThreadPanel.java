@@ -1142,9 +1142,10 @@ public class ChatThreadPanel extends JPanel {
     public void setKeepOlderMessages(boolean keep) {
         keepOlderMessages = keep;
         if (keep) {
-            // Reload current session to bring back trimmed messages.
+            // Reload current session to bring back trimmed messages. This needs
+            // the full transcript, so force session/load instead of resume.
             if (currentSessionId != null) {
-                Lookup.getDefault().lookup(SessionControl.class).loadSession(currentSessionId);
+                Lookup.getDefault().lookup(SessionControl.class).reloadSession(currentSessionId);
             }
         } else {
             trimMessages();

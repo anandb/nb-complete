@@ -72,6 +72,10 @@ class ServerProcessLifecycle {
      * it is per connection, so a delete is gated on the handshake rather than the catalog.
      */
     private volatile boolean sessionDeleteSupported;
+    /** Whether this agent advertised {@code sessionCapabilities.fork}, per connection. */
+    private volatile boolean sessionForkSupported;
+    /** Whether this agent advertised {@code sessionCapabilities.resume}, per connection. */
+    private volatile boolean sessionResumeSupported;
     /**
      * Set when a {@code session/load} request fails with JSON-RPC
      * {@code -32601}. Some agents advertise {@code loadSession} but do not
@@ -119,6 +123,16 @@ class ServerProcessLifecycle {
     /** Whether the agent advertised {@code sessionCapabilities.delete}. */
     boolean isSessionDeleteSupported() {
         return sessionDeleteSupported;
+    }
+
+    /** Whether the agent advertised {@code sessionCapabilities.fork}. */
+    boolean isSessionForkSupported() {
+        return sessionForkSupported;
+    }
+
+    /** Whether the agent advertised {@code sessionCapabilities.resume}. */
+    boolean isSessionResumeSupported() {
+        return sessionResumeSupported;
     }
 
     /** True once {@code session/load} was rejected as an unknown method. */
@@ -311,6 +325,8 @@ class ServerProcessLifecycle {
             // the previous one's advertised capabilities.
             sessionCloseSupported = false;
             sessionDeleteSupported = false;
+            sessionForkSupported = false;
+            sessionResumeSupported = false;
             sessionLoadUnsupported = false;
             embeddedContextSupported = false;
 
@@ -459,6 +475,8 @@ class ServerProcessLifecycle {
                                 ? null : res.get("agentCapabilities").get("sessionCapabilities");
                         sessionCloseSupported = sessionCaps != null && sessionCaps.has("close");
                         sessionDeleteSupported = sessionCaps != null && sessionCaps.has("delete");
+                        sessionForkSupported = sessionCaps != null && sessionCaps.has("fork");
+                        sessionResumeSupported = sessionCaps != null && sessionCaps.has("resume");
                         // Prompt capabilities decide how an attachment reaches the
                         // agent: embedded resources need embeddedContext, otherwise
                         // the client inlines text or sends a resource link.

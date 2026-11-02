@@ -951,16 +951,27 @@ public class SessionManager implements SessionQuery, SessionControl,
 
     @Override
     public CompletableFuture<List<SessionConfigOption>> loadSessionFromServer(String sessionId, String cwd) {
-        LOG.fine("loadSessionFromServer: called with {0}, cwd={1}", sessionId, cwd);
+        return loadSessionFromServer(sessionId, cwd, false);
+    }
+
+    /**
+     * @param forceLoad when true, always use {@code session/load} so the harness
+     *                  replays the full history; {@code session/resume} is never used.
+     */
+    private CompletableFuture<List<SessionConfigOption>> loadSessionFromServer(
+            String sessionId, String cwd, boolean forceLoad) {
+        LOG.fine("loadSessionFromServer: called with {0}, cwd={1}, forceLoad={2}", sessionId, cwd, forceLoad);
         final long start = System.nanoTime();
-        return withMcpFallback("session/load",
-                () -> withStartupRetry("session/load",
-                        () -> sendLoadSessionRequest(sessionId, cwd, start), 0), start)
+        final boolean resume = !forceLoad && shouldResumeExisting(sessionId, cwd);
+        final String operation = resume ? "session/resume" : "session/load";
+        return withMcpFallback(operation,
+                () -> withStartupRetry(operation,
+                        () -> sendLoadSessionRequest(sessionId, cwd, start, forceLoad), 0), start)
                 .handle((res, ex) -> {
                     if (ex == null) {
                         return res;
                     }
-                    if (isMethodNotFound(ex)) {
+                    if (!resume && isMethodNotFound(ex)) {
                         processManager.markSessionLoadUnsupported();
                         LOG.warn("Harness does not implement session/load; session reload/restore disabled "
                                 + "for this server process");
@@ -969,8 +980,7 @@ public class SessionManager implements SessionQuery, SessionControl,
                     // Agents may fail session/load while the session itself stays
                     // open; keep the existing behaviour of completing with no
                     // options rather than tearing the session down.
-                    LOG.warn("loadSessionFromServer: error: {0}",
-                            ExceptionUtils.getMessage(ex), ex);
+                    LOG.warn("{0}: error: {1}", operation, ExceptionUtils.getMessage(ex), ex);
                     return null;
                 });
     }
@@ -986,7 +996,22 @@ public class SessionManager implements SessionQuery, SessionControl,
                 && loadedSessionGeneration == processManager.serverGeneration();
     }
 
-    private CompletableFuture<List<SessionConfigOption>> sendLoadSessionRequest(String sessionId, String cwd, long start) {
+    /**
+     * True when the session is already live on this server process and the agent
+     * advertises {@code session/resume}. Resuming reattaches the existing transcript
+     * without replaying it, which is what the UI already shows; a load would replay
+     * every message and clear/rebuild the thread.
+     */
+    private boolean shouldResumeExisting(String sessionId, String cwd) {
+        return cwd != null
+                && sessionId != null
+                && processManager.isSessionResumeSupported()
+                && shouldCloseBeforeLoad(sessionId);
+    }
+
+    private CompletableFuture<List<SessionConfigOption>> sendLoadSessionRequest(
+            String sessionId, String cwd, long start, boolean forceLoad) {
+        boolean resumeExisting = !forceLoad && shouldResumeExisting(sessionId, cwd);
         return processManager.whenReady()
                 .thenCompose(v -> processManager.getToolExecutor().waitForReady())
                 .orTimeout(2, TimeUnit.MINUTES)
@@ -994,12 +1019,14 @@ public class SessionManager implements SessionQuery, SessionControl,
                 // work. Cancelling/closing any other session cancels the load that
                 // follows (omp: "ACP session load was cancelled"), so the switch
                 // path goes straight to session/load.
-                .thenCompose(v -> shouldCloseBeforeLoad(sessionId)
+                // A resume reattaches the live session in place, so it must not
+                // cancel/close the session it is resuming.
+                .thenCompose(v -> !resumeExisting && shouldCloseBeforeLoad(sessionId)
                         ? rpcClient.closeBeforeLoad(sessionId)
                         : CompletableFuture.completedFuture(null))
-                .thenCompose(v -> {
-                    return rpcClient.loadSessionFromServer(sessionId, cwd);
-                })
+                .thenCompose(v -> resumeExisting
+                        ? rpcClient.resumeSession(sessionId, cwd)
+                        : rpcClient.loadSessionFromServer(sessionId, cwd))
                 .thenApply(res -> {
                     long durationMs = (System.nanoTime() - start) / 1_000_000;
                     // Record only on success: this thenApply is skipped on error.
@@ -1243,7 +1270,13 @@ public class SessionManager implements SessionQuery, SessionControl,
 
     @Override
     public boolean loadSession(String sessionId) {
-        return loadSession(sessionId, false);
+        return loadSession(sessionId, false, false);
+    }
+
+    /** Replays a session's full history via session/load, even when resume is available. */
+    @Override
+    public boolean reloadSession(String sessionId) {
+        return loadSession(sessionId, false, true);
     }
 
     @Override
@@ -1253,6 +1286,10 @@ public class SessionManager implements SessionQuery, SessionControl,
 
     @Override
     public boolean loadSession(String sessionId, boolean isStartup) {
+        return loadSession(sessionId, isStartup, false);
+    }
+
+    private boolean loadSession(String sessionId, boolean isStartup, boolean forceLoad) {
         if (processManager.isSessionLoadUnsupported()) {
             // Discovered on a previous call; do not clear the current session or
             // re-issue a request the process already answered with -32601. Announce
@@ -1266,13 +1303,6 @@ public class SessionManager implements SessionQuery, SessionControl,
             LOG.warn("Cannot load session in state {0}", stateMachine.getState());
             return false;
         }
-        // Post clearMessages() to EDT first, then set currentSessionId,
-        // so SSE messages for the new session always arrive after the
-        // old session's bubbles have been cleared.
-        notifySessionStarted(sessionId);
-        this.currentSessionId = sessionId;
-        notifySessionProgress(10);
-
         // Look up session directory from cache
         String sessionCwd = cacheManager.getCachedSessions().stream()
                 .filter(s -> s.id().equals(sessionId))
@@ -1295,6 +1325,20 @@ public class SessionManager implements SessionQuery, SessionControl,
                 workingCwd = openDirs.get(0);
             }
         }
+
+        // Resuming a session this process already has live reattaches it without
+        // replaying history, so the thread must NOT be cleared first. Any other
+        // target is a switch and needs the load replay.
+        boolean resumeExisting = !forceLoad && shouldResumeExisting(sessionId, workingCwd);
+        if (!resumeExisting) {
+            // Post clearMessages() to EDT first, then set currentSessionId,
+            // so SSE messages for the new session always arrive after the
+            // old session's bubbles have been cleared.
+            notifySessionStarted(sessionId);
+        }
+        this.currentSessionId = sessionId;
+        notifySessionProgress(10);
+
         if (workingCwd == null && tracksSessionsLocally()) {
             this.currentSessionId = null;
             stateMachine.transitionTo(SessionState.IDLE);
@@ -1312,7 +1356,7 @@ public class SessionManager implements SessionQuery, SessionControl,
             final String cwd = workingCwd;
             CompletableFuture<Void> prepared = prepareSessionLoad(sessionId, cwd);
             prepared
-                    .thenCompose(v -> loadSessionFromServer(sessionId, cwd))
+                    .thenCompose(v -> loadSessionFromServer(sessionId, cwd, forceLoad))
                     .thenAccept(configOptions -> {
                         if (processManager.isSessionLoadUnsupported()) {
                             // loadSessionFromServer mapped -32601 to a null result;
@@ -1416,6 +1460,48 @@ public class SessionManager implements SessionQuery, SessionControl,
     @Override
     public boolean canDeleteSession() {
         return processManager.isSessionDeleteSupported();
+    }
+
+    @Override
+    public boolean canForkSession() {
+        return processManager.isSessionForkSupported();
+    }
+
+    @Override
+    public CompletableFuture<String> forkSession(String sessionId) {
+        if (isBlank(sessionId)) {
+            return CompletableFuture.completedFuture(null);
+        }
+        if (!processManager.isSessionForkSupported()) {
+            LOG.info("Harness does not advertise session/fork; not forking {0}", sessionId);
+            return CompletableFuture.completedFuture(null);
+        }
+        String cwd = cachedSessionCwd(sessionId);
+        return rpcClient.forkSession(sessionId, cwd).handle((res, ex) -> {
+            if (ex != null) {
+                LOG.warn("Failed to fork session {0}: {1}",
+                        sessionId, ExceptionUtils.getMessage(ex));
+                return null;
+            }
+            String forkedId = res != null && res.hasNonNull("sessionId")
+                    ? res.get("sessionId").asText() : null;
+            if (forkedId == null) {
+                LOG.warn("session/fork for {0} returned no sessionId", sessionId);
+                return null;
+            }
+            // The dropdown must know the new row before it is selected.
+            refreshSessions();
+            return forkedId;
+        });
+    }
+
+    /** Cached working directory for a session, falling back to the last project dir. */
+    private String cachedSessionCwd(String sessionId) {
+        return cacheManager.getCachedSessions().stream()
+                .filter(s -> s.id().equals(sessionId))
+                .findFirst()
+                .map(s -> s.cwd() != null ? s.cwd() : s.directory())
+                .orElse(lastProjectDir);
     }
 
     @Override

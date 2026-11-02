@@ -164,6 +164,43 @@ class SessionRpcClientTest {
     }
 
     @Test
+    void forkSessionUsesTheStandardMethod() {
+        stubSessionCapabilities();
+        when(processManager.sendRequest(eq("session/fork"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
+
+        client.forkSession("sid", "/cwd").join();
+
+        ArgumentCaptor<Object> params = ArgumentCaptor.forClass(Object.class);
+        verify(processManager).sendRequest(eq("session/fork"), params.capture(), eq(2L),
+                eq(TimeUnit.MINUTES));
+        Map<?, ?> sent = (Map<?, ?>) params.getValue();
+        assertEquals("sid", sent.get("sessionId"));
+        assertEquals("/cwd", sent.get("cwd"));
+    }
+
+    @Test
+    void resumeSessionUsesTheStandardMethod() {
+        stubSessionCapabilities();
+        when(processManager.sendRequest(eq("session/resume"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
+
+        client.resumeSession("sid", "/cwd").join();
+
+        ArgumentCaptor<Object> params = ArgumentCaptor.forClass(Object.class);
+        verify(processManager).sendRequest(eq("session/resume"), params.capture(), eq(2L),
+                eq(TimeUnit.MINUTES));
+        Map<?, ?> sent = (Map<?, ?>) params.getValue();
+        assertEquals("sid", sent.get("sessionId"));
+        assertEquals("/cwd", sent.get("cwd"));
+    }
+
+    private void stubSessionCapabilities() {
+        when(processManager.getCapabilities()).thenReturn(HarnessCatalog.UNKNOWN);
+        when(processManager.getToolExecutor()).thenReturn(createMockToolExecutor());
+    }
+
+    @Test
     void closeBeforeLoadCancelsThenClosesWhenAdvertised() {
         when(processManager.isSessionCloseSupported()).thenReturn(true);
         when(processManager.sendRequest(eq("session/close"), any(), eq(30L), eq(TimeUnit.SECONDS)))

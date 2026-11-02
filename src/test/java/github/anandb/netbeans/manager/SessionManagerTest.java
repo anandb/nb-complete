@@ -969,6 +969,49 @@ class SessionManagerTest {
     }
 
     @Test
+    void reloadingTheLoadedSessionUsesResumeWhenAdvertised() throws Exception {
+        when(processManager.isSessionResumeSupported()).thenReturn(true);
+        when(processManager.serverGeneration()).thenReturn(1L);
+        when(processManager.sendRequest(eq("session/resume"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
+        seedCachedSession("s1", "/p");
+        stubSessionLoad(mapper.createObjectNode());
+        sessionManager.addSessionListener(mockListener());
+
+        assertTrue(sessionManager.loadSession("s1"));
+        awaitLoaded("s1");
+        clearInvocations(processManager);
+
+        assertTrue(sessionManager.loadSession("s1"));
+        verify(processManager, timeout(2000)).sendRequest(eq("session/resume"), any(),
+                eq(2L), eq(TimeUnit.MINUTES));
+        verify(processManager, never()).sendRequest(eq("session/load"), any(),
+                eq(2L), eq(TimeUnit.MINUTES));
+    }
+
+    @Test
+    void reloadSessionForcesLoadEvenWhenResumeIsAdvertised() throws Exception {
+        when(processManager.isSessionResumeSupported()).thenReturn(true);
+        when(processManager.isSessionCloseSupported()).thenReturn(true);
+        when(processManager.serverGeneration()).thenReturn(1L);
+        when(processManager.sendRequest(eq("session/close"), any(), eq(30L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
+        seedCachedSession("s1", "/p");
+        stubSessionLoad(mapper.createObjectNode());
+        sessionManager.addSessionListener(mockListener());
+
+        assertTrue(sessionManager.loadSession("s1"));
+        awaitLoaded("s1");
+        clearInvocations(processManager);
+
+        assertTrue(sessionManager.reloadSession("s1"));
+        verify(processManager, timeout(2000)).sendRequest(eq("session/load"), any(),
+                eq(2L), eq(TimeUnit.MINUTES));
+        verify(processManager, never()).sendRequest(eq("session/resume"), any(),
+                eq(2L), eq(TimeUnit.MINUTES));
+    }
+
+    @Test
     void aRestartedServerDoesNotCloseASessionItNeverLoaded() throws Exception {
         when(processManager.isSessionCloseSupported()).thenReturn(true);
         when(processManager.serverGeneration()).thenReturn(1L);
@@ -1743,6 +1786,37 @@ class SessionManagerTest {
         assertFalse(sessionManager.deleteSession("s1").get(5, TimeUnit.SECONDS));
         assertEquals(1, cacheManager().getCachedSessions().size(),
                 "a failed delete must not hide a session that still exists");
+    }
+
+    @Test
+    void forkSessionIsRefusedWhenTheAgentCannotFork() throws Exception {
+        when(processManager.isSessionForkSupported()).thenReturn(false);
+
+        assertNull(sessionManager.forkSession("s1").get(5, TimeUnit.SECONDS),
+                "no capability means no fork id");
+        verify(processManager, never()).sendRequest(eq("session/fork"), any(), anyLong(),
+                any(TimeUnit.class));
+    }
+
+    @Test
+    void forkSessionReturnsTheNewSessionId() throws Exception {
+        when(processManager.isSessionForkSupported()).thenReturn(true);
+        ObjectNode response = mapper.createObjectNode().put("sessionId", "s1-fork");
+        when(processManager.sendRequest(eq("session/fork"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(CompletableFuture.completedFuture(response));
+
+        assertEquals("s1-fork", sessionManager.forkSession("s1").get(5, TimeUnit.SECONDS));
+        verify(processManager).sendRequest(eq("session/fork"), any(), eq(2L),
+                eq(TimeUnit.MINUTES));
+    }
+
+    @Test
+    void aFailedForkReturnsNoSessionId() throws Exception {
+        when(processManager.isSessionForkSupported()).thenReturn(true);
+        when(processManager.sendRequest(eq("session/fork"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("nope")));
+
+        assertNull(sessionManager.forkSession("s1").get(5, TimeUnit.SECONDS));
     }
 
     @Test

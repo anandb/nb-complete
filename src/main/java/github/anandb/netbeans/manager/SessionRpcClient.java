@@ -80,6 +80,28 @@ final class SessionRpcClient {
         return processManager.sendRequest("session/delete", params, 30, TimeUnit.SECONDS);
     }
 
+    /** Standard {@code session/fork}; the caller gates on the advertised capability. */
+    CompletableFuture<JsonNode> forkSession(String sessionId, String cwd) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("sessionId", sessionId);
+        if (cwd != null) {
+            params.put("cwd", cwd);
+        }
+        params.put("mcpServers", caps().sendsMcpServerConfig()
+                ? processManager.getToolExecutor().getServerConfig() : List.of());
+        return processManager.sendRequest("session/fork", params, 2, TimeUnit.MINUTES);
+    }
+
+    /** Standard {@code session/resume}; the caller gates on the advertised capability. */
+    CompletableFuture<JsonNode> resumeSession(String sessionId, String cwd) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("sessionId", sessionId);
+        params.put("cwd", cwd);
+        params.put("mcpServers", caps().sendsMcpServerConfig()
+                ? processManager.getToolExecutor().getServerConfig() : List.of());
+        return processManager.sendRequest("session/resume", params, 2, TimeUnit.MINUTES);
+    }
+
     CompletableFuture<JsonNode> createSession(String cwd) {
         Map<String, Object> params = new HashMap<>();
         params.put("cwd", cwd);

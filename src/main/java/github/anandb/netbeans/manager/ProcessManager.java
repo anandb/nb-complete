@@ -541,6 +541,16 @@ public class ProcessManager implements ProcessControl {
         return serverLifecycle.isSessionDeleteSupported();
     }
 
+    /** Whether the agent advertised {@code sessionCapabilities.fork}. */
+    public boolean isSessionForkSupported() {
+        return serverLifecycle.isSessionForkSupported();
+    }
+
+    /** Whether the agent advertised {@code sessionCapabilities.resume}. */
+    public boolean isSessionResumeSupported() {
+        return serverLifecycle.isSessionResumeSupported();
+    }
+
     /** True once this server process rejected {@code session/load} as unknown. */
     public boolean isSessionLoadUnsupported() {
         return serverLifecycle.isSessionLoadUnsupported();

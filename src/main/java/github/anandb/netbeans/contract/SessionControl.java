@@ -36,6 +36,15 @@ public interface SessionControl extends SessionQuery {
     /** Loads an existing session, optionally marking it as a startup load. Returns true if load starts successfully. */
     boolean loadSession(String sessionId, boolean isStartup);
 
+    /**
+     * Replays a session's full history from the server ({@code session/load}) even
+     * when the agent advertises {@code session/resume}. Used by toolbar reload and
+     * "show all messages", which need the complete transcript rather than a resume.
+     */
+    default boolean reloadSession(String sessionId) {
+        return loadSession(sessionId);
+    }
+
     /** Sets a configuration option for a session. */
     CompletableFuture<Void> setSessionConfigOption(String sessionId, String configId, String value);
 
@@ -59,6 +68,20 @@ public interface SessionControl extends SessionQuery {
 
     /** True when the harness advertised {@code session/delete}, so deleting is offered. */
     default boolean canDeleteSession() {
+        return false;
+    }
+
+    /**
+     * Forks a session on the server and completes with the new session id, or
+     * {@code null} when the harness does not advertise {@code session/fork} or the
+     * call failed. The caller decides whether to switch to the fork.
+     */
+    default CompletableFuture<String> forkSession(String sessionId) {
+        return CompletableFuture.completedFuture(null);
+    }
+
+    /** True when the harness advertised {@code session/fork}, so forking is offered. */
+    default boolean canForkSession() {
         return false;
     }
 

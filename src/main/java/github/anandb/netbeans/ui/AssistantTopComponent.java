@@ -537,6 +537,31 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                         setStatus(deleted ? "STATUS_SessionDeleted" : "STATUS_DeleteSessionFailed")));
     }
 
+    /**
+     * Forks a session on the agent and switches to the new branch. Forking is
+     * non-destructive (the original stays), so no confirmation is needed; a
+     * refused or failed call is reported instead of switching.
+     */
+    void forkSession(String sessionId) {
+        if (isBlank(sessionId)) {
+            return;
+        }
+        SessionControl sc = sessionService.get();
+        if (!sc.canForkSession()) {
+            setStatus("STATUS_ForkSessionUnsupported");
+            return;
+        }
+        sc.forkSession(sessionId).thenAccept(forkedId ->
+                SwingUtilities.invokeLater(() -> {
+                    if (forkedId == null) {
+                        setStatus("STATUS_ForkSessionFailed");
+                        return;
+                    }
+                    setStatus("STATUS_SessionForked");
+                    sessionService.get().loadSession(forkedId);
+                }));
+    }
+
     private String selectedIdToTitle(Session session) {
         String title = defaultIfBlank(session.title(), NbBundle.getMessage(AssistantTopComponent.class, "LBL_ChatDefault", left(session.id(), 8)));
         return sessionService.get().getCustomTitle(session.id(), title);
@@ -769,7 +794,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     void reloadCurrentSession() {
         String currentId = sessionService.get().getCurrentSessionId();
         if (currentId != null) {
-            sessionService.get().loadSession(currentId);
+            // A toolbar reload needs the full transcript, so it must replay via
+            // session/load even when the agent allows session/resume.
+            sessionService.get().reloadSession(currentId);
         }
     }
 

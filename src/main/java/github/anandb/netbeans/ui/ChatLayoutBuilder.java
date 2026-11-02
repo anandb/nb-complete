@@ -190,6 +190,12 @@ final class ChatLayoutBuilder {
                     rename.addActionListener(ev -> topComponent.renameCurrentSession());
                     add(rename);
 
+                    JMenuItem fork = new JMenuItem(NbBundle.getMessage(ChatLayoutBuilder.class, "LBL_ForkSession"));
+                    var forkSc = Lookup.getDefault().lookup(SessionControl.class);
+                    fork.setEnabled(forkSc != null && forkSc.canForkSession());
+                    fork.addActionListener(ev -> topComponent.forkSession(sessionId));
+                    add(fork);
+
                     if (tmpSc != null) {
                         boolean hidden = tmpSc.isHidden(sessionId);
                         String archiveText = NbBundle.getMessage(ChatLayoutBuilder.class,
