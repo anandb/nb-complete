@@ -910,6 +910,81 @@ class H2UsageStatsStoreTest {
     }
 
     @Test
+    void aHistoryEntryThatFailsToStoreKeepsItsKeyAndTheMarkerUnset() throws Exception {
+        clearMigratedPrefs();
+        Preferences root = prefs();
+        root.put(PreferenceKeys.INPUT_HISTORY_COUNT, "2");
+        root.put(PreferenceKeys.INPUT_HISTORY_PREFIX + "0", "stored");
+        root.put(PreferenceKeys.INPUT_HISTORY_PREFIX + "1", "far-too-long-for-the-check");
+        root.flush();
+        // Stands in for a transient write failure: this one entry cannot be stored.
+        store.load();
+        execute("ALTER TABLE input_history ADD CONSTRAINT history_fits CHECK (LENGTH(text) < 10)");
+
+        MigrationReport report = store.migrateLegacyPrefs();
+
+        assertEquals(1, report.migrated(), "the storable entry still migrates");
+        assertEquals(1, report.skipped());
+        assertEquals(List.of("stored"), store.inputHistory());
+        assertEquals("far-too-long-for-the-check",
+                root.get(PreferenceKeys.INPUT_HISTORY_PREFIX + "1", null),
+                "an entry that never reached the database must keep its only copy");
+        assertNull(root.get(PreferenceKeys.INPUT_HISTORY_PREFIX + "0", null),
+                "the entry that did reach it is superseded");
+        assertEquals(0, scalarLong("SELECT COUNT(*) FROM usage_meta WHERE meta_key = 'prefs_migrated'"),
+                "a failed write must leave the marker unset, or the next launch could never retry");
+    }
+
+    @Test
+    void aFailedRowAndItsFoldedKeysAreRetriedOnTheNextLaunch() throws Exception {
+        clearMigratedPrefs();
+        Preferences node = prefs().node("sessmeta_omp");
+        node.put("s1", "{\"title\":\"A\",\"cwd\":\"/p\"}");
+        node.put("s2", "{\"title\":\"B\",\"cwd\":\"/a-longer-project-path\"}");
+        prefs().put("session_hidden_s2", "true");
+        prefs().flush();
+        // A transient write failure: for now no cwd of that length may be stored.
+        store.load();
+        execute("ALTER TABLE session_meta ADD CONSTRAINT cwd_fits CHECK (cwd IS NULL OR LENGTH(cwd) < 8)");
+
+        MigrationReport first = store.migrateLegacyPrefs();
+
+        assertEquals(1, first.migrated());
+        assertEquals(1, first.skipped());
+        assertEquals(0, scalarLong("SELECT COUNT(*) FROM usage_meta WHERE meta_key = 'prefs_migrated'"),
+                "the marker waits for a run that stored everything");
+        assertEquals("true", prefs().get("session_hidden_s2", null),
+                "a value only the failed bucket holds must survive");
+        assertTrue(hasChildNode("sessmeta_omp"), "so must the row's own node");
+
+        execute("ALTER TABLE session_meta DROP CONSTRAINT cwd_fits");
+        store.migrateLegacyPrefs();
+
+        assertEquals(2, store.sessionMetadata("omp").size(), "the retry writes what the failed run could not");
+        assertEquals("B", store.sessionMetadata("omp").get("s2").title());
+        assertTrue(store.sessionMetadata("omp").get("s2").hidden(), "with the folded flag");
+        assertEquals(1, scalarLong("SELECT COUNT(*) FROM usage_meta WHERE meta_key = 'prefs_migrated'"),
+                "and only now may the marker be recorded");
+        assertFalse(hasChildNode("sessmeta_omp"), "the node goes with it");
+        assertNull(prefs().get("session_hidden_s2", null), "and so does the folded key it carried");
+    }
+
+    @Test
+    void migrationLeavesKeysItDoesNotOwnAlone() throws Exception {
+        clearMigratedPrefs();
+        Preferences root = prefs();
+        root.put("acpHarnessId", "keep-me");
+        root.put(PreferenceKeys.INPUT_HISTORY_PREFIX + "0", "gone");
+        root.flush();
+
+        store.migrateLegacyPrefs();
+
+        assertEquals("keep-me", root.get("acpHarnessId", null),
+                "a root key outside the legacy families must never be touched");
+        assertNull(root.get(PreferenceKeys.INPUT_HISTORY_PREFIX + "0", null));
+    }
+
+    @Test
     void writeBeforeTheCacheLoadsKeepsTheStoredFields() {
         // Seed a row through a store whose cache has loaded, so the database holds it.
         store.saveSessionMetadata("omp", "s1", new SessionMetadata("Saved", "10,20", true, "/p"));

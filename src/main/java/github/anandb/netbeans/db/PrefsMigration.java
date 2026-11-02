@@ -35,9 +35,10 @@ import github.anandb.netbeans.support.PreferenceKeys;
  * per database, guarded by one marker per dataset. Containment is per entry:
  * a value that will not parse is counted in the report and its key left in
  * place, while everything else migrates. Order matters: rows first, then the
- * marker, then the preference data is deleted — and only when the marker was
- * recorded, so a database that cannot be written never costs the user their
- * data.
+ * marker, then the preference data is deleted — and only for the entries whose
+ * value reached the database, so a database that cannot be written never costs
+ * the user their data. A failed write is retryable, so it leaves the marker
+ * unset and the next launch retries what it kept.
  */
 final class PrefsMigration {
 
@@ -97,8 +98,11 @@ final class PrefsMigration {
      * exception, so a damaged legacy file can never block startup.</p>
      *
      * <p>Order matters: rows are written first, then the marker, then the
-     * preference data is deleted — and only when the marker was recorded, so a
-     * database that cannot be written never costs the user their data.</p>
+     * preference data is deleted, and only for the entries whose value reached the
+     * database — so a database that cannot be written never costs the user their
+     * data. A skipped value is final, so it does not stop the marker; a failed
+     * write is not, so it leaves the marker unset and the next launch retries what
+     * it kept.</p>
      */
     MigrationReport runPrefsMigration(Db db) {
         if (!db.ensureDatabase()) {
@@ -110,26 +114,35 @@ final class PrefsMigration {
         List<String> reasons = new ArrayList<>();
         int[] migrated = {0};
         int[] skipped = {0};
+        int[] writeFailures = {0};
         Preferences root = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
 
         if (!isMigrated(db, PREFS_MIGRATED_KEY)) {
             Set<String> bucketsToKeep = new LinkedHashSet<>();
-            migrateHistory(db, root, migrated, skipped, reasons);
+            Set<String> historyKeys = migrateHistory(db, root, migrated, skipped, writeFailures, reasons);
             List<String> metaNodes = childNodeNames(root, LEGACY_META_NODE, reasons);
             List<String> idNodes = childNodeNames(root, LEGACY_IDS_NODE, reasons);
             Map<String, Map<String, SessionMetadata>> byHarness =
                     readLegacyMetadata(root, metaNodes, skipped, reasons, bucketsToKeep);
             Map<String, Map<String, Long>> legacyIds = readLegacyIds(root, idNodes, reasons);
-            foldLegacyRootKeys(root, byHarness, skipped, reasons);
-            bucketsToKeep.addAll(
-                    writeMigratedMetadata(db, byHarness, legacyIds, migrated, skipped, reasons));
+            Map<String, Set<String>> foldedKeys = foldLegacyRootKeys(root, byHarness, skipped, reasons);
+            Set<String> failedBuckets =
+                    writeMigratedMetadata(db, byHarness, legacyIds, migrated, skipped, reasons);
+            bucketsToKeep.addAll(failedBuckets);
 
-            boolean recorded = markMigrated(db, PREFS_MIGRATED_KEY);
-            if (recorded) {
-                deleteLegacyPreferences(root, metaNodes, idNodes, bucketsToKeep, reasons);
-            } else {
+            // A parse skip is final, a write failure is not: only a run that stored
+            // everything may record the marker, so the next launch retries the rest.
+            boolean stored = writeFailures[0] == 0 && failedBuckets.isEmpty();
+            if (stored && !markMigrated(db, PREFS_MIGRATED_KEY)) {
                 log.log(Level.WARNING,
                         "Preference migration could not record its marker; leaving preferences untouched");
+            } else {
+                deleteLegacyPreferences(root, metaNodes, idNodes, bucketsToKeep, historyKeys,
+                        foldedKeys, failedBuckets, reasons);
+                if (!stored) {
+                    log.log(Level.WARNING,
+                            "Preference migration could not store every entry; retrying on the next launch");
+                }
             }
         }
 
@@ -200,6 +213,7 @@ final class PrefsMigration {
             }
         }
         List<String> written = new ArrayList<>();
+        int failures = 0;
         for (Map.Entry<String, List<String>> entry : parsed.entrySet()) {
             try {
                 Set<String> ids = new LinkedHashSet<>(entry.getValue());
@@ -208,11 +222,15 @@ final class PrefsMigration {
                 written.add(entry.getKey());
                 migrated[0]++;
             } catch (SQLException e) {
+                failures++;
                 skipped[0]++;
                 addReason(reasons, "pinned messages: " + entry.getKey() + ": could not be stored");
             }
         }
-        if (!markMigrated(db, PINNED_MIGRATED_KEY)) {
+        if (failures > 0) {
+            log.log(Level.WARNING,
+                    "Could not store every pinned-message entry; retrying on the next launch");
+        } else if (!markMigrated(db, PINNED_MIGRATED_KEY)) {
             log.log(Level.WARNING, "Could not record the pinned-message migration marker");
             return;
         }
@@ -251,17 +269,21 @@ final class PrefsMigration {
         }
         long now = System.currentTimeMillis();
         List<String> written = new ArrayList<>();
+        int failures = 0;
         for (Map.Entry<String, List<AvailableModel>> entry : parsed.entrySet()) {
             try {
                 db.pins().replaceModels(db.pinDb(), entry.getKey(), PinModelDatasets.stamp(entry.getValue(), now));
                 written.add(entry.getKey());
                 migrated[0]++;
             } catch (SQLException e) {
+                failures++;
                 skipped[0]++;
                 addReason(reasons, "model list: " + entry.getKey() + ": could not be stored");
             }
         }
-        if (!markMigrated(db, MODELS_MIGRATED_KEY)) {
+        if (failures > 0) {
+            log.log(Level.WARNING, "Could not store every model list entry; retrying on the next launch");
+        } else if (!markMigrated(db, MODELS_MIGRATED_KEY)) {
             log.log(Level.WARNING, "Could not record the model-list migration marker");
             return;
         }
@@ -289,54 +311,73 @@ final class PrefsMigration {
         }
     }
 
-    private void migrateHistory(Db db, Preferences root, int[] migrated, int[] skipped, List<String> reasons) {
-        if (db.sessions().historyRowCount(db.sessionDb()) > 0) {
-            // Rows are already there, so a previous run inserted them — the absent
-            // marker only means that run was interrupted before it finished. Plain
-            // INSERTs are not absorbed by an upsert, so importing again would
-            // duplicate every entry.
-            return;
-        }
-        Map<Integer, String> byPosition = new TreeMap<>();
+    /**
+     * Copies the {@code inputHistory.*} keys into {@code input_history}.
+     *
+     * @return the keys whose value reached the database, plus the ones the history cap
+     *         drops. Every other key stays in preferences: a failed insert (a partial
+     *         import cannot be resumed without duplicating entries), an unreadable
+     *         position, and a table that already holds rows are all reasons to keep it.
+     */
+    private Set<String> migrateHistory(Db db, Preferences root, int[] migrated, int[] skipped,
+                                      int[] writeFailures, List<String> reasons) {
+        Set<String> consumed = new LinkedHashSet<>();
+        List<String> historyKeys = new ArrayList<>();
         try {
             for (String key : root.keys()) {
-                if (!key.startsWith(PreferenceKeys.INPUT_HISTORY_PREFIX)
-                        || key.equals(PreferenceKeys.INPUT_HISTORY_COUNT)) {
-                    continue;
+                if (key.startsWith(PreferenceKeys.INPUT_HISTORY_PREFIX)
+                        && !key.equals(PreferenceKeys.INPUT_HISTORY_COUNT)) {
+                    historyKeys.add(key);
                 }
-                String value = root.get(key, null);
-                if (value == null) {
-                    continue;
-                }
-                Integer position = SessionDatasets.parseIntOrNull(key.substring(PreferenceKeys.INPUT_HISTORY_PREFIX.length()));
-                if (position == null) {
-                    skipped[0]++;
-                    addReason(reasons, "history entry " + key + ": unreadable position");
-                    continue;
-                }
-                byPosition.put(position, value);
             }
         } catch (BackingStoreException e) {
             skipped[0]++;
             addReason(reasons, "input history: could not be listed: " + e.getMessage());
-            return;
+            return consumed;
+        }
+        if (db.sessions().historyRowCount(db.sessionDb()) > 0) {
+            // Rows are already there, so a previous run inserted them — the absent
+            // marker only means that run was interrupted before it finished. Plain
+            // INSERTs are not absorbed by an upsert, so importing again would
+            // duplicate every entry. Nothing was imported now, so no key may go.
+            return consumed;
+        }
+        Map<Integer, String> byPosition = new TreeMap<>();
+        Map<Integer, String> keyByPosition = new TreeMap<>();
+        for (String key : historyKeys) {
+            String value = root.get(key, null);
+            if (value == null) {
+                continue;
+            }
+            Integer position = SessionDatasets.parseIntOrNull(key.substring(PreferenceKeys.INPUT_HISTORY_PREFIX.length()));
+            if (position == null) {
+                skipped[0]++;
+                addReason(reasons, "history entry " + key + ": unreadable position");
+                continue;
+            }
+            byPosition.put(position, value);
+            keyByPosition.put(position, key);
         }
         // Position 0 is the oldest, so writing in position order keeps the
         // auto-increment sequence newest-last, which is the exposed order.
-        List<String> entries = new ArrayList<>(byPosition.values());
-        while (entries.size() > HISTORY_CAP) {
-            entries.remove(0);
+        while (byPosition.size() > HISTORY_CAP) {
+            Integer dropped = byPosition.keySet().iterator().next();
+            byPosition.remove(dropped);
+            consumed.add(keyByPosition.remove(dropped));
         }
-        for (String entry : entries) {
+        for (Map.Entry<Integer, String> entry : byPosition.entrySet()) {
             try (PreparedStatement ps = db.connection().prepareStatement(Sql.get("insert_input_history"))) {
-                ps.setString(1, entry);
+                ps.setString(1, entry.getValue());
                 ps.executeUpdate();
+                consumed.add(keyByPosition.get(entry.getKey()));
                 migrated[0]++;
             } catch (SQLException e) {
+                writeFailures[0]++;
                 skipped[0]++;
                 addReason(reasons, "history entry: " + e.getMessage());
             }
         }
+        return consumed;
     }
 
     /** Child node names belonging to one legacy family, e.g. {@code sessmeta} and {@code sessmeta_x}. */
@@ -419,15 +460,17 @@ final class PrefsMigration {
      * They predate the harness id, so a key is applied to every bucket that
      * already holds that session; one held by no bucket lands in the bucket for
      * an unconfigured harness, which is where the old reader would have put it.
+     *
+     * @return each folded key's harness buckets, so a bucket whose row never reached
+     *         the database can keep the keys only it still holds
      */
-    private static void foldLegacyRootKeys(Preferences root,
-                                           Map<String, Map<String, SessionMetadata>> byHarness,
-                                           int[] skipped, List<String> reasons) {
+    private static Map<String, Set<String>> foldLegacyRootKeys(
+            Preferences root, Map<String, Map<String, SessionMetadata>> byHarness,
+            int[] skipped, List<String> reasons) {
+        Map<String, Set<String>> folded = new LinkedHashMap<>();
         try {
             for (String key : root.keys()) {
-                String prefix = key.startsWith(LEGACY_TITLE_PREFIX) ? LEGACY_TITLE_PREFIX
-                        : key.startsWith(LEGACY_HIDDEN_PREFIX) ? LEGACY_HIDDEN_PREFIX
-                        : key.startsWith(LEGACY_USAGE_PREFIX) ? LEGACY_USAGE_PREFIX : null;
+                String prefix = legacyFoldPrefix(key);
                 if (prefix == null) {
                     continue;
                 }
@@ -435,25 +478,38 @@ final class PrefsMigration {
                 if (value == null) {
                     continue;
                 }
-                applyLegacyValue(byHarness, key.substring(prefix.length()), prefix, value);
+                folded.put(key, applyLegacyValue(byHarness, key.substring(prefix.length()), prefix, value));
             }
         } catch (BackingStoreException e) {
             skipped[0]++;
             addReason(reasons, "per-session keys: could not be listed: " + e.getMessage());
         }
+        return folded;
     }
 
-    private static void applyLegacyValue(Map<String, Map<String, SessionMetadata>> byHarness,
-                                         String sessionId, String prefix, String value) {
-        boolean matched = false;
-        for (Map<String, SessionMetadata> sessions : byHarness.values()) {
-            SessionMetadata current = sessions.get(sessionId);
+    /** The folded root-key family {@code key} belongs to, or null when it belongs to none. */
+    private static String legacyFoldPrefix(String key) {
+        if (key.startsWith(LEGACY_TITLE_PREFIX)) {
+            return LEGACY_TITLE_PREFIX;
+        }
+        if (key.startsWith(LEGACY_HIDDEN_PREFIX)) {
+            return LEGACY_HIDDEN_PREFIX;
+        }
+        return key.startsWith(LEGACY_USAGE_PREFIX) ? LEGACY_USAGE_PREFIX : null;
+    }
+
+    /** @return the buckets the value was folded into. */
+    private static Set<String> applyLegacyValue(Map<String, Map<String, SessionMetadata>> byHarness,
+                                                String sessionId, String prefix, String value) {
+        Set<String> buckets = new LinkedHashSet<>();
+        for (Map.Entry<String, Map<String, SessionMetadata>> entry : byHarness.entrySet()) {
+            SessionMetadata current = entry.getValue().get(sessionId);
             if (current != null) {
-                matched = true;
-                sessions.put(sessionId, withLegacyValue(current, prefix, value));
+                entry.getValue().put(sessionId, withLegacyValue(current, prefix, value));
+                buckets.add(entry.getKey());
             }
         }
-        if (!matched) {
+        if (buckets.isEmpty()) {
             Map<String, SessionMetadata> fallback =
                     byHarness.computeIfAbsent(SessionStore.NO_HARNESS, k -> new LinkedHashMap<>());
             SessionMetadata current = fallback.get(sessionId);
@@ -461,7 +517,9 @@ final class PrefsMigration {
                 current = new SessionMetadata(null, null, false, null);
             }
             fallback.put(sessionId, withLegacyValue(current, prefix, value));
+            buckets.add(SessionStore.NO_HARNESS);
         }
+        return buckets;
     }
 
     private static SessionMetadata withLegacyValue(SessionMetadata current, String prefix, String value) {
@@ -526,11 +584,13 @@ final class PrefsMigration {
      * Removes the migrated and superseded preference data. A bucket is kept, in
      * both node families, when anything in it was not written: the metadata node
      * still holds what could not be recovered, and the id node still holds the
-     * ordering that metadata node needs for a later attempt.
+     * ordering that metadata node needs for a later attempt. A root key goes only
+     * once nothing it still holds lacks a copy in the database.
      */
     private void deleteLegacyPreferences(Preferences root, List<String> metaNodes,
                                          List<String> idNodes, Set<String> bucketsToKeep,
-                                         List<String> reasons) {
+                                         Set<String> historyKeys, Map<String, Set<String>> foldedKeys,
+                                         Set<String> failedBuckets, List<String> reasons) {
         for (String nodeName : idNodes) {
             if (!bucketsToKeep.contains(bucketFromNodeName(nodeName, LEGACY_IDS_NODE))) {
                 removeNode(root, nodeName, reasons);
@@ -542,10 +602,16 @@ final class PrefsMigration {
             }
         }
         try {
-            for (String key : root.keys()) {
-                if (isLegacyRootKey(key)) {
-                    root.remove(key);
+            List<String> keys = List.of(root.keys());
+            boolean historyDropped = keys.stream()
+                    .filter(PrefsMigration::isHistoryKey)
+                    .allMatch(historyKeys::contains);
+            for (String key : keys) {
+                if (!isLegacyRootKey(key)
+                        || retainLegacyRootKey(key, historyKeys, foldedKeys, failedBuckets, historyDropped)) {
+                    continue;
                 }
+                root.remove(key);
             }
             for (String key : OBSOLETE_KEYS) {
                 root.remove(key);
@@ -556,23 +622,46 @@ final class PrefsMigration {
         }
     }
 
-    private static void removeNode(Preferences root, String nodeName, List<String> reasons) {
-        try {
-            root.node(nodeName).removeNode();
-        } catch (BackingStoreException e) {
-            addReason(reasons, nodeName + ": could not be removed: " + e.getMessage());
-        }
+    private static boolean isHistoryKey(String key) {
+        return key.startsWith(PreferenceKeys.INPUT_HISTORY_PREFIX)
+                && !key.equals(PreferenceKeys.INPUT_HISTORY_COUNT);
     }
 
     /** Root keys superseded by the store. */
     private static boolean isLegacyRootKey(String key) {
-        return key.startsWith(PreferenceKeys.INPUT_HISTORY_PREFIX)
+        return isHistoryKey(key)
                 || key.equals(PreferenceKeys.INPUT_HISTORY_COUNT)
                 || key.startsWith(LEGACY_TITLE_PREFIX)
                 || key.startsWith(LEGACY_HIDDEN_PREFIX)
                 || key.startsWith(LEGACY_USAGE_PREFIX)
                 || key.equals(LEGACY_LOCAL_SESSIONS_KEY)
                 || key.startsWith(LEGACY_LOCAL_SESSIONS_KEY + "_");
+    }
+
+    /**
+     * Keeps a root key only while it is the sole copy of something: a history entry
+     * whose insert failed, or a per-session value folded into a bucket that did not
+     * reach the database. Everything else is migrated or superseded and goes.
+     */
+    private static boolean retainLegacyRootKey(String key, Set<String> historyKeys,
+                                               Map<String, Set<String>> foldedKeys,
+                                               Set<String> failedBuckets, boolean historyDropped) {
+        if (key.equals(PreferenceKeys.INPUT_HISTORY_COUNT)) {
+            return !historyDropped;
+        }
+        if (isHistoryKey(key)) {
+            return !historyKeys.contains(key);
+        }
+        Set<String> buckets = foldedKeys.get(key);
+        return buckets != null && buckets.stream().anyMatch(failedBuckets::contains);
+    }
+
+    private static void removeNode(Preferences root, String nodeName, List<String> reasons) {
+        try {
+            root.node(nodeName).removeNode();
+        } catch (BackingStoreException e) {
+            addReason(reasons, nodeName + ": could not be removed: " + e.getMessage());
+        }
     }
 
     /** Retains at most {@link #MAX_REPORT_REASONS} reasons, so a mass failure cannot flood memory. */

@@ -743,8 +743,12 @@ already has `prefs_migrated`, so a shared guard would strand the newer datasets 
 Containment is per entry: an unreadable entry is counted in the `MigrationReport`, its preference key is kept
 for inspection, and startup proceeds — a migration error is never a failure. Order matters and must stay:
 rows first, then the marker, then the deletions, so a database that cannot be written never costs the user
-their data. A marker is set even when entries were skipped, so a corrupt value notifies once rather
-than on every launch.
+their data. Only a run that stored everything records a marker: a *parse* skip is final, so it does not
+stop one (a corrupt value notifies once rather than on every launch), while a *write* failure leaves the
+marker unset so the next launch retries the rest, and only a key whose value reached the database is
+deleted. Input history is the one exception to retry: `input_history` holds plain INSERTs and a partly
+imported set cannot be resumed without duplicating entries, so its failed keys stay in preferences for
+inspection instead of being re-imported.
 
 ### Test NetBeans User Directory
 The build pins `-Dnetbeans.user=target/test-userdir` for the test JVM, because `Places.getUserDirectory()` is
