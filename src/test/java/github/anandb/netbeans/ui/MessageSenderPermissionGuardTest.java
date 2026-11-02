@@ -209,6 +209,43 @@ class MessageSenderPermissionGuardTest {
     }
 
     @Test
+    void failedSteerKeepsTheTurnAliveWhileItIsStillRunning() throws Exception {
+        SessionControl busy = mock(SessionControl.class);
+        when(busy.canSendMessage()).thenReturn(false);
+        when(busy.getCurrentSessionId()).thenReturn(SESSION);
+        inject("sessionService", (SessionService) () -> busy);
+        sender.setTurnEndedCheck(() -> false);
+
+        callOnPromptFailed(0, true, "hello");
+
+        verify(statusController).updateButtonState(true);
+        verify(statusController).armRunWatchdog();
+        verify(chatPanel, never()).stopStreaming();
+    }
+
+    @Test
+    void failedSteerAfterTheTurnEndedTearsTheTurnDown() throws Exception {
+        SessionControl idle = mock(SessionControl.class);
+        when(idle.canSendMessage()).thenReturn(true);
+        when(idle.getCurrentSessionId()).thenReturn(SESSION);
+        inject("sessionService", (SessionService) () -> idle);
+        sender.setTurnEndedCheck(() -> true); // the turn ended between routing and failure
+
+        callOnPromptFailed(0, true, "hello");
+
+        verify(statusController).updateButtonState(false);
+        verify(chatPanel).stopStreaming();
+        verify(statusController, never()).updateButtonState(true);
+    }
+
+    private void callOnPromptFailed(int gen, boolean steeringSend, String text) throws Exception {
+        java.lang.reflect.Method m = MessageSender.class.getDeclaredMethod("onPromptFailed",
+                int.class, int.class, boolean.class, String.class, Throwable.class);
+        m.setAccessible(true);
+        m.invoke(sender, gen, -1, steeringSend, text, new RuntimeException("boom"));
+    }
+
+    @Test
     void midTurnMessageIsQueuedForAQueueingHarness() throws Exception {
         permissionPending(false);
         when(proc.getCapabilities()).thenReturn(HarnessCatalog.GOOSE);

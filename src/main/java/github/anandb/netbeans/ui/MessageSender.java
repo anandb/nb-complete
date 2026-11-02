@@ -418,12 +418,19 @@ public class MessageSender {
                 NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Error", reason),
                 null, null
         ));
-        if (steeringSend) {
+        if (steeringSend && isMidTurn()) {
+            // The harness's first turn is still running: this send only added input to it,
+            // so the failure must not end the turn UI. Restore the text, hand the turn-end
+            // claim back to the original prompt and keep the watchdog ticking — without it
+            // the Stop button would stay up with nothing watching the run.
             if (inputArea.getText().isEmpty()) {
                 inputArea.setText(messageText);
             }
             sendGeneration.compareAndSet(gen, prevGen);
             statusController.updateButtonState(true);
+            if (!statusController.isRunWatchdogArmed()) {
+                statusController.armRunWatchdog();
+            }
             statusController.touchRunActivity();
             inputFocusRequester.run();
             return;
@@ -442,6 +449,14 @@ public class MessageSender {
         inputFocusRequester.run();
     }
     // CPD-ON
+
+    /** Re-reads whether a turn is still in flight. A mid-turn send's failure may only keep
+     *  the turn UI alive while that turn is really running: the turn can end between the
+     *  routing decision and the RPC failure. */
+    private boolean isMidTurn() {
+        boolean turnEnded = turnEndedCheck == null || turnEndedCheck.getAsBoolean();
+        return !turnEnded || !sessionService.get().canSendMessage();
+    }
 
     /** Draws the forwarded command's own echo once the send is accepted. */
     private void drawSlashEcho(String echoText) {
