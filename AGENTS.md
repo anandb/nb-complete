@@ -340,6 +340,12 @@ Resolved — kept as regression guards:
   `INFO_ResponseTruncated` info bubble. goose reports `max_tokens` for exactly the condition
   behind `_meta.goose.outputTokenLimitReached`/`fallbackContent`, so the `stopReason` check
   covers both and the per-chunk `_meta` flags are NOT read separately (that would double-report).
+- A failed `session/prompt` is classified through `contract/RpcFailure` (code + `error.data`
+  kept by `AcpRpcException`): goose answers code `-32000` for an authentication failure
+  (`data.reason=turn_failed`) and `-32603` with `data.reason=credits_exhausted` plus a `data.url`
+  for an exhausted balance. `MessageSender.promptFailureText` maps those to `MSG_AuthRequired` /
+  `MSG_CreditsExhausted*` on both completion paths; every other failure keeps `STATUS_Error`.
+  Do NOT classify these by matching on the message text.
 - `MessageType` enum contains all valid session updates (e.g. `agent_message_chunk`, `agent_thought_chunk`, `plan`, `tool_call`). Check this enum before adding message types.
 
 ### Harness Version Capabilities (OpenCode v1 vs v2)

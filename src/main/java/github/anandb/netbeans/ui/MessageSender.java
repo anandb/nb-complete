@@ -28,6 +28,7 @@ import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.ProcessService;
 import github.anandb.netbeans.ui.platform.SessionService;
 import github.anandb.netbeans.contract.ProcessControl;
+import github.anandb.netbeans.contract.RpcFailure;
 import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.contract.UsageStatsStore;
 import github.anandb.netbeans.model.UsageRecords.Attribution;
@@ -406,6 +407,29 @@ public class MessageSender {
         }
     }
 
+
+    /**
+     * Text for a failed prompt. goose classifies its failures in {@code error.data}: an
+     * {@code auth_required} code or a {@code credits_exhausted} reason tells the user what to do,
+     * where the generic message only repeats the server text.
+     */
+    private static String promptFailureText(Throwable ex, String reason) {
+        RpcFailure failure = RpcFailure.find(ex);
+        if (failure == null) {
+            return NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Error", reason);
+        }
+        if (failure.code() == RpcFailure.AUTH_REQUIRED) {
+            return NbBundle.getMessage(AssistantTopComponent.class, "MSG_AuthRequired", reason);
+        }
+        if (RpcFailure.REASON_CREDITS_EXHAUSTED.equals(failure.dataField("reason"))) {
+            String url = failure.dataField("url");
+            return url == null || url.isBlank()
+                    ? NbBundle.getMessage(AssistantTopComponent.class, "MSG_CreditsExhausted", reason)
+                    : NbBundle.getMessage(AssistantTopComponent.class, "MSG_CreditsExhaustedWithUrl", reason, url);
+        }
+        return NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Error", reason);
+    }
+
     /**
      * {@code stopReason=max_tokens} means the reply is incomplete. goose reports it for exactly
      * the condition behind {@code _meta.goose.outputTokenLimitReached}, so this one check covers
@@ -439,7 +463,7 @@ public class MessageSender {
         statusController.setStatus("STATUS_Error", reason);
         chatPanel.addMessage(ProcessedMessage.createError(
                 MessageType.error_response,
-                NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Error", reason),
+                promptFailureText(ex, reason),
                 null, null
         ));
         if (steeringSend && isMidTurn()) {
@@ -789,10 +813,11 @@ public class MessageSender {
                         // The combined echo never reached the server: drop it so flushing the
                         // restored text again does not leave two identical user bubbles.
                         chatPanel.removeMessageBubble(clientMessageId);
+                        String queuedReason = ExceptionUtils.getMessage(ex) != null
+                                ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName();
                         chatPanel.addMessage(ProcessedMessage.createError(
                                 MessageType.error_response,
-                                NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Error",
-                                        ExceptionUtils.getMessage(ex) != null ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName()),
+                                promptFailureText(ex, queuedReason),
                                 null, null
                         ));
                         restoreComposerText(combinedText);

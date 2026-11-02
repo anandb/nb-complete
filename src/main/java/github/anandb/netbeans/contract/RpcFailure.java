@@ -27,4 +27,16 @@ public interface RpcFailure {
      * object, or the field is absent or not textual.
      */
     String dataField(String field);
+
+    /** The failure inside a (possibly wrapped) throwable, or null when it is not an RPC failure. */
+    static RpcFailure find(Throwable ex) {
+        Throwable current = ex;
+        while (current != null) {
+            if (current instanceof RpcFailure failure) {
+                return failure;
+            }
+            current = current.getCause() == current ? null : current.getCause();
+        }
+        return null;
+    }
 }

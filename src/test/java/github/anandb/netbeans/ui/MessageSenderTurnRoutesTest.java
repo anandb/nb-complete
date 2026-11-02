@@ -2,6 +2,7 @@ package github.anandb.netbeans.ui;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import github.anandb.netbeans.contract.ProcessControl;
+import github.anandb.netbeans.contract.RpcFailure;
 import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.contract.SlashCommandInterceptor;
 import github.anandb.netbeans.model.AttachedFile;
@@ -15,6 +16,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.swing.SwingUtilities;
@@ -331,6 +333,90 @@ class MessageSenderTurnRoutesTest {
         drainEdt();
 
         assertEquals(0, drawnNotices());
+    }
+
+    @Test
+    void anAuthenticationFailureTellsTheUserToSignIn() throws Exception {
+        session(true);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.OPENCODE);
+        when(proc.sendMessage(anyString(), anyString(), any(), any()))
+                .thenReturn(CompletableFuture.failedFuture(new FakeRpcFailure(
+                        RpcFailure.AUTH_REQUIRED, "Authentication required",
+                        Map.of("reason", RpcFailure.REASON_TURN_FAILED))));
+        input.append("hello");
+
+        sender.sendMessage();
+        drainEdt();
+
+        assertTrue(lastErrorText().contains("Sign in"),
+                "an auth failure must say what to do, not just repeat the server text");
+    }
+
+    @Test
+    void anExhaustedBalanceShowsTheTopUpUrl() throws Exception {
+        session(true);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.OPENCODE);
+        when(proc.sendMessage(anyString(), anyString(), any(), any()))
+                .thenReturn(CompletableFuture.failedFuture(new FakeRpcFailure(
+                        RpcFailure.INTERNAL_ERROR, "Credits exhausted",
+                        Map.of("reason", RpcFailure.REASON_CREDITS_EXHAUSTED,
+                               "url", "https://example.test/top-up"))));
+        input.append("hello");
+
+        sender.sendMessage();
+        drainEdt();
+
+        assertTrue(lastErrorText().contains("https://example.test/top-up"),
+                "the top-up link goose sent must reach the user");
+    }
+
+    @Test
+    void anUnclassifiedFailureKeepsThePlainServerMessage() throws Exception {
+        session(true);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.OPENCODE);
+        when(proc.sendMessage(anyString(), anyString(), any(), any()))
+                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("boom")));
+        input.append("hello");
+
+        sender.sendMessage();
+        drainEdt();
+
+        assertTrue(lastErrorText().contains("boom"));
+        assertTrue(!lastErrorText().contains("Sign in"), "no auth hint on an unrelated failure");
+    }
+
+    /** The text of the last error bubble drawn. */
+    private String lastErrorText() {
+        ArgumentCaptor<ProcessedMessage> drawn = ArgumentCaptor.forClass(ProcessedMessage.class);
+        verify(chatPanel, atLeastOnce()).addMessage(drawn.capture());
+        return drawn.getAllValues().stream()
+                .filter(pm -> pm.messageType() == MessageType.error_response)
+                .map(ProcessedMessage::text)
+                .reduce((first, second) -> second)
+                .orElseThrow();
+    }
+
+    /** An RPC failure as the manager hands it to the UI: a throwable that knows its code and data. */
+    private static final class FakeRpcFailure extends RuntimeException implements RpcFailure {
+        private static final long serialVersionUID = 1L;
+        private final int code;
+        private final Map<String, String> data;
+
+        FakeRpcFailure(int code, String message, Map<String, String> data) {
+            super(message);
+            this.code = code;
+            this.data = data;
+        }
+
+        @Override
+        public int code() {
+            return code;
+        }
+
+        @Override
+        public String dataField(String field) {
+            return data.get(field);
+        }
     }
 
     /** Info bubbles drawn so far that are the truncation notice. */

@@ -475,7 +475,7 @@ public class ProcessManager implements ProcessControl {
      * matches, or null when the failure is anything else (no run active, transport error).
      */
     private static String staleRunId(Throwable ex, String attempted) {
-        RpcFailure failure = rpcFailure(ex);
+        RpcFailure failure = RpcFailure.find(ex);
         if (failure == null) {
             return null;
         }
@@ -483,17 +483,6 @@ public class ProcessManager implements ProcessControl {
         return actual == null || actual.isBlank() || actual.equals(attempted) ? null : actual;
     }
 
-    /** The {@link RpcFailure} inside a (possibly wrapped) send failure, or null. */
-    private static RpcFailure rpcFailure(Throwable ex) {
-        Throwable current = ex;
-        while (current != null) {
-            if (current instanceof RpcFailure failure) {
-                return failure;
-            }
-            current = current.getCause() == current ? null : current.getCause();
-        }
-        return null;
-    }
 
     @Override
     public CompletableFuture<Void> stopMessage(String sessionId) {
