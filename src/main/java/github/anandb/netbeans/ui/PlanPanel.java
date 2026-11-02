@@ -72,6 +72,8 @@ public class PlanPanel extends JPanel {
     private final MiniProgressBar progressBar = new MiniProgressBar();
     private final JPanel rowsPanel = new JPanel();
     private final JScrollPane rowsScroll;
+    /** Height the expanded list shows; {@code <= 0} while no plan has pinned one. */
+    private int pinnedListHeight;
     private final JButton closeButton;
     /** Current entries, kept so expanding/collapsing re-renders from them. */
     private List<PlanEntry> entries = List.of();
@@ -142,7 +144,19 @@ public class PlanPanel extends JPanel {
         // leading inset: visible gap between the panel's left edge and the row text/icons;
         // trailing inset: the vertical scrollbar rides on empty space, not on glyph ink
         rowsPanel.setBorder(BorderFactory.createEmptyBorder(0, PAD, 0, SCROLL_INSET_PX));
-        rowsScroll = new JScrollPane(rowsPanel);
+        rowsScroll = new JScrollPane(rowsPanel) {
+            // Only the height is pinned. Pinning both through setPreferredSize() makes
+            // getPreferredSize() return that value forever, so the width would be read
+            // back as whatever the first plan update measured.
+            @Override
+            public Dimension getPreferredSize() {
+                Dimension size = super.getPreferredSize();
+                if (pinnedListHeight > 0) {
+                    size.height = pinnedListHeight;
+                }
+                return size;
+            }
+        };
         rowsScroll.setBorder(BorderFactory.createEmptyBorder());
         rowsScroll.setOpaque(false);
         rowsScroll.getVerticalScrollBar().setUnitIncrement(12);
@@ -219,15 +233,12 @@ public class PlanPanel extends JPanel {
             headerLabel.setFullText(NbBundle.getMessage(PlanPanel.class, "LBL_Plan") + count);
             rowsScroll.setVisible(true);
             // Size the viewport from the rows themselves, never from the scrollpane's
-            // current preferred size: setPreferredSize() pins that value, so reading it
-            // back would freeze the slideout at the height of the first (often
-            // single-step) plan update. Inter-row struts count too.
+            // own preferred size: that would freeze the slideout at the height of the
+            // first (often single-step) plan update. Inter-row struts count too.
             int rowHeight = rowsPanel.getComponent(0).getPreferredSize().height;
             int visibleRows = Math.min(rowCount, MAX_VISIBLE_ROWS);
             int listHeight = rowHeight * visibleRows + ROW_GAP * Math.max(0, visibleRows - 1);
-            Dimension preferred = rowsScroll.getPreferredSize();
-            preferred.height = listHeight;
-            rowsScroll.setPreferredSize(preferred);
+            pinnedListHeight = listHeight;
             // BoxLayout hands spare height to the scrollpane; pin the maximum
             // too so a stretched slideout still shows at most 8 rows.
             rowsScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, listHeight));

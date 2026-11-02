@@ -239,6 +239,22 @@ class PlanPanelTest {
     }
 
     @Test
+    void preferredSizeIsMeasuredInsteadOfRememberedFromTheFirstUpdate() {
+        // setPreferredSize() pins whatever it was given, so the pinned height must
+        // never make the rest of the preferred size a snapshot: a restyled
+        // scrollpane still has to report its own width.
+        PlanPanel panel = new PlanPanel();
+        panel.setEntries(sample());
+        JScrollPane scroll = (JScrollPane) panel.getComponent(1);
+        int measured = scroll.getPreferredSize().width;
+
+        scroll.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 40, 0, 40));
+
+        assertEquals(measured + 80, scroll.getPreferredSize().width,
+                "the width must be measured from the scrollpane, not kept from the first plan update");
+    }
+
+    @Test
     void clearForgetsEntriesSoExpandDoesNotResurrect() {
         PlanPanel panel = new PlanPanel();
         panel.setEntries(sample());
