@@ -245,8 +245,28 @@ public class ChatThreadPanel extends JPanel {
 
     /** Registers a message ID as queued (not yet posted to the server). */
     public void addQueuedMessageId(String messageId) {
-        if (messageId != null) {
-            queuedMessageIds.add(messageId);
+        setMessageQueued(messageId, true);
+    }
+
+    /**
+     * Applies or clears the queued indicator on a message, whether the bubble is already drawn
+     * or arrives later. A steer the harness queued is drawn while the turn has not consumed it,
+     * and cleared when its echo lands.
+     */
+    public void setMessageQueued(String messageId, boolean queued) {
+        if (messageId == null) {
+            return;
+        }
+        if (!queued) {
+            removeQueuedMessageId(messageId);
+            return;
+        }
+        queuedMessageIds.add(messageId);
+        for (Component child : messagesContainer.getComponents()) {
+            if (child instanceof MessageBubble bubble && messageId.equals(bubble.getMessageId())) {
+                bubble.setQueued(true);
+                queuedBubbles.put(messageId, bubble);
+            }
         }
     }
 

@@ -52,6 +52,7 @@ public class SessionLifecycleHandler implements SessionListener {
     private static final Logger LOG = Logger.from(SessionLifecycleHandler.class);
     /** How long a harness status notice stays on the status label when idle. */
     private static final int STATUS_NOTICE_MS = 5000;
+
     private final ChatThreadPanel chatPanel;
     private final JComboBox<SessionItem> sessionDropdown;
     private final JButton hideBtn;
@@ -313,6 +314,22 @@ public class SessionLifecycleHandler implements SessionListener {
                         return;
                     }
                     statusController.showStatusNotice(message, STATUS_NOTICE_MS);
+                });
+            }
+
+            @Override
+            public void onSteerQueued(String sessionId, String messageId, boolean queued) {
+                if (messageId == null) {
+                    return;
+                }
+                SwingUtilities.invokeLater(() -> {
+                    // Same race guard as showStatus: a late steer notification for a
+                    // session the user has left must not touch this thread.
+                    String currentId = sessionService.get().getCurrentSessionId();
+                    if (sessionId != null && !sessionId.equals(currentId)) {
+                        return;
+                    }
+                    chatPanel.setMessageQueued(messageId, queued);
                 });
             }
         });

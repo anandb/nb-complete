@@ -429,6 +429,13 @@ Resolved — kept as regression guards:
   stale-pin-cleanup set, it is removed by `retainActivePins()` after every flush, and it
   never receives live user inserts. Do NOT skip the echo when `localEchoEnabled` is
   false — then the harness chunk is the only renderer.
+- An accepted steer is not instantly part of the turn: goose announces it on
+  `session_info_update` as `_meta.goose.queuedSteer {messageId, runId}`.
+  `StrategyRegistry.notifyQueuedSteer` forwards that to `UIHandler.onSteerQueued(...)` →
+  `ChatThreadPanel.setMessageQueued(id, true)` (amber accent + hourglass via
+  `BubbleActionBar.setQueued`), and the matching `user_message_chunk` echo clears it before
+  `SteerEchoes.consume` returns. Do NOT treat a steer as landed on acceptance: the run may
+  finish before it is consumed.
 - ACP v2 `session/inject` is the eventual standard replacement; keep the goose call
   behind `supportsSessionSteer()` so it can be swapped without touching the UI.
 

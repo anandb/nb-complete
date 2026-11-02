@@ -37,4 +37,13 @@ public interface UIHandler {
      */
     default void showStatus(String message) {
     }
+
+    /**
+     * Marks a steered user message as accepted-but-queued by the harness, or as delivered
+     * when its echo arrives. goose announces an accepted steer on {@code session_info_update}
+     * as {@code _meta.goose.queuedSteer}; until the echo lands the turn has not consumed it.
+     * This is bubble chrome, never transcript content.
+     */
+    default void onSteerQueued(String sessionId, String messageId, boolean queued) {
+    }
 }

@@ -68,6 +68,31 @@ class StrategyRegistryDispatchTest {
     }
 
     @Test
+    void queuedSteerMetaMarksTheMessageAsQueued() {
+        ObjectNode queued = MAPPER.createObjectNode().put("messageId", "steer_1").put("runId", "run-9");
+        ObjectNode meta = MAPPER.createObjectNode();
+        meta.putObject("goose").set("queuedSteer", queued);
+        SessionUpdate.UpdateData data = new SessionUpdate.UpdateData(
+                MessageType.session_info_update, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null, null, null, meta);
+
+        registry.handle(update("s1", data), handler);
+
+        verify(handler).onSteerQueued("s1", "steer_1", true);
+        verify(handler, never()).displayMessage(any());
+    }
+
+    @Test
+    void steerEchoClearsTheQueuedMarker() {
+        SteerEchoes.expect("s1", "steer_1");
+
+        registry.handle(update("s1", chunk(MessageType.user_message_chunk, "hello", "steer_1")), handler);
+
+        verify(handler).onSteerQueued("s1", "steer_1", false);
+        verify(handler, never()).displayMessage(any());
+    }
+
+    @Test
     void echoedSteerIsNotRenderedTwice() {
         SteerEchoes.expect("s1", "steer_1");
 

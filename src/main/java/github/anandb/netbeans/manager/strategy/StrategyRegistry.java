@@ -138,6 +138,7 @@ public class StrategyRegistry implements UpdateDispatcher {
             case "session_info_update" -> {
                 // Session data is merged into SessionManager's cache before strategy
                 // dispatch. Do not refresh the list for retry metadata updates.
+                notifyQueuedSteer(update, handler);
             }
 
             case "current_mode_update" -> {
@@ -175,6 +176,8 @@ public class StrategyRegistry implements UpdateDispatcher {
                 }
                 captureMessage(update, MessageKind.USER);
                 String userSessionId = update.params() != null ? update.params().sessionId() : null;
+                // The echo is the turn consuming the steer: whatever was queued has landed.
+                handler.onSteerQueued(userSessionId, update.messageId(), false);
                 if (SteerEchoes.consume(userSessionId, update.messageId())) {
                     LOG.fine("Skipping echoed steer {0}: already rendered locally", update.messageId());
                     return;
@@ -678,4 +681,27 @@ public class StrategyRegistry implements UpdateDispatcher {
         String requested = inference.path("requestedModel").asText("");
         return isNotBlank(requested) ? requested : null;
     }
+    /**
+     * goose accepts a steer into the running turn and announces it on {@code session_info_update}
+     * as {@code _meta.goose.queuedSteer {messageId, runId}}. Until the matching
+     * {@code user_message_chunk} echo arrives the turn has not consumed the text, so the bubble
+     * is drawn as queued rather than pretending it landed.
+     */
+    private static void notifyQueuedSteer(SessionUpdate update, UIHandler handler) {
+        JsonNode meta = update.meta();
+        if (meta == null || !meta.isObject()) {
+            return;
+        }
+        JsonNode queued = meta.path("goose").path("queuedSteer");
+        if (!queued.isObject()) {
+            return;
+        }
+        String messageId = queued.path("messageId").asText("");
+        if (isBlank(messageId)) {
+            LOG.fine("Ignoring queuedSteer without a messageId: {0}", queued);
+            return;
+        }
+        handler.onSteerQueued(update.params() != null ? update.params().sessionId() : null, messageId, true);
+    }
+
 }
