@@ -31,12 +31,15 @@ final class ActiveRunTracker {
             return;
         }
         JsonNode runId = goose.get("activeRunId");
-        if (runId == null || runId.isNull()) {
+        // Null, non-textual and empty all mean "no run": keeping a dead id would make the
+        // next steer fail with a stale expectedRunId.
+        String value = runId != null && runId.isTextual() ? runId.asText().trim() : "";
+        if (value.isEmpty()) {
             ACTIVE_RUNS.remove(sessionId);
             // The run is over, so a pending steer can never be echoed.
             SteerEchoes.clear(sessionId);
-        } else if (runId.isTextual() && !runId.asText().isEmpty()) {
-            ACTIVE_RUNS.put(sessionId, runId.asText());
+        } else {
+            ACTIVE_RUNS.put(sessionId, value);
         }
     }
 

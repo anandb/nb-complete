@@ -144,6 +144,26 @@ class SessionUpdateDecoderTest {
     }
 
     @Test
+    void emptyOrNonTextRunIdEndsTheRun() throws IOException {
+        ActiveRunTracker.clear();
+        SessionUpdateDecoder.decode(json(
+            "{\"sessionId\":\"gs\",\"update\":{\"sessionUpdate\":\"session_info_update\","
+                + "\"_meta\":{\"goose\":{\"activeRunId\":\"run-7\"}}}}"));
+        assertEquals("run-7", ActiveRunTracker.get("gs"));
+
+        SessionUpdateDecoder.decode(json(
+            "{\"sessionId\":\"gs\",\"update\":{\"sessionUpdate\":\"session_info_update\","
+                + "\"_meta\":{\"goose\":{\"activeRunId\":\"\"}}}}"));
+        assertNull(ActiveRunTracker.get("gs"), "an empty activeRunId must not keep a dead run id");
+
+        ActiveRunTracker.update("gs", json("{\"_meta\":{\"goose\":{\"activeRunId\":\"run-8\"}}}"));
+        assertEquals("run-8", ActiveRunTracker.get("gs"));
+        ActiveRunTracker.update("gs", json("{\"_meta\":{\"goose\":{\"activeRunId\":42}}}"));
+        assertNull(ActiveRunTracker.get("gs"), "a non-textual run id is not a usable run id");
+        ActiveRunTracker.clear();
+    }
+
+    @Test
     void updatesWithoutRunMetaLeaveTheTrackerAlone() throws IOException {
         ActiveRunTracker.clear();
         ActiveRunTracker.update("gs", json("{\"_meta\":{\"goose\":{\"queuedSteer\":{\"messageId\":\"m\"}}}}"));
