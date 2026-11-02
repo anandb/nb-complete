@@ -6,6 +6,7 @@ import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.contract.SlashCommandInterceptor;
 import github.anandb.netbeans.model.AttachedFile;
 import github.anandb.netbeans.model.HarnessCatalog;
+import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.ui.platform.ProcessService;
 import github.anandb.netbeans.ui.platform.SessionService;
 import java.io.IOException;
@@ -18,10 +19,12 @@ import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.ArgumentCaptor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -256,6 +259,45 @@ class MessageSenderTurnRoutesTest {
 
         assertEquals(2, attachments.size(), "the two files attached during the flight stay");
         verify(statusController).setStatus("STATUS_AttachmentsDropped", 1);
+    }
+
+    @Test
+    void aFailedTurnStartingSendKeepsTextTypedDuringTheFlight() throws Exception {
+        session(true);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.OPENCODE);
+        CompletableFuture<JsonNode> pending = new CompletableFuture<>();
+        when(proc.sendMessage(anyString(), anyString(), any(), any())).thenReturn(pending);
+        input.append("hello");
+
+        sender.sendMessage();
+        input.append("next idea");
+        pending.completeExceptionally(new RuntimeException("boom"));
+        drainEdt();
+
+        assertEquals("next idea", input.toString(),
+                "the newer text stays; the failed one is still in the Alt+Up history");
+    }
+
+    @Test
+    void aFailedQueuedSendDropsItsEchoAndKeepsTextTypedDuringTheFlight() throws Exception {
+        session(true);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.GOOSE);
+        CompletableFuture<JsonNode> pending = new CompletableFuture<>();
+        when(proc.sendMessage(anyString(), anyString(), any(), any())).thenReturn(pending);
+
+        sender.sendQueuedMessage("queued");
+        input.append("typed while waiting");
+        pending.completeExceptionally(new RuntimeException("boom"));
+        drainEdt();
+
+        ArgumentCaptor<ProcessedMessage> drawn = ArgumentCaptor.forClass(ProcessedMessage.class);
+        verify(chatPanel, atLeastOnce()).addMessage(drawn.capture());
+        String echoId = drawn.getAllValues().stream()
+                .filter(pm -> pm.messageType().isUser())
+                .map(ProcessedMessage::messageId)
+                .findFirst().orElseThrow();
+        verify(chatPanel).removeMessageBubble(echoId);
+        assertEquals("typed while waiting", input.toString(), "text typed in the meantime is newer");
     }
 
     /** The one attachment left in the composer, by name. */

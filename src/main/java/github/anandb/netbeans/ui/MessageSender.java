@@ -432,9 +432,7 @@ public class MessageSender {
             // so the failure must not end the turn UI. Restore the text, hand the turn-end
             // claim back to the original prompt and keep the watchdog ticking — without it
             // the Stop button would stay up with nothing watching the run.
-            if (inputArea.getText().isEmpty()) {
-                inputArea.setText(messageText);
-            }
+            restoreComposerText(messageText);
             restoreAttachments(payload.attachedFiles());
             sendGeneration.compareAndSet(gen, prevGen);
             statusController.updateButtonState(true);
@@ -445,7 +443,7 @@ public class MessageSender {
             inputFocusRequester.run();
             return;
         }
-        inputArea.setText(messageText);
+        restoreComposerText(messageText);
         restoreAttachments(payload.attachedFiles());
         statusController.stopThinking();
         statusController.disarmRunWatchdog();
@@ -486,6 +484,15 @@ public class MessageSender {
         if (restored < attachedFiles.size()) {
             statusController.setStatus("STATUS_AttachmentsDropped", attachedFiles.size() - restored);
             statusController.scheduleReset();
+        }
+    }
+
+    /** Puts a failed send's text back in the composer, unless the user typed something while
+     *  it was in flight: that text is newer, and the failed one is still in the Alt+Up history. */
+    private void restoreComposerText(String messageText) {
+        String typed = inputArea.getText();
+        if (typed == null || typed.isEmpty()) {
+            inputArea.setText(messageText);
         }
     }
 
@@ -763,13 +770,16 @@ public class MessageSender {
                         statusController.stopThinking();
                         statusController.disarmRunWatchdog();
                         chatPanel.stopStreaming();
+                        // The combined echo never reached the server: drop it so flushing the
+                        // restored text again does not leave two identical user bubbles.
+                        chatPanel.removeMessageBubble(clientMessageId);
                         chatPanel.addMessage(ProcessedMessage.createError(
                                 MessageType.error_response,
                                 NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Error",
                                         ExceptionUtils.getMessage(ex) != null ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName()),
                                 null, null
                         ));
-                        inputArea.setText(combinedText);
+                        restoreComposerText(combinedText);
                         statusController.updateButtonState(false);
                         if (onMessageDoneCallback != null) {
                             onMessageDoneCallback.run();

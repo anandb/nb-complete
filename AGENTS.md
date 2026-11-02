@@ -380,6 +380,9 @@ Resolved — kept as regression guards:
   The same restore runs on the prompt path: `PromptPayload` carries the attachments it
   cleared, and `restoreAttachments()` puts them back through `AttachmentManager.restore()`,
   which honours the caps and reports whatever no longer fits (`STATUS_AttachmentsDropped`).
+  A failed queued flush (`sendQueuedMessage`) drops its combined echo the same way. All
+  three paths restore through `restoreComposerText()`, which keeps text typed while the
+  send was in flight — the failed message is already in the Alt+Up history.
   A failed mid-turn send keeps the turn alive only while the turn is still running
   (`isMidTurn()` is re-read, the watchdog re-armed); if the turn ended in between it
   tears the turn down like a turn-starting failure. Local slash commands are intercepted
