@@ -1595,6 +1595,45 @@ class SessionManagerTest {
     }
 
     @Test
+    void withTheFlagOffAFailedCwdMoveStillLetsTheLoadProceed() throws Exception {
+        PluginSettings.setProjectSwitchRestartForTest(false);
+        try {
+            when(processManager.getCapabilities()).thenReturn(HarnessCatalog.GOOSE);
+            CompletableFuture<JsonNode> failed = new CompletableFuture<>();
+            failed.completeExceptionally(new AcpRpcException(-32603, "cannot reopen the session"));
+            when(processManager.sendRequest(eq("_goose/unstable/session/working-dir/update"), any(),
+                    eq(60L), eq(TimeUnit.SECONDS)))
+                    .thenReturn(failed);
+
+            // A failed move must never fail the load that follows it.
+            prepareSessionLoad("s1", "/new/project");
+
+            verify(processManager, timeout(2000)).sendRequest(
+                    eq("_goose/unstable/session/working-dir/update"), any(), eq(60L),
+                    eq(TimeUnit.SECONDS));
+        } finally {
+            PluginSettings.setProjectSwitchRestartForTest(true);
+        }
+    }
+
+    @Test
+    void withTheFlagOffALoadWithoutACwdMovesNothing() throws Exception {
+        PluginSettings.setProjectSwitchRestartForTest(false);
+        try {
+            when(processManager.getCapabilities()).thenReturn(HarnessCatalog.GOOSE);
+
+            prepareSessionLoad("s1", null);
+
+            verify(processManager, never()).sendRequest(
+                    eq("_goose/unstable/session/working-dir/update"), any(), anyLong(),
+                    any(TimeUnit.class));
+            verify(processManager, never()).ensureStartedIn(any());
+        } finally {
+            PluginSettings.setProjectSwitchRestartForTest(true);
+        }
+    }
+
+    @Test
     void withTheFlagOnALoadRebindsInsteadOfMovingTheCwd() throws Exception {
         PluginSettings.setProjectSwitchRestartForTest(true);
         try {
@@ -1649,9 +1688,9 @@ class SessionManagerTest {
         }
     }
 
-    /** Runs the private cwd-binding hook the session RPCs share. */
+    /** Runs the private cwd-binding hook applied before session/new and session/load. */
     private void bindServerTo(String cwd) throws Exception {
-        Method bind = SessionManager.class.getDeclaredMethod("bindServerTo", String.class);
+        Method bind = SessionManager.class.getDeclaredMethod("prepareServerBind", String.class);
         bind.setAccessible(true);
         ((CompletableFuture<?>) bind.invoke(sessionManager, cwd)).get(5, TimeUnit.SECONDS);
     }

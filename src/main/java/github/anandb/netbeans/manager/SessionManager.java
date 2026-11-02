@@ -910,17 +910,6 @@ public class SessionManager implements SessionQuery, SessionControl,
     }
 
     /**
-     * Binds the ACP server to {@code workingCwd} on a background thread before
-     * the session's load RPC is issued: one server process serves one working
-     * directory, and a rebind restarts it (terminating its process tree), which
-     * must not block the caller. A {@code null} directory only starts an
-     * unbound server.
-     */
-    private CompletableFuture<Void> bindServerTo(String workingCwd) {
-        return prepareServerBind(workingCwd);
-    }
-
-    /**
      * What happens before {@code session/load}. The restart setting wins when it is on: the
      * user asked for the server to follow the project, so the process is rebound (restarted).
      * With it off, the v1.27.0 path is "no bind", and a harness that can move a session's cwd
@@ -929,7 +918,7 @@ public class SessionManager implements SessionQuery, SessionControl,
      */
     private CompletableFuture<Void> prepareSessionLoad(String sessionId, String cwd) {
         if (PluginSettings.isProjectSwitchRestartEnabled()) {
-            return bindServerTo(cwd);
+            return prepareServerBind(cwd);
         }
         if (cwd == null || !processManager.getCapabilities().supportsWorkingDirUpdate()) {
             return CompletableFuture.completedFuture(null);
@@ -944,11 +933,13 @@ public class SessionManager implements SessionQuery, SessionControl,
     }
 
     /**
-     * The experimental cwd binding before {@code session/new}, applied only when
-     * {@code projectSwitchRestart.enabled} is on. The flag is the user's explicit choice and
-     * applies to every harness, including one that can move a session's cwd live: that
-     * capability covers the explicit move (and the disabled-flag load path), it does not
-     * silently override the setting.
+     * Binds the server's spawn cwd before {@code session/new} or {@code session/load},
+     * applied only when {@code projectSwitchRestart.enabled} is on. The flag is the user's
+     * explicit choice and applies to every harness, including one that can move a session's
+     * cwd live: that capability covers the explicit move (and the disabled-flag load path),
+     * it does not silently override the setting. A rebind restarts the process and
+     * terminates the sessions it serves, so it runs on a background thread; a null
+     * directory starts an unbound server.
      */
     private CompletableFuture<Void> prepareServerBind(String cwd) {
         if (!PluginSettings.isProjectSwitchRestartEnabled()) {
