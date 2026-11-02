@@ -656,6 +656,11 @@ divider and the input area (it must borrow space from the thread only).
   without it the dropdown keeps the old title until the IDE restarts, and do NOT
   move it to a timer or to `session_info_update` (that is the refresh storm this
   optimization removed).
+- `session/list` is paginated: goose answers 50 sessions per page and hands back the rest
+  only through `nextCursor`. `SessionManager.getSessionPages` follows the cursor to the last
+  page, bounded by `SESSION_LIST_MAX_PAGES` and a seen-cursor set, and `distinctById` drops a
+  row a server repeats on a page boundary. Do NOT go back to a single `session/list` call —
+  a user with more than 50 sessions loses every older one from the dropdown.
 - `onSessionRenamed` must capture `wasSelected` BEFORE replacing the dropdown
   item: the replacement removes the object that was selected, which clears the
   combo selection, and the closed dropdown then renders blank or the old title.

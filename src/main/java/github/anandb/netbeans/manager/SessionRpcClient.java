@@ -30,9 +30,21 @@ final class SessionRpcClient {
 
 
     CompletableFuture<JsonNode> getSessions(String directory) {
+        return getSessions(directory, null);
+    }
+
+    /**
+     * One page of {@code session/list}: {@code cursor} is the previous page's
+     * {@code nextCursor}, or null for the first page. Harnesses that do not paginate
+     * ignore the cursor and answer a single page.
+     */
+    CompletableFuture<JsonNode> getSessions(String directory, String cursor) {
         Map<String, Object> params = new HashMap<>();
         if (directory != null && !directory.isEmpty()) {
             params.put("cwd", directory);
+        }
+        if (cursor != null && !cursor.isBlank()) {
+            params.put("cursor", cursor);
         }
         return processManager.sendRequest("session/list", params, 60, TimeUnit.SECONDS);
     }

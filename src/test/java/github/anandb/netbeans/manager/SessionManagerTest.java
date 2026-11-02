@@ -58,6 +58,7 @@ import org.mockito.quality.Strictness;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import github.anandb.netbeans.contract.SessionStore;
 import github.anandb.netbeans.model.MigrationReport;
@@ -687,6 +688,46 @@ class SessionManagerTest {
         };
         sessionManager.addSessionListener(listener);
         sessionManager.removeSessionListener(listener);
+    }
+
+    @Test
+    void getSessionsFollowsNextCursorUntilTheLastPage() throws Exception {
+        ObjectNode page1 = mapper.createObjectNode()
+                .put("nextCursor", "c1");
+        page1.set("sessions", mapper.createArrayNode()
+                .add(mapper.createObjectNode().put("sessionId", "s1").put("cwd", "/test/cwd"))
+                .add(mapper.createObjectNode().put("sessionId", "s2").put("cwd", "/test/cwd")));
+        ObjectNode page2 = mapper.createObjectNode();
+        page2.set("sessions", mapper.createArrayNode()
+                .add(mapper.createObjectNode().put("sessionId", "s3").put("cwd", "/test/cwd")));
+        when(processManager.sendRequest(eq("session/list"), any(), eq(60L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(page1),
+                            CompletableFuture.completedFuture(page2));
+
+        List<Session> sessions = sessionManager.getSessions("/test/cwd").get(5, TimeUnit.SECONDS);
+
+        assertEquals(List.of("s1", "s2", "s3"), sessions.stream().map(Session::id).toList(),
+                "every page must be followed, or the dropdown loses the older history");
+        ArgumentCaptor<Map<String, Object>> params = ArgumentCaptor.forClass(Map.class);
+        verify(processManager, times(2))
+                .sendRequest(eq("session/list"), params.capture(), eq(60L), eq(TimeUnit.SECONDS));
+        assertNull(params.getAllValues().get(0).get("cursor"), "the first page carries no cursor");
+        assertEquals("c1", params.getAllValues().get(1).get("cursor"));
+    }
+
+    @Test
+    void getSessionsStopsWhenTheServerRepeatsACursor() throws Exception {
+        ObjectNode page = mapper.createObjectNode().put("nextCursor", "same");
+        page.set("sessions", mapper.createArrayNode()
+                .add(mapper.createObjectNode().put("sessionId", "s1").put("cwd", "/test/cwd")));
+        when(processManager.sendRequest(eq("session/list"), any(), eq(60L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(page));
+
+        List<Session> sessions = sessionManager.getSessions("/test/cwd").get(5, TimeUnit.SECONDS);
+
+        assertEquals(1, sessions.size());
+        verify(processManager, times(2))
+                .sendRequest(eq("session/list"), any(), eq(60L), eq(TimeUnit.SECONDS));
     }
 
     @Test

@@ -24,11 +24,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -471,6 +473,9 @@ public class SessionManager implements SessionQuery, SessionControl {
     /** How long after a fresh handshake a session call may still be retried. */
     private static final long HARNESS_STARTUP_WINDOW_MS = 60_000;
 
+    /** Page cap for {@code session/list} pagination: goose pages at 50, so this is 5,000 sessions. */
+    private static final int SESSION_LIST_MAX_PAGES = 100;
+
     /**
      * Delays before each startup retry. Startup activation can take tens of
      * seconds on a large skill/plugin set, so the attempts are spread out rather
@@ -683,56 +688,96 @@ public class SessionManager implements SessionQuery, SessionControl {
         return processManager.whenReady()
                 .thenCompose(v -> processManager.getToolExecutor().waitForReady())
                 .orTimeout(60, TimeUnit.SECONDS)
-                .thenCompose(v -> {
-                    return rpcClient.getSessions(directory);
-                })
-                .thenApply(res -> {
-                    try {
-                        LOG.log(Level.FINE, "getSessions: got response");
-                        if (res == null) {
-                            LOG.warn("getSessions: null response");
-                            return new ArrayList<Session>();
-                        }
-                        JsonNode sessionsNode = res.has("sessions") ? res.get("sessions") : res.has("data") ? res.get("data") : res;
-                        if (sessionsNode.isArray()) {
-                            List<Session> rawSessions = MAPPER.readValue(sessionsNode.traverse(), new TypeReference<List<Session>>() {});
-                            List<Session> sessions = new ArrayList<>();
-                            for (Session s : rawSessions) {
-                                Session resolved = s;
-                                if (s.effectiveDirectory() == null) {
-                                    // Preserve models/modes — session/load has no
-                                    // configOptions for Hermes-style agents and falls
-                                    // back to this cached session for the dropdowns.
-                                    resolved = new Session(s.id(), s.title(), directory, directory,
-                                                           s.parentID(), s.updatedAt(), s.mcpServers(),
-                                                           s.configOptions(), s.models(), s.modes());
-                                }
-                                // Use session ID as title when the server omits it,
-                                // so the dropdown shows the GUID instead of null.
-                                if (isBlank(resolved.title())) {
-                                    resolved = new Session(resolved.id(), resolved.id(),
-                                            resolved.cwd(), resolved.directory(),
-                                            resolved.parentID(), resolved.updatedAt(),
-                                            resolved.mcpServers(), resolved.configOptions(),
-                                            resolved.models(), resolved.modes());
-                                }
-                                sessions.add(resolved);
-                                cacheManager.cacheSession(resolved);
-                            }
-                            LOG.fine("getSessions: deserialized {0} sessions", sessions.size());
-                            for (Session s : sessions) {
-                                LOG.fine("getSessions: id={0}, title=''{1}'', directory={2}", s.id(), s.title(), s.effectiveDirectory());
-                            }
-                            return sessions;
-                        } else {
-                            LOG.warn("getSessions: sessionsNode is not an array: {0}", sessionsNode);
-                            return new ArrayList<Session>();
-                        }
-                    } catch (IOException e) {
-                        LOG.warn("getSessions: failed to deserialize: {0}", ExceptionUtils.getMessage(e), e);
-                        return new ArrayList<Session>();
-                    }
-                });
+                .thenCompose(v -> getSessionPages(directory, null, 1, new HashSet<>()))
+                .thenApply(SessionManager::distinctById);
+    }
+
+    /** A paging server can repeat a row on a page boundary; one dropdown entry per id. */
+    private static List<Session> distinctById(List<Session> sessions) {
+        Map<String, Session> byId = new LinkedHashMap<>();
+        for (Session s : sessions) {
+            byId.putIfAbsent(s.id(), s);
+        }
+        return new ArrayList<>(byId.values());
+    }
+
+    /**
+     * Follows {@code nextCursor} to the last page. goose pages {@code session/list} at 50 and a
+     * client that stops at page one silently loses the rest of its history. The page cap and the
+     * seen-cursor set bound a server that keeps handing back a cursor.
+     */
+    private CompletableFuture<List<Session>> getSessionPages(String directory, String cursor, int page,
+                                                             Set<String> seenCursors) {
+        return rpcClient.getSessions(directory, cursor).thenCompose(res -> {
+            List<Session> sessions = parseSessionPage(res, directory);
+            String next = nextCursor(res);
+            if (next == null) {
+                return CompletableFuture.completedFuture(sessions);
+            }
+            if (page >= SESSION_LIST_MAX_PAGES || !seenCursors.add(next)) {
+                LOG.warn("getSessions: stopping at page {0}, cursor repeated or page cap reached", page);
+                return CompletableFuture.completedFuture(sessions);
+            }
+            return getSessionPages(directory, next, page + 1, seenCursors).thenApply(rest -> {
+                sessions.addAll(rest);
+                return sessions;
+            });
+        });
+    }
+
+    /** {@code nextCursor} of a {@code session/list} response, or null when this was the last page. */
+    private static String nextCursor(JsonNode res) {
+        JsonNode node = res != null ? res.get("nextCursor") : null;
+        if (node == null || !node.isTextual() || isBlank(node.asText())) {
+            return null;
+        }
+        return node.asText();
+    }
+
+    private List<Session> parseSessionPage(JsonNode res, String directory) {
+        try {
+            if (res == null) {
+                LOG.warn("getSessions: null response");
+                return new ArrayList<>();
+            }
+            JsonNode sessionsNode = res.has("sessions") ? res.get("sessions") : res.has("data") ? res.get("data") : res;
+            if (!sessionsNode.isArray()) {
+                LOG.warn("getSessions: sessionsNode is not an array: {0}", sessionsNode);
+                return new ArrayList<>();
+            }
+            List<Session> rawSessions = MAPPER.readValue(sessionsNode.traverse(), new TypeReference<List<Session>>() {});
+            List<Session> sessions = new ArrayList<>();
+            for (Session s : rawSessions) {
+                Session resolved = s;
+                if (s.effectiveDirectory() == null) {
+                    // Preserve models/modes — session/load has no configOptions for
+                    // Hermes-style agents and falls back to this cached session.
+                    resolved = new Session(s.id(), s.title(), directory, directory,
+                                           s.parentID(), s.updatedAt(), s.mcpServers(),
+                                           s.configOptions(), s.models(), s.modes());
+                }
+                // Use session ID as title when the server omits it, so the dropdown
+                // shows the GUID instead of null.
+                if (isBlank(resolved.title())) {
+                    resolved = new Session(resolved.id(), resolved.id(),
+                            resolved.cwd(), resolved.directory(),
+                            resolved.parentID(), resolved.updatedAt(),
+                            resolved.mcpServers(), resolved.configOptions(),
+                            resolved.models(), resolved.modes());
+                }
+                sessions.add(resolved);
+                cacheManager.cacheSession(resolved);
+            }
+            LOG.fine("getSessions: deserialized {0} sessions", sessions.size());
+            for (Session s : sessions) {
+                LOG.fine("getSessions: id={0}, title=''{1}'', directory={2}",
+                        s.id(), s.title(), s.effectiveDirectory());
+            }
+            return sessions;
+        } catch (IOException e) {
+            LOG.warn("getSessions: failed to deserialize: {0}", ExceptionUtils.getMessage(e), e);
+            return new ArrayList<>();
+        }
     }
 
     public CompletableFuture<List<Session>> getSessionsForDirectories(List<String> directories) {
