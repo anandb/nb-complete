@@ -560,6 +560,15 @@ public class MessageSender {
                         if (inputArea.getText().isEmpty()) {
                             inputArea.setText(echoText);
                         }
+                        // The steer never landed, so the attachments go back in the composer
+                        // with the text. AttachmentManager.add() keeps the size/count caps.
+                        for (AttachedFile af : attachedFiles) {
+                            attachmentManager.add(af);
+                        }
+                        if (!attachedFiles.isEmpty()) {
+                            paperclipUpdater.run();
+                        }
+                        inputFocusRequester.run();
                     });
                     return null;
                 });

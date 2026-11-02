@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.contract.SlashCommandInterceptor;
+import github.anandb.netbeans.model.AttachedFile;
 import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.ui.platform.ProcessService;
@@ -12,6 +13,7 @@ import java.lang.reflect.Field;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
+import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -20,7 +22,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -42,6 +43,7 @@ class MessageSenderPermissionGuardTest {
     private ChatThreadPanel chatPanel;
     private PlaceholderTextArea inputArea;
     private StatusController statusController;
+    private AttachmentManager attachmentManager;
     private ProcessControl proc;
     private SlashCommandInterceptor interceptor;
     private MessageSender sender;
@@ -59,9 +61,8 @@ class MessageSenderPermissionGuardTest {
             return null;
         }).when(inputArea).setText(anyString());
 
-        AttachmentManager attachments = mock(AttachmentManager.class);
-        when(attachments.getAttachments()).thenReturn(List.of());
-        when(attachments.buildFileBlocks(anyBoolean())).thenReturn(List.of());
+        AttachmentManager attachments = new AttachmentManager();
+        attachmentManager = attachments;
 
         sender = new MessageSender(inputArea, chatPanel, attachments, new MessageHistory(false),
                 statusController, () -> { }, () -> { });
@@ -206,6 +207,30 @@ class MessageSenderPermissionGuardTest {
 
         verify(proc, never()).steerMessage(anyString(), anyString(), any());
         verify(queue).enqueue("/compact");
+    }
+
+    @Test
+    void failedSteerRestoresTextAndAttachments() throws Exception {
+        permissionPending(false);
+        AttachedFile file = new AttachedFile("notes.txt", "text/plain",
+                "hello".getBytes(java.nio.charset.StandardCharsets.UTF_8), 5, "file:///tmp/notes.txt");
+        attachmentManager.add(file);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.GOOSE);
+        when(proc.getActiveRunId(SESSION)).thenReturn("run-1");
+        when(proc.steerMessage(anyString(), anyString(), any()))
+                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("steer failed")));
+        SessionControl midTurn = mock(SessionControl.class);
+        when(midTurn.canSendMessage()).thenReturn(false);
+        when(midTurn.getCurrentSessionId()).thenReturn(SESSION);
+        inject("sessionService", (SessionService) () -> midTurn);
+        input.append("hello");
+
+        sender.sendMessage();
+        SwingUtilities.invokeAndWait(() -> { });
+
+        assertEquals("hello", input.toString(), "the text goes back in the composer");
+        assertEquals(List.of(file), attachmentManager.getAttachments(),
+                "the attachment goes back with it");
     }
 
     @Test
