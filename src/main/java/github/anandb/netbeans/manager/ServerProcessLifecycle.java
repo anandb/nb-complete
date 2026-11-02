@@ -27,6 +27,7 @@ import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.AcpFsPolicy;
 import github.anandb.netbeans.support.ProcessTerminator;
+import github.anandb.netbeans.support.SteerEchoes;
 
 /**
  * Extracted server lifecycle methods from ProcessManager.
@@ -517,6 +518,13 @@ class ServerProcessLifecycle {
 
     synchronized void stopServer() {
         isClosing = true;
+
+        // Run ids and pending steer echoes belong to the process being replaced. Clear
+        // them here rather than in ProcessManager.restartServer(): a project-switch
+        // rebind calls restartServer() directly, and a stale expectedRunId would make
+        // the first steer after the rebind fail.
+        ActiveRunTracker.clear();
+        SteerEchoes.clear();
 
         // Cancel any pending reconnect task
         if (reconnectTask != null) {

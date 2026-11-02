@@ -309,9 +309,9 @@ public class ProcessManager implements ProcessControl {
                 LOG.warn("Pre-restart handler failed", e);
             }
         }
-        // Run ids and pending steer echoes belong to the process being replaced.
-        ActiveRunTracker.clear();
-        SteerEchoes.clear();
+        // Run ids and pending steer echoes are cleared by stopServer() itself, so the
+        // paths that restart the lifecycle directly (a project-switch rebind) cannot
+        // leave a dead expectedRunId behind.
         serverLifecycle.restartServer();
         reconnectManager.resetThrottle();
     }

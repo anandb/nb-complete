@@ -72,7 +72,10 @@ final class SessionRpcClient {
         }
         // Cancel first so close cannot race a turn still in flight; the
         // notification is written ahead of the close request on the same pipe.
-        processManager.sendNotification("session/cancel", Map.of("sessionId", sessionId));
+        // Through stopMessage() (not sendNotification) so the session's run id and
+        // pending steer echoes go with the cancelled turn: a later steer must not
+        // carry an expectedRunId the new process/run never issued.
+        processManager.stopMessage(sessionId);
         return processManager.sendRequest("session/close", Map.of("sessionId", sessionId), 30, TimeUnit.SECONDS)
                 .thenAccept(res -> LOG.fine("closeBeforeLoad: session/close completed for {0}", sessionId))
                 .exceptionally(ex -> {

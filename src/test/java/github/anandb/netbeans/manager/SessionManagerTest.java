@@ -918,7 +918,8 @@ class SessionManagerTest {
                 eq(2L), eq(TimeUnit.MINUTES));
 
         var order = inOrder(processManager);
-        order.verify(processManager).sendNotification(eq("session/cancel"), any());
+        // stopMessage() is the cancel: it also drops the session's run id and steer echoes.
+        order.verify(processManager).stopMessage("s1");
         order.verify(processManager).sendRequest(eq("session/close"), any(),
                 eq(30L), eq(TimeUnit.SECONDS));
         order.verify(processManager).sendRequest(eq("session/load"), any(),

@@ -110,7 +110,7 @@ class SessionRpcClientTest {
         CompletableFuture<Void> future = client.closeBeforeLoad("sid");
 
         assertNull(future.join(), "the no-op close must complete");
-        verify(processManager, never()).sendNotification(any(), any());
+        verify(processManager, never()).stopMessage(any());
         verify(processManager, never())
                 .sendRequest(eq("session/close"), any(), eq(30L), eq(TimeUnit.SECONDS));
     }
@@ -123,8 +123,10 @@ class SessionRpcClientTest {
 
         client.closeBeforeLoad("sid").join();
 
+        // stopMessage() rather than a bare session/cancel notification: it also forgets
+        // the session's run id and pending steer echoes, which the cancelled turn owns.
         InOrder order = inOrder(processManager);
-        order.verify(processManager).sendNotification(eq("session/cancel"), any());
+        order.verify(processManager).stopMessage("sid");
         order.verify(processManager).sendRequest(eq("session/close"), any(), eq(30L), eq(TimeUnit.SECONDS));
     }
 

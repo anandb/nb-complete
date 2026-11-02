@@ -365,7 +365,11 @@ Resolved — kept as regression guards:
   (null when the run ends). `manager/ActiveRunTracker` stores it per session;
   `SessionUpdateDecoder` feeds every raw `session/update` notification into it (that is
   the only place the raw node exists — do NOT try to read it from `SessionUpdate`), and
-  `ProcessManager.getActiveRunId()` reads it. Cleared on `session/cancel` and on restart.
+  `ProcessManager.getActiveRunId()` reads it. Cleared on `session/cancel` (`stopMessage()`,
+  which `SessionRpcClient.closeBeforeLoad()` now uses instead of a bare notification) and by
+  `ServerProcessLifecycle.stopServer()` — NOT by `ProcessManager.doRestartServer()`, because
+  `ensureStartedIn()` restarts the lifecycle directly for a project-switch rebind and never
+  passes through it. A stale id makes the next steer carry a dead `expectedRunId`.
 - `ProcessManager.steerMessage()` builds the request with `support/SteerRequest.params`
   (`sessionId`, `prompt` blocks, `expectedRunId`) and fails fast when no run id is known.
 - `MessageSender.trySteer()` takes the steer route only when the turn is in flight, no
