@@ -14,9 +14,7 @@ import github.anandb.netbeans.model.UsageRecords.ToolCallExecution;
 import github.anandb.netbeans.model.UsageRecords.ToolTotals;
 import github.anandb.netbeans.model.UsageRecords.UsageSummary;
 import github.anandb.netbeans.model.UsageRecords.UsageUpdateRow;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.support.MapperSupplier;
 import java.io.File;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -24,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import org.openide.modules.Places;
 import org.openide.util.lookup.ServiceProvider;
@@ -52,12 +49,6 @@ public class H2UsageStatsStore
         implements UsageStatsStore, SessionStore, PinnedMessageControl, ModelListControl {
 
     private static final Logger LOG = Logger.from(H2UsageStatsStore.class);
-    private static final ObjectMapper MAPPER = MapperSupplier.get();
-
-    /** Legacy preference values the two new migrations decode. */
-
-
-    static final long DAY_MILLIS = 86_400_000L;
 
     private final DbLifecycle lifecycle;
     private final UsageCapture capture;
@@ -67,33 +58,6 @@ public class H2UsageStatsStore
     private final PrefsMigration migration;
     private final PrefsMigration.Db migDb;
     private final SessionDatasets.Db sessionDb;
-
-    /**
-     * Input history, newest last. An immutable value published by a single
-     * reference assignment, so a reader from the EDT always sees either the
-     * previous list or the new one — never a half-replaced list.
-     */
-    private volatile List<String> history = List.of();
-
-    /**
-     * Metadata per harness bucket, newest session first. Each bucket is an
-     * immutable snapshot replaced wholesale on write, so readers iterate without
-     * locking and a write never mutates a map a reader already holds.
-     */
-    private final Map<String, Map<String, SessionMetadata>> metadata = new ConcurrentHashMap<>();
-
-    /**
-     * True once the metadata cache has been populated from the database. Until
-     * then a caller's record is derived from nothing, so its blank fields mean
-     * "unknown" rather than "clear" — see {@link #saveSessionMetadata}.
-     */
-    private volatile boolean metadataLoaded;
-
-    /**
-     * Pinned message ids per session, as immutable snapshots. Reads come from the
-     * EDT and that is the whole reason the database is not consulted: the cache is
-     * populated by {@link #load()} on the database thread.
-     */
 
     /** Service-provider constructor: stores the database under the user directory. */
     public H2UsageStatsStore() {
@@ -225,11 +189,6 @@ public class H2UsageStatsStore
 
     private <T> T call(java.util.concurrent.Callable<T> task, T fallback) {
         return lifecycle.call(task, fallback);
-    }
-
-    /** For tests logging through the store's logger name. */
-    static String loggerNameForTest() {
-        return H2UsageStatsStore.class.getName();
     }
 
     @Override

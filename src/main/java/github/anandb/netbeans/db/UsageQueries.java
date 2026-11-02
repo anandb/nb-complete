@@ -23,7 +23,7 @@ import github.anandb.netbeans.support.ModelIdNormalizer;
 final class UsageQueries {
 
     /** Days are stored as epoch millis; the window predicate compares against this. */
-    static final long DAY_MILLIS = 86_400_000L;
+    private static final long DAY_MILLIS = 86_400_000L;
 
     private UsageQueries() {}
 
@@ -225,11 +225,6 @@ final class UsageQueries {
     /** Renders a statement whose only slot is its window predicate. */
     private static Sql.Statement windowQuery(String name, long cutoff, String projectFilter) {
         return Sql.render(name, Map.of("scope", scopeSlot(cutoff, projectFilter)));
-    }
-
-    /** Renders a statement whose only slot is a capture table name; binds stay with the caller. */
-    private static String tableSql(String name, String table) {
-        return DbLifecycle.tableSql(name, table);
     }
 
     /** Binds a rendered statement's parameters in order. */
