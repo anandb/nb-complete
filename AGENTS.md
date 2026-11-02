@@ -335,6 +335,11 @@ Resolved — kept as regression guards:
   user prompt is in flight. `onUserPromptSent` runs only when `session/prompt` is actually
   issued (not on local slash intercept or other send aborts).
   `session/load` configOptions also triggers a flush.
+- `stopReason=max_tokens` means the reply was cut off by the model's output limit. Both
+  completion paths in `MessageSender` call `showTruncationNotice(result)`, which draws the
+  `INFO_ResponseTruncated` info bubble. goose reports `max_tokens` for exactly the condition
+  behind `_meta.goose.outputTokenLimitReached`/`fallbackContent`, so the `stopReason` check
+  covers both and the per-chunk `_meta` flags are NOT read separately (that would double-report).
 - `MessageType` enum contains all valid session updates (e.g. `agent_message_chunk`, `agent_thought_chunk`, `plan`, `tool_call`). Check this enum before adding message types.
 
 ### Harness Version Capabilities (OpenCode v1 vs v2)

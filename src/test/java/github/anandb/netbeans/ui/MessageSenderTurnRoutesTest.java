@@ -6,7 +6,9 @@ import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.contract.SlashCommandInterceptor;
 import github.anandb.netbeans.model.AttachedFile;
 import github.anandb.netbeans.model.HarnessCatalog;
+import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
+import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.ui.platform.ProcessService;
 import github.anandb.netbeans.ui.platform.SessionService;
 import java.io.IOException;
@@ -22,6 +24,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeastOnce;
@@ -298,6 +301,46 @@ class MessageSenderTurnRoutesTest {
                 .findFirst().orElseThrow();
         verify(chatPanel).removeMessageBubble(echoId);
         assertEquals("typed while waiting", input.toString(), "text typed in the meantime is newer");
+    }
+
+    @Test
+    void aTruncatedTurnShowsAVisibleNotice() throws Exception {
+        session(true);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.OPENCODE);
+        CompletableFuture<JsonNode> pending = new CompletableFuture<>();
+        when(proc.sendMessage(anyString(), anyString(), any(), any())).thenReturn(pending);
+        input.append("hello");
+
+        sender.sendMessage();
+        pending.complete(MapperSupplier.get().createObjectNode().put("stopReason", "max_tokens"));
+        drainEdt();
+
+        assertTrue(drawnNotices() > 0, "a reply cut short by the output limit is not just logged");
+    }
+
+    @Test
+    void aNormalTurnShowsNoTruncationNotice() throws Exception {
+        session(true);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.OPENCODE);
+        CompletableFuture<JsonNode> pending = new CompletableFuture<>();
+        when(proc.sendMessage(anyString(), anyString(), any(), any())).thenReturn(pending);
+        input.append("hello");
+
+        sender.sendMessage();
+        pending.complete(MapperSupplier.get().createObjectNode().put("stopReason", "end_turn"));
+        drainEdt();
+
+        assertEquals(0, drawnNotices());
+    }
+
+    /** Info bubbles drawn so far that are the truncation notice. */
+    private long drawnNotices() {
+        ArgumentCaptor<ProcessedMessage> drawn = ArgumentCaptor.forClass(ProcessedMessage.class);
+        verify(chatPanel, atLeastOnce()).addMessage(drawn.capture());
+        return drawn.getAllValues().stream()
+                .filter(pm -> pm.messageType() == MessageType.info)
+                .filter(pm -> pm.text() != null && pm.text().contains("output-token"))
+                .count();
     }
 
     /** The one attachment left in the composer, by name. */

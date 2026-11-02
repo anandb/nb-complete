@@ -402,7 +402,22 @@ public class MessageSender {
             // drainMessageQueue), so the bubble is finalized 300ms after ALL messages drain —
             // even if the RPC result arrives before the last SSE delta.
             chatPanel.restartFlushTimer();
+            showTruncationNotice(result);
         }
+    }
+
+    /**
+     * {@code stopReason=max_tokens} means the reply is incomplete. goose reports it for exactly
+     * the condition behind {@code _meta.goose.outputTokenLimitReached}, so this one check covers
+     * both the partial-reply and the fallback-content case, which used to be log-only.
+     */
+    private void showTruncationNotice(JsonNode result) {
+        JsonNode reason = result != null ? result.get("stopReason") : null;
+        if (reason == null || !"max_tokens".equals(reason.asText())) {
+            return;
+        }
+        chatPanel.addMessage(ProcessedMessage.createInfo(
+                NbBundle.getMessage(AssistantTopComponent.class, "INFO_ResponseTruncated")));
     }
 
     /** Failure path for an accepted prompt, on the EDT. A failed mid-turn send must not end the
@@ -755,6 +770,7 @@ public class MessageSender {
                         inputFocusRequester.run();
                         if (result != null && result.has("stopReason")) {
                             chatPanel.restartFlushTimer();
+                            showTruncationNotice(result);
                         }
                     });
                 })
