@@ -27,8 +27,10 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -112,6 +114,55 @@ class ProcessManagerSteerTest {
         assertTrue(future.isCompletedExceptionally(), "no run id means no steer to issue");
         verify(client, never()).sendRequest(eq(SteerRequest.METHOD), any(), anyLong(), any(TimeUnit.class));
         assertNull(processManager.getActiveRunId("s1"));
+    }
+
+    /** goose's rejection of a steer whose expectedRunId no longer names the live run. */
+    private static AcpRpcException staleRunRejection(String expected, String actual) {
+        ObjectNode data = MapperSupplier.get().createObjectNode();
+        data.put("message", "expected active run id `" + expected + "` but found `" + actual + "`");
+        data.put("expectedRunId", expected);
+        data.put("actualRunId", actual);
+        return new AcpRpcException(-32602, "Invalid params", data);
+    }
+
+    @Test
+    void aStaleRunIdIsRetriedOnceWithTheRunIdTheServerReports() throws Exception {
+        if (processManager == null) {
+            return;
+        }
+        ActiveRunTracker.update("s1", runUpdate("run-old"));
+        ObjectNode ok = MapperSupplier.get().createObjectNode().put("messageId", "steer_2");
+        when(client.sendRequest(eq(SteerRequest.METHOD), any(), anyLong(), any(TimeUnit.class)))
+                .thenReturn(CompletableFuture.failedFuture(staleRunRejection("run-old", "run-new")),
+                            CompletableFuture.completedFuture(ok));
+
+        JsonNode result = processManager.steerMessage("s1", "hello", List.of()).get(5, TimeUnit.SECONDS);
+
+        assertEquals("steer_2", result.get("messageId").asText());
+        ArgumentCaptor<Object> params = ArgumentCaptor.forClass(Object.class);
+        verify(client, times(2)).sendRequest(eq(SteerRequest.METHOD), params.capture(),
+                anyLong(), any(TimeUnit.class));
+        assertEquals("run-old", ((Map<?, ?>) params.getAllValues().get(0)).get("expectedRunId"));
+        assertEquals("run-new", ((Map<?, ?>) params.getAllValues().get(1)).get("expectedRunId"),
+                "the retry must carry the id the server says is live");
+        assertEquals("run-new", processManager.getActiveRunId("s1"), "the tracker learns the live id");
+    }
+
+    @Test
+    void aSteerRejectedForAnyOtherReasonIsNotRetried() {
+        if (processManager == null) {
+            return;
+        }
+        ActiveRunTracker.update("s1", runUpdate("run-7"));
+        when(client.sendRequest(eq(SteerRequest.METHOD), any(), anyLong(), any(TimeUnit.class)))
+                .thenReturn(CompletableFuture.failedFuture(
+                        new AcpRpcException(-32602, "Invalid params",
+                                MapperSupplier.get().getNodeFactory().textNode("no active run to steer"))));
+
+        CompletableFuture<JsonNode> future = processManager.steerMessage("s1", "hello", List.of());
+
+        assertTrue(future.isCompletedExceptionally());
+        verify(client, times(1)).sendRequest(eq(SteerRequest.METHOD), any(), anyLong(), any(TimeUnit.class));
     }
 
     @Test

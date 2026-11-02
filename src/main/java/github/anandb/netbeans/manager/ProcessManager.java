@@ -45,6 +45,7 @@ import github.anandb.netbeans.support.SteerEchoes;
 import github.anandb.netbeans.support.SteerRequest;
 import github.anandb.netbeans.contract.ToolExecutor;
 import github.anandb.netbeans.contract.ProcessControl;
+import github.anandb.netbeans.contract.RpcFailure;
 
 import github.anandb.netbeans.mcp.McpToolAdapter;
 import github.anandb.netbeans.mcp.McpManager;
@@ -447,9 +448,51 @@ public class ProcessManager implements ProcessControl {
             return CompletableFuture.failedFuture(new IllegalStateException("No active run to steer"));
         }
         int idleTimeoutSec = PluginSettings.getSessionIdleTimeout();
+        CompletableFuture<JsonNode> steer = sendSteer(client, sessionId, text, additionalBlocks, runId, idleTimeoutSec);
+        // The run can be replaced between the tracker reading it and goose comparing it.
+        // goose answers with the live id (`data.actualRunId`), so retry once with that.
+        return steer.exceptionallyCompose(ex -> {
+            String actual = staleRunId(ex, runId);
+            if (actual == null) {
+                return CompletableFuture.failedFuture(ex);
+            }
+            LOG.info("Steer run id went stale for {0} ({1} -> {2}); retrying once",
+                    sessionId, runId, actual);
+            ActiveRunTracker.set(sessionId, actual);
+            return sendSteer(client, sessionId, text, additionalBlocks, actual, idleTimeoutSec);
+        });
+    }
+
+    private static CompletableFuture<JsonNode> sendSteer(AcpProtocolClient client, String sessionId,
+            String text, List<Map<String, Object>> additionalBlocks, String runId, int idleTimeoutSec) {
         return client.sendRequest(SteerRequest.METHOD,
                 SteerRequest.params(sessionId, text, additionalBlocks, runId),
                 idleTimeoutSec, TimeUnit.SECONDS);
+    }
+
+    /**
+     * {@code data.actualRunId} of a rejected steer whose {@code expectedRunId} no longer
+     * matches, or null when the failure is anything else (no run active, transport error).
+     */
+    private static String staleRunId(Throwable ex, String attempted) {
+        RpcFailure failure = rpcFailure(ex);
+        if (failure == null) {
+            return null;
+        }
+        String actual = failure.dataField("actualRunId");
+        return actual == null || actual.isBlank() || actual.equals(attempted) ? null : actual;
+    }
+
+    /** The {@link RpcFailure} inside a (possibly wrapped) send failure, or null. */
+    private static RpcFailure rpcFailure(Throwable ex) {
+        Throwable current = ex;
+        while (current != null) {
+            if (current instanceof RpcFailure failure) {
+                return failure;
+            }
+            current = current.getCause() == current ? null : current.getCause();
+        }
+        return null;
     }
 
     @Override

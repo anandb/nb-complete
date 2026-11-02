@@ -43,6 +43,14 @@ final class ActiveRunTracker {
         }
     }
 
+    /** Records a run id learnt from a rejected steer ({@code data.actualRunId}). */
+    static void set(String sessionId, String runId) {
+        if (sessionId == null || runId == null || runId.isBlank()) {
+            return;
+        }
+        ACTIVE_RUNS.put(sessionId, runId);
+    }
+
     static String get(String sessionId) {
         return sessionId != null ? ACTIVE_RUNS.get(sessionId) : null;
     }

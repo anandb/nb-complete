@@ -377,6 +377,11 @@ Resolved — kept as regression guards:
   passes through it. A stale id makes the next steer carry a dead `expectedRunId`.
 - `ProcessManager.steerMessage()` builds the request with `support/SteerRequest.params`
   (`sessionId`, `prompt` blocks, `expectedRunId`) and fails fast when no run id is known.
+  A run id can go stale between the tracker reading it and goose comparing it: goose rejects
+  the steer with `error.data.actualRunId`, and `steerMessage` retries **once** with that id
+  (updating `ActiveRunTracker`). Only `actualRunId` triggers the retry; any other failure is
+  returned as-is. `AcpRpcException` carries `error.data` and implements `contract/RpcFailure`,
+  which is how a caller reads `data.actualRunId`/`data.reason` without touching the transport.
 - `MessageSender.trySteer()` takes the steer route only when the turn is in flight, no
   permission request is pending, the harness supports steering and a run id is known;
   otherwise the queue branch handles it. A failed steer restores the text *and*

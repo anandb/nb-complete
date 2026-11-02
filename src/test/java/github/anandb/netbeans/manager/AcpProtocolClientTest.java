@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import github.anandb.netbeans.support.MapperSupplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -91,6 +92,25 @@ class AcpProtocolClientTest {
         assertTrue(ExceptionUtils.getMessage(ex).contains("Internal error"));
         assertTrue(ex.getCause() instanceof AcpRpcException, "expected typed JSON-RPC error");
         assertEquals(-32603, ((AcpRpcException) ex.getCause()).code());
+    }
+
+    @Test
+    void errorDataSurvivesTheProtocolBoundary() throws Exception {
+        CompletableFuture<JsonNode> future = client.sendRequest("promptMethod", null);
+
+        JsonNode sentNode = server.readFromClient();
+        long id = sentNode.get("id").asLong();
+
+        String errorJson = "{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"error\":{\"code\":-32603,"
+                + "\"message\":\"Credits exhausted\",\"data\":{\"reason\":\"credits_exhausted\","
+                + "\"url\":\"https://example.test/top-up\"}}}";
+        server.sendToClient(errorJson);
+
+        Exception ex = assertThrows(Exception.class, () -> future.get(5, TimeUnit.SECONDS));
+        AcpRpcException rpc = assertInstanceOf(AcpRpcException.class, ex.getCause());
+        assertEquals("credits_exhausted", rpc.dataField("reason"),
+                "the classification goose sends in error.data must reach the caller");
+        assertEquals("https://example.test/top-up", rpc.dataField("url"));
     }
 
     /**

@@ -400,7 +400,8 @@ public class AcpProtocolClient implements Closeable {
                         String errMsg = errNode.has("message") ? errNode.get("message").asText() : errNode.toString();
                         int code = errNode.has("code") ? errNode.get("code").asInt() : 0;
                         LOG.warn("[ACP] Error response for id={0}: {1}", id, errMsg);
-                        future.completeExceptionally(new AcpRpcException(code, errMsg));
+                        JsonNode data = errNode.has("data") ? errNode.get("data") : null;
+                        future.completeExceptionally(new AcpRpcException(code, errMsg, data));
                     } else if (node.has("result")) {
                         LOG.fine("[ACP] Received response for id={0}", id);
                         future.complete(node.get("result"));
