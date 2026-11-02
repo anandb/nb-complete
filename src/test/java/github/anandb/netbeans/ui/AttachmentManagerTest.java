@@ -271,4 +271,31 @@ class AttachmentManagerTest {
         am.addFromFiles(null);
         assertTrue(am.getAttachments().isEmpty());
     }
+
+    @Test
+    void restoreKeepsOrderAndCountsWhatItTook() throws IOException {
+        AttachedFile first = attachment("first.txt");
+        AttachedFile second = attachment("second.txt");
+        AttachmentManager am = new AttachmentManager();
+
+        assertEquals(2, am.restore(List.of(first, second)));
+        assertEquals(List.of("first.txt", "second.txt"),
+                am.getAttachments().stream().map(AttachedFile::filename).toList());
+    }
+
+    @Test
+    void restoreStopsAtTheCapAndReportsTheRest() throws IOException {
+        AttachmentManager am = new AttachmentManager();
+        am.add(attachment("kept.txt"));
+
+        int restored = am.restore(List.of(attachment("a.txt"), attachment("b.txt")));
+
+        assertEquals(1, restored, "only the free slot is filled");
+        assertEquals(2, am.size(), "the count cap is still enforced");
+        assertEquals("kept.txt", am.getAttachments().get(0).filename(), "existing files are not displaced");
+    }
+
+    private AttachedFile attachment(String name) throws IOException {
+        return new AttachedFile(Files.writeString(tempDir.resolve(name), "content").toFile());
+    }
 }

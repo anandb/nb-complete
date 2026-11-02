@@ -271,7 +271,9 @@ public class ChatThreadPanel extends JPanel {
     }
 
     /** Removes a bubble that was drawn locally but never reached the server, e.g. the echo of
-     *  a failed send. Runs on the EDT; the spacer that follows the bubble is dropped with it. */
+     *  a failed send. Runs on the EDT; the spacer that follows the bubble is dropped with it.
+     *  A removed user bubble also rolls {@code userMessageCount} back, so the next user
+     *  message keeps its place in the avatar alternation. */
     public void removeMessageBubble(String messageId) {
         if (messageId == null) {
             return;
@@ -285,6 +287,9 @@ public class ChatThreadPanel extends JPanel {
                 if (next instanceof Box.Filler) {
                     messagesContainer.remove(i);
                 }
+                if ("user".equals(b.getRole()) && userMessageCount > 0) {
+                    userMessageCount--;
+                }
                 queuedBubbles.remove(messageId);
                 queuedMessageIds.remove(messageId);
                 messagesContainer.revalidate();
@@ -292,6 +297,11 @@ public class ChatThreadPanel extends JPanel {
                 return;
             }
         }
+    }
+
+    /** The running per-turn user message index (drives the avatar alternation); test seam. */
+    int getUserMessageCount() {
+        return userMessageCount;
     }
 
     public void addMessage(ProcessedMessage pm) {

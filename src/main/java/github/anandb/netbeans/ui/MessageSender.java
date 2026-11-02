@@ -193,7 +193,7 @@ public class MessageSender {
         // (goose) adds the text to the running turn; a queueing harness
         // (requiresMessageQueue) holds it until turn end; the rest accept a second prompt.
         boolean turnEnded = turnEndedCheck != null ? turnEndedCheck.getAsBoolean() : true;
-        boolean midTurn = !sessionService.get().canSendMessage() || !turnEnded;
+        boolean midTurn = isMidTurn(turnEnded);
 
         if (midTurn && !slash.forwarded() && !isPermissionPending() && trySteer(text, proc)) {
             return;
@@ -297,9 +297,10 @@ public class MessageSender {
     }
 
     /** The prompt pieces assembled before the RPC. A forwarded slash command carries no
-     *  attachments and no editor context. */
+     *  attachments and no editor context. {@code attachedFiles} is kept so a failed send can
+     *  put the files back in the composer — the payload cleared them. */
     private record PromptPayload(boolean forwardedSlash, List<Map<String, Object>> fileBlocks,
-            String clientMessageId) {
+            String clientMessageId, List<AttachedFile> attachedFiles) {
     }
 
     /** Builds the file blocks, drops the attachments and draws the local echo. */
@@ -325,7 +326,8 @@ public class MessageSender {
         if (onUserMessageSentCallback != null) {
             onUserMessageSentCallback.run();
         }
-        return new PromptPayload(isForwardedSlash, fileBlocks, clientMessageId);
+        return new PromptPayload(isForwardedSlash, fileBlocks, clientMessageId,
+                isForwardedSlash ? List.of() : attachedFiles);
     }
 
     /** Turn-start bookkeeping: the auto-backup and the permission epoch. */
@@ -363,8 +365,7 @@ public class MessageSender {
                     SwingUtilities.invokeLater(() -> onPromptCompleted(gen, result));
                 })
                 .exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() ->
-                            onPromptFailed(gen, prevGen, steeringSend, text, ex, payload.clientMessageId()));
+                    SwingUtilities.invokeLater(() -> onPromptFailed(gen, prevGen, steeringSend, text, ex, payload));
                     return null;
                 });
     }
@@ -408,7 +409,7 @@ public class MessageSender {
      *  turn UI: the harness's first turn is still running, so Stop, the stall watchdog and the
      *  streaming bubble stay up and the turn-end claim returns to the original prompt. */
     private void onPromptFailed(int gen, int prevGen, boolean steeringSend, String messageText,
-            Throwable ex, String echoMessageId) {
+            Throwable ex, PromptPayload payload) {
         if (gen != sendGeneration.get()) {
             LOG.info("Ignoring stale session/prompt error gen={0} current={1}",
                     gen, sendGeneration.get());
@@ -417,7 +418,7 @@ public class MessageSender {
         LOG.info("RPC exceptionally fired: {0}", ExceptionUtils.getMessage(ex));
         // The echo bubble was never delivered: drop it so resending the restored text does
         // not draw a second identical bubble (user bubbles never merge).
-        chatPanel.removeMessageBubble(echoMessageId);
+        chatPanel.removeMessageBubble(payload.clientMessageId());
         String reason = ExceptionUtils.getMessage(ex) != null
                 ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName();
         statusController.setStatus("STATUS_Error", reason);
@@ -434,6 +435,7 @@ public class MessageSender {
             if (inputArea.getText().isEmpty()) {
                 inputArea.setText(messageText);
             }
+            restoreAttachments(payload.attachedFiles());
             sendGeneration.compareAndSet(gen, prevGen);
             statusController.updateButtonState(true);
             if (!statusController.isRunWatchdogArmed()) {
@@ -444,6 +446,7 @@ public class MessageSender {
             return;
         }
         inputArea.setText(messageText);
+        restoreAttachments(payload.attachedFiles());
         statusController.stopThinking();
         statusController.disarmRunWatchdog();
         chatPanel.stopStreaming();
@@ -462,8 +465,28 @@ public class MessageSender {
      *  the turn UI alive while that turn is really running: the turn can end between the
      *  routing decision and the RPC failure. */
     private boolean isMidTurn() {
-        boolean turnEnded = turnEndedCheck == null || turnEndedCheck.getAsBoolean();
+        return isMidTurn(turnEndedCheck == null || turnEndedCheck.getAsBoolean());
+    }
+
+    /** The mid-turn test over an already-read turn state ({@code !canSend || !turnEnded}). */
+    private boolean isMidTurn(boolean turnEnded) {
         return !turnEnded || !sessionService.get().canSendMessage();
+    }
+
+    /** Puts a failed send's attachments back in the composer. {@link AttachmentManager#add}
+     *  enforces the caps, so files attached during the flight can leave no room — a dropped
+     *  file must be picked again, so the notice wins the label over the failure text (which
+     *  is logged, and shown as an error bubble on the prompt path). */
+    private void restoreAttachments(List<AttachedFile> attachedFiles) {
+        if (attachedFiles == null || attachedFiles.isEmpty()) {
+            return;
+        }
+        int restored = attachmentManager.restore(attachedFiles);
+        paperclipUpdater.run();
+        if (restored < attachedFiles.size()) {
+            statusController.setStatus("STATUS_AttachmentsDropped", attachedFiles.size() - restored);
+            statusController.scheduleReset();
+        }
     }
 
     /** Draws the forwarded command's own echo once the send is accepted. */
@@ -573,13 +596,8 @@ public class MessageSender {
                         // draw a second identical bubble (user bubbles never merge).
                         chatPanel.removeMessageBubble(echoMessageId);
                         // The steer never landed, so the attachments go back in the composer
-                        // with the text. AttachmentManager.add() keeps the size/count caps.
-                        for (AttachedFile af : attachedFiles) {
-                            attachmentManager.add(af);
-                        }
-                        if (!attachedFiles.isEmpty()) {
-                            paperclipUpdater.run();
-                        }
+                        // with the text.
+                        restoreAttachments(attachedFiles);
                         inputFocusRequester.run();
                     });
                     return null;

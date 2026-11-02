@@ -266,10 +266,20 @@ class MessageSenderPermissionGuardTest {
     }
 
     private void callOnPromptFailed(int gen, boolean steeringSend, String text) throws Exception {
+        callOnPromptFailed(gen, steeringSend, text, List.of());
+    }
+
+    /** Invokes the failure handler with a payload carrying {@code attachedFiles}. */
+    private void callOnPromptFailed(int gen, boolean steeringSend, String text,
+            List<AttachedFile> attachedFiles) throws Exception {
+        Class<?> payloadType = Class.forName("github.anandb.netbeans.ui.MessageSender$PromptPayload");
+        var ctor = payloadType.getDeclaredConstructor(boolean.class, List.class, String.class, List.class);
+        ctor.setAccessible(true);
+        Object payload = ctor.newInstance(false, List.of(), "echo-1", attachedFiles);
         java.lang.reflect.Method m = MessageSender.class.getDeclaredMethod("onPromptFailed",
-                int.class, int.class, boolean.class, String.class, Throwable.class, String.class);
+                int.class, int.class, boolean.class, String.class, Throwable.class, payloadType);
         m.setAccessible(true);
-        m.invoke(sender, gen, -1, steeringSend, text, new RuntimeException("boom"), "echo-1");
+        m.invoke(sender, gen, -1, steeringSend, text, new RuntimeException("boom"), payload);
     }
 
     @Test

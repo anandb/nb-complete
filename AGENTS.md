@@ -377,6 +377,9 @@ Resolved — kept as regression guards:
   otherwise the queue branch handles it. A failed steer restores the text *and*
   the attachments and drops its echo bubble (`ChatThreadPanel.removeMessageBubble`),
   so a resend does not draw a second identical bubble — user bubbles never merge.
+  The same restore runs on the prompt path: `PromptPayload` carries the attachments it
+  cleared, and `restoreAttachments()` puts them back through `AttachmentManager.restore()`,
+  which honours the caps and reports whatever no longer fits (`STATUS_AttachmentsDropped`).
   A failed mid-turn send keeps the turn alive only while the turn is still running
   (`isMidTurn()` is re-read, the watchdog re-armed); if the turn ended in between it
   tears the turn down like a turn-starting failure. Local slash commands are intercepted
@@ -603,8 +606,10 @@ divider and the input area (it must borrow space from the thread only).
   `sweepStreamingBubbles()`, assigning SHA-256 IDs to assistant bubbles that lack one.
 - **Non-streaming messages**: messageId is generated in `addSingleBubble()` when
   `messageId == null && !streaming`.
-- The user message index (`userMessageCount`) increments per user message and resets on
-  session create/load. Same inputs always produce same hash (stable across reloads).
+- The user message index (`userMessageCount`) increments per user message, decrements when
+  `removeMessageBubble()` drops a failed send's user echo, and resets on session create/load.
+  Same inputs always produce same hash (stable across reloads). It drives the avatar
+  alternation (`BubbleFactory.resolveAvatarPosition`), so a skipped decrement flips the side.
 
 ### Startup Session/List Optimization
 - Only `deferStartupSessionLoad()` calls `session/list` at startup (after

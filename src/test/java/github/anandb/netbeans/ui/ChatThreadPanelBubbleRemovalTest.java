@@ -52,6 +52,17 @@ class ChatThreadPanelBubbleRemovalTest {
         assertEquals(before, panel.getMessagesContainer().getComponentCount());
     }
 
+    @Test
+    void removingAUserEchoRollsTheUserIndexBack() throws Exception {
+        addUserEcho("m3");
+        assertEquals(1, panel.getUserMessageCount(), "the echo counted as a user message");
+
+        SwingUtilities.invokeAndWait(() -> panel.removeMessageBubble("m3"));
+
+        assertEquals(0, panel.getUserMessageCount(),
+                "a dropped echo must not shift the next user message to the other avatar side");
+    }
+
     private void addUserEcho(String messageId) throws Exception {
         SwingUtilities.invokeAndWait(() -> panel.addMessage(new ProcessedMessage.Builder()
                 .messageType(MessageType.user_message_chunk)

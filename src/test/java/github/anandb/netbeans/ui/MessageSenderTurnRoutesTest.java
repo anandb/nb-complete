@@ -1,17 +1,23 @@
 package github.anandb.netbeans.ui;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.contract.SlashCommandInterceptor;
+import github.anandb.netbeans.model.AttachedFile;
 import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.ui.platform.ProcessService;
 import github.anandb.netbeans.ui.platform.SessionService;
+import java.io.IOException;
 import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -35,12 +41,16 @@ class MessageSenderTurnRoutesTest {
 
     private static final String SESSION = "sess-1";
 
+    @TempDir
+    Path tempDir;
+
     private final StringBuilder input = new StringBuilder();
     private final AtomicBoolean messageDone = new AtomicBoolean();
     private final AtomicBoolean turnEndedCallbackRan = new AtomicBoolean();
     private ChatThreadPanel chatPanel;
     private PlaceholderTextArea inputArea;
     private StatusController statusController;
+    private AttachmentManager attachments;
     private ProcessControl proc;
     private MessageQueueManager queue;
     private MessageSender sender;
@@ -51,6 +61,7 @@ class MessageSenderTurnRoutesTest {
         chatPanel = mock(ChatThreadPanel.class);
         inputArea = mock(PlaceholderTextArea.class);
         statusController = mock(StatusController.class);
+        attachments = new AttachmentManager();
         when(inputArea.getText()).thenAnswer(inv -> input.toString());
         doAnswer(inv -> {
             input.setLength(0);
@@ -58,7 +69,7 @@ class MessageSenderTurnRoutesTest {
             return null;
         }).when(inputArea).setText(anyString());
 
-        sender = new MessageSender(inputArea, chatPanel, new AttachmentManager(), new MessageHistory(false),
+        sender = new MessageSender(inputArea, chatPanel, attachments, new MessageHistory(false),
                 statusController, () -> { }, () -> { });
         sender.setOnMessageDoneCallback(() -> messageDone.set(true));
         sender.setOnTurnEndedCallback(() -> {
@@ -176,5 +187,85 @@ class MessageSenderTurnRoutesTest {
         assertEquals("hello", input.toString());
         assertEquals(false, messageDone.get(), "the running turn is not done because of this send");
         assertEquals(false, turnEndedCallbackRan.get());
+    }
+
+    @Test
+    void aFailedTurnStartingSendPutsTheAttachmentsBack() throws Exception {
+        session(true);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.OPENCODE);
+        when(proc.sendMessage(anyString(), anyString(), any(), any()))
+                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("boom")));
+        input.append("hello");
+        attachments.add(attachment("a.txt"));
+
+        sender.sendMessage();
+        drainEdt();
+
+        assertEquals("a.txt", onlyAttachment(), "the file goes back with the text");
+        assertEquals("hello", input.toString());
+    }
+
+    @Test
+    void aFailedSecondPromptMidTurnPutsTheAttachmentsBack() throws Exception {
+        session(false);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.OPENCODE);
+        when(proc.sendMessage(anyString(), anyString(), any(), any()))
+                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("boom")));
+        input.append("hello");
+        attachments.add(attachment("a.txt"));
+
+        sender.sendMessage();
+        drainEdt();
+
+        assertEquals("a.txt", onlyAttachment());
+    }
+
+    @Test
+    void aFailedSteerPutsTheAttachmentsBack() throws Exception {
+        session(false);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.GOOSE);
+        when(proc.getActiveRunId(SESSION)).thenReturn("run-1");
+        CompletableFuture<JsonNode> steer = new CompletableFuture<>();
+        when(proc.steerMessage(anyString(), anyString(), any())).thenReturn(steer);
+        input.append("hello");
+        attachments.add(attachment("a.txt"));
+
+        sender.sendMessage();
+        steer.completeExceptionally(new RuntimeException("boom"));
+        drainEdt();
+
+        assertEquals("a.txt", onlyAttachment());
+        assertEquals("hello", input.toString());
+    }
+
+    @Test
+    void attachmentsTheCapsCannotTakeBackAreReported() throws Exception {
+        session(true);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.OPENCODE);
+        CompletableFuture<JsonNode> pending = new CompletableFuture<>();
+        when(proc.sendMessage(anyString(), anyString(), any(), any())).thenReturn(pending);
+        input.append("hello");
+        attachments.add(attachment("sent.txt"));
+
+        sender.sendMessage();
+        // The user attaches two more files while the prompt is in flight, filling the composer.
+        attachments.add(attachment("b.txt"));
+        attachments.add(attachment("c.txt"));
+        pending.completeExceptionally(new RuntimeException("boom"));
+        drainEdt();
+
+        assertEquals(2, attachments.size(), "the two files attached during the flight stay");
+        verify(statusController).setStatus("STATUS_AttachmentsDropped", 1);
+    }
+
+    /** The one attachment left in the composer, by name. */
+    private String onlyAttachment() {
+        assertEquals(1, attachments.size(), "exactly one file is back in the composer");
+        return attachments.getAttachments().get(0).filename();
+    }
+
+    private AttachedFile attachment(String name) throws IOException {
+        Path file = Files.writeString(tempDir.resolve(name), "content of " + name);
+        return new AttachedFile(file.toFile());
     }
 }

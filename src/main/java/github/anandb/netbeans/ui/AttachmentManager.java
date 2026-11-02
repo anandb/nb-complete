@@ -32,6 +32,20 @@ public class AttachmentManager {
         return attachments.add(file);
     }
 
+    /**
+     * Puts files back after a failed send, keeping the size and count caps. Returns how
+     * many were re-added so the caller can report the ones that no longer fit.
+     */
+    public int restore(List<AttachedFile> files) {
+        int restored = 0;
+        for (AttachedFile file : files) {
+            if (add(file)) {
+                restored++;
+            }
+        }
+        return restored;
+    }
+
     public boolean remove(AttachedFile file) {
         return attachments.remove(file);
     }
