@@ -573,7 +573,7 @@ public class StrategyRegistry implements UpdateDispatcher {
         long input = usage.path("inputTokens").asLong(0);
         long output = usage.path("outputTokens").asLong(0);
         long total = usage.hasNonNull("totalTokens") ? usage.get("totalTokens").asLong() : input + output;
-        store.recordMessageUsage(new MessageUsageRow(attribution(sessionId), System.currentTimeMillis(),
+        store.recordMessageUsage(new MessageUsageRow(attribution(sessionId, update), System.currentTimeMillis(),
                 messageId, input, output, total,
                 optLong(usage, "cacheReadTokens"), optLong(usage, "cacheWriteTokens"),
                 usage.hasNonNull("cost") ? usage.get("cost").asDouble() : null,
@@ -604,7 +604,7 @@ public class StrategyRegistry implements UpdateDispatcher {
         if (isBlank(sessionId) || !firstCount(sessionId, kind, update.messageId())) {
             return;
         }
-        store.recordMessage(new MessageEvent(attribution(sessionId), System.currentTimeMillis(), kind));
+        store.recordMessage(new MessageEvent(attribution(sessionId, update), System.currentTimeMillis(), kind));
     }
 
     /** True the first time a (session, kind, messageId) triple is seen. */
@@ -646,5 +646,36 @@ public class StrategyRegistry implements UpdateDispatcher {
         }
         return new Attribution(sessionId, sessions.getHarnessId(),
                 sessions.getSessionModelId(sessionId), sessions.getSessionDirectory(sessionId));
+    }
+
+    /**
+     * Attribution for a message-bearing update: the harness reports which model actually
+     * answered in {@code _meta.goose.inference}, which can differ from the dropdown value
+     * (a resolved variant, or a sub-agent on another model). Falls back to the session's
+     * current model when the harness is silent.
+     */
+    private static Attribution attribution(String sessionId, SessionUpdate update) {
+        Attribution base = attribution(sessionId);
+        String resolved = resolvedModel(update);
+        return resolved == null ? base
+                : new Attribution(base.sessionId(), base.harnessId(), resolved, base.project());
+    }
+
+    /** {@code _meta.goose.inference.resolvedModel}, falling back to the requested model. */
+    private static String resolvedModel(SessionUpdate update) {
+        JsonNode meta = update.meta();
+        if (meta == null || !meta.isObject()) {
+            return null;
+        }
+        JsonNode inference = meta.path("goose").path("inference");
+        if (!inference.isObject()) {
+            return null;
+        }
+        String resolved = inference.path("resolvedModel").asText("");
+        if (isNotBlank(resolved)) {
+            return resolved;
+        }
+        String requested = inference.path("requestedModel").asText("");
+        return isNotBlank(requested) ? requested : null;
     }
 }

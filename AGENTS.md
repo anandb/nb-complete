@@ -439,6 +439,12 @@ Resolved — kept as regression guards:
   `UIHandler.showStatus` → `StatusController.showStatusNotice`, which only schedules the
   Ready reset when no turn is processing (a reset mid-turn would overwrite the
   thinking/responding text).
+- Rows are attributed to the model that actually answered, read from
+  `_meta.goose.inference.resolvedModel` (falling back to `requestedModel`, then the
+  session's current model) through `StrategyRegistry.attribution(sessionId, update)`.
+  Do NOT record the dropdown value directly: a provider alias resolves to a different
+  model, and a sub-agent can run on one the dropdown never named. `UpdateData._meta`
+  exists for this; `SessionUpdate.meta()` is the accessor.
 
 ### Harness Identity For Custom Binaries And Containers
 - `acpHarnessId` is written only by onboarding (`AssistantTopComponent.onHarnessSelected`)

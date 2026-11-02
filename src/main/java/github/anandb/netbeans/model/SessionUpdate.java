@@ -56,8 +56,25 @@ public record SessionUpdate(
         // Reported cost object (amount, currency) on usage_update; may be absent.
         JsonNode cost,
         // Per-message usage object on the goose custom message_usage update.
-        JsonNode usage
+        JsonNode usage,
+        // The update's _meta block (goose inference attribution, output-limit flag, ...).
+        @JsonProperty("_meta") JsonNode meta
     ) {
+
+        /**
+         * An update with no {@code _meta}: the common case. Kept so a caller that
+         * builds a synthetic update does not have to pass the trailing null.
+         */
+        public UpdateData(MessageType type, String title, JsonNode rawInput, String messageId,
+                          JsonNode content, Message message, List<Agent> agents, List<Session> sessions,
+                          Boolean isThinking, JsonNode status, String kind, String toolCallId,
+                          JsonNode rawOutput, List<AvailableCommand> availableCommands,
+                          List<SessionConfigOption> configOptions, Long used, Long size,
+                          JsonNode entries, JsonNode locations, JsonNode cost, JsonNode usage) {
+            this(type, title, rawInput, messageId, content, message, agents, sessions, isThinking,
+                    status, kind, toolCallId, rawOutput, availableCommands, configOptions, used, size,
+                    entries, locations, cost, usage, null);
+        }
 
         /**
          * Tool calls send {@code status} as a string ("in_progress"/"completed"),
@@ -138,6 +155,12 @@ public record SessionUpdate(
     public JsonNode usage() {
         UpdateData ud = update();
         return ud != null ? ud.usage() : null;
+    }
+
+    /** The update's {@code _meta} block, or null when the harness sent none. */
+    public JsonNode meta() {
+        UpdateData ud = update();
+        return ud != null ? ud.meta() : null;
     }
 
     /** The notice/progress object of a goose custom {@code status_message}, or null. */

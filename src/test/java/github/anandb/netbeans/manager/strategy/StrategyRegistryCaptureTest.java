@@ -200,6 +200,15 @@ class StrategyRegistryCaptureTest {
         return assistantChunk("ses_capture", messageId);
     }
 
+    /** An agent chunk carrying the goose {@code _meta} the harness attaches to messages. */
+    private static SessionUpdate assistantChunkWithMeta(String messageId, ObjectNode meta) {
+        JsonNode content = MAPPER.createObjectNode().put("type", "text").put("text", "t");
+        SessionUpdate.UpdateData data = new SessionUpdate.UpdateData(MessageType.agent_message_chunk,
+                null, null, messageId, content, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, meta);
+        return new SessionUpdate("2.0", "session/update", new SessionUpdate.Params("ses_capture", data));
+    }
+
     @Test
     void costlessUsageUpdateStillRecordsARow() {
         registry().handle(usageUpdate(55674, 1048576, null), noopHandler());
@@ -226,6 +235,22 @@ class StrategyRegistryCaptureTest {
         assertEquals(120, row.timeToFirstTokenMs());
         assertFalse(row.compaction());
         assertEquals("m1", row.attribution().modelId());
+    }
+
+    @Test
+    void harnessReportedModelOverridesTheSessionModel() {
+        ObjectNode meta = MAPPER.createObjectNode();
+        meta.putObject("goose").putObject("inference")
+                .put("provider", "openrouter")
+                .put("requestedModel", "openrouter:auto")
+                .put("resolvedModel", "openrouter/anthropic/claude-sonnet-4");
+        SessionUpdate update = assistantChunkWithMeta("m-meta", meta);
+
+        registry().handle(update, noopHandler());
+
+        assertEquals("openrouter/anthropic/claude-sonnet-4",
+                store.messages.get(0).attribution().modelId(),
+                "the model the harness says answered wins over the dropdown value");
     }
 
     @Test
