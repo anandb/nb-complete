@@ -416,6 +416,30 @@ Resolved — kept as regression guards:
 - ACP v2 `session/inject` is the eventual standard replacement; keep the goose call
   behind `supportsSessionSteer()` so it can be swapped without touching the UI.
 
+### goose Custom Notifications (`_goose/unstable/session/update`)
+
+- goose sends its richer per-session channel **only** when the client opts in with
+  `clientCapabilities._meta.goose.customNotifications = true`. That flag is built by
+  `ServerProcessLifecycle.clientCapabilities(policy)`; removing it silently turns the
+  channel off (goose never advertises an error for it).
+- `SessionUpdateDecoder.decodeCustom` handles the channel: `message_usage` and
+  `status_message` are dispatched like any other update (same `SessionUpdate` record,
+  same `StrategyRegistry` switch), and the custom `usage_update` variant is **dropped on
+  purpose** — goose sends the standard `usage_update` on `session/update` as well, and
+  capturing both writes every gauge row twice.
+- `UpdateData.status` is a `JsonNode`, not a `String`: tool-call updates send a status
+  string while goose's `status_message` sends an object under the same key. Read
+  tool-call state through `update.status()` (text only) and notices through
+  `update.statusMessage()`.
+- `message_usage` rows are captured per execution into `message_usage` (schema v9) with
+  the message id, cache read/write tokens, cost, `elapsed_ms` and `ttft_ms`; a repeated
+  id is deduped (`CAPTURED_USAGE`) and the LOADING replay window is skipped like every
+  other capture. Compaction usage carries no message id and is still stored.
+- `status_message` is live status, never transcript: it goes to
+  `UIHandler.showStatus` → `StatusController.showStatusNotice`, which only schedules the
+  Ready reset when no turn is processing (a reset mid-turn would overwrite the
+  thinking/responding text).
+
 ### Harness Identity For Custom Binaries And Containers
 - `acpHarnessId` is written only by onboarding (`AssistantTopComponent.onHarnessSelected`)
   and `ACPOptionsPanel.store()`. The Options **Harness** combo

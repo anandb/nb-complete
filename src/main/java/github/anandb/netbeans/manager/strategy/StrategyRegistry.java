@@ -31,6 +31,7 @@ import github.anandb.netbeans.model.ToolCallData;
 import github.anandb.netbeans.model.UsageRecords.Attribution;
 import github.anandb.netbeans.model.UsageRecords.MessageEvent;
 import github.anandb.netbeans.model.UsageRecords.MessageKind;
+import github.anandb.netbeans.model.UsageRecords.MessageUsageRow;
 import github.anandb.netbeans.model.UsageRecords.UsageUpdateRow;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
@@ -61,6 +62,13 @@ public class StrategyRegistry implements UpdateDispatcher {
 
     /** Guards CAP-6 message counting against re-counting the same streamed message id. */
     private static final Cache<String, Boolean> COUNTED_MESSAGES =
+        Caffeine.newBuilder()
+            .expireAfterAccess(30, TimeUnit.MINUTES)
+            .maximumSize(20_000)
+            .build();
+
+    /** Guards per-message usage capture against a repeated notification for one message id. */
+    private static final Cache<String, Boolean> CAPTURED_USAGE =
         Caffeine.newBuilder()
             .expireAfterAccess(30, TimeUnit.MINUTES)
             .maximumSize(20_000)
@@ -113,6 +121,18 @@ public class StrategyRegistry implements UpdateDispatcher {
                     handler.updateUsage(update.update().used(), update.update().size());
                     captureUsageUpdate(update);
                 }
+            }
+
+            case "message_usage" -> captureMessageUsage(update);
+
+            case "status_message" -> {
+                JsonNode notice = update.statusMessage();
+                String message = notice != null ? notice.path("message").asText("") : "";
+                if (isBlank(message)) {
+                    LOG.fine("Ignoring status_message without a message, update={0}", update);
+                    return;
+                }
+                handler.showStatus(message);
             }
 
             case "session_info_update" -> {
@@ -473,7 +493,7 @@ public class StrategyRegistry implements UpdateDispatcher {
                 .toolTitle(tt)
                 .rawText(text)
                 .streaming(true)
-                .status(defaultString(update.update().status()))
+                .status(defaultString(update.status()))
                 .build();
     }
 
@@ -524,6 +544,47 @@ public class StrategyRegistry implements UpdateDispatcher {
                 ? cost.get("currency").asText("USD") : "USD";
         store.recordUsageUpdate(new UsageUpdateRow(attribution(sessionId), System.currentTimeMillis(),
                 data.used() != null ? data.used() : 0, data.size(), amount, currency));
+    }
+
+    /**
+     * Records one goose {@code message_usage} notification. Session replay sends these
+     * again on load, so the load window is skipped like every other capture, and a
+     * repeated message id inside a live turn is deduped. Compaction usage carries no
+     * message id and is stored, since it is real spend.
+     */
+    private static void captureMessageUsage(SessionUpdate update) {
+        if (!captureAllowed()) {
+            return;
+        }
+        JsonNode usage = update.usage();
+        String sessionId = update.params() != null ? update.params().sessionId() : null;
+        if (usage == null || !usage.isObject() || isBlank(sessionId)) {
+            return;
+        }
+        UsageStatsStore store = Lookup.getDefault().lookup(UsageStatsStore.class);
+        if (store == null) {
+            return;
+        }
+        String messageId = update.messageId();
+        if (isNotBlank(messageId)
+                && CAPTURED_USAGE.asMap().putIfAbsent(sessionId + '|' + messageId, Boolean.TRUE) != null) {
+            return;
+        }
+        long input = usage.path("inputTokens").asLong(0);
+        long output = usage.path("outputTokens").asLong(0);
+        long total = usage.hasNonNull("totalTokens") ? usage.get("totalTokens").asLong() : input + output;
+        store.recordMessageUsage(new MessageUsageRow(attribution(sessionId), System.currentTimeMillis(),
+                messageId, input, output, total,
+                optLong(usage, "cacheReadTokens"), optLong(usage, "cacheWriteTokens"),
+                usage.hasNonNull("cost") ? usage.get("cost").asDouble() : null,
+                optLong(usage, "elapsedMs"), optLong(usage, "timeToFirstTokenMs"),
+                usage.path("isCompaction").asBoolean(false)));
+    }
+
+    /** Reads an optional numeric field as a {@code Long}; absent or non-numeric is null. */
+    private static Long optLong(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        return value != null && value.isNumber() ? value.asLong() : null;
     }
 
     /**

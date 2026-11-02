@@ -15,6 +15,7 @@ import github.anandb.netbeans.model.SessionState;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.model.UsageRecords.MessageEvent;
 import github.anandb.netbeans.model.UsageRecords.MessageKind;
+import github.anandb.netbeans.model.UsageRecords.MessageUsageRow;
 import github.anandb.netbeans.model.UsageRecords.PromptUsageRow;
 import github.anandb.netbeans.model.UsageRecords.ToolCallExecution;
 import github.anandb.netbeans.model.UsageRecords.ToolTotals;
@@ -32,6 +33,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -54,6 +56,7 @@ class StrategyRegistryCaptureTest {
         final List<UsageUpdateRow> usage = new ArrayList<>();
         final List<PromptUsageRow> prompts = new ArrayList<>();
         final List<MessageEvent> messages = new ArrayList<>();
+        final List<MessageUsageRow> messageUsage = new ArrayList<>();
 
         @Override
         public void recordUsageUpdate(UsageUpdateRow row) {
@@ -68,6 +71,11 @@ class StrategyRegistryCaptureTest {
         @Override
         public void recordMessage(MessageEvent event) {
             messages.add(event);
+        }
+
+        @Override
+        public void recordMessageUsage(MessageUsageRow row) {
+            messageUsage.add(row);
         }
 
         @Override
@@ -149,15 +157,32 @@ class StrategyRegistryCaptureTest {
         return new StrategyRegistry();
     }
 
+    /** Builds a goose custom message_usage update. */
+    private static SessionUpdate messageUsage(String messageId, long input, long output, long total,
+                                              long cacheRead, double cost, long elapsedMs) {
+        ObjectNode usage = MAPPER.createObjectNode()
+                .put("inputTokens", input)
+                .put("outputTokens", output)
+                .put("totalTokens", total)
+                .put("cacheReadTokens", cacheRead)
+                .put("cost", cost)
+                .put("elapsedMs", elapsedMs)
+                .put("timeToFirstTokenMs", 120)
+                .put("isCompaction", false);
+        SessionUpdate.UpdateData data = new SessionUpdate.UpdateData(MessageType.message_usage,
+                null, null, messageId, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, usage);
+        return new SessionUpdate("2.0", "session/update", new SessionUpdate.Params("ses_capture", data));
+    }
+
     /** Builds a usage_update carrying the gauge and an optional USD cost. */
-    private static SessionUpdate usageUpdate(long used, long size, Double amount) {
-        ObjectNode cost = null;
+    private static SessionUpdate usageUpdate(long used, long size, Double amount) {        ObjectNode cost = null;
         if (amount != null) {
             cost = MAPPER.createObjectNode().put("amount", amount).put("currency", "USD");
         }
         SessionUpdate.UpdateData data = new SessionUpdate.UpdateData(MessageType.usage_update,
                 null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, used, size, null, null, cost);
+                null, null, used, size, null, null, cost, null);
         return new SessionUpdate("2.0", "session/update", new SessionUpdate.Params("ses_capture", data));
     }
 
@@ -166,7 +191,7 @@ class StrategyRegistryCaptureTest {
         JsonNode content = MAPPER.createObjectNode().put("type", "text").put("text", "t");
         SessionUpdate.UpdateData data = new SessionUpdate.UpdateData(MessageType.agent_message_chunk,
                 null, null, messageId, content, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
         return new SessionUpdate("2.0", "session/update", new SessionUpdate.Params(sessionId, data));
     }
 
@@ -183,6 +208,44 @@ class StrategyRegistryCaptureTest {
         assertEquals(0.0, store.usage.get(0).costAmount(), 1e-9);
         assertEquals(55674L, store.usage.get(0).used());
         assertEquals("USD", store.usage.get(0).costCurrency());
+    }
+
+    @Test
+    void messageUsageNotificationRecordsTokensTimingAndCompaction() {
+        registry().handle(messageUsage("usage-1", 10, 20, 30, 5, 0.002, 900), noopHandler());
+
+        assertEquals(1, store.messageUsage.size());
+        MessageUsageRow row = store.messageUsage.get(0);
+        assertEquals("usage-1", row.messageId());
+        assertEquals(10, row.inputTokens());
+        assertEquals(20, row.outputTokens());
+        assertEquals(30, row.totalTokens());
+        assertEquals(5, row.cacheReadTokens());
+        assertEquals(0.002, row.cost());
+        assertEquals(900, row.elapsedMs());
+        assertEquals(120, row.timeToFirstTokenMs());
+        assertFalse(row.compaction());
+        assertEquals("m1", row.attribution().modelId());
+    }
+
+    @Test
+    void repeatedMessageUsageForTheSameMessageIsRecordedOnce() {
+        SessionUpdate update = messageUsage("dup-1", 10, 20, 30, 5, 0.002, 900);
+        StrategyRegistry registry = registry();
+        registry.handle(update, noopHandler());
+        registry.handle(update, noopHandler());
+
+        assertEquals(1, store.messageUsage.size());
+    }
+
+    @Test
+    void replayedMessageUsageIsNotCapturedWhileLoading() {
+        when(lookupInstance.lookup(SessionQuery.class))
+                .thenReturn(streamingSessionQueryWithState(SessionState.LOADING));
+
+        registry().handle(messageUsage("loading-1", 10, 20, 30, 5, 0.002, 900), noopHandler());
+
+        assertTrue(store.messageUsage.isEmpty());
     }
 
     @Test
@@ -251,7 +314,7 @@ class StrategyRegistryCaptureTest {
         JsonNode content = MAPPER.createObjectNode().put("type", "text").put("text", text);
         SessionUpdate.UpdateData data = new SessionUpdate.UpdateData(MessageType.user_message_chunk,
                 null, null, messageId, content, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
         return new SessionUpdate("2.0", "session/update", new SessionUpdate.Params("ses_capture", data));
     }
 

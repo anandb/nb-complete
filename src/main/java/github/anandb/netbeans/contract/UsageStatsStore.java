@@ -1,6 +1,7 @@
 package github.anandb.netbeans.contract;
 
 import github.anandb.netbeans.model.UsageRecords.MessageEvent;
+import github.anandb.netbeans.model.UsageRecords.MessageUsageRow;
 import github.anandb.netbeans.model.UsageRecords.PromptUsageRow;
 import github.anandb.netbeans.model.UsageRecords.ToolCallExecution;
 import github.anandb.netbeans.model.UsageRecords.ToolTotals;
@@ -47,6 +48,14 @@ public interface UsageStatsStore {
 
     /** Records one counted message update. Never blocks on I/O. */
     void recordMessage(MessageEvent event);
+
+    /**
+     * Records one goose {@code message_usage} notification as one row: the
+     * per-message token counts, cache traffic, cost and timing. Never blocks on
+     * I/O. A message without an id (compaction) is still stored.
+     */
+    default void recordMessageUsage(MessageUsageRow row) {
+    }
 
     /**
      * Records one finished MCP tool execution as one row: tool name, end time,

@@ -28,4 +28,13 @@ public interface UIHandler {
      * onto the EDT themselves.
      */
     void updatePlan(List<PlanEntry> entries);
+
+    /**
+     * Shows a live status notice from the harness (goose {@code status_message}:
+     * compaction progress, model loading). This is not transcript content and
+     * must never be persisted or rendered as a chat bubble. An in-flight turn's
+     * own status text wins; implementations may let the notice expire.
+     */
+    default void showStatus(String message) {
+    }
 }

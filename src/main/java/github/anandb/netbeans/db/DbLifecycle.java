@@ -55,8 +55,11 @@ final class DbLifecycle {
      * row now records one finished MCP tool execution instead of a turn's per-tool
      * counts. The columns are additive and defaulted, so version-7 rows survive and
      * their {@code call_count} still sums correctly with the new rows.
+     * Version 9 adds the {@code message_usage} table for goose's per-message
+     * {@code message_usage} custom notification; purely additive, so released
+     * rows are untouched and no migration branch is needed.
      */
-    private static final int SCHEMA_VERSION = 8;
+    private static final int SCHEMA_VERSION = 9;
 
     /**
      * Open attempts allowed per process: the startup attempt plus the single
@@ -72,7 +75,8 @@ final class DbLifecycle {
     private static final long CLOSE_RETRY_DELAY_MS = 50L;
 
     /** Tables carrying a model id, in the order they were introduced. */
-    private static final String[] CAPTURE_TABLES = {"usage_update", "prompt_usage", "message_event", "tool_call_usage"};
+    private static final String[] CAPTURE_TABLES = {"usage_update", "prompt_usage", "message_event", "tool_call_usage",
+            "message_usage"};
 
     private final Logger log;
     private final String jdbcUrl;

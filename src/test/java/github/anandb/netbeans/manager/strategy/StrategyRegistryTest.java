@@ -15,11 +15,15 @@ class StrategyRegistryTest {
 
     private static final JsonMapper MAPPER = MapperSupplier.get();
 
+    private static JsonNode text(String value) {
+        return value == null ? null : MAPPER.getNodeFactory().textNode(value);
+    }
+
     private static SessionUpdate createUpdateWithOutput(String outputText) {
         JsonNode rawOutput = MAPPER.createObjectNode().put("output", outputText);
         SessionUpdate.UpdateData ud = new SessionUpdate.UpdateData(
                 MessageType.tool_call, null, null, "m1", null, null, null, null, null,
-                "completed", null, null, rawOutput, null, null, null, null, null, null, null
+                text("completed"), null, null, rawOutput, null, null, null, null, null, null, null, null
         );
         SessionUpdate.Params params = new SessionUpdate.Params("s1", ud);
         return new SessionUpdate("2.0", "session/update", params);
@@ -93,7 +97,7 @@ class StrategyRegistryTest {
         JsonNode rawOutput = MAPPER.createObjectNode().put("output", "[{\"content\":\"x\",\"status\":\"y\",\"priority\":\"z\"}]");
         SessionUpdate.UpdateData ud = new SessionUpdate.UpdateData(
                 MessageType.tool_call, null, null, "m1", null, null, null, null, null,
-                "running", null, null, rawOutput, null, null, null, null, null, null, null
+                text("running"), null, null, rawOutput, null, null, null, null, null, null, null, null
         );
         SessionUpdate.Params params = new SessionUpdate.Params("s1", ud);
         SessionUpdate update = new SessionUpdate("2.0", "session/update", params);

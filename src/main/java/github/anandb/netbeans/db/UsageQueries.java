@@ -256,4 +256,12 @@ final class UsageQueries {
             ps.setLong(index, value);
         }
     }
+
+    static void setNullableDouble(PreparedStatement ps, int index, Double value) throws SQLException {
+        if (value == null) {
+            ps.setNull(index, java.sql.Types.NUMERIC);
+        } else {
+            ps.setDouble(index, value);
+        }
+    }
 }

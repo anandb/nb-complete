@@ -39,6 +39,29 @@ CREATE TABLE IF NOT EXISTS prompt_usage (
     cached_read_tokens BIGINT
 );
 
+-- One row per goose `message_usage` custom notification: per-message tokens,
+-- cache traffic, cost and timing, keyed by the harness's message id. Kept
+-- separate from prompt_usage (one row per prompt result) so neither aggregate
+-- double-counts the other.
+CREATE TABLE IF NOT EXISTS message_usage (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    session_id VARCHAR(512),
+    harness_id VARCHAR(128),
+    model_id VARCHAR(512),
+    project VARCHAR(2048),
+    captured_at BIGINT NOT NULL,
+    message_id VARCHAR(512),
+    input_tokens BIGINT NOT NULL,
+    output_tokens BIGINT NOT NULL,
+    total_tokens BIGINT NOT NULL,
+    cache_read_tokens BIGINT,
+    cache_write_tokens BIGINT,
+    cost_amount NUMERIC(20,6),
+    elapsed_ms BIGINT,
+    ttft_ms BIGINT,
+    is_compaction BOOLEAN NOT NULL DEFAULT FALSE
+);
+
 CREATE TABLE IF NOT EXISTS message_event (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     session_id VARCHAR(512),

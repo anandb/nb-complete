@@ -50,7 +50,8 @@ public class SessionLifecycleHandler implements SessionListener {
     private final ProcessService processService = PlatformBridge.processServiceSafe();
 
     private static final Logger LOG = Logger.from(SessionLifecycleHandler.class);
-
+    /** How long a harness status notice stays on the status label when idle. */
+    private static final int STATUS_NOTICE_MS = 5000;
     private final ChatThreadPanel chatPanel;
     private final JComboBox<SessionItem> sessionDropdown;
     private final JButton hideBtn;
@@ -295,6 +296,23 @@ public class SessionLifecycleHandler implements SessionListener {
                         return;
                     }
                     planPanel.setEntries(planSessionId, entries);
+                });
+            }
+
+            @Override
+            public void showStatus(String message) {
+                if (message == null || message.isBlank()) {
+                    return;
+                }
+                String noticeSessionId = update.params() != null ? update.params().sessionId() : null;
+                SwingUtilities.invokeLater(() -> {
+                    // A late notice for a session the user has left must not
+                    // overwrite the current session's status.
+                    String currentId = sessionService.get().getCurrentSessionId();
+                    if (noticeSessionId != null && !noticeSessionId.equals(currentId)) {
+                        return;
+                    }
+                    statusController.showStatusNotice(message, STATUS_NOTICE_MS);
                 });
             }
         });

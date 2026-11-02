@@ -6,6 +6,7 @@ import github.anandb.netbeans.model.SessionMetadata;
 import github.anandb.netbeans.model.UsageRecords.Attribution;
 import github.anandb.netbeans.model.UsageRecords.MessageEvent;
 import github.anandb.netbeans.model.UsageRecords.MessageKind;
+import github.anandb.netbeans.model.UsageRecords.MessageUsageRow;
 import github.anandb.netbeans.model.UsageRecords.PromptUsageRow;
 import github.anandb.netbeans.model.UsageRecords.ToolCallExecution;
 import github.anandb.netbeans.model.UsageRecords.ToolCallStatus;
@@ -182,7 +183,7 @@ class H2UsageStatsStoreTest {
         assertEquals(1, totals.size());
         assertEquals(5, totals.get(0).calls(), "the legacy turn aggregate still sums with the new row");
         assertEquals(0, totals.get(0).failures(), "legacy rows are treated as successful");
-        assertEquals("8", upgradedScalarVersion(fileUrl));
+        assertEquals("9", upgradedScalarVersion(fileUrl));
 
         try (Connection c = DriverManager.getConnection(fileUrl);
                 Statement st = c.createStatement();
@@ -260,8 +261,35 @@ class H2UsageStatsStoreTest {
     }
 
     @Test
-    void usageUpdateKeepsGaugeAndReportsUsd() throws SQLException {
-        costRow(0, NOW);
+    void messageUsageRowRoundTripsWithTimingAndCompactionFlag() throws SQLException {
+        Attribution a = att("s1", "goose", "provider:model", "/proj/a");
+        store.recordMessageUsage(new MessageUsageRow(a, NOW, "msg-1", 10, 20, 30, 5L, 7L,
+                0.002, 900L, 120L, false));
+        store.recordMessageUsage(new MessageUsageRow(a, NOW, null, 0, 0, 0, null, null,
+                null, null, null, true));
+
+        // Writes are serialized on the store's executor; a query drains that queue.
+        store.query(1, null, NOW);
+
+        assertEquals(30L, scalarLong(
+                "SELECT total_tokens FROM message_usage WHERE message_id = 'msg-1'"));
+        assertEquals(5L, scalarLong(
+                "SELECT cache_read_tokens FROM message_usage WHERE message_id = 'msg-1'"));
+        assertEquals(7L, scalarLong(
+                "SELECT cache_write_tokens FROM message_usage WHERE message_id = 'msg-1'"));
+        assertEquals(120L, scalarLong(
+                "SELECT ttft_ms FROM message_usage WHERE message_id = 'msg-1'"));
+        assertEquals("provider/model", scalar(
+                "SELECT model_id FROM message_usage WHERE message_id = 'msg-1'"),
+                "model ids are canonicalised before they reach the column");
+        assertEquals(2L, scalarLong("SELECT COUNT(*) FROM message_usage"),
+                "compaction usage has no message id and is still stored");
+        assertEquals(Boolean.TRUE, scalar(
+                "SELECT is_compaction FROM message_usage WHERE message_id IS NULL"));
+    }
+
+    @Test
+    void usageUpdateKeepsGaugeAndReportsUsd() throws SQLException {        costRow(0, NOW);
 
         UsageSummary summary = store.query(1, null, NOW);
         assertEquals(1, summary.sessions());
@@ -471,8 +499,8 @@ class H2UsageStatsStoreTest {
         upgraded.recordUsageUpdate(new UsageUpdateRow(att("s1", "pi", "m1", "/proj/a"), NOW, 20, null, 0.6, "USD"));
         assertEquals(0.6, upgraded.query(1, null, NOW).totalCost(), 1e-9);
 
-        assertEquals("8", upgradedScalarVersion(fileUrl),
-                "version 8 adds the call duration and outcome columns");
+        assertEquals("9", upgradedScalarVersion(fileUrl),
+                "version 9 adds the message_usage table on top of the tool-call columns");
         upgraded.shutdown();
     }
 
@@ -494,7 +522,7 @@ class H2UsageStatsStoreTest {
         H2UsageStatsStore upgraded = new H2UsageStatsStore(fileUrl);
         upgraded.load();
         assertEquals(List.of(new AvailableModel("a", "A", null)), upgraded.getModels("omp"));
-        assertEquals("8", upgradedScalarVersion(fileUrl));
+        assertEquals("9", upgradedScalarVersion(fileUrl));
         try (Connection c = DriverManager.getConnection(fileUrl);
                 Statement st = c.createStatement();
                 ResultSet rs = st.executeQuery(

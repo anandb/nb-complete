@@ -14,6 +14,11 @@ class ToolDataExtractorTest {
 
     private static final com.fasterxml.jackson.databind.json.JsonMapper MAPPER = MapperSupplier.get();
 
+    /** Wraps a tool-call status string as the JsonNode the wire record carries. */
+    private static com.fasterxml.jackson.databind.JsonNode text(String value) {
+        return value == null ? null : MAPPER.getNodeFactory().textNode(value);
+    }
+
     @Test
     void testStripMetadataRemovesComments() {
         String result = ToolDataExtractor.stripMetadata("hello <!-- comment --> world");
@@ -218,7 +223,7 @@ class ToolDataExtractorTest {
                 "tc1",
                 content == null ? null : MAPPER.readTree(content),
                 null, null, null, null,
-                "pending", kind, "tc1", null, null, null, null, null, null, null, null);
+                text("pending"), kind, "tc1", null, null, null, null, null, null, null, null, null);
         return new SessionUpdate("2.0", "session/update", new SessionUpdate.Params("s1", ud));
     }
 
@@ -235,7 +240,7 @@ class ToolDataExtractorTest {
                         null,
                         null,
                         Boolean.TRUE,
-                        title,
+                        text(title),
                         title,
                         title,
                         null,
@@ -243,6 +248,7 @@ class ToolDataExtractorTest {
                         null,
                         Long.MIN_VALUE,
                         Long.MIN_VALUE,
+                        null,
                         null,
                         null,
                         null)));

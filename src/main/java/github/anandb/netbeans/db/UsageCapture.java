@@ -9,13 +9,14 @@ import java.util.logging.Level;
 
 import github.anandb.netbeans.model.UsageRecords.Attribution;
 import github.anandb.netbeans.model.UsageRecords.MessageEvent;
+import github.anandb.netbeans.model.UsageRecords.MessageUsageRow;
 import github.anandb.netbeans.model.UsageRecords.PromptUsageRow;
 import github.anandb.netbeans.model.UsageRecords.ToolCallExecution;
 import github.anandb.netbeans.model.UsageRecords.UsageUpdateRow;
 import github.anandb.netbeans.support.Logger;
 
 /**
- * Write side of the capture tables: the four {@code record*} entry points plus
+ * Write side of the capture tables: the five {@code record*} entry points plus
  * the cost-delta read they depend on. Runs on the lifecycle's executor via the
  * supplied runner; SQL failures are logged, never thrown.
  */
@@ -95,6 +96,31 @@ final class UsageCapture {
                 ps.executeUpdate();
             } catch (SQLException e) {
                 db.log().log(Level.WARNING, "Failed to record prompt usage row", e);
+            }
+        });
+    }
+
+    void recordMessageUsage(MessageUsageRow row) {
+        if (row == null) {
+            return;
+        }
+        db.runDb(() -> {
+            try (PreparedStatement ps = db.connection().prepareStatement(Sql.get("insert_message_usage"))) {
+                UsageQueries.bindAttribution(ps, 1, row.attribution());
+                ps.setLong(5, row.capturedAt());
+                ps.setString(6, row.messageId());
+                ps.setLong(7, Math.max(row.inputTokens(), 0));
+                ps.setLong(8, Math.max(row.outputTokens(), 0));
+                ps.setLong(9, Math.max(row.totalTokens(), 0));
+                UsageQueries.setNullableLong(ps, 10, row.cacheReadTokens());
+                UsageQueries.setNullableLong(ps, 11, row.cacheWriteTokens());
+                UsageQueries.setNullableDouble(ps, 12, row.cost());
+                UsageQueries.setNullableLong(ps, 13, row.elapsedMs());
+                UsageQueries.setNullableLong(ps, 14, row.timeToFirstTokenMs());
+                ps.setBoolean(15, row.compaction());
+                ps.executeUpdate();
+            } catch (SQLException e) {
+                db.log().log(Level.WARNING, "Failed to record message_usage row", e);
             }
         });
     }

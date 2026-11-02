@@ -18,6 +18,9 @@ public enum MessageType {
     @JsonAlias("session_info_updated")
     session_info_update,
     current_mode_update,
+    // Goose custom notifications (client must advertise _meta.goose.customNotifications).
+    message_usage,
+    status_message,
     message,
     error_response,
     info,

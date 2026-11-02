@@ -60,7 +60,7 @@ class StrategyRegistryDispatchTest {
     void sessionInfoUpdateRendersNothing() {
         SessionUpdate.UpdateData data = new SessionUpdate.UpdateData(
                 MessageType.session_info_update, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null, null, null);
         registry.handle(update("s1", data), handler);
 
         verify(handler, never()).displayMessage(any());
@@ -91,7 +91,7 @@ class StrategyRegistryDispatchTest {
         content.putObject("annotations").putArray("audience").add("assistant");
         SessionUpdate.UpdateData data = new SessionUpdate.UpdateData(
                 MessageType.agent_message_chunk, null, null, "m1", content, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         registry.handle(update("s1", data), handler);
 
@@ -130,10 +130,9 @@ class StrategyRegistryDispatchTest {
     // ---- usage and config ---------------------------------------------------
 
     @Test
-    void usageUpdateForwardsTokens() {
-        SessionUpdate.UpdateData data = new SessionUpdate.UpdateData(
+    void usageUpdateForwardsTokens() {        SessionUpdate.UpdateData data = new SessionUpdate.UpdateData(
                 MessageType.usage_update, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, 120L, 1_000L, null, null, null);
+                null, null, null, null, null, null, null, 120L, 1_000L, null, null, null, null);
 
         registry.handle(update("s1", data), handler);
 
@@ -141,10 +140,38 @@ class StrategyRegistryDispatchTest {
     }
 
     @Test
+    void statusMessageIsShownAsLiveStatus() {
+        ObjectNode status = MAPPER.createObjectNode()
+                .put("type", "progress")
+                .put("message", "Compacting conversation");
+        SessionUpdate.UpdateData data = new SessionUpdate.UpdateData(
+                MessageType.status_message, null, null, null, null, null, null, null,
+                null, status, null, null, null, null, null, null, null, null, null, null, null);
+
+        registry.handle(update("s1", data), handler);
+
+        verify(handler).showStatus("Compacting conversation");
+        verify(handler, never()).displayMessage(any());
+    }
+
+    @Test
+    void statusMessageWithoutTextRendersNothing() {
+        ObjectNode status = MAPPER.createObjectNode().put("type", "notice");
+        SessionUpdate.UpdateData data = new SessionUpdate.UpdateData(
+                MessageType.status_message, null, null, null, null, null, null, null,
+                null, status, null, null, null, null, null, null, null, null, null, null, null);
+
+        registry.handle(update("s1", data), handler);
+
+        verify(handler, never()).showStatus(any());
+        verify(handler, never()).displayMessage(any());
+    }
+
+    @Test
     void configOptionUpdateForwardsOptions() {
         SessionUpdate.UpdateData data = new SessionUpdate.UpdateData(
                 MessageType.config_option_update, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, List.of(), null, null, null, null, null);
+                null, null, null, null, null, null, List.of(), null, null, null, null, null, null);
 
         registry.handle(update("s1", data), handler);
 
@@ -162,7 +189,7 @@ class StrategyRegistryDispatchTest {
                  {"content":"medium item","status":"pending","priority":"medium"}]""");
         SessionUpdate.UpdateData data = new SessionUpdate.UpdateData(
                 MessageType.plan, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, entries, null, null);
+                null, null, null, null, null, null, null, null, null, entries, null, null, null);
 
         registry.handle(update("s1", data), handler);
 
@@ -181,7 +208,7 @@ class StrategyRegistryDispatchTest {
     void emptyPlanIsIgnored() {
         SessionUpdate.UpdateData data = new SessionUpdate.UpdateData(
                 MessageType.plan, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, MAPPER.createArrayNode(), null, null);
+                null, null, null, null, null, null, null, null, null, MAPPER.createArrayNode(), null, null, null);
 
         registry.handle(update("s1", data), handler);
 
@@ -231,14 +258,19 @@ class StrategyRegistryDispatchTest {
     /** An {@link SessionUpdate.UpdateData} with every field unset except the type. */
     private static SessionUpdate.UpdateData data(MessageType type) {
         return new SessionUpdate.UpdateData(type, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     private static SessionUpdate.UpdateData chunk(MessageType type, String text, String messageId) {
         ObjectNode content = MAPPER.createObjectNode();
         content.put("text", text);
         return new SessionUpdate.UpdateData(type, null, null, messageId, content, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null, null, null);
+    }
+
+    /** Wraps a tool-call status string as the JsonNode the wire record carries. */
+    private static JsonNode text(String value) {
+        return value == null ? null : MAPPER.getNodeFactory().textNode(value);
     }
 
     private static SessionUpdate.UpdateData toolCall(String messageId, String toolCallId,
@@ -250,7 +282,7 @@ class StrategyRegistryDispatchTest {
         part.put("text", "output of " + command);
         var content = MAPPER.createArrayNode().add(part);
         return new SessionUpdate.UpdateData(MessageType.tool_call, command, rawInput, messageId, content,
-                null, null, null, null, status, "execute", toolCallId, null, null, null, null, null,
-                null, null, null);
+                null, null, null, null, text(status), "execute", toolCallId, null, null, null, null, null,
+                null, null, null, null);
     }
 }

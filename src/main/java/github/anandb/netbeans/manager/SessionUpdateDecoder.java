@@ -66,4 +66,32 @@ final class SessionUpdateDecoder {
             return null;
         }
     }
+
+    /**
+     * Decodes a goose {@code _goose/unstable/session/update} notification. The payload
+     * wrapper matches {@code session/update}, but the custom channel re-sends
+     * {@code usage_update}: the standard variant already carries the gauge and the cost,
+     * so recording it here would double-count. Unknown custom variants are dropped.
+     *
+     * @return the decoded update, or {@code null} when the variant must not be dispatched
+     */
+    static SessionUpdate decodeCustom(JsonNode params) {
+        JsonNode updateNode = params != null ? params.get("update") : null;
+        JsonNode typeNode = updateNode != null ? updateNode.get("sessionUpdate") : null;
+        if (typeNode == null || !typeNode.isTextual()) {
+            LOG.fine("Dropping custom session update without a sessionUpdate tag");
+            return null;
+        }
+        String type = typeNode.asText();
+        if (MessageType.usage_update.name().equals(type)) {
+            LOG.fine("Ignoring goose custom usage_update: the standard channel records it");
+            return null;
+        }
+        if (!MessageType.message_usage.name().equals(type)
+                && !MessageType.status_message.name().equals(type)) {
+            LOG.fine("Dropping unknown goose custom session update type: {0}", type);
+            return null;
+        }
+        return decode(params);
+    }
 }

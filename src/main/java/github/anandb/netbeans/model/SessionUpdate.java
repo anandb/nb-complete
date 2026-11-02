@@ -24,10 +24,10 @@ public record SessionUpdate(
     public static final String JSONRPC_VERSION = "2.0";
     public static final String METHOD = "session/update";
 
-    /** Centralizes textual turn-end synthesis; avoids 19-arg positional construction at call sites. */
+    /** Centralizes textual turn-end synthesis; avoids positional construction at call sites. */
     public static SessionUpdate syntheticTurnEnd(String sessionId, MessageType type) {
         UpdateData data = new UpdateData(type, null, null, null, null, null, null, null, null, null, null, null,
-            null, null, null, null, null, null, null, null);
+            null, null, null, null, null, null, null, null, null);
         return new SessionUpdate(JSONRPC_VERSION, METHOD, new Params(sessionId, data));
     }
 
@@ -42,7 +42,8 @@ public record SessionUpdate(
         List<Agent> agents,
         List<Session> sessions,
         Boolean isThinking,
-        String status,
+        // A string on tool_call updates, an object on goose's status_message; see statusText().
+        JsonNode status,
         String kind,
         String toolCallId,
         JsonNode rawOutput,
@@ -53,8 +54,20 @@ public record SessionUpdate(
         JsonNode entries,
         JsonNode locations,
         // Reported cost object (amount, currency) on usage_update; may be absent.
-        JsonNode cost
-    ) {}
+        JsonNode cost,
+        // Per-message usage object on the goose custom message_usage update.
+        JsonNode usage
+    ) {
+
+        /**
+         * Tool calls send {@code status} as a string ("in_progress"/"completed"),
+         * while goose's custom status_message sends an object. Anything that is
+         * not textual is therefore not a tool-call status.
+         */
+        public String statusText() {
+            return status != null && status.isTextual() ? status.asText() : null;
+        }
+    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Content(
@@ -118,7 +131,19 @@ public record SessionUpdate(
 
     public String status() {
         UpdateData ud = update();
-        return ud != null ? ud.status() : null;
+        return ud != null ? ud.statusText() : null;
+    }
+
+    /** The goose custom {@code message_usage} payload, or null on other updates. */
+    public JsonNode usage() {
+        UpdateData ud = update();
+        return ud != null ? ud.usage() : null;
+    }
+
+    /** The notice/progress object of a goose custom {@code status_message}, or null. */
+    public JsonNode statusMessage() {
+        UpdateData ud = update();
+        return ud != null && ud.status() != null && !ud.status().isTextual() ? ud.status() : null;
     }
 
     public String kind() {

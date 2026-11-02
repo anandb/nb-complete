@@ -9,6 +9,7 @@ import github.anandb.netbeans.model.MigrationReport;
 import github.anandb.netbeans.model.SessionMetadata;
 import github.anandb.netbeans.model.UsageRecords.GroupTotals;
 import github.anandb.netbeans.model.UsageRecords.MessageEvent;
+import github.anandb.netbeans.model.UsageRecords.MessageUsageRow;
 import github.anandb.netbeans.model.UsageRecords.PromptUsageRow;
 import github.anandb.netbeans.model.UsageRecords.ToolCallExecution;
 import github.anandb.netbeans.model.UsageRecords.ToolTotals;
@@ -204,6 +205,11 @@ public class H2UsageStatsStore
     @Override
     public void recordMessage(MessageEvent event) {
         capture.recordMessage(event);
+    }
+
+    @Override
+    public void recordMessageUsage(MessageUsageRow row) {
+        capture.recordMessageUsage(row);
     }
 
     @Override

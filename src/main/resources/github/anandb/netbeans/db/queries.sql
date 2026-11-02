@@ -27,6 +27,13 @@ INSERT INTO message_event
     (session_id, harness_id, model_id, project, captured_at, kind)
 VALUES (?,?,?,?,?,?)
 
+-- name: insert_message_usage
+INSERT INTO message_usage
+    (session_id, harness_id, model_id, project, captured_at, message_id, input_tokens,
+     output_tokens, total_tokens, cache_read_tokens, cache_write_tokens, cost_amount,
+     elapsed_ms, ttft_ms, is_compaction)
+VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+
 -- name: insert_tool_call_usage
 INSERT INTO tool_call_usage
     (session_id, harness_id, model_id, project, captured_at, tool_name, call_count,

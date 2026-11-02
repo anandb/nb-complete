@@ -336,6 +336,14 @@ class ServerProcessLifecycle {
                 }
             });
 
+            // Goose's parallel custom channel; enabled by the initialize _meta opt-in.
+            client.onNotification("_goose/unstable/session/update", params -> {
+                SessionUpdate update = SessionUpdateDecoder.decodeCustom(params);
+                if (update != null) {
+                    onNotify.accept(update);
+                }
+            });
+
             // Initialize ACP
             initializeProtocol();
 
@@ -376,14 +384,24 @@ class ServerProcessLifecycle {
         return fsCaps;
     }
 
+    /**
+     * Full {@code clientCapabilities} for the {@code initialize} handshake. The
+     * {@code _meta.goose.customNotifications} flag is what makes goose emit its
+     * parallel {@code _goose/unstable/session/update} channel (per-message usage,
+     * live status notices); without it those notifications are never sent.
+     */
+    static Map<String, Object> clientCapabilities(AcpFsPolicy policy) {
+        Map<String, Object> caps = new HashMap<>();
+        caps.put("fs", fsCapabilities(policy));
+        caps.put("terminal", false);
+        caps.put("_meta", Map.of("goose", Map.of("customNotifications", true)));
+        return caps;
+    }
+
     private void initializeProtocol() {
-        Map<String, Object> fsCaps = fsCapabilities(PluginSettings.getAcpFsPolicy());
         Map<String, Object> params = Map.of(
                 "protocolVersion", 1,
-                "clientCapabilities", Map.of(
-                        "fs", fsCaps,
-                        "terminal", false
-                )
+                "clientCapabilities", clientCapabilities(PluginSettings.getAcpFsPolicy())
         );
         AcpProtocolClient client = rpcClient.get();
         if (client == null) {

@@ -138,6 +138,18 @@ public class StatusController {
         show(text);
     }
 
+    /**
+     * Shows a live harness notice (goose {@code status_message}). The Ready reset is
+     * scheduled only while nothing is processing: during a turn the animation owns
+     * the label and would be clobbered by a premature "Ready".
+     */
+    public void showStatusNotice(String text, int delayMs) {
+        show(text);
+        if (!animatedStatus) {
+            scheduleReset(delayMs);
+        }
+    }
+
     /** Sets the label text and remembers it as the base the animation composes
      *  from. Every write to {@code statusLabel} goes through here. */
     private void show(String text) {

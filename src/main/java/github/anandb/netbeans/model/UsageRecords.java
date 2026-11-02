@@ -64,6 +64,19 @@ public final class UsageRecords {
     }
 
     /**
+     * One goose {@code message_usage} notification: the tokens, cache traffic,
+     * cost and timing of a single message. {@code cost} is the harness's own
+     * figure for that message (provider-reported or estimated), unlike
+     * {@link UsageUpdateRow}, whose cost is a cumulative-session delta.
+     * {@code messageId} is null for compaction usage, which the harness reports
+     * without a message to attribute it to.
+     */
+    public record MessageUsageRow(Attribution attribution, long capturedAt, String messageId,
+                                  long inputTokens, long outputTokens, long totalTokens,
+                                  Long cacheReadTokens, Long cacheWriteTokens, Double cost,
+                                  Long elapsedMs, Long timeToFirstTokenMs, boolean compaction) {
+    }
+    /**
      * One finished MCP tool execution, captured as it happens: the tool name, when
      * it ended, how long it took and how it ended. Attribution is resolved for the
      * session that issued the call at capture time, never from UI state at query

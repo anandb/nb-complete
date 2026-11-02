@@ -17,6 +17,7 @@ import org.mockito.quality.Strictness;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -82,6 +83,20 @@ class ServerProcessLifecycleTest {
     @Test
     void readyFutureIsNonNull() {
         assertNotNull(lifecycle.readyFuture());
+    }
+
+    @Test
+    void initializeAdvertisesGooseCustomNotifications() {
+        Map<String, Object> caps = ServerProcessLifecycle.clientCapabilities(AcpFsPolicy.READ_ONLY);
+
+        assertTrue(caps.containsKey("fs"), "fs capabilities stay advertised");
+        assertEquals(Boolean.FALSE, caps.get("terminal"));
+        Object meta = caps.get("_meta");
+        assertTrue(meta instanceof Map, "client capabilities carry a _meta block");
+        Object goose = ((Map<?, ?>) meta).get("goose");
+        assertTrue(goose instanceof Map, "_meta carries the goose section");
+        assertEquals(Boolean.TRUE, ((Map<?, ?>) goose).get("customNotifications"),
+                "goose only sends _goose/unstable/session/update when this flag is set");
     }
 
     @Test
