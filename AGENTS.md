@@ -576,10 +576,20 @@ still holding in-flight work. Do NOT make cancel+close unconditional again.
   once at startup — changing the option requires an IDE restart. Do NOT add a
   preference listener for it or make it live; `setProjectSwitchRestartForTest` exists
   only for tests.
-- Off (default): `SessionManager.createSession`/`loadSession` follow the v1.27.0 code
-  path (no `ensureStartedIn`/`bindServerTo`), `ServerProcessLifecycle.spawnDirectory()`
-  returns null, and the server is never bound or restarted on a project switch. Keep
-  the off-path free of side effects; it is the compatibility contract.
+- **The flag always wins, for every harness.** `SessionManager.prepareServerBind` (the
+  `session/new` path) and `prepareSessionLoad` (the `session/load` path) rebind whenever
+  the flag is on — even for a harness that can move a session's cwd live. A live move is
+  not a silent override of the user's explicit setting.
+- Off (default): `session/new` follows the v1.27.0 path (no `ensureStartedIn`),
+  `ServerProcessLifecycle.spawnDirectory()` returns null, and the server is never bound
+  or restarted on a project switch. The one off-path addition is the load-time live move
+  below; keep everything else free of side effects — that is the compatibility contract.
+- Off + `session/load`: when the load target has a cwd and the harness supports
+  `Harness.supportsWorkingDirUpdate()` (goose only, via
+  `_goose/unstable/session/working-dir/update`), `prepareSessionLoad` moves the session's
+  cwd live *before* `session/load`, so the load happens in the directory the user selected
+  without restarting the process or terminating the sessions it serves. A failed move is
+  logged and the load proceeds. Other harnesses are left alone.
 - On: a rebind restarts the process and terminates every session it serves. The restart
   installs a fresh ready future and `initializeProtocol` is bound to its
   (client, generation), so a stale handshake cannot complete/stop the new process.
@@ -587,11 +597,6 @@ still holding in-flight work. Do NOT make cancel+close unconditional again.
 - The ready handler must NOT auto-reload while an explicit session operation is in
   flight (`explicitSessionOps`): loading `currentSessionId` at that point can load the
   previous session over the new one and rebind back, killing the new session.
-- A harness that can move a session's cwd live (`Harness.supportsWorkingDirUpdate()`, goose
-  only, through `_goose/unstable/session/working-dir/update`) is NOT rebound at all: its
-  sessions carry their own cwd, so `SessionManager.prepareServerBind` skips
-  `ensureStartedIn` and the process keeps serving every session. Never reintroduce the
-  restart for goose — it terminates sessions for no benefit.
 - The live move itself is `SessionControl.changeWorkingDirectory` (cwd context menu) →
   `SessionRpcClient.updateWorkingDirectory`; a success also rewrites the cached session and
   its metadata, so the header and a later reload agree with the server.

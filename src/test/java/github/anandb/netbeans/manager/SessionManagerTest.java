@@ -1554,21 +1554,89 @@ class SessionManagerTest {
     }
 
     @Test
-    void projectSwitchSkipsTheServerRestartForAHarnessThatMovesCwd() throws Exception {
+    void withTheFlagOffALoadMovesTheSessionCwdLive() throws Exception {
+        // setUp turns the restart flag on; this test is the disabled-flag load path.
+        PluginSettings.setProjectSwitchRestartForTest(false);
+        try {
+            when(processManager.getCapabilities()).thenReturn(HarnessCatalog.GOOSE);
+            when(processManager.sendRequest(eq("_goose/unstable/session/working-dir/update"), any(),
+                    eq(60L), eq(TimeUnit.SECONDS)))
+                    .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
+
+            prepareSessionLoad("s1", "/new/project");
+
+            ArgumentCaptor<Object> params = ArgumentCaptor.forClass(Object.class);
+            verify(processManager).sendRequest(eq("_goose/unstable/session/working-dir/update"),
+                    params.capture(), eq(60L), eq(TimeUnit.SECONDS));
+            Map<?, ?> sent = (Map<?, ?>) params.getValue();
+            assertEquals("s1", sent.get("sessionId"));
+            assertEquals("/new/project", sent.get("workingDir"),
+                    "the session follows the directory it is loaded in, without a restart");
+            verify(processManager, never()).ensureStartedIn(any());
+        } finally {
+            PluginSettings.setProjectSwitchRestartForTest(true);
+        }
+    }
+
+    @Test
+    void withTheFlagOffAHarnessWithoutTheExtensionIsLeftAlone() throws Exception {
+        PluginSettings.setProjectSwitchRestartForTest(false);
+        try {
+            when(processManager.getCapabilities()).thenReturn(HarnessCatalog.OPENCODE);
+
+            prepareSessionLoad("s1", "/new/project");
+
+            verify(processManager, never()).sendRequest(
+                    eq("_goose/unstable/session/working-dir/update"), any(), anyLong(), any(TimeUnit.class));
+            verify(processManager, never()).ensureStartedIn(any());
+        } finally {
+            PluginSettings.setProjectSwitchRestartForTest(true);
+        }
+    }
+
+    @Test
+    void withTheFlagOnALoadRebindsInsteadOfMovingTheCwd() throws Exception {
         PluginSettings.setProjectSwitchRestartForTest(true);
         try {
             when(processManager.getCapabilities()).thenReturn(HarnessCatalog.GOOSE);
 
+            prepareSessionLoad("s1", "/new/project");
+
+            verify(processManager, timeout(2000)).ensureStartedIn(any());
+            verify(processManager, never()).sendRequest(
+                    eq("_goose/unstable/session/working-dir/update"), any(), anyLong(),
+                    any(TimeUnit.class));
+        } finally {
+            PluginSettings.setProjectSwitchRestartForTest(false);
+        }
+    }
+
+    /** Runs the private pre-load hook that decides between a rebind and a live cwd move. */
+    private void prepareSessionLoad(String sessionId, String cwd) throws Exception {
+        Method prepare = SessionManager.class.getDeclaredMethod("prepareSessionLoad",
+                String.class, String.class);
+        prepare.setAccessible(true);
+        ((CompletableFuture<?>) prepare.invoke(sessionManager, sessionId, cwd)).get(5, TimeUnit.SECONDS);
+    }
+
+    @Test
+    void theProjectSwitchFlagAppliesEvenWhenTheHarnessCanMoveCwd() throws Exception {
+        PluginSettings.setProjectSwitchRestartForTest(true);
+        try {
+            // goose can move a session's cwd live, but the setting is an explicit user
+            // choice: it must still rebind (and restart) the server.
+            when(processManager.getCapabilities()).thenReturn(HarnessCatalog.GOOSE);
+
             bindServerTo("/p");
 
-            verify(processManager, never()).ensureStartedIn(any());
+            verify(processManager, timeout(2000)).ensureStartedIn(any());
         } finally {
             PluginSettings.setProjectSwitchRestartForTest(false);
         }
     }
 
     @Test
-    void projectSwitchStillRebindsTheProcessForOtherHarnesses() throws Exception {
+    void projectSwitchRebindsTheProcessWhenTheFlagIsOn() throws Exception {
         PluginSettings.setProjectSwitchRestartForTest(true);
         try {
             when(processManager.getCapabilities()).thenReturn(HarnessCatalog.OPENCODE);

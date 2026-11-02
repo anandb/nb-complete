@@ -921,18 +921,37 @@ public class SessionManager implements SessionQuery, SessionControl,
     }
 
     /**
-     * The experimental cwd binding before a session RPC, applied only when
-     * {@code projectSwitchRestart.enabled} is on. A harness that moves a session's working
-     * directory live needs no rebind: its sessions carry their own cwd, and restarting the
-     * process would terminate every session it serves. Any other harness rebinds the process,
-     * which restarts it.
+     * What happens before {@code session/load}. The restart setting wins when it is on: the
+     * user asked for the server to follow the project, so the process is rebound (restarted).
+     * With it off, the v1.27.0 path is "no bind", and a harness that can move a session's cwd
+     * live gets that move instead — the session follows the directory it is being loaded in
+     * without restarting the process or terminating the sessions it serves.
+     */
+    private CompletableFuture<Void> prepareSessionLoad(String sessionId, String cwd) {
+        if (PluginSettings.isProjectSwitchRestartEnabled()) {
+            return bindServerTo(cwd);
+        }
+        if (cwd == null || !processManager.getCapabilities().supportsWorkingDirUpdate()) {
+            return CompletableFuture.completedFuture(null);
+        }
+        return rpcClient.updateWorkingDirectory(sessionId, cwd).handle((res, ex) -> {
+            if (ex != null) {
+                LOG.warn("Failed to move session {0} to {1} before load: {2}", sessionId, cwd,
+                        ExceptionUtils.getMessage(ex));
+            }
+            return null;
+        });
+    }
+
+    /**
+     * The experimental cwd binding before {@code session/new}, applied only when
+     * {@code projectSwitchRestart.enabled} is on. The flag is the user's explicit choice and
+     * applies to every harness, including one that can move a session's cwd live: that
+     * capability covers the explicit move (and the disabled-flag load path), it does not
+     * silently override the setting.
      */
     private CompletableFuture<Void> prepareServerBind(String cwd) {
         if (!PluginSettings.isProjectSwitchRestartEnabled()) {
-            return CompletableFuture.completedFuture(null);
-        }
-        if (processManager.getCapabilities().supportsWorkingDirUpdate()) {
-            LOG.log(Level.FINE, "Skipping server rebind: harness moves cwd per session ({0})", cwd);
             return CompletableFuture.completedFuture(null);
         }
         return CompletableFuture.runAsync(() ->
@@ -1300,11 +1319,7 @@ public class SessionManager implements SessionQuery, SessionControl,
         explicitSessionOps.incrementAndGet();
         try {
             final String cwd = workingCwd;
-            // v1.27.0 behaviour when cwd binding is disabled: no bind/rebind,
-            // just wait for the server and load.
-            CompletableFuture<Void> prepared = PluginSettings.isProjectSwitchRestartEnabled()
-                    ? bindServerTo(cwd)
-                    : CompletableFuture.completedFuture(null);
+            CompletableFuture<Void> prepared = prepareSessionLoad(sessionId, cwd);
             prepared
                     .thenCompose(v -> loadSessionFromServer(sessionId, cwd))
                     .thenAccept(configOptions -> {
