@@ -190,8 +190,8 @@ public class MessageSender {
         ProcessControl proc = processService.get();
         
         // Mid-turn delivery has three routes: a harness with its own steering extension
-        // (goose) adds the text to the running turn; a queueing harness (OpenCode v2, Codex,
-        // Kilo, Cline) holds it until turn end; the rest (OpenCode v1) accept a second prompt.
+        // (goose) adds the text to the running turn; a queueing harness
+        // (requiresMessageQueue) holds it until turn end; the rest accept a second prompt.
         boolean turnEnded = turnEndedCheck != null ? turnEndedCheck.getAsBoolean() : true;
         boolean midTurn = !sessionService.get().canSendMessage() || !turnEnded;
 

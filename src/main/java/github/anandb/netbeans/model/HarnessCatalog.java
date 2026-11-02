@@ -23,9 +23,11 @@ public final class HarnessCatalog {
             List<String> binaryNames,
             String launchArgs,
             /** True when a second {@code session/prompt} does not steer the in-flight
-             *  turn, so messages must be queued until turn end (OpenCode v2, Codex,
-             *  Kilo, Cline). A queueing harness may still steer through its own
-             *  extension — see {@link #supportsSessionSteer()}. */
+             *  turn, so messages must be queued until turn end. Read it off the entry
+             *  rather than a list here: it is per harness and changes across major
+             *  releases (OpenCode v1 steers, v2 queues — see
+             *  {@link HarnessCatalog#forAgentVersion}). A queueing harness may still
+             *  steer through its own extension — see {@link #supportsSessionSteer()}. */
             boolean requiresMessageQueue,
             boolean sendsMcpServerConfig,
             boolean injectsEditorContext,
