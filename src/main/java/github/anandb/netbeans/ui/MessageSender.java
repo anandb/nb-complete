@@ -141,6 +141,11 @@ public class MessageSender {
         this.onPermissionBlockedCallback = callback;
     }
 
+    /** Reads the pending-permission state live: it can change while the interceptor runs. */
+    private boolean isPermissionPending() {
+        return permissionPendingCheck != null && permissionPendingCheck.getAsBoolean();
+    }
+
     public void setQueueManager(MessageQueueManager queueManager) {
         this.queueManager = queueManager;
     }
@@ -157,170 +162,168 @@ public class MessageSender {
 
     /** Sends (or intercepts) the current message text. */
     public void sendMessage() {
-        if (sessionService == null || processService == null) {
-            LOG.severe("sendMessage ignored — platform services unavailable (PlatformBridge missing from Lookup)");
-            statusController.setStatus("STATUS_Error", "Assistant services unavailable");
+        if (!verifyPlatformServices()) {
             return;
         }
-        boolean turnEnded = turnEndedCheck != null ? turnEndedCheck.getAsBoolean() : true;
-        // Mid-turn delivery has three routes. A harness with its own steering extension
-        // (goose) adds the text to the running turn through that call; otherwise a
-        // queueing harness (OpenCode v2, Codex, Kilo, Cline) holds it until turn end and
-        // flushes one combined prompt; the rest (OpenCode v1) accept a second prompt.
-        // Read live from the resolved capabilities: the harness variant is chosen
-        // from the initialize response version (see HarnessCatalog.forAgentVersion).
-        ProcessControl proc = processService.get();
+
+        // No session means nothing can go anywhere: bail out before the history, the slash
+        // interceptor, the attachments or the queue are touched.
+        String sessionId = sessionService.get().getCurrentSessionId();
+        if (sessionId == null) {
+            statusController.setStatus("STATUS_NoSession");
+            return;
+        }
+        
         String text = inputArea.getText(); // Don't trim user input spaces
         if (text.isEmpty() && attachmentManager.getAttachments().isEmpty()) {
             return;
         }
-        boolean permissionPending = permissionPendingCheck != null && permissionPendingCheck.getAsBoolean();
-
         // Add to history before slash intercept so local commands (/models, /title etc.)
         // are available via Alt+Up browsing.
         messageHistory.add(text);
 
-        // Intercept local slash commands before any mid-turn routing: they are UI
-        // actions, so they stay immediate instead of being steered or queued.
-        boolean isForwardedSlash = false;
-        if (text.trim().startsWith("/")) {
-            SlashCommandInterceptor interceptor = processService.get().getSlashCommandInterceptor();
-            if (interceptor != null) {
-                Lookup defaultCtx = Lookup.getDefault();
-                CompletableFuture<Boolean> handled = interceptor.intercept(text, defaultCtx);
-                if (handled != null && handled.isDone() && !handled.isCompletedExceptionally()) {
-                    Boolean result = handled.join();
-                    if (Boolean.TRUE.equals(result)) {
-                        inputArea.setText("");
-                        return;
-                    }
-                }
-            }
-
-            String echoText = ToolDataExtractor.getLocalEchoText(text);
-            if (echoText != null) {
-                chatPanel.addMessage(new ProcessedMessage.Builder()
-                    .messageType(MessageType.tool_call_update)
-                    .text(echoText)
-                    .messageId(echoText)
-                    .kind("Slash Command")
-                    .toolTitle(echoText)
-                    .rawText(echoText)
-                    .build());
-                inputArea.setText("");
-                isForwardedSlash = true;
-            }
+        SlashRouting slash = interceptSlashCommand(text);
+        if (slash.handled()) {
+            return;
         }
 
+        ProcessControl proc = processService.get();
+        
+        // Mid-turn delivery has three routes: a harness with its own steering extension
+        // (goose) adds the text to the running turn; a queueing harness (OpenCode v2, Codex,
+        // Kilo, Cline) holds it until turn end; the rest (OpenCode v1) accept a second prompt.
+        boolean turnEnded = turnEndedCheck != null ? turnEndedCheck.getAsBoolean() : true;
         boolean midTurn = !sessionService.get().canSendMessage() || !turnEnded;
-        if (midTurn && !permissionPending && trySteer(text, proc)) {
+
+        if (midTurn && !isPermissionPending() && trySteer(text, proc)) {
             return;
         }
-        boolean queueingAgent = proc != null && proc.getCapabilities().requiresMessageQueue();
-        if (midTurn && queueingAgent) {
-            // Bot is actively processing (streaming / awaiting RPC completion) —
-            // queue the message for later delivery when the turn ends.
-            if (!text.isEmpty() && queueManager != null) {
-                queueManager.enqueue(text);
-                // Bubble is NOT drawn here — it is drawn later in
-                // sendQueuedMessage() when the combined text is actually posted.
-                // This keeps the chat panel free of half-visible queued echoes.
+        if (midTurn && queueForTurnEnd(text, proc)) {
+            return;
+        }
+        if (blockedByPendingPermission()) {
+            return;
+        }
+
+        dispatchPrompt(sessionId, text, slash, midTurn, turnEnded);
+    }
+    
+
+    /** Outcome of slash interception: a handled local command ends the send, while a
+     *  forwarded one (`/compact`, `/dcp`) continues as a real send carrying its echo label. */
+    private record SlashRouting(boolean handled, String forwardedEcho) {
+    }
+
+    /**
+     * Intercepts local slash commands before any mid-turn routing: they are UI actions, so
+     * they stay immediate instead of being steered or queued. Only the interception is
+     * early — the echo of a forwarded command waits until the send is accepted, so a
+     * blocked /compact leaves neither a bubble nor a cleared input.
+     */
+    private SlashRouting interceptSlashCommand(String text) {
+        if (!text.trim().startsWith("/")) {
+            return new SlashRouting(false, null);
+        }
+        SlashCommandInterceptor interceptor = processService.get().getSlashCommandInterceptor();
+        if (interceptor != null) {
+            CompletableFuture<Boolean> handled = interceptor.intercept(text, Lookup.getDefault());
+            if (handled != null && handled.isDone() && !handled.isCompletedExceptionally()
+                    && Boolean.TRUE.equals(handled.join())) {
                 inputArea.setText("");
-                // Attachments are intentionally dropped, not queued: when several
-                // messages are queued they are later concatenated into ONE combined
-                // prompt (see MessageQueueManager.flushAll), so per-message file
-                // blocks would be ambiguous — there is no well-defined mapping of
-                // "attach file X to queued message N" onto a single merged prompt.
-                // The input is cleared so the user must re-attach after the turn ends.
-                attachmentManager.clear();
-                paperclipUpdater.run();
+                return new SlashRouting(true, null);
             }
-            return;
         }
+        return new SlashRouting(false, ToolDataExtractor.getLocalEchoText(text));
+    }
 
-        // Block the send while a permission request awaits a decision: sending a new
-        // message would supersede the pending request and hang the server, which is
-        // still waiting on the tool-call decision. Keep the typed text in the input and
-        // draw attention to the pending request instead of rejecting it.
-        if (permissionPending) {
-            if (onPermissionBlockedCallback != null) {
-                onPermissionBlockedCallback.run();
-            }
-            return;
+    /** Holds the text until the current turn ends. A queueing harness cannot take a second
+     *  prompt mid-turn, and a queued message cannot supersede a pending permission decision. */
+    private boolean queueForTurnEnd(String text, ProcessControl proc) {
+        if (proc == null || !proc.getCapabilities().requiresMessageQueue()) {
+            return false;
         }
-
-        String currentSessionId = sessionService.get().getCurrentSessionId();
-        if (currentSessionId == null) {
-            statusController.setStatus("STATUS_NoSession");
-            return;
+        if (!text.isEmpty() && queueManager != null) {
+            queueManager.enqueue(text);
+            // Bubble is NOT drawn here — it is drawn later in sendQueuedMessage(), when the
+            // combined text is actually posted. This keeps the panel free of half-visible
+            // queued echoes.
+            inputArea.setText("");
+            // Attachments are dropped, not queued: queued messages merge into ONE prompt
+            // (see MessageQueueManager.flushAll), so per-message file blocks would be ambiguous.
+            attachmentManager.clear();
+            paperclipUpdater.run();
         }
+        return true;
+    }
 
-        // Client-generated correlation ID so the local echo bubble can be matched
-        // to the server-assigned message ID when it is echoed back.
-        final String clientMessageId = UUID.randomUUID().toString();
+    /** Blocks the send while a permission request awaits a decision: a new prompt would
+     *  supersede the pending request and hang the server, which is still waiting on the
+     *  tool-call decision. Keeps the text in the input and surfaces the request instead. */
+    private boolean blockedByPendingPermission() {
+        if (!isPermissionPending()) {
+            return false;
+        }
+        if (onPermissionBlockedCallback != null) {
+            onPermissionBlockedCallback.run();
+        }
+        return true;
+    }
 
+    /** Issues session/prompt for an accepted send and wires its completion handlers. */
+    private void dispatchPrompt(String sessionId, String text, SlashRouting slash,
+            boolean midTurn, boolean turnEnded) {
+        ProcessControl sendProc = processService.get();
+        // Accepted, so the forwarded command's own echo is safe to draw now.
+        if (slash.forwardedEcho() != null) {
+            drawSlashEcho(slash.forwardedEcho());
+        }
+        beginSending();
+        PromptPayload payload = buildPromptPayload(sendProc, text, slash);
+        beginTurn(turnEnded);
+        sendPrompt(sendProc, sessionId, text, payload, midTurn);
+    }
+
+    /** Switches the panel into Sending/Stop and arms the stall watchdog. */
+    private void beginSending() {
         inputArea.setText("");
         statusController.setStatus("STATUS_Sending");
         statusController.startThinking();
         statusController.updateButtonState(true);
         statusController.armRunWatchdog();
+    }
 
-        // Editor Context — only capture when the agent injects it into prompts
-        ProcessControl sendProc = processService.get();
+    /** The prompt pieces assembled before the RPC. A forwarded slash command carries no
+     *  attachments and no editor context. */
+    private record PromptPayload(boolean forwardedSlash, List<Map<String, Object>> fileBlocks) {
+    }
+
+    /** Builds the file blocks, drops the attachments and draws the local echo. */
+    private PromptPayload buildPromptPayload(ProcessControl sendProc, String text, SlashRouting slash) {
+        boolean isForwardedSlash = slash.forwardedEcho() != null;
+        // The block shape depends on the handshake capability, so the blocks are built once
+        // here and the echo uses the attachment list, not the blocks.
         boolean embeddedContext = sendProc != null && sendProc.supportsEmbeddedContext();
-
-        // Build file attachment blocks (skip for forwarded slash commands).
-        // The block shape depends on the handshake capability, so the blocks are
-        // built once here and the echo uses the attachment list, not the blocks.
         List<AttachedFile> attachedFiles = attachmentManager.getAttachments();
         List<Map<String, Object>> fileBlocks = isForwardedSlash
                 ? List.of() : attachmentManager.buildFileBlocks(embeddedContext);
         if (!isForwardedSlash) {
             attachmentManager.clear();
             paperclipUpdater.run();
-
-            // Local echo with file references
+            // Client-generated correlation ID so the local echo bubble can be matched to the
+            // server-assigned message ID when it is echoed back.
             if (localEchoEnabled) {
-                String echoText = buildEchoText(text, attachedFiles);
-                chatPanel.addMessage(new ProcessedMessage.Builder()
-                    .messageType(MessageType.user_message_chunk)
-                    .text(echoText)
-                    .rawText(echoText)
-                    .messageId(clientMessageId)
-                    .build());
+                drawLocalEcho(text, attachedFiles, UUID.randomUUID().toString());
             }
         }
-
-        final String messageText = text;
         if (onUserMessageSentCallback != null) {
             onUserMessageSentCallback.run();
         }
-        if (PluginSettings.isAutoBackupChanges()) {
-            final String sessionDir = sessionService.get().getCurrentSessionDirectory();
-            BACKUP_RP.post(() -> {
-                try {
-                    VcsUtils.VcsInfo vcsInfo = VcsUtils.findVcsInfo(sessionDir);
-                    if (vcsInfo != null && VcsUtils.hasUncommittedChanges(vcsInfo)) {
-                        String backupMsg = VcsUtils.backupUncommittedChanges(vcsInfo);
-                        if (backupMsg != null) {
-                            SwingUtilities.invokeLater(() -> {
-                                chatPanel.addMessage(new ProcessedMessage.Builder()
-                                    .messageType(MessageType.tool_call_update)
-                                    .text(backupMsg)
-                                    .messageId(UUID.randomUUID().toString())
-                                    .kind("System Backup")
-                                    .toolTitle("Auto-Backup")
-                                    .rawText(backupMsg)
-                                    .build());
-                            });
-                        }
-                    }
-                } catch (Exception ex) {
-                    LOG.info("Auto-backup failed: {0}", ExceptionUtils.getMessage(ex));
-                }
-            });
-        }
+        return new PromptPayload(isForwardedSlash, fileBlocks);
+    }
 
+    /** Turn-start bookkeeping: the auto-backup and the permission epoch. */
+    private void beginTurn(boolean turnEnded) {
+        backupUncommittedChanges();
         // Advance the permission epoch only when starting a new turn. Mid-turn
         // steering sends (OpenCode v1) must NOT advance: a permission request
         // captured on the reader thread between two steering sends would be
@@ -328,106 +331,165 @@ public class MessageSender {
         if (turnEnded && onBeforeServerSendCallback != null) {
             onBeforeServerSendCallback.run();
         }
+    }
 
+    /** Issues the prompt and routes its completion and failure back to the EDT handlers. */
+    private void sendPrompt(ProcessControl sendProc, String sessionId, String text,
+            PromptPayload payload, boolean midTurn) {
         // Editor Context — only capture when the agent injects it into prompts
         boolean injectsContext = sendProc != null && sendProc.getCapabilities().injectsEditorContext();
-        Map<String, Object> context = (isForwardedSlash || !injectsContext) ? null : EditorContextCapture.capture();
+        Map<String, Object> context = (payload.forwardedSlash() || !injectsContext)
+                ? null : EditorContextCapture.capture();
         // Only after we actually issue session/prompt: local slash / no-session
         // returns must not set userPromptInFlight or skip preamble/reconnect done.
         if (onNewMessageCallback != null) {
             onNewMessageCallback.run();
         }
         // A mid-turn send only adds input to the running turn: its failure must not
-        // end the turn UI (see the exceptionally branch below).
+        // end the turn UI (see onPromptFailed).
         final boolean steeringSend = midTurn;
         final int prevGen = sendGeneration.get();
         final int gen = sendGeneration.incrementAndGet();
-        sendProc.sendMessage(currentSessionId, messageText, context, fileBlocks)
+        sendProc.sendMessage(sessionId, text, context, payload.fileBlocks())
                 .thenAccept(result -> {
-                    capturePromptUsage(currentSessionId, result);
-                    // CPD-OFF — structural twin of sendQueuedMessage(); differences are
-                    // per-method (logging, messageText vs combinedText, turn-end callback).
-                    SwingUtilities.invokeLater(() -> {
-                        if (gen != sendGeneration.get()) {
-                            LOG.info("Ignoring stale session/prompt completion gen={0} current={1}",
-                                    gen, sendGeneration.get());
-                            return;
-                        }
-                        LOG.info("RPC thenAccept fired (status during = {0}, hasStopReason = {1})",
-                            statusController.getStatusText(),
-                            result != null && result.has("stopReason"));
-                        if (onMessageDoneCallback != null) {
-                            onMessageDoneCallback.run();
-                        }
-                        // Always show Ready/Go. If messages were flushed,
-                        // a delayed timer will switch back to Sending/Stop.
-                        statusController.updateButtonState(false);
-                        statusController.stopThinking();
-                        statusController.setStatus("STATUS_Ready");
-                        statusController.disarmRunWatchdog();
-                        if (onTurnEndedCallback != null) {
-                            onTurnEndedCallback.get();
-                        }
-                        inputFocusRequester.run();
-
-                        // Handle turn completion from RPC result
-                        if (result != null && result.has("stopReason")) {
-                            LOG.info("Turn finished via RPC result: stopReason={0}", result.get("stopReason").asText());
-                            // Reset the debounced flush timer (it's also reset on every
-                            // processed message via drainMessageQueue), so the bubble is
-                            // finalized 300ms after ALL messages drain — even if the RPC
-                            // result arrives before the last SSE delta.
-                            chatPanel.restartFlushTimer();
-                        }
-                    });
+                    capturePromptUsage(sessionId, result);
+                    SwingUtilities.invokeLater(() -> onPromptCompleted(gen, result));
                 })
                 .exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() -> {
-                        if (gen != sendGeneration.get()) {
-                            LOG.info("Ignoring stale session/prompt error gen={0} current={1}",
-                                    gen, sendGeneration.get());
-                            return;
-                        }
-                        LOG.info("RPC exceptionally fired: {0}", ExceptionUtils.getMessage(ex));
-                        String reason = ExceptionUtils.getMessage(ex) != null
-                                ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName();
-                        statusController.setStatus("STATUS_Error", reason);
-                        chatPanel.addMessage(ProcessedMessage.createError(
-                                MessageType.error_response,
-                                NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Error", reason),
-                                null, null
-                        ));
-                        if (steeringSend) {
-                            // The harness's first turn is still running: this send only added
-                            // input to it, so the failure must not end the turn UI. Keep Stop,
-                            // the stall watchdog and the streaming bubble alive, and hand the
-                            // turn-end claim back to the original prompt.
-                            if (inputArea.getText().isEmpty()) {
-                                inputArea.setText(messageText);
-                            }
-                            sendGeneration.compareAndSet(gen, prevGen);
-                            statusController.updateButtonState(true);
-                            statusController.touchRunActivity();
-                            inputFocusRequester.run();
-                            return;
-                        }
-                        inputArea.setText(messageText);
-                        statusController.stopThinking();
-                        statusController.disarmRunWatchdog();
-                        chatPanel.stopStreaming();
-                        statusController.updateButtonState(false);
-                        if (onMessageDoneCallback != null) {
-                            onMessageDoneCallback.run();
-                        }
-                        if (onTurnEndedCallback != null) {
-                            onTurnEndedCallback.get();
-                        }
-                        inputFocusRequester.run();
-                    });
+                    SwingUtilities.invokeLater(() -> onPromptFailed(gen, prevGen, steeringSend, text, ex));
                     return null;
                 });
-        // CPD-ON
     }
+
+
+    // CPD-OFF — structural twin of sendQueuedMessage(); differences are per-method.
+    /** Turn-end path for an accepted prompt, on the EDT. Ignores completions from a superseded send. */
+    private void onPromptCompleted(int gen, JsonNode result) {
+        if (gen != sendGeneration.get()) {
+            LOG.info("Ignoring stale session/prompt completion gen={0} current={1}",
+                    gen, sendGeneration.get());
+            return;
+        }
+        LOG.info("RPC thenAccept fired (status during = {0}, hasStopReason = {1})",
+                statusController.getStatusText(), result != null && result.has("stopReason"));
+        if (onMessageDoneCallback != null) {
+            onMessageDoneCallback.run();
+        }
+        // Always show Ready/Go. If messages were flushed,
+        // a delayed timer will switch back to Sending/Stop.
+        statusController.updateButtonState(false);
+        statusController.stopThinking();
+        statusController.setStatus("STATUS_Ready");
+        statusController.disarmRunWatchdog();
+        if (onTurnEndedCallback != null) {
+            onTurnEndedCallback.get();
+        }
+        inputFocusRequester.run();
+
+        // Handle turn completion from RPC result
+        if (result != null && result.has("stopReason")) {
+            LOG.info("Turn finished via RPC result: stopReason={0}", result.get("stopReason").asText());
+            // Reset the debounced flush timer (it's also reset on every processed message via
+            // drainMessageQueue), so the bubble is finalized 300ms after ALL messages drain —
+            // even if the RPC result arrives before the last SSE delta.
+            chatPanel.restartFlushTimer();
+        }
+    }
+
+    /** Failure path for an accepted prompt, on the EDT. A failed mid-turn send must not end the
+     *  turn UI: the harness's first turn is still running, so Stop, the stall watchdog and the
+     *  streaming bubble stay up and the turn-end claim returns to the original prompt. */
+    private void onPromptFailed(int gen, int prevGen, boolean steeringSend, String messageText, Throwable ex) {
+        if (gen != sendGeneration.get()) {
+            LOG.info("Ignoring stale session/prompt error gen={0} current={1}",
+                    gen, sendGeneration.get());
+            return;
+        }
+        LOG.info("RPC exceptionally fired: {0}", ExceptionUtils.getMessage(ex));
+        String reason = ExceptionUtils.getMessage(ex) != null
+                ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName();
+        statusController.setStatus("STATUS_Error", reason);
+        chatPanel.addMessage(ProcessedMessage.createError(
+                MessageType.error_response,
+                NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Error", reason),
+                null, null
+        ));
+        if (steeringSend) {
+            if (inputArea.getText().isEmpty()) {
+                inputArea.setText(messageText);
+            }
+            sendGeneration.compareAndSet(gen, prevGen);
+            statusController.updateButtonState(true);
+            statusController.touchRunActivity();
+            inputFocusRequester.run();
+            return;
+        }
+        inputArea.setText(messageText);
+        statusController.stopThinking();
+        statusController.disarmRunWatchdog();
+        chatPanel.stopStreaming();
+        statusController.updateButtonState(false);
+        if (onMessageDoneCallback != null) {
+            onMessageDoneCallback.run();
+        }
+        if (onTurnEndedCallback != null) {
+            onTurnEndedCallback.get();
+        }
+        inputFocusRequester.run();
+    }
+    // CPD-ON
+
+    /** Draws the forwarded command's own echo once the send is accepted. */
+    private void drawSlashEcho(String echoText) {
+        chatPanel.addMessage(new ProcessedMessage.Builder()
+                .messageType(MessageType.tool_call_update)
+                .text(echoText)
+                .messageId(echoText)
+                .kind("Slash Command")
+                .toolTitle(echoText)
+                .rawText(echoText)
+                .build());
+    }
+
+    /** Draws the user bubble for a normal send, one label line per attached file. */
+    private void drawLocalEcho(String text, List<AttachedFile> attachedFiles, String messageId) {
+        String echoText = buildEchoText(text, attachedFiles);
+        chatPanel.addMessage(new ProcessedMessage.Builder()
+                .messageType(MessageType.user_message_chunk)
+                .text(echoText)
+                .rawText(echoText)
+                .messageId(messageId)
+                .build());
+    }
+
+    /** Backs up uncommitted VCS changes off the EDT before the agent touches the tree. */
+    private void backupUncommittedChanges() {
+        if (!PluginSettings.isAutoBackupChanges()) {
+            return;
+        }
+        final String sessionDir = sessionService.get().getCurrentSessionDirectory();
+        BACKUP_RP.post(() -> {
+            try {
+                VcsUtils.VcsInfo vcsInfo = VcsUtils.findVcsInfo(sessionDir);
+                if (vcsInfo != null && VcsUtils.hasUncommittedChanges(vcsInfo)) {
+                    String backupMsg = VcsUtils.backupUncommittedChanges(vcsInfo);
+                    if (backupMsg != null) {
+                        SwingUtilities.invokeLater(() -> chatPanel.addMessage(new ProcessedMessage.Builder()
+                                .messageType(MessageType.tool_call_update)
+                                .text(backupMsg)
+                                .messageId(UUID.randomUUID().toString())
+                                .kind("System Backup")
+                                .toolTitle("Auto-Backup")
+                                .rawText(backupMsg)
+                                .build()));
+                    }
+                }
+            } catch (Exception ex) {
+                LOG.info("Auto-backup failed: {0}", ExceptionUtils.getMessage(ex));
+            }
+        });
+    }
+
 
     /**
      * Adds the text to the running turn through the harness's steering extension.
@@ -692,5 +754,15 @@ public class MessageSender {
                 usage.path("totalTokens").asLong(0),
                 usage.hasNonNull("thoughtTokens") ? usage.get("thoughtTokens").asLong() : null,
                 usage.hasNonNull("cachedReadTokens") ? usage.get("cachedReadTokens").asLong() : null));
+    }
+
+    private boolean verifyPlatformServices() {
+        if (sessionService == null || processService == null) {
+            LOG.severe("sendMessage ignored — platform services unavailable (PlatformBridge missing from Lookup)");
+            statusController.setStatus("STATUS_Error", "Assistant services unavailable");
+            return false;
+        }
+
+        return true;
     }
 }

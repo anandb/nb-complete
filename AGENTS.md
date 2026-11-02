@@ -372,7 +372,13 @@ Resolved — kept as regression guards:
   permission request is pending, the harness supports steering and a run id is known;
   otherwise the queue branch handles it. A failed steer restores the text and does NOT
   stop streaming. Local slash commands are intercepted BEFORE the mid-turn routing —
-  they are UI actions and must never be steered or queued.
+  they are UI actions and must never be steered or queued. Only the interception is early:
+  the permission guard sits below it so local commands still work while a permission prompt
+  is open, but every decision re-reads `isPermissionPending()` live (the request can arrive
+  while a command popup is up), and a *forwarded* command (`/compact`, `/dcp`) draws its
+  echo only once the send is accepted — never before the guard can drop it. A null session
+  short-circuits `sendMessage()` above all of it: with no session the history, the interceptor,
+  the attachments and the queue are skipped, and the status shows `STATUS_NoSession`.
 - A **failed mid-turn send must not end the turn UI**, for any harness. When the send
   happens while a turn is in flight (OpenCode v1's second `session/prompt`, or goose's
   steer call), the harness's first turn keeps running, so the `exceptionally` branch in
