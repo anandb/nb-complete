@@ -64,6 +64,7 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.ModelIdNormalizer;
 import github.anandb.netbeans.support.PreferenceKeys;
+import github.anandb.netbeans.support.ProjectPaths;
 import github.anandb.netbeans.support.SlidingTask;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
@@ -196,7 +197,7 @@ public class SessionManager implements SessionQuery, SessionControl,
         List<String> dirs = new ArrayList<>();
         for (Project p : openProjects) {
             if (p != null) {
-                String path = p.getProjectDirectory().getPath();
+                String path = ProjectPaths.nativePath(p);
                 if (!dirs.contains(path)) {
                     dirs.add(path);
                 }
@@ -420,7 +421,7 @@ public class SessionManager implements SessionQuery, SessionControl,
         Project[] openProjects = projectQuery == null
                 ? new Project[0] : projectQuery.getAllOpenProjects();
         String repairCwd = openProjects.length == 1 && openProjects[0] != null
-                ? openProjects[0].getProjectDirectory().getPath() : null;
+                ? ProjectPaths.nativePath(openProjects[0]) : null;
         // Load in reverse order since cacheManager.addLocallyCreated prepends
         for (int i = ids.size() - 1; i >= 0; i--) {
             String sessionId = ids.get(i);
@@ -830,7 +831,7 @@ public class SessionManager implements SessionQuery, SessionControl,
                     new IllegalArgumentException("cwd must not be null — provide a valid project directory"));
         }
         LOG.log(Level.FINE, "Creating new session with CWD: {0}", cwd);
-        final String finalCwd = cwd;
+        final String finalCwd = ProjectPaths.nativeForm(cwd);
         final long start = System.nanoTime();
         explicitSessionOps.incrementAndGet();
         return withMcpFallback("session/new",
@@ -961,12 +962,13 @@ public class SessionManager implements SessionQuery, SessionControl,
     private CompletableFuture<List<SessionConfigOption>> loadSessionFromServer(
             String sessionId, String cwd, boolean forceLoad) {
         LOG.fine("loadSessionFromServer: called with {0}, cwd={1}, forceLoad={2}", sessionId, cwd, forceLoad);
+        final String targetCwd = ProjectPaths.nativeForm(cwd);
         final long start = System.nanoTime();
-        final boolean resume = !forceLoad && shouldResumeExisting(sessionId, cwd);
+        final boolean resume = !forceLoad && shouldResumeExisting(sessionId, targetCwd);
         final String operation = resume ? "session/resume" : "session/load";
         return withMcpFallback(operation,
                 () -> withStartupRetry(operation,
-                        () -> sendLoadSessionRequest(sessionId, cwd, start, forceLoad), 0), start)
+                        () -> sendLoadSessionRequest(sessionId, targetCwd, start, forceLoad), 0), start)
                 .handle((res, ex) -> {
                     if (ex == null) {
                         return res;
@@ -1643,7 +1645,7 @@ public class SessionManager implements SessionQuery, SessionControl,
         Project[] remaining = projectQuery == null ? new Project[0] : projectQuery.getAllOpenProjects();
         if (remaining == null || remaining.length == 0
                 || (remaining.length == 1 && remaining[0] != null
-                && remaining[0].getProjectDirectory().getPath().equals(closedDir))) {
+                && ProjectPaths.nativePath(remaining[0]).equals(closedDir))) {
             lastProjectDir = "";
             if (remaining == null || remaining.length == 0) {
                 new ArrayList<>(listeners).forEach(SessionListener::onAllProjectsClosed);

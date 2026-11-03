@@ -52,6 +52,7 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.PreferenceKeys;
+import github.anandb.netbeans.support.ProjectPaths;
 
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.ProjectContext;
@@ -680,7 +681,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
         if (projects.length == 1) {
             sessionService.get()
-                .createNewSession(projects[0].getProjectDirectory().getPath());
+                .createNewSession(ProjectPaths.nativePath(projects[0]));
         } else {
             componentLifecycleHandler.showProjectPickerPopup(newSessionBtn);
         }

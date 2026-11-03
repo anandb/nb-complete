@@ -3,13 +3,12 @@ package github.anandb.netbeans.mcp;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import github.anandb.netbeans.contract.ProjectQuery;
+import github.anandb.netbeans.support.ProjectPaths;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import org.openide.filesystems.FileUtil;
 import org.openide.util.Lookup;
 
 /**
@@ -40,8 +39,7 @@ public class ProjectToolProvider {
                         if (projects != null) {
                             for (var p : projects) {
                                 if (p == null) continue;
-                                File dir = FileUtil.toFile(p.getProjectDirectory());
-                                paths.add(dir != null ? dir.getAbsolutePath() : p.getProjectDirectory().getPath());
+                                paths.add(ProjectPaths.nativePath(p));
                             }
                         }
                         return Map.of("status", "ok", "projects", paths);

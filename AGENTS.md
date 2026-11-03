@@ -134,6 +134,17 @@
   tokens** (never interpolated into the shell script). Do NOT reintroduce string
   concatenation into the `bash -lc` script — that enabled shell injection from user-editable
   process arguments. Use `tokenizeArgs()` (commons-exec quoting) to split the prefs string.
+- **Project directories handed to the harness are native OS paths**: anything sent as a session
+  `cwd` (`session/new`, `session/load`, `session/resume`, the `session/list` directory) or compared
+  with a session's directory MUST go through `support/ProjectPaths.nativePath(...)` —
+  `FileUtil.toFile(dir).getAbsolutePath()`, with the virtual path as the non-local-filesystem
+  fallback. `FileObject.getPath()` is a virtual path: on Windows it renders a UNC root as
+  `//host/share/…`, and OpenCode 2.x canonicalises a leading `//` with POSIX rules to
+  `/host/share/…`, so `session/new` fails with `LocationNotFoundError`. Convert at the producer —
+  `SessionManager.retainSessionsForDirectories` and the project-close path compare exact strings,
+  so mixing the two forms empties the dropdown. `SessionManager.createSession` and
+  `loadSessionFromServer` also run the cwd through `ProjectPaths.nativeForm`, so a new producer
+  that forgets the conversion still sends the native form — do NOT remove that guard.
 - **Harness binary detection**: `BinaryResolver.findAllOnPath()` is the `which -a` view
   (harness-owned install dirs first, then same-user files, then PATH, then common install
   dirs). A candidate inside `/bin`, `/sbin`, `/usr/bin` or `/usr/sbin` is accepted only when

@@ -29,6 +29,7 @@ import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.model.TurnEndDecision;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.ProjectPaths;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.ProcessService;
 import github.anandb.netbeans.ui.platform.ProjectContext;
@@ -534,7 +535,7 @@ public class SessionLifecycleHandler implements SessionListener {
                                     if (projects == null || projects.length == 0) return;
                                     if (projects.length == 1) {
                                         sessionService.get().createNewSession(
-                                            projects[0].getProjectDirectory().getPath());
+                                            ProjectPaths.nativePath(projects[0]));
                                     } else {
                                         projectPickerShower.accept(sessionDropdown);
                                     }
@@ -571,7 +572,8 @@ public class SessionLifecycleHandler implements SessionListener {
                             return;
                         }
                         if (projects.length == 1) {
-                            sessionService.get().createNewSession(projects[0].getProjectDirectory().getPath());
+                            sessionService.get().createNewSession(
+                                    ProjectPaths.nativePath(projects[0]));
                         } else {
                             projectPickerShower.accept(sessionDropdown);
                         }

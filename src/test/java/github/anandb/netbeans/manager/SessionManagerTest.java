@@ -22,6 +22,7 @@ import static org.mockito.Mockito.when;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -35,6 +36,7 @@ import java.util.List;
 
 import org.netbeans.api.project.Project;
 import org.openide.filesystems.FileObject;
+import org.openide.filesystems.FileUtil;
 import org.openide.util.Lookup;
 import org.openide.util.NbPreferences;
 
@@ -48,6 +50,7 @@ import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -231,15 +234,15 @@ class SessionManagerTest {
     }
 
     @Test
-    void refreshLocalSessionsHidesClosedProjectButKeepsPersistedId() throws Exception {
+    void refreshLocalSessionsHidesClosedProjectButKeepsPersistedId(@TempDir Path projectRoot) throws Exception {
         Method updateMeta = SessionManager.class.getDeclaredMethod("updateMetadata",
                 String.class, java.util.function.Function.class);
         updateMeta.setAccessible(true);
         when(processManager.getCapabilities()).thenReturn(HarnessCatalog.GEMINI);
         ProjectQuery pq = mock(ProjectQuery.class);
         Project project = mock(Project.class);
-        FileObject dir = mock(FileObject.class);
-        when(dir.getPath()).thenReturn("/open");
+        String projectPath = projectRoot.toFile().getAbsolutePath();
+        FileObject dir = FileUtil.toFileObject(projectRoot.toFile());
         when(project.getProjectDirectory()).thenReturn(dir);
         when(pq.getAllOpenProjects()).thenReturn(new Project[] {project});
 
@@ -248,11 +251,11 @@ class SessionManagerTest {
             lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
             when(mockLookup.lookup(ProjectQuery.class)).thenReturn(pq);
 
-            cacheManager().addLocallyCreated(cachedSession("keep", "/open"), null);
+            cacheManager().addLocallyCreated(cachedSession("keep", projectPath), null);
             cacheManager().addLocallyCreated(cachedSession("gone", "/closed"), null);
             updateMeta.invoke(sessionManager, "keep",
                     (java.util.function.Function<SessionMetadata, SessionMetadata>)
-                    m -> new SessionMetadata(m.title(), m.usage(), m.hidden(), "/open"));
+                    m -> new SessionMetadata(m.title(), m.usage(), m.hidden(), projectPath));
             updateMeta.invoke(sessionManager, "gone",
                     (java.util.function.Function<SessionMetadata, SessionMetadata>)
                     m -> new SessionMetadata(m.title(), m.usage(), m.hidden(), "/closed"));
@@ -1093,13 +1096,13 @@ class SessionManagerTest {
     }
 
     @Test
-    void loadSessionFallsBackToSingleOpenProjectCwd() throws Exception {
+    void loadSessionFallsBackToSingleOpenProjectCwd(@TempDir Path projectRoot) throws Exception {
         stubSessionLoad(mapper.createObjectNode());
         sessionManager.addSessionListener(mockListener());
         ProjectQuery projectQuery = mock(ProjectQuery.class);
         Project project = mock(Project.class);
-        FileObject projectDir = mock(FileObject.class);
-        when(projectDir.getPath()).thenReturn("/only/project");
+        String projectPath = projectRoot.toFile().getAbsolutePath();
+        FileObject projectDir = FileUtil.toFileObject(projectRoot.toFile());
         when(project.getProjectDirectory()).thenReturn(projectDir);
         when(projectQuery.getAllOpenProjects()).thenReturn(new Project[] { project });
 
@@ -1115,10 +1118,10 @@ class SessionManagerTest {
         ArgumentCaptor<Map<String, Object>> params = ArgumentCaptor.forClass(Map.class);
         verify(processManager).sendRequest(eq("session/load"), params.capture(),
                 eq(2L), eq(TimeUnit.MINUTES));
-        assertEquals("/only/project", params.getValue().get("cwd"));
-        assertEquals("/only/project", sessionManager.getCurrentSessionDirectory());
+        assertEquals(projectPath, params.getValue().get("cwd"));
+        assertEquals(projectPath, sessionManager.getCurrentSessionDirectory());
         // The single open project is used for the rebind as well as the load params.
-        verify(processManager).ensureStartedIn(new File("/only/project"));
+        verify(processManager).ensureStartedIn(new File(projectPath));
     }
 
     @Test

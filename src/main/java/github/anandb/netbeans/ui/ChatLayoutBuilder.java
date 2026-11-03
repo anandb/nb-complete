@@ -49,6 +49,7 @@ import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.PermissionAutoAllow;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
+import github.anandb.netbeans.support.ProjectPaths;
 import github.anandb.netbeans.support.UserGuideOpener;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 
@@ -792,7 +793,7 @@ final class ChatLayoutBuilder {
             var sc = Lookup.getDefault()
                 .lookup(SessionControl.class);
             if (sc != null) {
-                sc.createNewSession(projects[0].getProjectDirectory().getPath());
+                sc.createNewSession(ProjectPaths.nativePath(projects[0]));
             }
         } else {
             topComponent.showProjectPickerPopup(newSessionBtn);

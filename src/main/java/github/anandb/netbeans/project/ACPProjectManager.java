@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.ProjectPaths;
 import github.anandb.netbeans.support.SlidingTask;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ui.OpenProjects;
@@ -52,7 +53,7 @@ public class ACPProjectManager implements PropertyChangeListener {
         if (listener != null && currentProjects.get() != null) {
             for (Project p : currentProjects.get()) {
                 if (p != null) {
-                    listener.accept(p.getProjectDirectory().getPath());
+                    listener.accept(ProjectPaths.nativePath(p));
                 }
             }
         }
@@ -117,7 +118,7 @@ public class ACPProjectManager implements PropertyChangeListener {
         if (projects != null) {
             for (Project p : projects) {
                 if (p != null) {
-                    dirs.add(p.getProjectDirectory().getPath());
+                    dirs.add(ProjectPaths.nativePath(p));
                 }
             }
         }

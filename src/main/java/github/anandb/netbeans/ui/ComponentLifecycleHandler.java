@@ -32,6 +32,7 @@ import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.GlobalOpencodeConfig;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.ProjectPaths;
 import github.anandb.netbeans.support.TimingConstants;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.ProcessService;
@@ -129,7 +130,7 @@ public class ComponentLifecycleHandler {
             Set<String> currentDirs = new HashSet<>();
             for (var p : projectContext.getAllOpenProjects()) {
                 if (p != null) {
-                    currentDirs.add(p.getProjectDirectory().getPath());
+                    currentDirs.add(ProjectPaths.nativePath(p));
                 }
             }
             // Refresh is handled by deferStartupSessionLoad() after the grace period.
@@ -223,7 +224,8 @@ public class ComponentLifecycleHandler {
                         return;
                     }
                     if (projects.length == 1) {
-                        sessionService.get().createNewSession(projects[0].getProjectDirectory().getPath());
+                        sessionService.get().createNewSession(
+                                ProjectPaths.nativePath(projects[0]));
                     } else {
                         showProjectPickerPopup(inputArea);
                     }
@@ -356,7 +358,7 @@ public class ComponentLifecycleHandler {
         closedProjectDirs = new HashSet<>();
         for (var p : projectContext.getAllOpenProjects()) {
             if (p != null) {
-                closedProjectDirs.add(p.getProjectDirectory().getPath());
+                closedProjectDirs.add(ProjectPaths.nativePath(p));
             }
         }
         sessionService.get().removeSessionListener(sessionLifecycleHandler);
@@ -593,7 +595,7 @@ public class ComponentLifecycleHandler {
         }
         JPopupMenu popup = new JPopupMenu();
         for (Project project : projects) {
-            String projectDir = project.getProjectDirectory().getPath();
+            String projectDir = ProjectPaths.nativePath(project);
             JMenuItem item = new JMenuItem(project.getProjectDirectory().getName());
             item.addActionListener(ev -> sessionService.get().createNewSession(projectDir));
             popup.add(item);
