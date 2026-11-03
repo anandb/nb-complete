@@ -24,13 +24,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -480,8 +478,8 @@ public class SessionManager implements SessionQuery, SessionControl,
     /** How long after a fresh handshake a session call may still be retried. */
     private static final long HARNESS_STARTUP_WINDOW_MS = 60_000;
 
-    /** Page cap for {@code session/list} pagination: goose pages at 50, so this is 5,000 sessions. */
-    private static final int SESSION_LIST_MAX_PAGES = 100;
+    /** The dropdown shows the first page only; goose pages at 50, so cap the list at 20 rows. */
+    private static final int SESSION_LIST_LIMIT = 20;
 
     /**
      * Delays before each startup retry. Startup activation can take tens of
@@ -695,8 +693,10 @@ public class SessionManager implements SessionQuery, SessionControl,
         return processManager.whenReady()
                 .thenCompose(v -> processManager.getToolExecutor().waitForReady())
                 .orTimeout(60, TimeUnit.SECONDS)
-                .thenCompose(v -> getSessionPages(directory, null, 1, new HashSet<>()))
-                .thenApply(SessionManager::distinctById);
+                .thenCompose(v -> rpcClient.getSessions(directory, null))
+                .thenApply(res -> parseSessionPage(res, directory))
+                .thenApply(SessionManager::distinctById)
+                .thenApply(SessionManager::limitSessions);
     }
 
     /** A paging server can repeat a row on a page boundary; one dropdown entry per id. */
@@ -709,36 +709,15 @@ public class SessionManager implements SessionQuery, SessionControl,
     }
 
     /**
-     * Follows {@code nextCursor} to the last page. goose pages {@code session/list} at 50 and a
-     * client that stops at page one silently loses the rest of its history. The page cap and the
-     * seen-cursor set bound a server that keeps handing back a cursor.
+     * The dropdown loads the first {@code session/list} page only and shows at most
+     * {@link #SESSION_LIST_LIMIT} rows. A harness paginates (goose at 50 per page), so the first
+     * page alone already holds more than the dropdown should list.
      */
-    private CompletableFuture<List<Session>> getSessionPages(String directory, String cursor, int page,
-                                                             Set<String> seenCursors) {
-        return rpcClient.getSessions(directory, cursor).thenCompose(res -> {
-            List<Session> sessions = parseSessionPage(res, directory);
-            String next = nextCursor(res);
-            if (next == null) {
-                return CompletableFuture.completedFuture(sessions);
-            }
-            if (page >= SESSION_LIST_MAX_PAGES || !seenCursors.add(next)) {
-                LOG.warn("getSessions: stopping at page {0}, cursor repeated or page cap reached", page);
-                return CompletableFuture.completedFuture(sessions);
-            }
-            return getSessionPages(directory, next, page + 1, seenCursors).thenApply(rest -> {
-                sessions.addAll(rest);
-                return sessions;
-            });
-        });
-    }
-
-    /** {@code nextCursor} of a {@code session/list} response, or null when this was the last page. */
-    private static String nextCursor(JsonNode res) {
-        JsonNode node = res != null ? res.get("nextCursor") : null;
-        if (node == null || !node.isTextual() || isBlank(node.asText())) {
-            return null;
+    private static List<Session> limitSessions(List<Session> sessions) {
+        if (sessions.size() <= SESSION_LIST_LIMIT) {
+            return sessions;
         }
-        return node.asText();
+        return new ArrayList<>(sessions.subList(0, SESSION_LIST_LIMIT));
     }
 
     private List<Session> parseSessionPage(JsonNode res, String directory) {
