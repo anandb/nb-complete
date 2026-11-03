@@ -71,7 +71,6 @@ import org.openide.util.RequestProcessor;
 import org.openide.util.Utilities;
 import org.openide.util.actions.Presenter;
 import org.openide.windows.TopComponent;
-import org.openide.windows.WindowManager;
 import org.openide.util.lookup.ServiceProvider;
 import org.openide.NotifyDescriptor;
 import org.openide.DialogDisplayer;
@@ -99,6 +98,9 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
 
 
     private static final Logger LOG = Logger.from(StashDiffAction.class);
+
+    /** {@code preferredID} of the Git module's repositories window. */
+    private static final String GIT_REPOSITORIES_TC_ID = "GitRepositories"; // NOI18N
 
     // --- Toolbar presenter ---
 
@@ -167,9 +169,20 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         return new ToolbarButton();
     }
 
+    /**
+     * True when the Git Repositories window is already open. Matched through the opened
+     * set rather than {@code WindowManager.findTopComponent}: that call instantiates the
+     * TopComponent (and runs its git repo discovery) when it was never opened, and this
+     * runs from {@code addNotify()} / {@code PROP_OPENED} on the EDT.
+     */
     private static boolean isGitRepositoriesOpen() {
-        TopComponent tc = WindowManager.getDefault().findTopComponent("GitRepositories");
-        return tc != null && tc.isOpened();
+        for (TopComponent tc : TopComponent.getRegistry().getOpened()) {
+            TopComponent.Description desc = tc.getClass().getAnnotation(TopComponent.Description.class);
+            if (desc != null && GIT_REPOSITORIES_TC_ID.equals(desc.preferredID())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

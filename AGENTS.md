@@ -88,6 +88,16 @@
 - **Regex in hot paths**: NEVER use `String.matches()` or `String.replaceAll()` in loops or
   per-tick callbacks. Pre-compile with `static final Pattern` and reuse via `matcher()`.
 - **Swing Layout Loops**: NEVER call `revalidate()` synchronously inside sizing methods like `getPreferredSize()` or `setBounds()`. Doing so re-adds the component to Swing's invalidation queue during a layout pass, causing an infinite 100% CPU layout loop. Use a boolean guard (e.g. `suppressRevalidate`) to ignore or defer revalidation during internal size calculations.
+- **Discovery and full-cache scans stay off the EDT**: `ACPOptionsPanel.load()` runs on the EDT
+  (Options SPI), so WSL probing — one `wsl.exe` per catalog name, `waitFor(2 s)` each — runs on
+  its own `RequestProcessor`. A `DefaultComboBoxModel` **auto-selects the first item added to an
+  empty model**, so `applyWslCandidates` must keep restoring the pre-probe selection/editor text
+  when a choice was already made, or it silently replaces text the user is typing. `StashDiffAction`
+  matches the Git Repositories window through `TopComponent.getRegistry().getOpened()` +
+  `preferredID`, never `WindowManager.findTopComponent` on the EDT (it instantiates the
+  TopComponent). `GoToFileDialog` runs per cached file on every keystroke: keep matching
+  allocation-free (`regionMatches`/`containsIgnoreCase`) and size the dialog from the longest
+  name/path instead of measuring every entry with `FontMetrics`.
 - **Bundle.properties source of truth**: The git-tracked `Bundle.properties` for each package
   lives under `src/main/resources/` (e.g. `src/main/resources/github/anandb/netbeans/ui/Bundle.properties`).
   There is also a generated copy under `src/main/java/` in the same package path — do NOT edit

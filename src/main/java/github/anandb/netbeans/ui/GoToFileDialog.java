@@ -244,11 +244,10 @@ public class GoToFileDialog extends JDialog {
             return;
         }
 
-        String lowerQuery = query.toLowerCase(Locale.ROOT);
         int count = 0;
         for (FileCacheQuery.CachedFile cf : allFiles) {
             if (count >= MAX_RESULTS) break;
-            if (matches(cf, lowerQuery, globMatcher)) {
+            if (matches(cf, query, globMatcher)) {
                 listModel.addElement(new FileItem(
                     cf.fileObject(), cf.projectName(), cf.relativePath()));
                 count++;
@@ -274,12 +273,7 @@ public class GoToFileDialog extends JDialog {
         FontMetrics nameFm = resultList.getFontMetrics(nameFont);
         FontMetrics pathFm = resultList.getFontMetrics(pathFont);
 
-        int maxTextWidth = 0;
-        for (FileCacheQuery.CachedFile cf : allFiles) {
-            int nameWidth = nameFm.stringWidth(cf.fileObject().getNameExt());
-            int pathWidth = pathFm.stringWidth(cf.projectName() + "/" + cf.relativePath());
-            maxTextWidth = Math.max(maxTextWidth, Math.max(nameWidth, pathWidth));
-        }
+        int maxTextWidth = maxTextWidth(allFiles, nameFm, pathFm);
 
         // Add padding: border(2) + emptyBorder(6*2) + scrollpane border(2) + content border(10*2) + scrollbar(~20)
         int preferred = maxTextWidth + 2 + 12 + 2 + 20 + 20 + 24;
@@ -293,29 +287,60 @@ public class GoToFileDialog extends JDialog {
     }
 
     /**
+     * Widest text the result list must fit. Picks the longest name and the longest
+     * project/path by character count first and measures only those two, so opening the
+     * dialog is an O(N) length scan instead of an O(N) text-layout pass on the EDT. The
+     * caller clamps the result, so the character-count heuristic is exact enough.
+     */
+    static int maxTextWidth(List<FileCacheQuery.CachedFile> files, FontMetrics nameFm, FontMetrics pathFm) {
+        String longestName = "";
+        String longestPath = "";
+        for (FileCacheQuery.CachedFile cf : files) {
+            String name = cf.fileObject().getNameExt();
+            if (name.length() > longestName.length()) {
+                longestName = name;
+            }
+            int pathLen = cf.projectName().length() + 1 + cf.relativePath().length();
+            if (pathLen > longestPath.length()) {
+                longestPath = cf.projectName() + "/" + cf.relativePath();
+            }
+        }
+        return Math.max(nameFm.stringWidth(longestName), pathFm.stringWidth(longestPath));
+    }
+
+    /**
      * Case-insensitive matching: prefix on filename, or substring in relative path.
      * When a glob pattern is present, also matches against the relative path using
      * bash-style globs ({@code *}, {@code **}, {@code ?}, {@code [...]}, {@code \{a,b\}}).
+     *
+     * <p>Runs once per cached file per debounced keystroke, so the plain-text paths avoid
+     * lowercasing every entry; only a glob query (rare) builds lowercased {@link Path}s.</p>
      */
-    private static boolean matches(FileCacheQuery.CachedFile cf, String lowerQuery,
+    private static boolean matches(FileCacheQuery.CachedFile cf, String query,
             PathMatcher globMatcher) {
-        String fileName = cf.fileObject().getNameExt().toLowerCase(Locale.ROOT);
-        String relPath = cf.relativePath().toLowerCase(Locale.ROOT);
+        String fileName = cf.fileObject().getNameExt();
+        if (fileName.regionMatches(true, 0, query, 0, query.length())) return true;
+        if (containsIgnoreCase(cf.relativePath(), query)) return true;
 
-        // Plain text matching (always available)
-        if (fileName.startsWith(lowerQuery)) return true;
-        if (relPath.contains(lowerQuery)) return true;
-
-        // Glob matching (only when pattern was parseable) — compare lowercased
+        // Glob matching (only when pattern was parseable) — compare lowercased. The bare
+        // file name covers single-element globs (*.java, *Test*); the relative path covers
+        // multi-segment ones (**/main/**).
         if (globMatcher != null) {
-            Path path = Path.of(relPath);
-            if (globMatcher.matches(path)) return true;
-            // Simple globs like *.java or *Test* only match single path elements.
-            // Also try matching against just the file name so *.java finds all .java files.
-            Path namePath = Path.of(fileName);
-            if (globMatcher.matches(namePath)) return true;
+            if (globMatcher.matches(Path.of(fileName.toLowerCase(Locale.ROOT)))) return true;
+            if (globMatcher.matches(Path.of(cf.relativePath().toLowerCase(Locale.ROOT)))) return true;
         }
 
+        return false;
+    }
+
+    /** Case-insensitive {@code contains}, allocation-free. */
+    private static boolean containsIgnoreCase(String haystack, String needle) {
+        int last = haystack.length() - needle.length();
+        for (int i = 0; i <= last; i++) {
+            if (haystack.regionMatches(true, i, needle, 0, needle.length())) {
+                return true;
+            }
+        }
         return false;
     }
 

@@ -1,6 +1,7 @@
 package github.anandb.netbeans.ui;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +23,7 @@ import org.netbeans.api.editor.mimelookup.MimePath;
 import org.netbeans.api.editor.settings.SimpleValueNames;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
+import org.openide.util.RequestProcessor;
 
 import java.awt.Component;
 import java.awt.Dimension;
@@ -82,6 +84,11 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private static final char ZERO_WIDTH_SPACE = '\u200B';
     private static volatile Font cachedTooltipFont;
     private static volatile int cachedTooltipWidth;
+    /** WSL probes spawn a process each, so they run here rather than on the EDT. */
+    private static final RequestProcessor DISCOVERY_RP =
+            new RequestProcessor("ACP-Options-BinaryDiscovery", 1); // NOI18N
+    /** Invalidates a probe whose results would land after a newer {@link #load()}. */
+    private volatile int wslDiscoveryGeneration;
     private final SessionService sessionService = PlatformBridge.sessionServiceSafe();
     private final ACPOptionsPanelController controller;
     private JLabel jLabel1;
@@ -652,9 +659,10 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         userEditedPath = false;
         String savedPath = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get(PreferenceKeys.ACP_EXECUTABLE_PATH, null);
 
-        // Discover known binaries on PATH
+        // Discover known binaries on PATH. Native probing only stats the filesystem; the
+        // WSL probe spawns wsl.exe per name (up to 2 s each) and so runs off the EDT —
+        // load() is called on the EDT by the Options SPI.
         boolean useWsl = BinaryResolver.isWslAvailable();
-        String[] wslCandidates = BinaryResolver.linuxHarnessNames();
         String[] nativeCandidates = BinaryResolver.nativeHarnessNames();
         pathLabels.clear();
         pathCombo.removeAllItems();
@@ -671,29 +679,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
                 }
             }
         }
-        // WSL-native binaries (inside the distro)
-        if (useWsl) {
-            for (String name : wslCandidates) {
-                String found = BinaryResolver.findOnWslPath(name);
-                if (found != null) {
-                    // Skip if already present (native + WSL could resolve to the same path)
-                    boolean alreadyAdded = false;
-                    for (int i = 0; i < pathCombo.getItemCount(); i++) {
-                        if (found.equals(pathCombo.getItemAt(i))) {
-                            alreadyAdded = true;
-                            break;
-                        }
-                    }
-                    if (!alreadyAdded) {
-                        pathCombo.addItem(found);
-                        pathLabels.put(found, found + " (WSL)");
-                        if (detectedFirst == null) {
-                            detectedFirst = found;
-                        }
-                    }
-                }
-            }
-        }
+        discoverWslBinariesAsync(useWsl);
 
         if (savedPath != null && !savedPath.isEmpty()) {
             // Convert Windows path to WSL mount path when WSL mode is on
@@ -776,6 +762,67 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         updateGeminiModelHint();
         // Reopening Options (including after Cancel) must still show what is outstanding.
         refreshPendingRestartBar();
+    }
+
+    /**
+     * Probes WSL for catalog binaries off the EDT. Each probe spawns {@code wsl.exe}, which
+     * can block for the 2 s timeout, and {@link #load()} runs on the EDT. Results are appended
+     * to the combo when they arrive; a selection already made by the user or by {@code load()}
+     * is left alone.
+     */
+    private void discoverWslBinariesAsync(boolean useWsl) {
+        int generation = ++wslDiscoveryGeneration;
+        if (!useWsl) {
+            return;
+        }
+        String[] candidates = BinaryResolver.linuxHarnessNames();
+        DISCOVERY_RP.post(() -> {
+            List<String> found = new ArrayList<>();
+            for (String name : candidates) {
+                if (generation != wslDiscoveryGeneration) {
+                    return; // superseded by a newer load() — stop spawning wsl.exe
+                }
+                String path = BinaryResolver.findOnWslPath(name);
+                if (path != null) {
+                    found.add(path);
+                }
+            }
+            if (!found.isEmpty()) {
+                SwingUtilities.invokeLater(() -> applyWslCandidates(generation, found));
+            }
+        });
+    }
+
+    /** Appends asynchronously probed WSL binaries to the path combo, unless the state moved on. */
+    private void applyWslCandidates(int generation, List<String> found) {
+        if (generation != wslDiscoveryGeneration) {
+            return; // a newer load() superseded this probe
+        }
+        Object previousSelection = pathCombo.getSelectedItem();
+        Object editorItem = pathCombo.getEditor().getItem();
+        String previousEditorText = editorItem != null ? editorItem.toString() : "";
+        boolean selectionMade = userEditedPath || !isBlank(getExecutablePath());
+        boolean added = false;
+        for (String path : found) {
+            if (pathLabels.containsKey(path)) {
+                continue; // native + WSL can resolve to the same path
+            }
+            pathLabels.put(path, path + " (WSL)");
+            pathCombo.addItem(path);
+            added = true;
+        }
+        if (!added) {
+            return;
+        }
+        if (selectionMade) {
+            // DefaultComboBoxModel auto-selects the first item added to an empty model, which
+            // replaces text the user is still typing: put the pre-probe value back.
+            pathCombo.setSelectedItem(previousSelection != null ? previousSelection : previousEditorText);
+            return;
+        }
+        // The first added item is now the selection; refresh the hint that depends on the path.
+        updateGeminiModelHint();
+        refreshHarnessHint();
     }
 
     /** Opens the allow/deny editor; settings stay local until Options is applied. */

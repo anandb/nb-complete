@@ -122,8 +122,8 @@ public class ComponentLifecycleHandler {
         // During plugin installation the @OnStart handler opens this component while
         // the module installer wizard is still active; deferring prevents the installation
         // dialog from being blocked by server/session initialization.
-        // Pre-compute availability OFF the EDT to avoid preference reads and
-        // file existence checks blocking the UI thread during install.
+        // A preference read plus one File.exists() in the normal case; the WSL probe
+        // only runs when a configured binary has gone missing, so this is EDT-cheap.
         boolean available = BinaryResolver.isAvailable();
         SwingUtilities.invokeLater(() -> {
             Set<String> currentDirs = new HashSet<>();
