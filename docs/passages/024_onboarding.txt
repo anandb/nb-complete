@@ -8,7 +8,7 @@
 
 ![The harness chooser listing installed and supported harnesses](../images/agent_selection.webp){style="max-width:100%;"}
 
-The plugin works with several coding harnesses that speak the Agent Client Protocol: **Oh My Pi**, **OpenCode**, **Codex**, **OpenClaw**, **Pi**, **Goose**, **Cursor**, **Copilot**, **Claude**, **Hermes**, **Gemini**, **Devin**, **Kilo Code**, and **Cline**. When no harness binary is configured, the chat panel shows the **Coding Harness Configuration** screen instead of the normal input — it groups every supported harness by status so you can see at a glance what is ready to use.
+The plugin works with several coding harnesses that speak the Agent Client Protocol: **Oh My Pi**, **OpenCode**, **Codex**, **OpenClaw**, **Pi**, **Goose**, **Cursor**, **Copilot**, **Claude**, **Hermes**, **Gemini**, **Devin**, **Kilo Code**, **Cline**, and **Jcode**. When no harness binary is configured, the chat panel shows the **Coding Harness Configuration** screen instead of the normal input — it groups every supported harness by status so you can see at a glance what is ready to use.
 
 *   The **Active Harness** card at the top shows the currently configured harness with its binary path and a disabled **Active** badge, and spells out how to sign in to that harness if it still needs authentication. The active harness is not repeated in the lists below.
 *   **Installed Harnesses** lists every detected harness with a **Use** button — clicking **Use** saves that harness (and its launch arguments) and asks you to restart NetBeans. The switch takes effect on the next start, so the running assistant is left alone; this also gives you time to sign in first. Every row also states how to authenticate the harness's CLI, with the command on a click-to-copy chip where one exists (for example <code>kilo auth login</code>, <code>agent login</code>, <code>goose configure</code> or <code>cline auth</code>); harnesses that sign in interactively on first run describe that flow instead. Each row has a disclosure triangle (`>`) that reveals the detected binary path. Gemini's default arguments include <code>--model gemini-3.8-flash</code>; change <code>--model</code> under Process Arguments in Options if you want a different model.
@@ -24,7 +24,7 @@ After installing a harness — and optionally setting the binary path under `Opt
 
 
 > [[OpenCode]] / [[Codex Agent]] / [[PI Agent]] / [[Goose Agent]] / [[Cursor Agent]] / [[Copilot Agent]]
-> [[Claude Agent]] / [[Hermes Agent]] / [[Gemini Agent]] / [[Oh My Pi Agent]] / [[OpenClaw Agent]] / [[Devin Agent]] / [[Kilo Code Agent]] / [[Cline Agent]]
+> [[Claude Agent]] / [[Hermes Agent]] / [[Gemini Agent]] / [[Oh My Pi Agent]] / [[OpenClaw Agent]] / [[Devin Agent]] / [[Kilo Code Agent]] / [[Cline Agent]] / [[Jcode Agent]]
 > [[Post Install]]
 > [[Restarting the server]]
 > [[Options Panel Reference]]

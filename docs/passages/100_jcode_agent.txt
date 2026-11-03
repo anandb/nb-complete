@@ -1,0 +1,46 @@
+:: Jcode Agent {"position":"2500,1400","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Jcode Agent</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+#### Install
+
+- **macOS / Linux / WSL**: `curl -fsSL https://jcode.sh/install | bash`
+- **Windows (PowerShell)**: `irm https://jcode.sh/install.ps1 | iex`
+
+The installer puts the <code>jcode</code> launcher in <code>~/.local/bin</code> (<code>%LOCALAPPDATA%\jcode\bin</code> on Windows) and keeps its versioned builds under <code>~/.jcode</code>. Docs: <a href="https://jcode.sh/docs" target="_blank" rel="noopener">jcode.sh/docs</a>.
+
+#### About
+
+<a href="https://jcode.sh/docs" target="_blank" rel="noopener">Jcode</a> is a coding agent with its own TUI and a background daemon. Running <code>jcode acp</code> makes it act as an **ACP server** over stdio: it speaks JSON-RPC on stdin/stdout and is meant to be spawned by an ACP-aware editor, so it is not a command to run yourself.
+
+The executable you configure in BeanBot is <code>jcode</code>, run with the default launch argument <code>acp</code>.
+
+**Authentication** is a CLI prerequisite: run <code>jcode login</code> once in a terminal (or import an existing provider credential — Jcode detects Claude Code, Codex, Gemini CLI, OpenCode and Pi credentials after asking) before connecting. Jcode advertises no ACP authenticate methods, so a fresh install without credentials fails <code>session/new</code> — sign in first, then pick Jcode in the chooser.
+
+Jcode in BeanBot supports:
+- [[Editor Context->Automatic Context Capture]] Seamlessly injects the active editor state into agent prompts.
+- **Model Selection**: Exposed as an ACP config option, so the in-session model dropdown works.
+- **Thinking Level**: Jcode reports the provider's reasoning efforts as an <code>effort</code> config option, so the thinking-level dropdown works with it.
+- **Queued messages**: Jcode rejects a second <code>session/prompt</code> while a turn runs ("already processing a prompt"), so a message you send mid-turn waits in the [[Queuing Messages]] toolbar queue until the turn ends.
+- **Session reload**: Jcode implements <code>session/load</code> and advertises <code>session/close</code>/<code>session/resume</code>, so [[Reloading a Session]] works for sessions Jcode has already persisted.
+- **Slash Commands**: Jcode advertises its slash-command set over the protocol, so its commands appear in the command palette with their descriptions.
+- **Token statistics**: Jcode sends <code>usage&#95;update</code> notifications and per-turn token figures, so context size and token counts are recorded; cost stays empty because Jcode reports no price.
+
+#### Limitations
+
+- **No plugin MCP tools**: Jcode validates the ACP <code>mcpServers</code> field but does not start those servers yet, so BeanBot does not hand it the plugin's internal MCP server and the <code>nb&#95;&#95;*</code> tools are unavailable. Configure MCP servers in Jcode's own configuration if you need them.
+- **No session list from Jcode**: Jcode does not implement <code>session/list</code>, so the session dropdown only shows sessions tracked locally by this BeanBot instance — sessions created in another Jcode client do not appear.
+- **No agent/mode selector**: Jcode exposes no mode request and no mode config option; only the model and reasoning-effort dropdowns are offered. Its approval and sandbox behavior is controlled by Jcode's own configuration.
+- **No IDE permission prompts**: Jcode's ACP adapter never sends <code>session/request&#95;permission</code>, so BeanBot's **Allow Once / Always Allow / Reject** panel does not appear for its edits and commands. Keep the project under version control and review changes with your VCS, or use Jcode's own approval settings.
+- **Queued messages**: Jcode rejects a prompt sent during a running turn instead of folding it in, so BeanBot holds the message until turn end (see [[Queuing Messages]]). Interleaved agents such as [[OpenCode]] send immediately instead.
+- **Model switching path**: BeanBot changes the model through Jcode's <code>model</code> config option and the thinking level through <code>effort</code>, not the dedicated model request. Both dropdowns show the options Jcode reports back, not a fixed list.
+
+> [[Post Install]]
+> [[Starting a Session]]
+> [[Onboarding]]
+> [[Queuing Messages]]
+> [[Picking an Agent, Model and Thinking Level]]

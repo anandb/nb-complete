@@ -46,6 +46,7 @@ This is a complete list of topics in this guide, use it to directly jump to that
 > [[Input Area Keys]]
 > [[Inspector Context Menu]]
 > [[Install Ollama]]
+> [[Jcode Agent]]
 > [[Jump to File]]
 > [[Keyboard Shortcuts]]
 > [[Keyboard Shortcuts Dialog]]

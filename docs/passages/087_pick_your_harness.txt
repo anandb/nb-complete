@@ -24,6 +24,7 @@ In this guide you might also see a harness referred to as an ACP Server, an Agen
 > [[Devin Agent]]
 > [[Kilo Code Agent]]
 > [[Cline Agent]]
+> [[Jcode Agent]]
 
 If you are not sure, The plugin will detect installed harnesses and let you choose at startup.
 See [[Onboarding]].

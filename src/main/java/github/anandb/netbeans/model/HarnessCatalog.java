@@ -364,6 +364,31 @@ public final class HarnessCatalog {
         List.of()
     );
 
+    /**
+     * Jcode: a native ACP agent launched as {@code jcode acp}. It validates the
+     * ACP {@code mcpServers} field but never starts those servers (session-scoped
+     * MCP is not implemented), so the plugin's internal MCP server is not offered.
+     * A second {@code session/prompt} while a turn is running is rejected with
+     * "already processing a prompt", so messages queue until turn end. Model and
+     * reasoning effort come from config options; there is no mode request, no
+     * {@code session/list} and no message ids. {@code session/load},
+     * {@code session/close} and usage updates are implemented.
+     */
+    public static final Harness JCODE = new Harness(
+        "jcode", "Jcode", "jcode",
+        List.of("jcode"), "acp",
+        true, false, true, false, false, false, true, false, true, false, false,
+        "",
+        "",
+        "powershell -c \"irm https://jcode.sh/install.ps1 | iex\"",
+        "curl -fsSL https://jcode.sh/install | bash",
+        "curl -fsSL https://jcode.sh/install | bash",
+        "Sign in once with jcode login (or import an existing provider credential) before connecting. "
+                + "The ACP entry point is jcode acp.",
+        "https://jcode.sh/docs",
+        List.of("%LOCALAPPDATA%\\jcode\\bin")
+    );
+
     /** Fallback for unknown harnesses. */
     public static final Harness UNKNOWN = new Harness(
         "unknown", "Agent", "agent",
@@ -382,7 +407,7 @@ public final class HarnessCatalog {
      */
     public static final List<Harness> ALL =
             List.of(OMP, OPENCODE, CODEX, OPENCLAW, PI, GOOSE, CURSOR, COPILOT, CLAUDE, HERMES, GEMINI, DEVIN,
-                    KILO, CLINE);
+                    KILO, CLINE, JCODE);
 
     /** Alphabetical display-name order, case-insensitive. */
     public static final Comparator<Harness> BY_DISPLAY_NAME =
@@ -443,7 +468,9 @@ public final class HarnessCatalog {
         Map.entry("kilo", new Activation("kilo auth login",
                 "Sign in once, or start kilo and use /connect.")),
         Map.entry("cline", new Activation("cline auth",
-                "Sign in once, or set CLINE_API_KEY.")));
+                "Sign in once, or set CLINE_API_KEY.")),
+        Map.entry("jcode", new Activation("jcode login",
+                "Sign in once, or import an existing provider credential.")));
 
     /** Shared value for a harness without sign-in guidance; allocation-free. */
     private static final Activation NO_ACTIVATION = new Activation("", "");

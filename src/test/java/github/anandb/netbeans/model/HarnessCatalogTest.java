@@ -18,13 +18,13 @@ class HarnessCatalogTest {
 
     @Test
     void allHarnessesPresent() {
-        assertEquals(14, HarnessCatalog.ALL.size());
+        assertEquals(15, HarnessCatalog.ALL.size());
         Set<String> ids = new HashSet<>();
         for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
             assertTrue(ids.add(h.id()), "duplicate id: " + h.id());
         }
         assertTrue(ids.containsAll(Set.of("opencode", "codex", "goose", "pi", "cursor", "claude", "hermes",
-                "gemini", "omp", "openclaw", "devin", "copilot", "kilo", "cline")));
+                "gemini", "omp", "openclaw", "devin", "copilot", "kilo", "cline", "jcode")));
     }
 
     @Test
@@ -32,7 +32,7 @@ class HarnessCatalogTest {
         Set<String> allIds = new HashSet<>(HarnessCatalog.ALL.stream()
                 .map(HarnessCatalog.Harness::id).toList());
         assertEquals(Set.of("omp", "opencode", "codex", "openclaw", "pi", "goose", "cursor", "copilot",
-                "claude", "hermes", "gemini", "devin", "kilo", "cline"),
+                "claude", "hermes", "gemini", "devin", "kilo", "cline", "jcode"),
                 allIds);
     }
 
@@ -65,6 +65,7 @@ class HarnessCatalogTest {
         assertEquals("agent login", HarnessCatalog.activation("cursor").command());
         assertEquals("copilot login", HarnessCatalog.activation("copilot").command());
         assertEquals("cline auth", HarnessCatalog.activation("cline").command());
+        assertEquals("jcode login", HarnessCatalog.activation("jcode").command());
         // Unknown ids and the fallback harness yield an empty activation.
         assertTrue(HarnessCatalog.activation("nope").hint().isBlank());
         assertTrue(HarnessCatalog.activation(null).hint().isBlank());
@@ -82,6 +83,7 @@ class HarnessCatalogTest {
         assertEquals(HarnessCatalog.CURSOR, HarnessCatalog.byBinaryName("agent"));
         assertEquals(HarnessCatalog.GEMINI, HarnessCatalog.byBinaryName("gemini"));
         assertEquals(HarnessCatalog.OMP, HarnessCatalog.byBinaryName("omp"));
+        assertEquals(HarnessCatalog.JCODE, HarnessCatalog.byBinaryName("jcode"));
         assertSame(HarnessCatalog.UNKNOWN, HarnessCatalog.byBinaryName("unknown-bin"));
     }
 
@@ -208,13 +210,14 @@ class HarnessCatalogTest {
     }
 
     @Test
-    void allHarnessesExceptOpenclawSupportAgentList() {
+    void allHarnessesExceptOpenclawAndJcodeSupportAgentList() {
         for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
-            if ("openclaw".equals(h.id())) {
+            if ("openclaw".equals(h.id()) || "jcode".equals(h.id())) {
                 continue;
             }
             assertTrue(h.supportsAgentList(), h.id() + " should support agent list");
         }
+        assertFalse(HarnessCatalog.JCODE.supportsAgentList());
         assertTrue(HarnessCatalog.UNKNOWN.supportsAgentList());
     }
 
@@ -318,6 +321,40 @@ class HarnessCatalogTest {
         assertEquals("cline.svg", HarnessCatalog.harnessIconName("cline"));
         assertNotNull(HarnessCatalogTest.class.getResource("/github/anandb/netbeans/ui/icons/cline.svg"));
         assertNotNull(HarnessCatalogTest.class.getResource("/github/anandb/netbeans/ui/icons/cline_dark.svg"));
+    }
+
+    @Test
+    void jcodeCapabilitiesMatchHandshake() {
+        // Catalog data pinned against the jcode 0.99.1 ACP source: initialize
+        // advertises loadSession, sessionCapabilities {close,resume} and prompt
+        // embeddedContext+image. session/list and session/set_mode are not
+        // implemented; session/prompt is rejected while a turn runs ("already
+        // processing a prompt"), and ACP mcpServers are validated but not started.
+        assertEquals(List.of("jcode"), HarnessCatalog.JCODE.binaryNames());
+        assertEquals("acp", HarnessCatalog.JCODE.launchArgs());
+        assertEquals(HarnessCatalog.JCODE, HarnessCatalog.byBinaryName("jcode"));
+        assertEquals(HarnessCatalog.JCODE, HarnessCatalog.byBinaryName("jcode.exe"));
+        assertEquals(HarnessCatalog.JCODE, HarnessCatalog.byBinaryName("jcode.cmd"));
+        assertTrue(HarnessCatalog.JCODE.requiresMessageQueue());
+        assertFalse(HarnessCatalog.JCODE.sendsMcpServerConfig());
+        assertTrue(HarnessCatalog.JCODE.injectsEditorContext());
+        assertFalse(HarnessCatalog.JCODE.supportsMessageIds());
+        assertFalse(HarnessCatalog.JCODE.supportsMcpServer());
+        assertFalse(HarnessCatalog.JCODE.supportsSessionSetMode());
+        assertTrue(HarnessCatalog.JCODE.supportsSessionSetConfigOption());
+        assertFalse(HarnessCatalog.JCODE.supportsSessionSetModel());
+        assertTrue(HarnessCatalog.JCODE.supportsModelSelection());
+        assertFalse(HarnessCatalog.JCODE.supportsSessionList());
+        assertFalse(HarnessCatalog.JCODE.supportsAgentList());
+        assertEquals("powershell -c \"irm https://jcode.sh/install.ps1 | iex\"",
+                HarnessCatalog.JCODE.installWindows());
+        assertEquals("curl -fsSL https://jcode.sh/install | bash", HarnessCatalog.JCODE.installMac());
+        assertEquals("curl -fsSL https://jcode.sh/install | bash", HarnessCatalog.JCODE.installLinux());
+        assertEquals(List.of("%LOCALAPPDATA%\\jcode\\bin"), HarnessCatalog.JCODE.windowsInstallSubDirs());
+        assertEquals("https://jcode.sh/docs", HarnessCatalog.JCODE.docsUrl());
+        assertEquals("jcode.svg", HarnessCatalog.harnessIconName("jcode"));
+        assertNotNull(HarnessCatalogTest.class.getResource("/github/anandb/netbeans/ui/icons/jcode.svg"));
+        assertNotNull(HarnessCatalogTest.class.getResource("/github/anandb/netbeans/ui/icons/jcode_dark.svg"));
     }
 
     @Test
