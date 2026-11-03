@@ -1,0 +1,5 @@
+{"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"goose-steer-sess","update":{"sessionUpdate":"session_info_update","_meta":{"goose":{"activeRunId":"run-7"}}}}}
+{"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"goose-steer-sess","update":{"sessionUpdate":"agent_message_chunk","messageId":"g-msg-1","content":{"type":"text","text":"Working on it"}}}}
+{"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"goose-steer-sess","update":{"sessionUpdate":"session_info_update","_meta":{"goose":{"queuedSteer":{"messageId":"steer-1","runId":"run-7"}}}}}}
+{"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"goose-steer-sess","update":{"sessionUpdate":"user_message_chunk","messageId":"steer-1","content":{"type":"text","text":"also check the tests"},"_meta":{"goose":{"steer":{"messageId":"steer-1"}}}}}}
+{"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"goose-steer-sess","update":{"sessionUpdate":"session_info_update","_meta":{"goose":{"activeRunId":null}}}}}

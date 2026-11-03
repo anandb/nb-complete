@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":"<request-id>","result":{"sessionId":"goose-resume-sess","cwd":"/work/project","configOptions":[{"id":"model","name":"Model","currentValue":"m1","options":[{"value":"m1","name":"M1"}]}]}}

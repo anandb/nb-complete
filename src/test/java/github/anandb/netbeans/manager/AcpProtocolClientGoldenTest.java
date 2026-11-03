@@ -1,15 +1,22 @@
 package github.anandb.netbeans.manager;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.SessionUpdate;
+import github.anandb.netbeans.support.MapperSupplier;
+import github.anandb.netbeans.support.SteerEchoes;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntSupplier;
 import org.junit.jupiter.api.AfterEach;
@@ -18,6 +25,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -26,11 +34,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Golden transcript replay: fixture wire bytes → real {@link AcpProtocolClient} streaming
  * parse → real {@link SessionUpdateDecoder} → asserted type/id sequences. Pins the
  * behaviors that historically regressed: textual turn-end signals surviving Jackson,
- * UUID string request ids echoed verbatim, malformed neighbors not killing the stream.
+ * UUID string request ids echoed verbatim, malformed neighbors not killing the stream,
+ * goose's steer sequence (run announce → queued marker → echo → run end) and the
+ * {@code session/resume} request/response round trip.
  */
 @Tag("P0")
 @Tag("Protocol")
 class AcpProtocolClientGoldenTest {
+
+    private static final ObjectMapper MAPPER = MapperSupplier.get();
 
     private MockAcpServer server;
     private AcpProtocolClient client;
@@ -43,6 +55,8 @@ class AcpProtocolClientGoldenTest {
 
     @AfterEach
     void tearDown() throws IOException {
+        SteerEchoes.clear();
+        ActiveRunTracker.clear();
         server.close();
     }
 
@@ -102,6 +116,87 @@ class AcpProtocolClientGoldenTest {
         assertNotNull(responseId, "response must carry an id");
         assertTrue(responseId.isTextual(), "UUID id must not be coerced to a number: " + responseId);
         assertEquals("517ef9d2-8f6a-4d21-9c3e-2b1a4f7e9d00", responseId.asText());
+    }
+
+    /**
+     * The steer round trip as goose emits it: the run id announced on
+     * {@code session_info_update}, the queued-steer marker, the echo carrying the steer's
+     * message id, then the run ending. The tracker and the echo expectation must survive
+     * the middle of the turn and be forgotten together at the end, or the next steer
+     * carries a dead {@code expectedRunId} and the echo renders a second bubble.
+     */
+    @Test
+    void gooseSteerReplayTracksTheRunQueuesTheEchoAndClearsBothAtRunEnd() throws Exception {
+        String sessionId = "goose-steer-sess";
+        List<SessionUpdate> decoded = new CopyOnWriteArrayList<>();
+        List<String> runs = new CopyOnWriteArrayList<>();
+        List<Boolean> echoConsumed = new CopyOnWriteArrayList<>();
+        client.onNotification("session/update", params -> {
+            SessionUpdate update = SessionUpdateDecoder.decode(params);
+            decoded.add(update);
+            runs.add(ActiveRunTracker.get(sessionId));
+            if (update != null && update.update() != null
+                    && update.update().type() == MessageType.user_message_chunk) {
+                echoConsumed.add(SteerEchoes.consume(sessionId, update.update().messageId()));
+            }
+        });
+        SteerEchoes.expect(sessionId, "steer-1");
+
+        server.sendToClient(fixture("goose-steer.jsonl"));
+        awaitCount(decoded::size, 5);
+
+        for (SessionUpdate update : decoded) {
+            assertNotNull(update, "every steer transcript update must decode");
+        }
+        assertEquals(List.of(
+                MessageType.session_info_update,
+                MessageType.agent_message_chunk,
+                MessageType.session_info_update,
+                MessageType.user_message_chunk,
+                MessageType.session_info_update),
+                decoded.stream().map(update -> update.update().type()).toList());
+        assertEquals(Arrays.asList("run-7", "run-7", "run-7", "run-7", null), runs,
+                "the run id is learnt on announcement and dropped when goose sends null");
+        assertEquals("steer-1",
+                decoded.get(2).meta().path("goose").path("queuedSteer").path("messageId").asText(),
+                "the queued marker names the steer before its echo lands");
+        assertEquals("steer-1",
+                decoded.get(3).meta().path("goose").path("steer").path("messageId").asText(),
+                "the user_message_chunk echo carries the steer id");
+        assertEquals(List.of(true), echoConsumed,
+                "the locally drawn steer must not be rendered twice");
+        assertNull(ActiveRunTracker.get(sessionId), "run end drops the run id");
+        assertFalse(SteerEchoes.consume(sessionId, "steer-1"),
+                "run end forgets a steer it can no longer echo");
+    }
+
+    /**
+     * {@code session/resume} is a standard request, not a notification. Pinning the wire
+     * shape plus the response envelope proves the client completes the pending future and
+     * the manager receives the resumed session payload (cwd + config options) as goose sends it.
+     */
+    @Test
+    void gooseResumeRoundTripCompletesThePendingRequest() throws Exception {
+        Map<String, Object> params = Map.of(
+                "sessionId", "goose-resume-sess",
+                "cwd", "/work/project",
+                "mcpServers", List.of());
+
+        CompletableFuture<JsonNode> resumed = client.sendRequest("session/resume", params, 5, TimeUnit.SECONDS);
+        JsonNode request = server.readFromClient();
+
+        assertEquals("session/resume", request.get("method").asText());
+        assertEquals("goose-resume-sess", request.at("/params/sessionId").asText());
+        assertEquals("/work/project", request.at("/params/cwd").asText());
+
+        ObjectNode response = (ObjectNode) MAPPER.readTree(fixture("goose-resume-response.json"));
+        response.set("id", request.get("id"));
+        server.sendToClient(MAPPER.writeValueAsString(response));
+
+        JsonNode result = resumed.get(5, TimeUnit.SECONDS);
+        assertEquals("goose-resume-sess", result.path("sessionId").asText());
+        assertEquals("/work/project", result.path("cwd").asText());
+        assertEquals("m1", result.at("/configOptions/0/currentValue").asText());
     }
 
     @Test
