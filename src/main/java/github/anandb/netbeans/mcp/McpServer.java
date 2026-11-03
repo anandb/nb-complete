@@ -23,6 +23,8 @@ public class McpServer {
     private final McpTools mcpTools = new McpTools();
     /** Per-instance random token; enforced by the servlet when authRequired is set. */
     private final String token;
+    /** Configured connector port; 0 lets the OS pick a free loopback port. */
+    private final int port;
     private Server server;
     private ServerConnector connector;
     private RequestProcessor asyncExecutor;
@@ -30,7 +32,9 @@ public class McpServer {
      *  harness binaries, which cannot carry tokens on MCP URLs. */
     private volatile boolean authRequired;
 
-    public McpServer() {
+    /** Binds {@code port} on 127.0.0.1; 0 lets the OS pick a free port. */
+    public McpServer(int port) {
+        this.port = port;
         byte[] bytes = new byte[16];
         RANDOM.nextBytes(bytes);
         StringBuilder sb = new StringBuilder(32);
@@ -80,12 +84,7 @@ public class McpServer {
 
         connector = new ServerConnector(server);
         connector.setHost("127.0.0.1");
-        // Fixed port from preferences when configured; 0 (default) lets the
-        // OS pick a random free port.
-        int configuredPort = PluginSettings.getMcpServerPort();
-        if (configuredPort > 0) {
-            connector.setPort(configuredPort);
-        }
+        connector.setPort(port);
         // Clamp idle timeout: 0 or negative disables idle detection, which
         // leaks connections under load.  Minimum 30 s avoids undefined behaviour.
         int idleSec = PluginSettings.getSessionIdleTimeout();

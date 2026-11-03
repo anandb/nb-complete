@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Same pinned tweego as the release build: verify runs the user-guide stitch at
+  # generate-resources, and a PR must not surface a broken guide only at release.
+  TWEEGO_VERSION: '2.1.1'
+  TWEEGO_SHA256: '2ed11c3aa66c88ec5382b51061c7782152632b88916777428ab57a66feb7e5aa'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Install user guide toolchain (python3 + tweego)
+        run: |
+          set -euo pipefail
+          python3 --version
+          dest="$HOME/apps/tweego"
+          mkdir -p "$dest"
+          curl -fsSL -o /tmp/tweego.zip \
+            "https://github.com/tmedwards/tweego/releases/download/v${TWEEGO_VERSION}/tweego-${TWEEGO_VERSION}-linux-x64.zip"
+          echo "${TWEEGO_SHA256}  /tmp/tweego.zip" | sha256sum -c -
+          unzip -q -o /tmp/tweego.zip -d "$dest"
+          chmod +x "$dest/tweego"          # the release archive stores no exec bit
+          echo "$dest" >> "$GITHUB_PATH"   # stitch.py resolves tweego from PATH
+          test -x "$dest/tweego"
+          "$dest/tweego" --version || true # prints version + usage, then exits 1
+
+      - name: Verify (unit + integration tests)
+        run: ./mvnw -B verify
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            target/surefire-reports
+            target/failsafe-reports
+          if-no-files-found: ignore

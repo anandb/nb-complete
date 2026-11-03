@@ -75,14 +75,17 @@ public class McpManager {
                 return;
             }
             readyFuture = new CompletableFuture<>();
-            LOG.info("Starting MCP server asynchronously...");
+            // Resolve the configured port on the caller's thread: the start task runs on
+            // another thread, where a test's static mock of PluginSettings is invisible.
+            int port = PluginSettings.getMcpServerPort();
+            LOG.info("Starting MCP server asynchronously on port {0}...", port);
             serverStartFuture = CompletableFuture.runAsync(() -> {
                 startThread = Thread.currentThread();
                 try {
                     McpServer server = null;
                     try {
                         LOG.info("Creating new McpServer instance...");
-                        server = new McpServer();
+                        server = new McpServer(port);
                         server.setAuthRequired(mcpAuthRequired);
                         LOG.info("Starting MCP server...");
                         server.start();

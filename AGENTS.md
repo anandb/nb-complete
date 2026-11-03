@@ -10,13 +10,24 @@
 - **Key Tech**: NetBeans API (RELEASE220), Flexmark, Jackson, RSyntaxTextArea, JUnit 5.
 
 ## Build Commands
-- Build: `./mvnw package` (runs checks & tests — add the random-order profile per the rule below) |
-  Clean: `./mvnw clean` | Quick: `./mvnw package -DskipTests`
-- **Always run tests with `-P random-test-order`**: any command that executes the suite
-  (`./mvnw test`, `./mvnw verify`, `./mvnw package` without `-DskipTests`) MUST add the profile.
-  It runs Surefire classes in random order to surface order-dependent tests; the log prints
-  `-Dsurefire.runOrder.random.seed=<n>` to reproduce one run. A run without the profile is not
-  a valid verification of the suite.
+- Build: `./mvnw package` (runs checks & tests — locally add the random-order profile per the rule
+  below) | Clean: `./mvnw clean` | Quick: `./mvnw package -DskipTests`
+- **Always run tests with `-P random-test-order` locally**: any command you run that executes
+  the suite (`./mvnw test`, `./mvnw verify`, `./mvnw package` without `-DskipTests`) MUST add the
+  profile. It runs Surefire classes in random order to surface order-dependent tests; the log
+  prints `-Dsurefire.runOrder.random.seed=<n>` to reproduce one run. A local run without the
+  profile is not a valid verification of the suite. **The GitHub workflows deliberately omit the
+  profile** (`.github/workflows/ci.yml` and `release.yml` run the default order) so CI and
+  release results are reproducible; do not add it there.
+- **Integration tests run in `verify`**: Surefire runs `*Test`; Failsafe runs `*IT`
+  (`mvn-failsafe-plugin`, bound to `integration-test`/`verify`) in a separate JVM with the same
+  pinned `netbeans.user`. `UsageStatsStoreFileLockIT` is the cross-process smoke test for the
+  H2 store — it spawns a second JVM to hold the database file so the real "Database may be
+  already in use" lock, the parked-capture behaviour and the single retry are exercised.
+  `./mvnw test` alone does NOT run it; use `./mvnw verify`. CI (`.github/workflows/ci.yml`)
+  runs `./mvnw -B verify` in the default order (deterministic on purpose; the release build
+  does the same) and installs the pinned tweego so the user-guide stitch fails on a PR rather
+  than at release.
 - **Always use `./mvnw`** (pinned Maven 3.9.x) and never system `mvn`: Maven 3.10 writes
   `maven-metadata-local.xml` into `central-publishing-maven-plugin`'s file:// staging repo,
   which gets bundled and Central rejects the deployment ("Bundle has content that does NOT
@@ -108,7 +119,11 @@
   through its `PluginSettings` accessor — `UpdateCheckerService` and `BinaryResolver` used to read
   `CHECK_FOR_UPDATES` and `USE_WSL` straight from `NbPreferences` (bypassing the cache and its
   round-trip test) and now go through `isCheckForUpdates()` / `isUseWsl()`. Do NOT reintroduce a
-  direct preference read for a key `PluginSettings` already exposes.
+  direct preference read for a key `PluginSettings` already exposes. Preference change events are
+  delivered **asynchronously** on the JDK's preference dispatcher, so a setter must `put` before it
+  assigns the cached field, and the listener must re-read the stored value instead of trusting
+  `evt.getNewValue()` — otherwise a queued stale event reverts a newer cache value (this made
+  `PluginSettingsTest` fail only under `-P random-test-order`).
 - **Scan ranges**: When scanning large strings for patterns (e.g. ASCII art detection), limit
   the scan to a bounded prefix (e.g. first 512 chars) instead of the full string.
 - **ACPProjectManager cache**: `getAllOpenProjects()` returns the cached `currentProjects` field,

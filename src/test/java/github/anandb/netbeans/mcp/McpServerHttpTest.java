@@ -32,7 +32,7 @@ class McpServerHttpTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        server = new McpServer();
+        server = new McpServer(0);
         server.setAuthRequired(false);
         server.start();
         http = HttpClient.newHttpClient();

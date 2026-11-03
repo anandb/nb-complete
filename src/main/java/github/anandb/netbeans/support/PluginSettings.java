@@ -216,8 +216,8 @@ public final class PluginSettings {
     }
 
     public static void setSessionIdleTimeout(int seconds) {
-        cachedSessionIdleTimeout = seconds;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putInt(KEY_SESSION_IDLE_TIMEOUT, seconds);
+        cachedSessionIdleTimeout = seconds;
     }
 
     /** Clamp shared by the listener and {@link #setMaxMessages(int)}. */
@@ -236,91 +236,81 @@ public final class PluginSettings {
         return value < 0 ? -1 : value;
     }
 
+    private static Preferences prefs() {
+        return NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+    }
+
+    /** Guarded int read: a malformed stored value must fall back, not kill the dispatcher. */
+    private static int intPref(String key, int fallback) {
+        try {
+            return prefs().getInt(key, fallback);
+        } catch (IllegalArgumentException e) {
+            return fallback;
+        }
+    }
+
     private static void onPreferenceChanged(PreferenceChangeEvent evt) {
+        // Re-read the stored value instead of trusting the event payload: events are
+        // delivered asynchronously on the JDK's preference dispatcher, so a queued event
+        // can arrive after a newer write and would otherwise revert the cache.
         if (KEY_SESSION_IDLE_TIMEOUT.equals(evt.getKey())) {
-            try {
-                cachedSessionIdleTimeout = Integer.parseInt(evt.getNewValue());
-            } catch (NumberFormatException e) {
-                cachedSessionIdleTimeout = DEFAULT_SESSION_IDLE_TIMEOUT;
-            }
+            cachedSessionIdleTimeout = intPref(KEY_SESSION_IDLE_TIMEOUT, DEFAULT_SESSION_IDLE_TIMEOUT);
         } else if (KEY_MAX_MESSAGES.equals(evt.getKey())) {
-            try {
-                if (evt.getNewValue() == null || evt.getNewValue().isBlank()) {
-                    cachedMaxMessages = DEFAULT_MAX_MESSAGES;
-                } else {
-                    cachedMaxMessages = normalizeMaxMessages(Integer.parseInt(evt.getNewValue()));
-                }
-            } catch (NumberFormatException e) {
-                cachedMaxMessages = DEFAULT_MAX_MESSAGES;
-            }
+            cachedMaxMessages = normalizeMaxMessages(intPref(KEY_MAX_MESSAGES, DEFAULT_MAX_MESSAGES));
         } else if (PreferenceKeys.TOOLBAR_ICON_SIZE.equals(evt.getKey())) {
-            try {
-                cachedToolbarIconSize = normalizeToolbarIconSize(Integer.parseInt(evt.getNewValue()));
-            } catch (NumberFormatException e) {
-                cachedToolbarIconSize = DEFAULT_TOOLBAR_ICON_SIZE;
-            }
+            cachedToolbarIconSize = normalizeToolbarIconSize(
+                    intPref(PreferenceKeys.TOOLBAR_ICON_SIZE, DEFAULT_TOOLBAR_ICON_SIZE));
         } else if (PreferenceKeys.CHAT_FONT_SIZE.equals(evt.getKey())) {
-            try {
-                cachedChatFontSize = normalizeChatFontSize(Integer.parseInt(evt.getNewValue()));
-            } catch (NumberFormatException e) {
-                cachedChatFontSize = -1;
-            }
+            cachedChatFontSize = normalizeChatFontSize(intPref(PreferenceKeys.CHAT_FONT_SIZE, -1));
         } else if (PreferenceKeys.ACTIONS_SORT_LINES.equals(evt.getKey())) {
-            cachedSortLinesEnabled = Boolean.parseBoolean(evt.getNewValue());
+            cachedSortLinesEnabled = prefs().getBoolean(PreferenceKeys.ACTIONS_SORT_LINES, true);
         } else if (PreferenceKeys.ACTIONS_COMPACT_JSON.equals(evt.getKey())) {
-            cachedCompactJsonEnabled = Boolean.parseBoolean(evt.getNewValue());
+            cachedCompactJsonEnabled = prefs().getBoolean(PreferenceKeys.ACTIONS_COMPACT_JSON, true);
         } else if (PreferenceKeys.ACTIONS_SEARCH_WEB.equals(evt.getKey())) {
-            cachedSearchWebEnabled = Boolean.parseBoolean(evt.getNewValue());
+            cachedSearchWebEnabled = prefs().getBoolean(PreferenceKeys.ACTIONS_SEARCH_WEB, true);
         } else if (PreferenceKeys.ACTIONS_SHOW_ANNOTATIONS.equals(evt.getKey())) {
-            cachedShowAnnotationsEnabled = Boolean.parseBoolean(evt.getNewValue());
+            cachedShowAnnotationsEnabled = prefs().getBoolean(PreferenceKeys.ACTIONS_SHOW_ANNOTATIONS, true);
         } else if (PreferenceKeys.ACTIONS_VIEW_FILE_HISTORY.equals(evt.getKey())) {
-            cachedViewFileHistoryEnabled = Boolean.parseBoolean(evt.getNewValue());
+            cachedViewFileHistoryEnabled = prefs().getBoolean(PreferenceKeys.ACTIONS_VIEW_FILE_HISTORY, true);
         } else if (PreferenceKeys.ACTIONS_STASH_DIFF.equals(evt.getKey())) {
-            cachedStashDiffEnabled = Boolean.parseBoolean(evt.getNewValue());
+            cachedStashDiffEnabled = prefs().getBoolean(PreferenceKeys.ACTIONS_STASH_DIFF, true);
         } else if (PreferenceKeys.ACTIONS_QUICK_JUMP.equals(evt.getKey())) {
-            cachedQuickJumpEnabled = Boolean.parseBoolean(evt.getNewValue());
+            cachedQuickJumpEnabled = prefs().getBoolean(PreferenceKeys.ACTIONS_QUICK_JUMP, true);
         } else if (PreferenceKeys.ACTIONS_COPY_ALL_ITEMS.equals(evt.getKey())) {
-            // Re-read instead of trusting the event value: a rapid toggle can
-            // deliver an older event after a newer put, and this branch must not
-            // overwrite the cache with the stale value.
-            cachedCopyAllItemsEnabled = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                    .getBoolean(PreferenceKeys.ACTIONS_COPY_ALL_ITEMS, true);
+            cachedCopyAllItemsEnabled = prefs().getBoolean(PreferenceKeys.ACTIONS_COPY_ALL_ITEMS, true);
         } else if (PreferenceKeys.AUTO_BACKUP_CHANGES.equals(evt.getKey())) {
-            cachedAutoBackupChanges = Boolean.parseBoolean(evt.getNewValue());
+            cachedAutoBackupChanges = prefs().getBoolean(PreferenceKeys.AUTO_BACKUP_CHANGES, true);
         } else if (PreferenceKeys.MINI_ASSISTANT_ENABLED.equals(evt.getKey())) {
-            cachedMiniAssistantEnabled = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
+            cachedMiniAssistantEnabled = prefs().getBoolean(PreferenceKeys.MINI_ASSISTANT_ENABLED, true);
         } else if (PreferenceKeys.TASK_REPOSITORY_ENABLED.equals(evt.getKey())) {
-            cachedTaskRepositoryEnabled = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
+            cachedTaskRepositoryEnabled = prefs().getBoolean(PreferenceKeys.TASK_REPOSITORY_ENABLED, true);
         } else if (PreferenceKeys.ACP_FS_POLICY.equals(evt.getKey())) {
-            cachedAcpFsPolicy = AcpFsPolicy.fromStoredValue(evt.getNewValue());
+            cachedAcpFsPolicy = AcpFsPolicy.fromStoredValue(
+                    prefs().get(PreferenceKeys.ACP_FS_POLICY, AcpFsPolicy.DEFAULT.storedValue()));
         } else if (PreferenceKeys.RUN_COMMAND_ALLOWLIST.equals(evt.getKey())) {
-            cachedRunCommandAllowlist = evt.getNewValue() == null ? "" : evt.getNewValue();
+            cachedRunCommandAllowlist = prefs().get(PreferenceKeys.RUN_COMMAND_ALLOWLIST, "");
         } else if (PreferenceKeys.RUN_COMMAND_DENYLIST.equals(evt.getKey())) {
-            cachedRunCommandDenylist = evt.getNewValue() == null ? "" : evt.getNewValue();
+            cachedRunCommandDenylist = prefs().get(PreferenceKeys.RUN_COMMAND_DENYLIST, "");
         } else if (PreferenceKeys.PREAMBLE_ENABLED.equals(evt.getKey())) {
-            cachedPreambleEnabled = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
+            cachedPreambleEnabled = prefs().getBoolean(PreferenceKeys.PREAMBLE_ENABLED, true);
         } else if (PreferenceKeys.MCP_SERVER_ENABLED.equals(evt.getKey())) {
-            cachedMcpServerEnabled = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
+            cachedMcpServerEnabled = prefs().getBoolean(PreferenceKeys.MCP_SERVER_ENABLED, true);
         } else if (PreferenceKeys.MCP_SERVER_PORT.equals(evt.getKey())) {
-            try {
-                cachedMcpServerPort = (evt.getNewValue() == null) ? 0 : Integer.parseInt(evt.getNewValue());
-            } catch (NumberFormatException e) {
-                cachedMcpServerPort = 0;
-            }
+            cachedMcpServerPort = intPref(PreferenceKeys.MCP_SERVER_PORT, 0);
         } else if (PreferenceKeys.ACTIONS_MARKDOWN_PROJECT.equals(evt.getKey())) {
-            cachedMarkdownProjectEnabled = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
+            cachedMarkdownProjectEnabled = prefs().getBoolean(PreferenceKeys.ACTIONS_MARKDOWN_PROJECT, true);
         } else if (PreferenceKeys.SHOW_HIDDEN_SESSIONS.equals(evt.getKey())) {
-            cachedShowHiddenSessions = Boolean.parseBoolean(evt.getNewValue());
+            cachedShowHiddenSessions = prefs().getBoolean(PreferenceKeys.SHOW_HIDDEN_SESSIONS, false);
         } else if (PreferenceKeys.KEEP_OLDER_MESSAGES.equals(evt.getKey())) {
-            cachedKeepOlderMessages = Boolean.parseBoolean(evt.getNewValue());
+            cachedKeepOlderMessages = prefs().getBoolean(PreferenceKeys.KEEP_OLDER_MESSAGES, false);
         } else if (PreferenceKeys.ECHO_USER_INPUT.equals(evt.getKey())) {
-            cachedEchoUserInput = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
+            cachedEchoUserInput = prefs().getBoolean(PreferenceKeys.ECHO_USER_INPUT, true);
         } else if (PreferenceKeys.COMBINE_TOOL_THOUGHT.equals(evt.getKey())) {
-            cachedCombineToolThought = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
+            cachedCombineToolThought = prefs().getBoolean(PreferenceKeys.COMBINE_TOOL_THOUGHT, true);
         } else if (PreferenceKeys.CHECK_FOR_UPDATES.equals(evt.getKey())) {
-            cachedCheckForUpdates = evt.getNewValue() == null || Boolean.parseBoolean(evt.getNewValue());
+            cachedCheckForUpdates = prefs().getBoolean(PreferenceKeys.CHECK_FOR_UPDATES, true);
         } else if (PreferenceKeys.USE_WSL.equals(evt.getKey())) {
-            cachedUseWsl = Boolean.parseBoolean(evt.getNewValue());
+            cachedUseWsl = prefs().getBoolean(PreferenceKeys.USE_WSL, false);
         }
         // PROJECT_SWITCH_RESTART_ENABLED is intentionally absent: it is read once
         // at startup, so a change takes effect only after an IDE restart.
@@ -332,8 +322,8 @@ public final class PluginSettings {
     }
 
     public static void setAutoBackupChanges(boolean enabled) {
-        cachedAutoBackupChanges = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.AUTO_BACKUP_CHANGES, enabled);
+        cachedAutoBackupChanges = enabled;
     }
 
     /** Max visible message bubbles before older ones are trimmed. 0 = unlimited. */
@@ -342,8 +332,8 @@ public final class PluginSettings {
     }
 
     public static void setMaxMessages(int count) {
-        cachedMaxMessages = normalizeMaxMessages(count);
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putInt(KEY_MAX_MESSAGES, count);
+        cachedMaxMessages = normalizeMaxMessages(count);
     }
 
     /** Toolbar icon size: 24 (small), 28 (medium), 32 (large). */
@@ -360,13 +350,13 @@ public final class PluginSettings {
     }
 
     public static void setChatFontSize(int size) {
-        cachedChatFontSize = normalizeChatFontSize(size);
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putInt(PreferenceKeys.CHAT_FONT_SIZE, size);
+        cachedChatFontSize = normalizeChatFontSize(size);
     }
 
     public static void setToolbarIconSize(int size) {
-        cachedToolbarIconSize = normalizeToolbarIconSize(size);
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putInt(PreferenceKeys.TOOLBAR_ICON_SIZE, size);
+        cachedToolbarIconSize = normalizeToolbarIconSize(size);
     }
 
     /** Whether the Sort Lines editor context menu actions are enabled. */
@@ -375,8 +365,8 @@ public final class PluginSettings {
     }
 
     public static void setSortLinesEnabled(boolean enabled) {
-        cachedSortLinesEnabled = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.ACTIONS_SORT_LINES, enabled);
+        cachedSortLinesEnabled = enabled;
     }
 
     /** Whether the Minify JSON editor context menu action is enabled. */
@@ -385,8 +375,8 @@ public final class PluginSettings {
     }
 
     public static void setCompactJsonEnabled(boolean enabled) {
-        cachedCompactJsonEnabled = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.ACTIONS_COMPACT_JSON, enabled);
+        cachedCompactJsonEnabled = enabled;
     }
 
     /** Whether the Search Web editor context menu action is enabled. */
@@ -395,8 +385,8 @@ public final class PluginSettings {
     }
 
     public static void setSearchWebEnabled(boolean enabled) {
-        cachedSearchWebEnabled = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.ACTIONS_SEARCH_WEB, enabled);
+        cachedSearchWebEnabled = enabled;
     }
 
     /** Whether the Toggle Annotations editor context menu action is enabled. */
@@ -405,8 +395,8 @@ public final class PluginSettings {
     }
 
     public static void setShowAnnotationsEnabled(boolean enabled) {
-        cachedShowAnnotationsEnabled = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.ACTIONS_SHOW_ANNOTATIONS, enabled);
+        cachedShowAnnotationsEnabled = enabled;
     }
 
     /** Whether the View File History editor context menu action is enabled. */
@@ -415,8 +405,8 @@ public final class PluginSettings {
     }
 
     public static void setViewFileHistoryEnabled(boolean enabled) {
-        cachedViewFileHistoryEnabled = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.ACTIONS_VIEW_FILE_HISTORY, enabled);
+        cachedViewFileHistoryEnabled = enabled;
     }
 
     /** Whether the Stash Diff toolbar button and action are enabled. */
@@ -425,8 +415,8 @@ public final class PluginSettings {
     }
 
     public static void setStashDiffEnabled(boolean enabled) {
-        cachedStashDiffEnabled = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.ACTIONS_STASH_DIFF, enabled);
+        cachedStashDiffEnabled = enabled;
     }
 
     /** Whether the Quick Jump (Go To File) action is enabled. */
@@ -435,8 +425,8 @@ public final class PluginSettings {
     }
 
     public static void setQuickJumpEnabled(boolean enabled) {
-        cachedQuickJumpEnabled = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.ACTIONS_QUICK_JUMP, enabled);
+        cachedQuickJumpEnabled = enabled;
     }
 
     /** Whether the NetBeans Action Items window has its Copy All toolbar button. */
@@ -445,9 +435,9 @@ public final class PluginSettings {
     }
 
     public static void setCopyAllItemsEnabled(boolean enabled) {
-        cachedCopyAllItemsEnabled = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .putBoolean(PreferenceKeys.ACTIONS_COPY_ALL_ITEMS, enabled);
+        cachedCopyAllItemsEnabled = enabled;
     }
 
     /** Whether the Mini Assistant dialog is the target for send/ask-to-assistant actions. */
@@ -456,9 +446,9 @@ public final class PluginSettings {
     }
 
     public static void setMiniAssistantEnabled(boolean enabled) {
-        cachedMiniAssistantEnabled = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .putBoolean(PreferenceKeys.MINI_ASSISTANT_ENABLED, enabled);
+        cachedMiniAssistantEnabled = enabled;
     }
 
     /** Whether the TaskRepository (todo.txt) feature is enabled. */
@@ -467,9 +457,9 @@ public final class PluginSettings {
     }
 
     public static void setTaskRepositoryEnabled(boolean enabled) {
-        cachedTaskRepositoryEnabled = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .putBoolean(PreferenceKeys.TASK_REPOSITORY_ENABLED, enabled);
+        cachedTaskRepositoryEnabled = enabled;
     }
 
     /** Raw comma/space-separated allowlist for {@code run_command}; empty means unrestricted. */
@@ -479,9 +469,9 @@ public final class PluginSettings {
 
     public static void setRunCommandAllowlist(String allowlist) {
         String value = allowlist == null ? "" : allowlist.trim();
-        cachedRunCommandAllowlist = value;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .put(PreferenceKeys.RUN_COMMAND_ALLOWLIST, value);
+        cachedRunCommandAllowlist = value;
     }
 
     /** Raw comma/space-separated denylist for {@code run_command}. */
@@ -491,9 +481,9 @@ public final class PluginSettings {
 
     public static void setRunCommandDenylist(String denylist) {
         String value = denylist == null ? "" : denylist.trim();
-        cachedRunCommandDenylist = value;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .put(PreferenceKeys.RUN_COMMAND_DENYLIST, value);
+        cachedRunCommandDenylist = value;
     }
 
     /** The ACP file-access policy (allow, read-only or deny); all modes are project-confined. */
@@ -503,9 +493,9 @@ public final class PluginSettings {
 
     public static void setAcpFsPolicy(AcpFsPolicy policy) {
         AcpFsPolicy effective = policy != null ? policy : AcpFsPolicy.DEFAULT;
-        cachedAcpFsPolicy = effective;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .put(PreferenceKeys.ACP_FS_POLICY, effective.storedValue());
+        cachedAcpFsPolicy = effective;
     }
 
     /** Whether the user-editable session preamble is sent at turn start. */
@@ -514,9 +504,9 @@ public final class PluginSettings {
     }
 
     public static void setPreambleEnabled(boolean enabled) {
-        cachedPreambleEnabled = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .putBoolean(PreferenceKeys.PREAMBLE_ENABLED, enabled);
+        cachedPreambleEnabled = enabled;
     }
 
     /** Whether the embedded MCP server is enabled. */
@@ -525,9 +515,9 @@ public final class PluginSettings {
     }
 
     public static void setMcpServerEnabled(boolean enabled) {
-        cachedMcpServerEnabled = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .putBoolean(PreferenceKeys.MCP_SERVER_ENABLED, enabled);
+        cachedMcpServerEnabled = enabled;
     }
 
     /**
@@ -541,9 +531,9 @@ public final class PluginSettings {
 
     public static void setMcpServerPort(int port) {
         int safe = Math.max(0, port);
-        cachedMcpServerPort = safe;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .putInt(PreferenceKeys.MCP_SERVER_PORT, safe);
+        cachedMcpServerPort = safe;
     }
 
     /** Whether the Markdown project type is enabled (default true). */
@@ -552,9 +542,9 @@ public final class PluginSettings {
     }
 
     public static void setMarkdownProjectEnabled(boolean enabled) {
-        cachedMarkdownProjectEnabled = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .putBoolean(PreferenceKeys.ACTIONS_MARKDOWN_PROJECT, enabled);
+        cachedMarkdownProjectEnabled = enabled;
     }
 
     /** Whether to show hidden sessions in the session list. */
@@ -563,9 +553,9 @@ public final class PluginSettings {
     }
 
     public static void setShowHiddenSessions(boolean show) {
-        cachedShowHiddenSessions = show;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .putBoolean(PreferenceKeys.SHOW_HIDDEN_SESSIONS, show);
+        cachedShowHiddenSessions = show;
     }
 
     /** Whether to keep older messages instead of trimming. */
@@ -574,9 +564,9 @@ public final class PluginSettings {
     }
 
     public static void setKeepOlderMessages(boolean keep) {
-        cachedKeepOlderMessages = keep;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .putBoolean(PreferenceKeys.KEEP_OLDER_MESSAGES, keep);
+        cachedKeepOlderMessages = keep;
     }
 
     /** Whether to echo user input locally before server confirms. */
@@ -585,9 +575,9 @@ public final class PluginSettings {
     }
 
     public static void setEchoUserInput(boolean enabled) {
-        cachedEchoUserInput = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .putBoolean(PreferenceKeys.ECHO_USER_INPUT, enabled);
+        cachedEchoUserInput = enabled;
     }
 
     /** Whether to combine adjacent tool + thought bubbles into one activity panel. */
@@ -596,9 +586,9 @@ public final class PluginSettings {
     }
 
     public static void setCombineToolThoughtEnabled(boolean enabled) {
-        cachedCombineToolThought = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .putBoolean(PreferenceKeys.COMBINE_TOOL_THOUGHT, enabled);
+        cachedCombineToolThought = enabled;
     }
 
     /** Whether to check for updates on startup. */
@@ -607,9 +597,9 @@ public final class PluginSettings {
     }
 
     public static void setCheckForUpdates(boolean enabled) {
-        cachedCheckForUpdates = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .putBoolean(PreferenceKeys.CHECK_FOR_UPDATES, enabled);
+        cachedCheckForUpdates = enabled;
     }
 
     /** Whether to use WSL when available (Windows only). */
@@ -618,9 +608,9 @@ public final class PluginSettings {
     }
 
     public static void setUseWsl(boolean enabled) {
-        cachedUseWsl = enabled;
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .putBoolean(PreferenceKeys.USE_WSL, enabled);
+        cachedUseWsl = enabled;
     }
 
     /**
