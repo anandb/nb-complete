@@ -297,10 +297,9 @@ public class MessageSender {
         statusController.armRunWatchdog();
     }
 
-    /** The prompt pieces assembled before the RPC. A forwarded slash command carries no
-     *  attachments and no editor context. {@code attachedFiles} is kept so a failed send can
-     *  put the files back in the composer — the payload cleared them. */
-    private record PromptPayload(boolean forwardedSlash, List<Map<String, Object>> fileBlocks,
+    /** The prompt pieces assembled before the RPC. {@code attachedFiles} is kept so a failed
+     *  send can put the files back in the composer — the payload cleared them. */
+    private record PromptPayload(List<Map<String, Object>> fileBlocks,
             String clientMessageId, List<AttachedFile> attachedFiles) {
     }
 
@@ -327,7 +326,7 @@ public class MessageSender {
         if (onUserMessageSentCallback != null) {
             onUserMessageSentCallback.run();
         }
-        return new PromptPayload(isForwardedSlash, fileBlocks, clientMessageId,
+        return new PromptPayload(fileBlocks, clientMessageId,
                 isForwardedSlash ? List.of() : attachedFiles);
     }
 
@@ -346,9 +345,12 @@ public class MessageSender {
     /** Issues the prompt and routes its completion and failure back to the EDT handlers. */
     private void sendPrompt(ProcessControl sendProc, String sessionId, String text,
             PromptPayload payload, boolean midTurn) {
-        // Editor Context — only capture when the agent injects it into prompts
+        // Editor Context — never for a slash command: the harness interprets the command
+        // itself and an attached context breaks it (devin). Only plain prompts carry it,
+        // and only when the agent injects context into prompts at all.
         boolean injectsContext = sendProc != null && sendProc.getCapabilities().injectsEditorContext();
-        Map<String, Object> context = (payload.forwardedSlash() || !injectsContext)
+        boolean slashCommand = text.trim().startsWith("/");
+        Map<String, Object> context = (slashCommand || !injectsContext)
                 ? null : EditorContextCapture.capture();
         // Only after we actually issue session/prompt: local slash / no-session
         // returns must not set userPromptInFlight or skip preamble/reconnect done.
