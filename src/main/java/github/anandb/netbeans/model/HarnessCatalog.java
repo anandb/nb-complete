@@ -57,6 +57,11 @@ public final class HarnessCatalog {
              *  runs without token enforcement for them. */
             boolean acceptsMcpAuthToken) {
 
+        /** Starts a fluent definition; see {@link HarnessBuilder} for the defaults an entry overrides. */
+        public static HarnessBuilder builder(String id, String displayName, String iconBase) {
+            return new HarnessBuilder(id, displayName, iconBase);
+        }
+
         /**
          * Resolves the unsupported-model-selection message from the model
          * bundle. The record field holds the bundle key (empty when the
@@ -129,18 +134,15 @@ public final class HarnessCatalog {
         }
     }
 
-    public static final Harness OPENCODE = new Harness(
-        "opencode", "OpenCode", "opencode",
-        List.of("opencode"), "acp",
-        false, true, true, true, true, false, true, false, true, true, true,
-        "",
-        "",
-        "winget install SST.opencode",
-        "brew install anomalyco/tap/opencode",
-        "curl -fsSL https://opencode.ai/install | bash",
-        "", "https://opencode.ai/docs/",
-        List.of(), true
-    );
+    public static final Harness OPENCODE = Harness.builder("opencode", "OpenCode", "opencode")
+        .binaryNames("opencode")
+        .launchArgs("acp")
+        .supportsMessageIds(true)
+        .install("winget install SST.opencode",
+                "brew install anomalyco/tap/opencode",
+                "curl -fsSL https://opencode.ai/install | bash")
+        .docsUrl("https://opencode.ai/docs/")
+        .build();
 
     /**
      * OpenCode v2 capability variant: identical identity and launch metadata as
@@ -162,158 +164,149 @@ public final class HarnessCatalog {
      * The bundled {@code @openai/codex} dependency means a separate Codex CLI
      * install is not needed.
      */
-    public static final Harness CODEX = new Harness(
-        "codex", "Codex", "codex",
-        List.of("codex-acp"), "",
-        true, true, true, true, true, true, true, false, true, true, true,
-        "",
-        "",
-        "npm install -g @agentclientprotocol/codex-acp@2.2.2",
-        "npm install -g @agentclientprotocol/codex-acp@2.2.2",
-        "npm install -g @agentclientprotocol/codex-acp@2.2.2",
-        "Requires Node.js and a ChatGPT account or OPENAI_API_KEY. Bundles the Codex CLI, "
-                + "so a separate codex install is not needed.",
-        "https://github.com/agentclientprotocol/codex-acp",
-        List.of(), true
-    );
+    public static final Harness CODEX = Harness.builder("codex", "Codex", "codex")
+        .binaryNames("codex-acp")
+        .requiresMessageQueue(true)
+        .supportsMessageIds(true)
+        .supportsSessionSetMode(true)
+        .install("npm install -g @agentclientprotocol/codex-acp@2.2.2",
+                "npm install -g @agentclientprotocol/codex-acp@2.2.2",
+                "npm install -g @agentclientprotocol/codex-acp@2.2.2")
+        .prerequisites("Requires Node.js and a ChatGPT account or OPENAI_API_KEY. Bundles the Codex CLI, "
+                + "so a separate codex install is not needed.")
+        .docsUrl("https://github.com/agentclientprotocol/codex-acp")
+        .build();
 
-    public static final Harness GOOSE = new Harness(
-        "goose", "Goose", "goose",
-        List.of("goose"), "acp",
-        true, true, false, true, true, false, true, false, true, true, true,
-        "",
-        "",
-        "powershell -c \"iwr https://raw.githubusercontent.com/aaif-goose/goose/main/download_cli.ps1 -OutFile download_cli.ps1; .\\download_cli.ps1\"",
-        "brew install block-goose-cli",
-        "curl -fsSL https://github.com/aaif-goose/goose/releases/download/stable/download_cli.sh | bash",
-        "", "https://goose-docs.ai/docs/getting-started/installation",
-        List.of(), true
-    );
+    public static final Harness GOOSE = Harness.builder("goose", "Goose", "goose")
+        .binaryNames("goose")
+        .launchArgs("acp")
+        .requiresMessageQueue(true)
+        .injectsEditorContext(false)
+        .supportsMessageIds(true)
+        .install("powershell -c \"iwr https://raw.githubusercontent.com/aaif-goose/goose/main/download_cli.ps1 -OutFile download_cli.ps1; .\\download_cli.ps1\"",
+                "brew install block-goose-cli",
+                "curl -fsSL https://github.com/aaif-goose/goose/releases/download/stable/download_cli.sh | bash")
+        .docsUrl("https://goose-docs.ai/docs/getting-started/installation")
+        .build();
 
-    public static final Harness PI = new Harness(
-            "pi", "Pi", "pi-logo",
-            List.of("pi-acp"), "",
-            true, true, false, false, true, false, true, false, true, true, true,
-            "",
-            "",
-            "powershell -c \"irm https://pi.dev/install.ps1 | iex\"",
-            "curl -fsSL https://pi.dev/install.sh | sh",
-            "curl -fsSL https://pi.dev/install.sh | sh",
-            "Requires Node.js 22+ and pi 0.80.4+ on your PATH. Install the ACP adapter separately: "
-                    + "npm install -g @geohar/pi-acp. For MCP Tools, add pi-mcp-adapter to your Pi packages.",
-            "https://github.com/georgeharker/pi-acp",
-            List.of("%LOCALAPPDATA%\\pi-node\\current"), false
-    );
+    public static final Harness PI = Harness.builder("pi", "Pi", "pi-logo")
+        .binaryNames("pi-acp")
+        .requiresMessageQueue(true)
+        .injectsEditorContext(false)
+        .acceptsMcpAuthToken(false)
+        .install("powershell -c \"irm https://pi.dev/install.ps1 | iex\"",
+                "curl -fsSL https://pi.dev/install.sh | sh",
+                "curl -fsSL https://pi.dev/install.sh | sh")
+        .prerequisites("Requires Node.js 22+ and pi 0.80.4+ on your PATH. Install the ACP adapter separately: "
+                + "npm install -g @geohar/pi-acp. For MCP Tools, add pi-mcp-adapter to your Pi packages.")
+        .docsUrl("https://github.com/georgeharker/pi-acp")
+        .windowsInstallSubDirs("%LOCALAPPDATA%\\pi-node\\current")
+        .build();
 
-    public static final Harness CURSOR = new Harness(
-        "cursor", "Cursor", "cursor",
-        List.of("agent", "cursor-agent"), "acp",
-        false, true, true, false, true, false, true, false, true, true, true,
-        "",
-        "",
-        "powershell -c \"irm 'https://cursor.com/install?win32=true' | iex\"",
-        "curl https://cursor.com/install -fsSL | bash",
-        "curl https://cursor.com/install -fsSL | bash",
-        "The ACP entry point is the cursor-agent CLI itself (run with \"agent acp\").",
-        "https://cursor.com/docs/cli/acp",
-        List.of(), true
-    );
+    public static final Harness CURSOR = Harness.builder("cursor", "Cursor", "cursor")
+        .binaryNames("agent", "cursor-agent")
+        .launchArgs("acp")
+        .install("powershell -c \"irm 'https://cursor.com/install?win32=true' | iex\"",
+                "curl https://cursor.com/install -fsSL | bash",
+                "curl https://cursor.com/install -fsSL | bash")
+        .prerequisites("The ACP entry point is the cursor-agent CLI itself (run with \"agent acp\").")
+        .docsUrl("https://cursor.com/docs/cli/acp")
+        .build();
 
-    public static final Harness COPILOT = new Harness(
-        "copilot", "Copilot", "copilot",
-        List.of("copilot"), "--acp",
-        false, true, true, false, true, false, true, false, true, true, true,
-        "",
-        "",
-        "npm install -g @github/copilot",
-        "npm install -g @github/copilot",
-        "npm install -g @github/copilot",
-        "Requires Node.js 22+. Authenticate with \"copilot login\" before using ACP.",
-        "https://github.com/github/copilot-cli",
-        List.of(), true
-    );
+    public static final Harness COPILOT = Harness.builder("copilot", "Copilot", "copilot")
+        .binaryNames("copilot")
+        .launchArgs("--acp")
+        .install("npm install -g @github/copilot",
+                "npm install -g @github/copilot",
+                "npm install -g @github/copilot")
+        .prerequisites("Requires Node.js 22+. Authenticate with \"copilot login\" before using ACP.")
+        .docsUrl("https://github.com/github/copilot-cli")
+        .build();
 
-    public static final Harness CLAUDE = new Harness(
-        "claude", "Claude", "claude",
-        List.of("claude-agent-acp"), "",
-        false, true, true, true, true, true, true, false, true, true, true,
-        "",
-        "",
-        "npm install -g @agentclientprotocol/claude-agent-acp",
-        "npm install -g @agentclientprotocol/claude-agent-acp",
-        "npm install -g @agentclientprotocol/claude-agent-acp",
-        "Requires Node.js 18+. Bundles the Claude Agent SDK, so a separate claude CLI install is not needed.",
-        "https://github.com/agentclientprotocol/claude-agent-acp",
-        List.of(), true
-    );
+    public static final Harness CLAUDE = Harness.builder("claude", "Claude", "claude")
+        .binaryNames("claude-agent-acp")
+        .supportsMessageIds(true)
+        .supportsSessionSetMode(true)
+        .install("npm install -g @agentclientprotocol/claude-agent-acp",
+                "npm install -g @agentclientprotocol/claude-agent-acp",
+                "npm install -g @agentclientprotocol/claude-agent-acp")
+        .prerequisites("Requires Node.js 18+. Bundles the Claude Agent SDK, "
+                + "so a separate claude CLI install is not needed.")
+        .docsUrl("https://github.com/agentclientprotocol/claude-agent-acp")
+        .build();
 
-    public static final Harness HERMES = new Harness(
-            "hermes", "Hermes", "hermes",
-            List.of("hermes"), "acp",
-            true, true, false, false, true, false, true, true, true, true, true,
-            "",
-            "",
-            "powershell -c \"iex (irm https://hermes-agent.nousresearch.com/install.ps1)\"",
-            "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash",
-            "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash",
-            "Requires Python 3.10+. Enable ACP with: cd ~/.hermes/hermes-agent && uv pip install -e '.[acp]'.",
-            "https://hermes-agent.nousresearch.com/docs/user-guide/features/acp",
-            List.of("%LOCALAPPDATA%\\hermes\\bin"), true
-    );
+    public static final Harness HERMES = Harness.builder("hermes", "Hermes", "hermes")
+        .binaryNames("hermes")
+        .launchArgs("acp")
+        .requiresMessageQueue(true)
+        .injectsEditorContext(false)
+        .supportsSessionSetModel(true)
+        .install("powershell -c \"iex (irm https://hermes-agent.nousresearch.com/install.ps1)\"",
+                "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash",
+                "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash")
+        .prerequisites("Requires Python 3.10+. Enable ACP with: "
+                + "cd ~/.hermes/hermes-agent && uv pip install -e '.[acp]'.")
+        .docsUrl("https://hermes-agent.nousresearch.com/docs/user-guide/features/acp")
+        .windowsInstallSubDirs("%LOCALAPPDATA%\\hermes\\bin")
+        .build();
 
-    public static final Harness GEMINI = new Harness(
-        "gemini", "Gemini", "gemini",
-        List.of("gemini"), "--acp --model gemini-3.8-flash",
-        false, true, true, true, true, true, false, false, false, false, true,
-        "MSG_UnsupportedModelSelection",
-        "MSG_GeminiUnsupportedModelSelectionPlaceholder",
-        "npm install -g @google/gemini-cli", "npm install -g @google/gemini-cli", "npm install -g @google/gemini-cli",
-        "Requires Node.js 20+",
-        "https://geminicli.com/docs/get-started/installation/",
-        List.of(), true
-    );
+    public static final Harness GEMINI = Harness.builder("gemini", "Gemini", "gemini")
+        .binaryNames("gemini")
+        .launchArgs("--acp --model gemini-3.8-flash")
+        .supportsMessageIds(true)
+        .supportsSessionSetMode(true)
+        .supportsSessionSetConfigOption(false)
+        .supportsModelSelection(false)
+        .supportsSessionList(false)
+        .unsupportedModelSelection("MSG_UnsupportedModelSelection",
+                "MSG_GeminiUnsupportedModelSelectionPlaceholder")
+        .install("npm install -g @google/gemini-cli",
+                "npm install -g @google/gemini-cli",
+                "npm install -g @google/gemini-cli")
+        .prerequisites("Requires Node.js 20+")
+        .docsUrl("https://geminicli.com/docs/get-started/installation/")
+        .build();
 
-    public static final Harness OMP = new Harness(
-        "omp", "Oh My Pi", "omp",
-        List.of("omp"), "acp",
-        false, true, true, true, true, true, true, false, true, true, true,
-        "",
-        "",
-        "powershell -c \"irm https://omp.sh/install.ps1 | iex\"",
-        "curl -fsSL https://omp.sh/install | sh",
-        "curl -fsSL https://omp.sh/install | sh",
-        "Authenticate a model provider in a terminal (omp, then /login) before ACP. The ACP entry point is omp acp.",
-        "https://omp.sh/docs/acp",
-        List.of("%LOCALAPPDATA%\\omp"), true
-    );
+    public static final Harness OMP = Harness.builder("omp", "Oh My Pi", "omp")
+        .binaryNames("omp")
+        .launchArgs("acp")
+        .supportsMessageIds(true)
+        .supportsSessionSetMode(true)
+        .install("powershell -c \"irm https://omp.sh/install.ps1 | iex\"",
+                "curl -fsSL https://omp.sh/install | sh",
+                "curl -fsSL https://omp.sh/install | sh")
+        .prerequisites("Authenticate a model provider in a terminal (omp, then /login) before ACP. "
+                + "The ACP entry point is omp acp.")
+        .docsUrl("https://omp.sh/docs/acp")
+        .windowsInstallSubDirs("%LOCALAPPDATA%\\omp")
+        .build();
 
-    public static final Harness OPENCLAW = new Harness(
-        "openclaw", "OpenClaw", "openclaw",
-        List.of("openclaw"), "acp",
-        true, false, true, false, true, false, true, false, false, false, false,
-        "MSG_OpenClawUnsupportedModelSelection",
-        "MSG_OpenClawUnsupportedModelSelectionPlaceholder",
-        "powershell -c \"iwr -useb https://openclaw.ai/install.ps1 | iex\"",
-        "curl -fsSL https://openclaw.ai/install.sh | bash",
-        "curl -fsSL https://openclaw.ai/install.sh | bash",
-        "Requires Node 24.16+ or 26.1+ - Node 26 is recommended; the installer provisions Node 26 on macOS and Node 24 LTS on Linux",
-        "https://docs.openclaw.ai/install",
-        List.of(), true
-    );
+    public static final Harness OPENCLAW = Harness.builder("openclaw", "OpenClaw", "openclaw")
+        .binaryNames("openclaw")
+        .launchArgs("acp")
+        .requiresMessageQueue(true)
+        .sendsMcpServerConfig(false)
+        .supportsModelSelection(false)
+        .supportsSessionList(false)
+        .supportsAgentList(false)
+        .unsupportedModelSelection("MSG_OpenClawUnsupportedModelSelection",
+                "MSG_OpenClawUnsupportedModelSelectionPlaceholder")
+        .install("powershell -c \"iwr -useb https://openclaw.ai/install.ps1 | iex\"",
+                "curl -fsSL https://openclaw.ai/install.sh | bash",
+                "curl -fsSL https://openclaw.ai/install.sh | bash")
+        .prerequisites("Requires Node 24.16+ or 26.1+ - Node 26 is recommended; "
+                + "the installer provisions Node 26 on macOS and Node 24 LTS on Linux")
+        .docsUrl("https://docs.openclaw.ai/install")
+        .build();
 
-    public static final Harness DEVIN = new Harness(
-        "devin", "Devin", "devin",
-        List.of("devin"), "acp",
-        false, true, true, false, true, false, true, false, true, true, true,
-        "",
-        "",
-        "powershell -c \"irm https://static.devin.ai/cli/setup.ps1 | iex\"",
-        "brew install --cask devin-cli",
-        "curl -fsSL https://cli.devin.ai/install.sh | bash",
-        "",
-        "https://docs.devin.ai/cli",
-        List.of(), true
-    );
+    public static final Harness DEVIN = Harness.builder("devin", "Devin", "devin")
+        .binaryNames("devin")
+        .launchArgs("acp")
+        .install("powershell -c \"irm https://static.devin.ai/cli/setup.ps1 | iex\"",
+                "brew install --cask devin-cli",
+                "curl -fsSL https://cli.devin.ai/install.sh | bash")
+        .docsUrl("https://docs.devin.ai/cli")
+        .build();
 
     /**
      * Kilo Code: an OpenCode-derived ACP agent with its own version scheme
@@ -324,20 +317,20 @@ public final class HarnessCatalog {
      * the thinking variant as a separate {@code effort} option, and its
      * dedicated model request is only registered as {@code unstable_}.
      */
-    public static final Harness KILO = new Harness(
-        "kilo", "Kilo Code", "kilo",
-        List.of("kilo", "kilocode"), "acp",
-        true, true, true, true, true, true, true, false, true, true, true,
-        "",
-        "",
-        "npm install -g @kilocode/cli",
-        "brew install Kilo-Org/tap/kilo",
-        "curl -fsSL https://kilo.ai/cli/install | bash",
-        "Authenticate with kilo auth login (or run kilo and use /connect) before connecting. "
-                + "The npm route requires Node.js.",
-        "https://kilo.ai/docs/code-with-ai/platforms/cli",
-        List.of("%USERHOME%/.kilo/bin"), true
-    );
+    public static final Harness KILO = Harness.builder("kilo", "Kilo Code", "kilo")
+        .binaryNames("kilo", "kilocode")
+        .launchArgs("acp")
+        .requiresMessageQueue(true)
+        .supportsMessageIds(true)
+        .supportsSessionSetMode(true)
+        .install("npm install -g @kilocode/cli",
+                "brew install Kilo-Org/tap/kilo",
+                "curl -fsSL https://kilo.ai/cli/install | bash")
+        .prerequisites("Authenticate with kilo auth login (or run kilo and use /connect) before connecting. "
+                + "The npm route requires Node.js.")
+        .docsUrl("https://kilo.ai/docs/code-with-ai/platforms/cli")
+        .windowsInstallSubDirs("%USERHOME%/.kilo/bin")
+        .build();
 
     /**
      * Cline: a native ACP agent launched as {@code cline --acp}. Its ACP layer
@@ -353,20 +346,21 @@ public final class HarnessCatalog {
      * {@code cline auth} (or {@code CLINE_API_KEY}); BeanBot has no ACP
      * authenticate client.
      */
-    public static final Harness CLINE = new Harness(
-        "cline", "Cline", "cline",
-        List.of("cline"), "--acp",
-        true, false, true, false, false, true, true, false, true, false, true,
-        "",
-        "",
-        "npm i -g cline",
-        "npm i -g cline",
-        "npm i -g cline",
-        "Requires Cline CLI 3.0.74+ (npm i -g cline@latest). Run cline auth once (or set CLINE_API_KEY) "
-                + "before connecting; ACP sessions start no interactive login.",
-        "https://docs.cline.bot/usage/acp",
-        List.of(), true
-    );
+    public static final Harness CLINE = Harness.builder("cline", "Cline", "cline")
+        .binaryNames("cline")
+        .launchArgs("--acp")
+        .requiresMessageQueue(true)
+        .sendsMcpServerConfig(false)
+        .supportsMcpServer(false)
+        .supportsSessionSetMode(true)
+        .supportsSessionList(false)
+        .install("npm i -g cline",
+                "npm i -g cline",
+                "npm i -g cline")
+        .prerequisites("Requires Cline CLI 3.0.74+ (npm i -g cline@latest). Run cline auth once "
+                + "(or set CLINE_API_KEY) before connecting; ACP sessions start no interactive login.")
+        .docsUrl("https://docs.cline.bot/usage/acp")
+        .build();
 
     /**
      * Jcode: a native ACP agent launched as {@code jcode acp}. It validates the
@@ -378,31 +372,28 @@ public final class HarnessCatalog {
      * {@code session/list} and no message ids. {@code session/load},
      * {@code session/close} and usage updates are implemented.
      */
-    public static final Harness JCODE = new Harness(
-        "jcode", "Jcode", "jcode",
-        List.of("jcode"), "acp",
-        true, false, true, false, false, false, true, false, true, false, false,
-        "",
-        "",
-        "powershell -c \"irm https://jcode.sh/install.ps1 | iex\"",
-        "curl -fsSL https://jcode.sh/install | bash",
-        "curl -fsSL https://jcode.sh/install | bash",
-        "Sign in once with jcode login (or import an existing provider credential) before connecting. "
-                + "The ACP entry point is jcode acp.",
-        "https://jcode.sh/docs",
-        List.of("%LOCALAPPDATA%\\jcode\\bin"), false
-    );
+    public static final Harness JCODE = Harness.builder("jcode", "Jcode", "jcode")
+        .binaryNames("jcode")
+        .launchArgs("acp")
+        .requiresMessageQueue(true)
+        .sendsMcpServerConfig(false)
+        .supportsMcpServer(false)
+        .supportsSessionList(false)
+        .supportsAgentList(false)
+        .acceptsMcpAuthToken(false)
+        .install("powershell -c \"irm https://jcode.sh/install.ps1 | iex\"",
+                "curl -fsSL https://jcode.sh/install | bash",
+                "curl -fsSL https://jcode.sh/install | bash")
+        .prerequisites("Sign in once with jcode login (or import an existing provider credential) "
+                + "before connecting. The ACP entry point is jcode acp.")
+        .docsUrl("https://jcode.sh/docs")
+        .windowsInstallSubDirs("%LOCALAPPDATA%\\jcode\\bin")
+        .build();
 
     /** Fallback for unknown harnesses. */
-    public static final Harness UNKNOWN = new Harness(
-        "unknown", "Agent", "agent",
-        List.of(), "",
-        true, true, true, false, true, false, true, false, true, true, true,
-        "",
-        "",
-        "", "", "", "", "",
-        List.of(), true
-    );
+    public static final Harness UNKNOWN = Harness.builder("unknown", "Agent", "agent")
+        .requiresMessageQueue(true)
+        .build();
 
     /**
      * All supported harnesses, in declaration order. User-facing lists are sorted

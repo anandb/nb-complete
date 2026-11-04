@@ -1379,12 +1379,13 @@ class SessionManagerTest {
         // A harness may support session/set_model without set_config_option;
         // the routing check must run before the set_config_option guard so the
         // model switch is not silently dropped.
-        HarnessCatalog.Harness setModelOnly = new HarnessCatalog.Harness(
-                "setmodel-only", "SetModel Only", "agent",
-                List.of("agent"), "",
-                false, true, true, true, true, false, false, true, true, true, true,
-                "", "", "", "", "", "", "",
-                List.of(), true);
+        HarnessCatalog.Harness setModelOnly = HarnessCatalog.Harness
+                .builder("setmodel-only", "SetModel Only", "agent")
+                .binaryNames("agent")
+                .supportsMessageIds(true)
+                .supportsSessionSetConfigOption(false)
+                .supportsSessionSetModel(true)
+                .build();
         when(processManager.getCapabilities()).thenReturn(setModelOnly);
 
         when(processManager.sendRequest(eq("session/set_model"), any(), eq(30L), eq(TimeUnit.SECONDS)))

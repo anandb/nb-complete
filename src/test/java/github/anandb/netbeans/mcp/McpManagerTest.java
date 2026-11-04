@@ -52,12 +52,16 @@ class McpManagerTest {
     }
 
     private static Harness harness(boolean mcpSupported) {
-        return new Harness(
-                "test-harness", "Test Harness", "test",
-                List.of("test-harness"), "",
-                false, false, false, false, mcpSupported,
-                false, false, false, false, false, false,
-                "", "", "", "", "", "", "", List.of(), true);
+        return Harness.builder("test-harness", "Test Harness", "test")
+                .binaryNames("test-harness")
+                .sendsMcpServerConfig(false)
+                .injectsEditorContext(false)
+                .supportsMcpServer(mcpSupported)
+                .supportsSessionSetConfigOption(false)
+                .supportsModelSelection(false)
+                .supportsSessionList(false)
+                .supportsAgentList(false)
+                .build();
     }
 
     // ---- config gating ------------------------------------------------------
