@@ -560,8 +560,8 @@ still holding in-flight work. Do NOT make cancel+close unconditional again.
   start while per-request enforcement is immediate.
 - The internal MCP file tools apply the same guard through
   `FileSystemToolProvider.checkAccess`: `read_file` and `list_directory` are reads,
-  `write_to_file`, `replace_lines`, `insert_in_file`, `delete_lines` and
-  `apply_patch` are writes. Under `READ_ONLY` every MCP write is refused; under
+  `write_to_file`, `replace_lines`, `insert_in_file` and `delete_lines` are writes.
+  Under `READ_ONLY` every MCP write is refused; under
   `READ_ANY_WRITE_PROJECT` MCP reads may leave the open projects while writes
   still may not. Their containment predicate is `ProjectPathGuard.isInOpenProject`.
   Do NOT add an MCP file tool that bypasses `checkAccess`.
@@ -588,7 +588,7 @@ still holding in-flight work. Do NOT make cancel+close unconditional again.
   `support/SecretPaths.isSecret` covers `.env*` (except `.env.example|sample|template|dist`),
   `.netrc`, `.npmrc`, `.pypirc`, `.git-credentials`, `.htpasswd`, SSH/GPG/cloud
   credential directories, private key names and `*.pem|key|p12|pfx|jks|keystore|ppk|secret(s)`.
-  MCP `read_file`, the write tools, `apply_patch`, `search_project` (skips them) and
+  MCP `read_file`, the write tools, `search_project` (skips them) and
   ACP `fs/read_text_file`/`fs/write_text_file` all apply it. It is a name heuristic,
   not a sandbox: `run_command` can still print any file, so extend the matcher rather
   than special-casing tools.

@@ -2,11 +2,6 @@ package github.anandb.netbeans.mcp;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import com.github.difflib.UnifiedDiffUtils;
-import com.github.difflib.patch.AbstractDelta;
-import com.github.difflib.patch.Patch;
-import com.github.difflib.patch.PatchFailedException;
-
 import github.anandb.netbeans.contract.ProjectQuery;
 import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.support.Logger;
@@ -46,7 +41,7 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 
 /**
  * Registers MCP tools for file system operations: read, write, replace,
- * insert, search, list directory, run command, and apply unified diff patches.
+ * insert, search, list directory and run command.
  */
 public class FileSystemToolProvider {
 
@@ -107,7 +102,6 @@ public class FileSystemToolProvider {
         registerSearchProject(mcpTools);
         registerListDirectory(mcpTools);
         registerRunCommand(mcpTools);
-        registerApplyPatch(mcpTools);
     }
 
     private void registerReadFile(McpTools mcpTools) {
@@ -719,100 +713,5 @@ public class FileSystemToolProvider {
         if (stdout.isEmpty()) return stderr;
         if (stderr.isEmpty()) return stdout;
         return stdout + "\n" + stderr;
-    }
-
-    /** Removes trailing spaces and tabs from a line. */
-    private static String stripTrailingWhitespace(String s) {
-        int end = s.length();
-        while (end > 0 && (s.charAt(end - 1) == ' ' || s.charAt(end - 1) == '\t')) {
-            end--;
-        }
-        return s.substring(0, end);
-    }
-
-    private void registerApplyPatch(McpTools mcpTools) {
-        ObjectNode schema = ToolSchema.object()
-                .str("filePath", "Absolute path to the file to patch")
-                .str("patch", "Unified diff content to apply")
-                .bool("dryRun", "If true, apply to a temp copy and return the temp file; "
-                        + "the original is untouched", false)
-                .require("filePath", "patch")
-                .build();
-
-        mcpTools.registerTool(
-                "apply_patch",
-                ToolDescriptions.get("apply_patch"),
-                schema,
-                new ToolExecutor<ApplyPatchInput, Map<String, Object>>(ApplyPatchInput.class) {
-                    @Override
-                    public Map<String, Object> execute(ApplyPatchInput args) throws Exception {
-                        if (isBlank(args.patch())) {
-                            return Map.of("status", "error", "message", "patch is required");
-                        }
-                        Map<String, Object> err = validateExistingFile(args.filePath(), true);
-                        if (err != null) {
-                            return err;
-                        }
-                        File file = new File(args.filePath());
-
-                        List<String> fileLines = Files.readAllLines(file.toPath(), StandardCharsets.UTF_8);
-                        List<String> trimmedFileLines = new ArrayList<>(fileLines.size());
-                        for (String line : fileLines) {
-                            trimmedFileLines.add(stripTrailingWhitespace(line));
-                        }
-
-                        List<String> patchLines = new ArrayList<>(List.of(args.patch().split("\n", -1)));
-                        // A trailing newline yields a final empty element that the
-                        // unified-diff parser would treat as an extra context line;
-                        // drop it so hunk sizes line up with the file.
-                        if (!patchLines.isEmpty() && patchLines.get(patchLines.size() - 1).isEmpty()) {
-                            patchLines.remove(patchLines.size() - 1);
-                        }
-
-                        Patch<String> patch = UnifiedDiffUtils.parseUnifiedDiff(patchLines);
-                        // Trim trailing whitespace on the lines to be patched so they
-                        // match the trimmed file lines and don't cause conflicts.
-                        for (AbstractDelta<String> delta : patch.getDeltas()) {
-                            List<String> source = delta.getSource().getLines();
-                            delta.getSource().setLines(trimAll(source));
-                            List<String> target = delta.getTarget().getLines();
-                            delta.getTarget().setLines(trimAll(target));
-                        }
-
-                        List<String> result;
-                        try {
-                            result = patch.applyTo(trimmedFileLines);
-                        } catch (PatchFailedException e) {
-                            return Map.of("status", "error", "message",
-                                    "Patch does not apply: " + e.getMessage());
-                        }
-
-                        boolean dryRun = args.dryRun() != null && args.dryRun();
-                        Path targetPath = file.toPath();
-                        if (dryRun) {
-                            Path parent = targetPath.getParent();
-                            Path dir = parent != null ? parent : Path.of(System.getProperty("java.io.tmpdir"));
-                            targetPath = Files.createTempFile(dir,
-                                    targetPath.getFileName().toString() + "-", ".dryrun");
-                        }
-                        Files.writeString(targetPath, String.join("\n", result), StandardCharsets.UTF_8);
-
-                        Map<String, Object> out = new HashMap<>();
-                        out.put("status", "ok");
-                        out.put("filePath", targetPath.toString());
-                        out.put("content", String.join("\n", result));
-                        out.put("hunksApplied", patch.getDeltas().size());
-                        out.put("dryRun", dryRun);
-                        return out;
-                    }
-
-                    private List<String> trimAll(List<String> lines) {
-                        List<String> trimmed = new ArrayList<>(lines.size());
-                        for (String line : lines) {
-                            trimmed.add(stripTrailingWhitespace(line));
-                        }
-                        return trimmed;
-                    }
-                });
     }
 }

@@ -11,8 +11,8 @@ import org.openide.util.NbBundle;
 
 /**
  * Loads the model-facing tool descriptions from {@code descriptions/<tool>.md}.
- * The resource is returned verbatim: the text blocks it replaced ended with a newline
- * (except {@code apply_patch}), and that byte-level detail is part of the tool payload.
+ * The resource is returned verbatim, including its trailing newline, because that
+ * byte-level detail is part of the tool payload.
  */
 final class ToolDescriptions {
 

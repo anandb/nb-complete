@@ -2,7 +2,6 @@ package github.anandb.netbeans.mcp;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -44,7 +43,7 @@ import github.anandb.netbeans.support.PluginSettings;
 
 /**
  * Tests the {@code FileSystemToolProvider} tool executors: happy paths for
- * read/write/replace/insert/delete/search/list/run/patch, and — most
+ * read/write/replace/insert/delete/search/list/run, and — most
  * importantly — the ProjectPathGuard containment contract that every
  * path-taking tool must enforce (a rogue MCP client must not reach files
  * outside the open projects).
@@ -105,7 +104,7 @@ class FileSystemToolProviderTest {
         provider.registerTools(mcpTools);
         ArgumentCaptor<String> names = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<ToolExecutor> captor = ArgumentCaptor.forClass(ToolExecutor.class);
-        verify(mcpTools, times(9)).registerTool(names.capture(), any(), any(), captor.capture());
+        verify(mcpTools, times(8)).registerTool(names.capture(), any(), any(), captor.capture());
         Map<String, ToolExecutor> map = new HashMap<>();
         List<String> nameList = names.getAllValues();
         List<ToolExecutor> execList = captor.getAllValues();
@@ -290,10 +289,6 @@ class FileSystemToolProviderTest {
                 deleteLines().execute(new DeleteLinesInput(outside, 1, 1)).get("message"));
         assertEquals(rejected,
                 listDirectory().execute(new ListDirectoryInput(outside, false)).get("message"));
-        assertEquals(rejected,
-                applyPatch().execute(
-                        new ApplyPatchInput(outside, "--- a\n+++ b\n@@ -0,0 +1 @@\n+x\n", null))
-                        .get("message"));
         assertEquals(rejected,
                 runCommand().execute(new RunCommandInput("echo hi", outside, 5)).get("message"));
 
@@ -814,92 +809,6 @@ class FileSystemToolProviderTest {
         assertEquals("ok", result.get("status"));
         assertEquals(100000, ((String) result.get("stdout")).length());
         assertEquals(100000, ((String) result.get("stderr")).length());
-    }
-
-    // ---- apply_patch --------------------------------------------------------
-
-    @SuppressWarnings("unchecked")
-    private ToolExecutor<ApplyPatchInput, Map<String, Object>> applyPatch() {
-        return executors.get("apply_patch");
-    }
-
-    private static final String SIMPLE_PATCH =
-            "--- a/f.txt\n"
-            + "+++ b/f.txt\n"
-            + "@@ -1,3 +1,3 @@\n"
-            + " one\n"
-            + "-two\n"
-            + "+TWO\n"
-            + " three";
-
-    @Test
-    void applyPatchAppliesUnifiedDiff() throws Exception {
-        openProjectAt(tempDir.toFile());
-        File f = writeFile("f.txt", "one\ntwo\nthree\n");
-
-        Map<String, Object> result = applyPatch()
-                .execute(new ApplyPatchInput(f.getAbsolutePath(), SIMPLE_PATCH, null));
-
-        assertEquals("ok", result.get("status"));
-        assertEquals(1, result.get("hunksApplied"));
-        assertEquals(false, result.get("dryRun"));
-        assertEquals("one\nTWO\nthree", Files.readString(f.toPath(), StandardCharsets.UTF_8));
-    }
-
-    @Test
-    void applyPatchDryRunLeavesOriginalUntouched() throws Exception {
-        openProjectAt(tempDir.toFile());
-        File f = writeFile("f.txt", "one\ntwo\nthree\n");
-
-        Map<String, Object> result = applyPatch()
-                .execute(new ApplyPatchInput(f.getAbsolutePath(), SIMPLE_PATCH, true));
-
-        assertEquals("ok", result.get("status"));
-        assertEquals(true, result.get("dryRun"));
-        assertEquals("one\ntwo\nthree\n", Files.readString(f.toPath(), StandardCharsets.UTF_8),
-                "dryRun must not modify the original file");
-        String tempPath = (String) result.get("filePath");
-        assertNotEquals(f.getAbsolutePath(), tempPath);
-        assertEquals("one\nTWO\nthree", Files.readString(Path.of(tempPath), StandardCharsets.UTF_8));
-        Files.deleteIfExists(Path.of(tempPath));
-    }
-
-    @Test
-    void applyPatchRejectsNonApplyingContext() throws Exception {
-        openProjectAt(tempDir.toFile());
-        File f = writeFile("f.txt", "completely\ndifferent\ncontent\n");
-        String patch = "--- a/f.txt\n+++ b/f.txt\n@@ -1,1 +1,1 @@\n-nope\n+yes\n";
-
-        Map<String, Object> result = applyPatch()
-                .execute(new ApplyPatchInput(f.getAbsolutePath(), patch, null));
-
-        assertEquals("error", result.get("status"));
-        assertTrue(((String) result.get("message")).startsWith("Patch does not apply:"),
-                "should report the conflict: " + result.get("message"));
-    }
-
-    @Test
-    void applyPatchRejectsBlankPatch() throws Exception {
-        openProjectAt(tempDir.toFile());
-        File f = writeFile("f.txt", "x\n");
-
-        Map<String, Object> result = applyPatch()
-                .execute(new ApplyPatchInput(f.getAbsolutePath(), "  ", null));
-
-        assertEquals("error", result.get("status"));
-        assertEquals("patch is required", result.get("message"));
-    }
-
-    @Test
-    void applyPatchRejectsMissingFile() throws Exception {
-        openProjectAt(tempDir.toFile());
-        String missing = tempDir.resolve("nope.txt").toString();
-
-        Map<String, Object> result = applyPatch()
-                .execute(new ApplyPatchInput(missing, SIMPLE_PATCH, null));
-
-        assertEquals("error", result.get("status"));
-        assertEquals("File not found: " + missing, result.get("message"));
     }
 
     // ---- guard: no open projects --------------------------------------------
