@@ -10,8 +10,10 @@ import java.awt.Container;
 import java.awt.Dimension;
 import java.lang.reflect.Field;
 
+import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
+import javax.swing.JPanel;
 
 import org.junit.jupiter.api.Test;
 import org.openide.util.NbBundle;
@@ -116,8 +118,8 @@ class ACPOptionsPanelTooltipTest {
         ACPOptionsPanel panel = new ACPOptionsPanel(new ACPOptionsPanelController());
         JCheckBox check = (JCheckBox) field(panel, "projectSwitchRestartCheckbox");
         Container system = check.getParent();
-        JLabel hint = findLabel(system, NbBundle.getMessage(ACPOptionsPanel.class, "HLP_ProjectSwitchRestart"));
-        assertNotNull(hint, "the restart explanation must stay with the option");
+        JPanel hint = (JPanel) field(panel, "projectSwitchHint");
+        assertEquals(2, hint.getComponentCount(), "the restart explanation must read on two lines");
 
         Dimension preferred = system.getPreferredSize();
         system.setSize(preferred.width, preferred.height);
@@ -131,6 +133,10 @@ class ACPOptionsPanelTooltipTest {
         assertTrue(hint.getY() - (check.getY() + check.getHeight()) <= 2,
                 "the hint must sit directly under the checkbox, gap was "
                         + (hint.getY() - (check.getY() + check.getHeight())) + "px");
+
+        JButton whitelist = (JButton) field(panel, "runCommandPolicyButton");
+        assertEquals(hint.getY() + 4, whitelist.getY(),
+                "the two-line hint must not push the whitelist button down");
     }
 
     @Test

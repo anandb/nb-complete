@@ -1,7 +1,6 @@
 package github.anandb.netbeans.ui;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -12,7 +11,6 @@ import java.lang.reflect.Field;
 import java.util.prefs.Preferences;
 
 import javax.swing.JCheckBox;
-import javax.swing.JLabel;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 
@@ -21,7 +19,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.netbeans.api.editor.mimelookup.MimeLookup;
 import org.netbeans.api.editor.mimelookup.MimePath;
-import org.openide.util.NbBundle;
 import org.netbeans.api.editor.settings.SimpleValueNames;
 
 /**
@@ -89,9 +86,9 @@ class ACPOptionsPanelLineHeightTest {
 
         JCheckBox setting = getCheckbox(panel, "projectSwitchRestartCheckbox");
         Container system = setting.getParent();
-        Component hint = findLabel(system,
-                NbBundle.getMessage(ACPOptionsPanel.class, "HLP_ProjectSwitchRestart"));
-        assertNotNull(hint, "the restart explanation must stay with the option");
+        Field hintField = ACPOptionsPanel.class.getDeclaredField("projectSwitchHint");
+        hintField.setAccessible(true);
+        Component hint = (Component) hintField.get(panel);
         assertSame(system, hint.getParent(), "both rows must live in the System grid");
 
         // The Options dialog stretches sections beyond their preferred height.
@@ -108,15 +105,6 @@ class ACPOptionsPanelLineHeightTest {
         assertTrue(gapAfter - gapBefore <= 1,
                 "last row must not absorb extra vertical space, gap grew from "
                         + gapBefore + "px to " + gapAfter + "px");
-    }
-
-    private static Component findLabel(Container parent, String text) {
-        for (Component child : parent.getComponents()) {
-            if (child instanceof JLabel label && text.equals(label.getText())) {
-                return label;
-            }
-        }
-        return null;
     }
 
     @Test

@@ -15,6 +15,8 @@ import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
+import java.awt.Container;
+
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.NbBundle;
 import org.openide.util.RequestProcessor;
@@ -37,19 +39,24 @@ final class IconPreviewManager {
 
     private final JLabel previewLabel;
     private final JTextField pathField;
+    private final int previewSize;
     private final Runnable onChangeCallback;
     /** Original decoded image, kept for re-scaling when the label resizes. */
     private BufferedImage originalImage;
 
-    IconPreviewManager(JLabel previewLabel, JTextField pathField, Runnable onChangeCallback) {
+    IconPreviewManager(JLabel previewLabel, JTextField pathField, int previewSize,
+            Runnable onChangeCallback) {
         this.previewLabel = previewLabel;
         this.pathField = pathField;
+        this.previewSize = previewSize;
         this.onChangeCallback = onChangeCallback;
         initPreviewLabel();
     }
 
     private void initPreviewLabel() {
-        previewLabel.setPreferredSize(new Dimension(80, 80));
+        // The grid gives the preview the height of the three rows it spans; the width has
+        // to follow that height, so the box stays square without stretching the rows.
+        previewLabel.setPreferredSize(new Dimension(previewSize, 0));
         previewLabel.setMinimumSize(new Dimension(32, 32));
         previewLabel.setHorizontalAlignment(SwingConstants.CENTER);
         previewLabel.setVerticalAlignment(SwingConstants.CENTER);
@@ -57,6 +64,7 @@ final class IconPreviewManager {
         previewLabel.addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent e) {
+                matchWidthToHeight();
                 if (originalImage != null) {
                     scaleToLabel();
                 }
@@ -134,6 +142,21 @@ final class IconPreviewManager {
                     previewLabel.setIcon(null);
                     previewLabel.setText("?");
                 });
+            }
+        });
+    }
+
+    /** Keeps the preview square: the grid sets its height, so the width follows that height. */
+    private void matchWidthToHeight() {
+        int side = previewLabel.getHeight();
+        if (side <= 0 || previewLabel.getWidth() == side) {
+            return;
+        }
+        SwingUtilities.invokeLater(() -> {
+            previewLabel.setPreferredSize(new Dimension(side, side));
+            Container parent = previewLabel.getParent();
+            if (parent != null) {
+                parent.revalidate();
             }
         });
     }

@@ -114,6 +114,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private JSpinner mcpPortSpinner;
     private JCheckBox useWslCheckbox;
     private JCheckBox projectSwitchRestartCheckbox;
+    private JPanel projectSwitchHint;
     private JLabel contextActionsSummary;
     private JButton contextActionsButton;
     private JSpinner idleTimeoutSpinner;
@@ -133,6 +134,9 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private JLabel pendingRestartTitle;
     private JLabel pendingRestartBody;
     private transient IconPreviewManager iconPreviewManager;
+
+    /** Starting width of the square user-icon preview; its height comes from the three rows. */
+    private static final int PREVIEW_SIZE = 96;
     private JComboBox<String> toolbarIconCombo;
     private JComboBox<String> chatFontCombo;
     private JButton editPreambleButton;
@@ -188,11 +192,12 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         preambleEnabledCheckbox = new JCheckBox();
         projectSwitchRestartCheckbox = new JCheckBox();
         iconLabel = new JLabel();
-        iconPathField = new JTextField(40);
+        iconPathField = new JTextField(26);
         iconBrowseButton = new JButton();
         iconPreviewLabel = new JLabel();
 
-        iconPreviewManager = new IconPreviewManager(iconPreviewLabel, iconPathField, controller::changed);
+        iconPreviewManager = new IconPreviewManager(iconPreviewLabel, iconPathField, PREVIEW_SIZE,
+                controller::changed);
 
         // --- Assistant Service ---
         JPanel servicePanel = createSectionPanel("LBL_ServiceHeader");
@@ -227,7 +232,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
             }
         });
         servicePanel.add(pathCombo, UIUtils.createGbc(1, row, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                                         GridBagConstraints.WEST, new Insets(0, 0, 0, 5)));
+                                         GridBagConstraints.WEST, new Insets(0, 0, 5, 5)));
 
         browseButton.setText(NbBundle.getMessage(ACPOptionsPanel.class, "BTN_Browse"));
         browseButton.setToolTipText(tooltip("TT_BrowseExecutable"));
@@ -238,6 +243,8 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         pathErrorLabel = new JLabel();
         pathErrorLabel.setForeground(UIManager.getColor("Panel.foreground"));
         pathErrorLabel.setFont(pathErrorLabel.getFont().deriveFont(Font.ITALIC, pathErrorLabel.getFont().getSize() - 1f));
+        // Hidden while empty: an invisible row must not open a gap the other rows do not have.
+        pathErrorLabel.setVisible(false);
         GridBagConstraints errGbc = UIUtils.createGbc(1, ++row, 1.0, 0, GridBagConstraints.HORIZONTAL,
                                          GridBagConstraints.WEST, new Insets(0, 0, 5, 5));
         errGbc.gridwidth = 2;
@@ -255,7 +262,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         });
         argsField.setToolTipText(tooltip("TT_ProcessArguments"));
         servicePanel.add(argsField, UIUtils.createGbc(1, row, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                                         GridBagConstraints.WEST, new Insets(0, 0, 2, 5)));
+                                         GridBagConstraints.WEST, new Insets(0, 0, 5, 5)));
 
         argsHintLabel = new JLabel();
         argsHintLabel.setForeground(UIManager.getColor("Label.disabledForeground"));
@@ -391,7 +398,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         runCommandPolicyButton.setToolTipText(tooltip("TT_RunCommandPolicy"));
         runCommandPolicyButton.addActionListener(evt -> editRunCommandPolicy());
         systemPanel.add(runCommandPolicyButton, UIUtils.createGbc(3, 3, 0.0, 0, GridBagConstraints.NONE,
-                GridBagConstraints.EAST, new Insets(4, 0, 5, 12)));
+                GridBagConstraints.NORTHEAST, new Insets(4, 0, 5, 12)));
 
         projectSwitchRestartCheckbox.setText(
                 scopedLabel("LBL_ProjectSwitchRestart", PluginSettings.Effect.IDE_RESTART));
@@ -403,18 +410,26 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         systemPanel.add(projectSwitchRestartCheckbox, restartGbc);
 
         // Visible without a hover: the cost of this option must be readable before it is ticked.
-        JLabel projectSwitchHintLabel = new JLabel(
-                NbBundle.getMessage(ACPOptionsPanel.class, "HLP_ProjectSwitchRestart"));
-        projectSwitchHintLabel.setForeground(UIManager.getColor("Label.disabledForeground"));
-        projectSwitchHintLabel.setFont(projectSwitchHintLabel.getFont()
-                .deriveFont(Font.ITALIC, projectSwitchHintLabel.getFont().getSize() - 1f));
+        // Two lines, so the whole sentence reads instead of being cut off at the button.
+        String restartHint = NbBundle.getMessage(ACPOptionsPanel.class, "HLP_ProjectSwitchRestart");
+        projectSwitchHint = new JPanel();
+        projectSwitchHint.setOpaque(false);
+        projectSwitchHint.setLayout(new BoxLayout(projectSwitchHint, BoxLayout.Y_AXIS));
+        projectSwitchHint.setToolTipText(restartHint);
+        for (String hintLine : splitHint(restartHint)) {
+            JLabel line = new JLabel(hintLine);
+            line.setForeground(UIManager.getColor("Label.disabledForeground"));
+            line.setFont(line.getFont().deriveFont(Font.ITALIC, line.getFont().getSize() - 1f));
+            line.setAlignmentX(Component.LEFT_ALIGNMENT);
+            projectSwitchHint.add(line);
+        }
         // Start under the checkbox text, not under the check glyph: the icon width and gap
         // differ per LAF, so a fixed indent drifts with the look and feel.
         int hintIndent = 12 + checkboxTextInset(projectSwitchRestartCheckbox);
         GridBagConstraints projectSwitchHintGbc = UIUtils.createGbc(0, 3, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.NORTHWEST, new Insets(0, hintIndent, 5, 0));
         projectSwitchHintGbc.gridwidth = 3;
-        systemPanel.add(projectSwitchHintLabel, projectSwitchHintGbc);
+        systemPanel.add(projectSwitchHint, projectSwitchHintGbc);
 
         // One width for the right-hand controls: the two spinners match the
         // ACP file-access dropdown instead of rendering as narrow boxes.
@@ -540,7 +555,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
 
         iconLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_UserIcon"));
         iconLabel.setToolTipText(tooltip("TT_UserIcon"));
-        appearancePanel.add(iconLabel, UIUtils.createGbc(0, row, 1.5, 0, GridBagConstraints.HORIZONTAL,
+        appearancePanel.add(iconLabel, UIUtils.createGbc(0, row, 0.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
 
         iconPathField.addKeyListener(new KeyAdapter() {
@@ -558,18 +573,17 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         iconBrowseButton.setToolTipText(tooltip("TT_UserIcon"));
         iconBrowseButton.addActionListener(evt -> iconBrowseButtonActionPerformed());
         appearancePanel.add(iconBrowseButton, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE,
-                                                GridBagConstraints.WEST, new Insets(0, 0, 5, 0)));
+                                                GridBagConstraints.EAST, new Insets(0, 0, 5, 5)));
 
-        GridBagConstraints previewGbc = UIUtils.createGbc(3, 0, 0.0, 0, GridBagConstraints.NONE,
+        GridBagConstraints previewGbc = UIUtils.createGbc(3, 0, 0.0, 0, GridBagConstraints.VERTICAL,
                 GridBagConstraints.CENTER, new Insets(0, 8, 5, 12));
         previewGbc.gridheight = 3;
         appearancePanel.add(iconPreviewLabel, previewGbc);
-
         row++;
         JLabel toolbarIconLabel = new JLabel(scopedLabel("LBL_ToolbarIconSize",
                 PluginSettings.Effect.IDE_RESTART));
         toolbarIconLabel.setToolTipText(tooltip("TT_ToolbarIconSize"));
-        appearancePanel.add(toolbarIconLabel, UIUtils.createGbc(0, row, 1.5, 0, GridBagConstraints.HORIZONTAL,
+        appearancePanel.add(toolbarIconLabel, UIUtils.createGbc(0, row, 0.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
 
         toolbarIconCombo = new JComboBox<>(new String[]{"16", "24", "28", "32", "48"});
@@ -582,7 +596,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         row++;
         JLabel chatFontLabel = new JLabel(scopedLabel("LBL_ChatFontSize", PluginSettings.Effect.SESSION_RELOAD));
         chatFontLabel.setToolTipText(tooltip("TT_ChatFontSize"));
-        appearancePanel.add(chatFontLabel, UIUtils.createGbc(0, row, 1.5, 0, GridBagConstraints.HORIZONTAL,
+        appearancePanel.add(chatFontLabel, UIUtils.createGbc(0, row, 0.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
 
         chatFontCombo = new JComboBox<>(new String[]{"Inherited", "10", "11", "12", "13", "14", "16", "18", "20", "22", "24"});
@@ -1025,6 +1039,20 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     }
 
     /**
+     * Splits a hint into the two lines it is rendered on: at its sentence break when it has
+     * one, otherwise at the space nearest the middle. One line is returned when the text
+     * has no usable break.
+     */
+    static List<String> splitHint(String text) {
+        int sentence = text.indexOf(". ");
+        int cut = sentence >= 0 ? sentence + 1 : text.indexOf(' ', text.length() / 2);
+        if (cut <= 0 || cut >= text.length() - 1) {
+            return List.of(text);
+        }
+        return List.of(text.substring(0, cut).trim(), text.substring(cut).trim());
+    }
+
+    /**
      * Permanent footnote marker for an option whose value the running IDE only reads at
      * startup (or at session creation). One character, appended to the control's own text
      * so it is part of the accessible name and mirrors under RTL; {@link #createScopeLegend}
@@ -1279,12 +1307,12 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
 
     public boolean valid() {
         if (!userEditedPath) {
-            pathErrorLabel.setText("");
+            setPathError("");
             return true;
         }
         String path = getExecutablePath();
         if (isBlank(path)) {
-            pathErrorLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_EmptyPath"));
+            setPathError(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_EmptyPath"));
             pathErrorLabel.setForeground(UIManager.getColor("Label.errorForeground"));
             return false;
         }
@@ -1295,39 +1323,45 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
         if (path.startsWith("/") && isWindows) {
             if (!BinaryResolver.isWslAvailable()) {
-                pathErrorLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_WslNotAvailable"));
+                setPathError(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_WslNotAvailable"));
                 pathErrorLabel.setForeground(UIManager.getColor("Label.errorForeground"));
                 return false;
             }
-            pathErrorLabel.setText("");
+            setPathError("");
             return true;
         }
         File f = new File(path.trim());
         if (!f.exists()) {
-            pathErrorLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_PathNotFound"));
+            setPathError(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_PathNotFound"));
             pathErrorLabel.setForeground(UIManager.getColor("Label.errorForeground"));
             return false;
         }
         if (!f.isFile()) {
-            pathErrorLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_PathNotFile"));
+            setPathError(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_PathNotFile"));
             pathErrorLabel.setForeground(UIManager.getColor("Label.errorForeground"));
             return false;
         }
         if (!f.canExecute()) {
-            pathErrorLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_PathNotExecutable"));
+            setPathError(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_PathNotExecutable"));
             pathErrorLabel.setForeground(UIManager.getColor("Label.errorForeground"));
             return false;
         }
         if (isWindows) {
             String lower = path.toLowerCase();
             if (!lower.endsWith(".exe") && !lower.endsWith(".cmd") && !lower.endsWith(".bat")) {
-                pathErrorLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_MissingExeExtension"));
+                setPathError(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_MissingExeExtension"));
                 pathErrorLabel.setForeground(UIManager.getColor("Label.errorForeground"));
                 return false;
             }
         }
-        pathErrorLabel.setText("");
+        setPathError("");
         return true;
+    }
+
+    /** An empty message hides its row, so the grid keeps one gap between every field row. */
+    private void setPathError(String text) {
+        pathErrorLabel.setText(text);
+        pathErrorLabel.setVisible(!text.isEmpty());
     }
 
     /** Renderer that shows WSL suffix on WSL-native entries. */
