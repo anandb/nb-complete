@@ -32,6 +32,8 @@ Jcode in BeanBot supports:
 
 #### Limitations
 
+The harness chooser labels Jcode <b>Limited</b>; the items below are what that badge points to. See [[Onboarding]].
+
 - **No plugin MCP tools**: Jcode validates the ACP <code>mcpServers</code> field but does not start those servers yet, so BeanBot does not hand it the plugin's internal MCP server and the <code>nb&#95;&#95;*</code> tools are unavailable. Configure MCP servers in Jcode's own configuration if you need them.
 - **No session list from Jcode**: Jcode does not implement <code>session/list</code>, so the session dropdown only shows sessions tracked locally by this BeanBot instance — sessions created in another Jcode client do not appear.
 - **No agent/mode selector**: Jcode exposes no mode request and no mode config option; only the model and reasoning-effort dropdowns are offered. Its approval and sandbox behavior is controlled by Jcode's own configuration.

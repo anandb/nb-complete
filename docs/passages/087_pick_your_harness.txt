@@ -26,6 +26,8 @@ In this guide you might also see a harness referred to as an ACP Server, an Agen
 > [[Cline Agent]]
 > [[Jcode Agent]]
 
+Some harnesses have **limited ACP support**: BeanBot can still connect and chat through them, but parts of the IDE integration are unavailable. The harness chooser (and the **Harness** dropdown under **Options > BeanBot**) labels those **Limited** — hover the badge or item to see exactly what is missing. Currently that is [[OpenClaw Agent]], [[Jcode Agent]], [[Gemini Agent]], [[PI Agent]] and [[Cline Agent]]; each page has the details. A harness's tier can change as its ACP support improves.
+
 If you are not sure, The plugin will detect installed harnesses and let you choose at startup.
 See [[Onboarding]].
 

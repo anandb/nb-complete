@@ -30,6 +30,8 @@ Cline in BeanBot supports:
 
 #### Limitations
 
+The harness chooser labels Cline <b>Limited</b>; the items below are what that badge points to. See [[Onboarding]].
+
 - **No plugin MCP tools**: BeanBot does not hand its internal MCP server to Cline (it sends an empty list); the embedded server may still run for other harnesses. Configure MCP servers in Cline's own configuration if you need them.
 - **No session list from Cline**: Cline does not implement <code>session/list</code>, so the session dropdown only shows sessions tracked locally by this BeanBot instance — sessions created in another Cline client do not appear.
 - **No token statistics**: Cline sends no usage updates, so per-turn token and cost figures stay empty for this harness; see [[Check token usage]].
