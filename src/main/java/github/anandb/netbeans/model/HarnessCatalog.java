@@ -15,6 +15,14 @@ import org.openide.util.NbBundle;
  */
 public final class HarnessCatalog {
 
+    /**
+     * How completely the plugin supports a harness. {@code LIMITED} is a curated
+     * product judgment, not a derivation from capability flags: it marks harnesses
+     * the user should be warned about before choosing them, and is surfaced in
+     * onboarding and in the Options harness chooser.
+     */
+    public enum SupportTier { FULL, LIMITED }
+
     /** One supported harness and everything needed to detect, launch, and use it. */
     public record Harness(
             String id,
@@ -41,6 +49,16 @@ public final class HarnessCatalog {
             boolean supportsSessionList,
             /** True when the agent/mode dropdown is offered; false disables it (OpenClaw). */
             boolean supportsAgentList,
+            /** True when a session replay must render every {@code agent_message_chunk}
+             *  as its own bubble instead of merging the chunks of one turn. Jcode
+             *  replays history as independent chunks with no message ids, so merging
+             *  would collapse a whole turn into a single bubble. */
+            boolean separateBubblesPerReplayChunk,
+            /** Completeness of the plugin's support; see {@link SupportTier}. */
+            SupportTier supportTier,
+            /** Bundle key listing what a {@code LIMITED} harness cannot do, shown as the
+             *  chooser tooltip; empty for {@code FULL}. */
+            String limitationsKey,
             /** Bundle key of the message shown when model selection is unavailable; empty when none. */
             String unsupportedModelSelectionMessage,
             /** Bundle key of the placeholder item text shown in the disabled model
@@ -81,6 +99,17 @@ public final class HarnessCatalog {
                     ? "" : NbBundle.getMessage(HarnessCatalog.class, unsupportedModelSelectionPlaceholder);
         }
 
+        /** Resolves what this harness cannot do (empty for a {@code FULL} harness). */
+        public String limitations() {
+            return limitationsKey == null || limitationsKey.isEmpty()
+                    ? "" : NbBundle.getMessage(HarnessCatalog.class, limitationsKey);
+        }
+
+        /** True when the plugin's support for this harness is partial; see {@link SupportTier}. */
+        public boolean hasLimitedSupport() {
+            return supportTier == SupportTier.LIMITED;
+        }
+
         /**
          * Returns a copy of this harness with only the message-queue capability
          * replaced. Used to derive a runtime variant (e.g. OpenCode v2) from its
@@ -92,6 +121,7 @@ public final class HarnessCatalog {
                     sendsMcpServerConfig, injectsEditorContext, supportsMessageIds, supportsMcpServer,
                     supportsSessionSetMode, supportsSessionSetConfigOption, supportsSessionSetModel,
                     supportsModelSelection, supportsSessionList, supportsAgentList,
+                    separateBubblesPerReplayChunk, supportTier, limitationsKey,
                     unsupportedModelSelectionMessage, unsupportedModelSelectionPlaceholder,
                     installWindows, installMac, installLinux, prerequisites, docsUrl,
                     windowsInstallSubDirs, acceptsMcpAuthToken);
@@ -194,6 +224,7 @@ public final class HarnessCatalog {
         .requiresMessageQueue(true)
         .injectsEditorContext(false)
         .acceptsMcpAuthToken(false)
+        .limited("Harness.Limitations.Pi")
         .install("powershell -c \"irm https://pi.dev/install.ps1 | iex\"",
                 "curl -fsSL https://pi.dev/install.sh | sh",
                 "curl -fsSL https://pi.dev/install.sh | sh")
@@ -258,6 +289,7 @@ public final class HarnessCatalog {
         .supportsSessionSetConfigOption(false)
         .supportsModelSelection(false)
         .supportsSessionList(false)
+        .limited("Harness.Limitations.Gemini")
         .unsupportedModelSelection("MSG_UnsupportedModelSelection",
                 "MSG_GeminiUnsupportedModelSelectionPlaceholder")
         .install("npm install -g @google/gemini-cli",
@@ -289,6 +321,7 @@ public final class HarnessCatalog {
         .supportsModelSelection(false)
         .supportsSessionList(false)
         .supportsAgentList(false)
+        .limited("Harness.Limitations.OpenClaw")
         .unsupportedModelSelection("MSG_OpenClawUnsupportedModelSelection",
                 "MSG_OpenClawUnsupportedModelSelectionPlaceholder")
         .install("powershell -c \"iwr -useb https://openclaw.ai/install.ps1 | iex\"",
@@ -354,6 +387,7 @@ public final class HarnessCatalog {
         .supportsMcpServer(false)
         .supportsSessionSetMode(true)
         .supportsSessionList(false)
+        .limited("Harness.Limitations.Cline")
         .install("npm i -g cline",
                 "npm i -g cline",
                 "npm i -g cline")
@@ -369,8 +403,10 @@ public final class HarnessCatalog {
      * A second {@code session/prompt} while a turn is running is rejected with
      * "already processing a prompt", so messages queue until turn end. Model and
      * reasoning effort come from config options; there is no mode request, no
-     * {@code session/list} and no message ids. {@code session/load},
-     * {@code session/close} and usage updates are implemented.
+     * {@code session/list} and no message ids. Because a replay arrives as
+     * independent chunks with no message ids, each chunk is rendered as its own
+     * bubble. {@code session/load}, {@code session/close} and usage updates are
+     * implemented.
      */
     public static final Harness JCODE = Harness.builder("jcode", "Jcode", "jcode")
         .binaryNames("jcode")
@@ -380,6 +416,8 @@ public final class HarnessCatalog {
         .supportsMcpServer(false)
         .supportsSessionList(false)
         .supportsAgentList(false)
+        .separateBubblesPerReplayChunk(true)
+        .limited("Harness.Limitations.Jcode")
         .acceptsMcpAuthToken(false)
         .install("powershell -c \"irm https://jcode.sh/install.ps1 | iex\"",
                 "curl -fsSL https://jcode.sh/install | bash",

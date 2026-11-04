@@ -222,6 +222,28 @@ class HarnessCatalogTest {
     }
 
     @Test
+    void onlyJcodeSeparatesReplayChunks() {
+        for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
+            assertEquals("jcode".equals(h.id()), h.separateBubblesPerReplayChunk(),
+                    h.id() + " replay-chunk capability");
+        }
+        assertFalse(HarnessCatalog.UNKNOWN.separateBubblesPerReplayChunk());
+    }
+
+    @Test
+    void onlyTheCuratedSetHasLimitedSupport() {
+        java.util.Set<String> limitedIds = java.util.Set.of("openclaw", "jcode", "gemini", "pi", "cline");
+        for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
+            boolean limited = limitedIds.contains(h.id());
+            assertEquals(limited, h.hasLimitedSupport(), h.id() + " support tier");
+            assertEquals(limited ? HarnessCatalog.SupportTier.LIMITED : HarnessCatalog.SupportTier.FULL,
+                    h.supportTier(), h.id() + " support tier");
+            assertEquals(limited, !h.limitations().isBlank(), h.id() + " limitations text");
+        }
+        assertFalse(HarnessCatalog.UNKNOWN.hasLimitedSupport());
+    }
+
+    @Test
     void onlyPiAndJcodeRejectMcpAuthTokens() {
         for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
             boolean tokenless = "pi".equals(h.id()) || "jcode".equals(h.id());
@@ -356,6 +378,7 @@ class HarnessCatalogTest {
         assertTrue(HarnessCatalog.JCODE.supportsModelSelection());
         assertFalse(HarnessCatalog.JCODE.supportsSessionList());
         assertFalse(HarnessCatalog.JCODE.supportsAgentList());
+        assertTrue(HarnessCatalog.JCODE.separateBubblesPerReplayChunk());
         assertFalse(HarnessCatalog.JCODE.acceptsMcpAuthToken());
         assertEquals("powershell -c \"irm https://jcode.sh/install.ps1 | iex\"",
                 HarnessCatalog.JCODE.installWindows());

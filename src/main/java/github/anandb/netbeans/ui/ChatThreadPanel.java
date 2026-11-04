@@ -343,7 +343,8 @@ public class ChatThreadPanel extends JPanel {
             LOG.warn("sessionLoading=true, shouldBufferMessages()=true, but sessionId is null — falling through to unbuffered path");
         }
 
-        messageQueue.add(() -> processMessageOnEDT(pm));
+        boolean replay = sessionLoading;
+        messageQueue.add(() -> processMessageOnEDT(pm, replay));
         if (draining.compareAndSet(false, true)) {
             SwingUtilities.invokeLater(this::drainMessageQueue);
         }
@@ -390,7 +391,7 @@ public class ChatThreadPanel extends JPanel {
         }
     }
 
-    private void processMessageOnEDT(ProcessedMessage pm) {
+    private void processMessageOnEDT(ProcessedMessage pm, boolean replay) {
         String text = pm.text();
         if (text == null) text = "";
         final String role = pm.messageType().roleName();
@@ -407,7 +408,9 @@ public class ChatThreadPanel extends JPanel {
         }
 
         if (pm.streaming()) {
-            processMessageSections(pm, text, role, wasAtBottom);
+            // Unbuffered loading (no trimming cap) drains replay chunks through this
+            // path too; the flag captured at enqueue marks them as history, not live output.
+            processMessageSections(pm, text, role, wasAtBottom, replay);
         } else {
             stopStreaming();
             addSingleBubble(pm.messageType(), text, pm.messageId(), pm.toolTitle(), false, wasAtBottom);
@@ -430,7 +433,8 @@ public class ChatThreadPanel extends JPanel {
     }
 
     /** Process message sections on EDT (shared by addMessage and setMessages). */
-    private void processMessageSections(ProcessedMessage pm, String text, String role, boolean wasAtBottom) {
+    private void processMessageSections(ProcessedMessage pm, String text, String role, boolean wasAtBottom,
+            boolean replayRender) {
         if (text == null) return;
         String[] parts = SectionSplitPattern.split(text);
         MessageBubble lastBubble = findLastNonIgnorableBubble();
@@ -441,6 +445,12 @@ public class ChatThreadPanel extends JPanel {
             }
 
             boolean canMerge = (lastBubble != null && role.equals(lastBubble.getRole()));
+            // A replaying harness that reports chunks independently gets one bubble
+            // per agent chunk, never a turn's chunks merged into one bubble.
+            if (canMerge && replayRender && pm.messageType() == MessageType.agent_message_chunk
+                    && separateBubblesPerReplayChunk()) {
+                canMerge = false;
+            }
             if (canMerge) {
                 switch (role) {
                     case "thought" -> canMerge = true;
@@ -1322,7 +1332,7 @@ public class ChatThreadPanel extends JPanel {
                 // loadRenderInProgress/isBatchMode stuck and freeze the drain.
                 try {
                     if (pm.streaming()) {
-                        processMessageSections(pm, text, pm.messageType().roleName(), false);
+                        processMessageSections(pm, text, pm.messageType().roleName(), false, true);
                     } else {
                         addSingleBubble(pm.messageType(), text, pm.messageId(), pm.toolTitle(), false, false);
                     }
@@ -1488,5 +1498,13 @@ public class ChatThreadPanel extends JPanel {
         ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
         HarnessCatalog.Harness caps = pc != null ? pc.getCapabilities() : null;
         return caps != null && !caps.supportsMessageIds();
+    }
+
+    /** True when a loaded history must draw every {@code agent_message_chunk} in its
+     *  own bubble instead of merging one turn's chunks (Jcode). */
+    private boolean separateBubblesPerReplayChunk() {
+        ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
+        HarnessCatalog.Harness caps = pc != null ? pc.getCapabilities() : null;
+        return caps != null && caps.separateBubblesPerReplayChunk();
     }
 }

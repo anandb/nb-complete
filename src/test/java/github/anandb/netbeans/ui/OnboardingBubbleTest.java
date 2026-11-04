@@ -80,6 +80,33 @@ class OnboardingBubbleTest {
                 "sign-in hint missing from chooser: " + texts);
     }
 
+    @Test
+    void limitedSupportSectionIsExpandedByDefaultAndCollapses() {
+        OnboardingBubble bubble = new OnboardingBubble(java.util.List.of(),
+                (id, path) -> { });
+        javax.swing.JButton header = findButtonContaining(bubble, "Limited support");
+        assertNotNull(header, "limited-support section header must exist");
+        assertTrue(header.getText().startsWith("v "), "section must start expanded: " + header.getText());
+        header.doClick();
+        assertTrue(header.getText().startsWith("> "), "section must collapse on click: " + header.getText());
+    }
+
+    private static javax.swing.JButton findButtonContaining(java.awt.Container container, String text) {
+        for (java.awt.Component comp : container.getComponents()) {
+            if (comp instanceof javax.swing.JButton button && button.getText() != null
+                    && button.getText().contains(text)) {
+                return button;
+            }
+            if (comp instanceof java.awt.Container child) {
+                javax.swing.JButton found = findButtonContaining(child, text);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
     private static void collectTexts(java.awt.Container container, java.util.List<String> out) {
         for (java.awt.Component comp : container.getComponents()) {
             if (comp instanceof javax.swing.JLabel label && label.getText() != null) {

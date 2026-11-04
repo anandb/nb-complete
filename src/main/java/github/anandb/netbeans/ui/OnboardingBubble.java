@@ -120,11 +120,15 @@ class OnboardingBubble extends JPanel {
         content.add(headerPanel, BorderLayout.NORTH);
 
         // Partition catalog harnesses into installed vs. uninstalled, alphabetical within
-        // each group so the chooser does not depend on detection order.
+        // each group so the chooser does not depend on detection order. Partially
+        // supported harnesses are held back into one collapsed section, installed or not.
         java.util.List<HarnessCatalog.Harness> installed = new java.util.ArrayList<>();
         java.util.List<HarnessCatalog.Harness> uninstalled = new java.util.ArrayList<>();
+        java.util.List<HarnessCatalog.Harness> limited = new java.util.ArrayList<>();
         for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
-            if (findFoundBinary(h.id()) != null) {
+            if (h.hasLimitedSupport()) {
+                limited.add(h);
+            } else if (findFoundBinary(h.id()) != null) {
                 installed.add(h);
             } else {
                 uninstalled.add(h);
@@ -132,6 +136,7 @@ class OnboardingBubble extends JPanel {
         }
         installed.sort(HarnessCatalog.BY_DISPLAY_NAME);
         uninstalled.sort(HarnessCatalog.BY_DISPLAY_NAME);
+        limited.sort(HarnessCatalog.BY_DISPLAY_NAME);
         String activePath = BinaryResolver.findExecutablePathOrNull();
         String activeHarnessId = activePath != null ? activeHarnessIdFor(activePath) : null;
 
@@ -163,6 +168,10 @@ class OnboardingBubble extends JPanel {
                 OnboardingBubble.class, "OnboardingBubble.Section.Uninstalled", uninstalled.size()), theme), gbc);
         for (HarnessCatalog.Harness harness : uninstalled) {
             rowsPanel.add(createUninstalledRow(harness, theme), gbc);
+        }
+        JPanel limitedSection = createLimitedSection(limited, activeHarnessId, theme);
+        if (limitedSection != null) {
+            rowsPanel.add(limitedSection, gbc);
         }
         gbc.insets = new Insets(0, 0, 0, 0);
         rowsPanel.add(createPostActivationNote(theme), gbc);
@@ -213,6 +222,99 @@ class OnboardingBubble extends JPanel {
         return label;
     }
 
+    /** Clickable section header for the collapsed limited-support group. */
+    private static JButton createCollapsibleSectionHeader(String text, ColorTheme theme) {
+        JButton header = new JButton(text);
+        header.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
+        header.setForeground(theme.mutedForeground());
+        header.setBorder(BorderFactory.createEmptyBorder(4, 0, 2, 0));
+        header.setBorderPainted(false);
+        header.setContentAreaFilled(false);
+        header.setFocusPainted(false);
+        header.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        header.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return header;
+    }
+
+    /**
+     * Section for partially supported harnesses, expanded by default. Installed and
+     * uninstalled harnesses share it so there is one rule: limited support stays out
+     * of the main chooser's installed/available lists, but the user still sees it.
+     * Returns {@code null} when there is nothing left to list.
+     */
+    private JPanel createLimitedSection(java.util.List<HarnessCatalog.Harness> limited,
+            String activeHarnessId, ColorTheme theme) {
+        java.util.List<HarnessCatalog.Harness> rows = new java.util.ArrayList<>();
+        for (HarnessCatalog.Harness harness : limited) {
+            if (!harness.id().equals(activeHarnessId)) {
+                rows.add(harness);
+            }
+        }
+        if (rows.isEmpty()) {
+            return null;
+        }
+        JPanel section = new JPanel(new BorderLayout(0, 4));
+        section.setOpaque(false);
+        String headerText = NbBundle.getMessage(OnboardingBubble.class,
+                "OnboardingBubble.Section.Limited", rows.size());
+        JButton header = createCollapsibleSectionHeader("v " + headerText, theme);
+        JPanel rowContainer = new JPanel();
+        rowContainer.setOpaque(false);
+        rowContainer.setLayout(new BoxLayout(rowContainer, BoxLayout.Y_AXIS));
+        rowContainer.setVisible(true);
+        for (HarnessCatalog.Harness harness : rows) {
+            JPanel row = findFoundBinary(harness.id()) != null
+                    ? createInstalledRow(harness, false, theme)
+                    : createUninstalledRow(harness, theme);
+            row.setAlignmentX(Component.LEFT_ALIGNMENT);
+            rowContainer.add(row);
+            rowContainer.add(javax.swing.Box.createVerticalStrut(8));
+        }
+        header.addActionListener(e -> {
+            boolean showing = !rowContainer.isVisible();
+            rowContainer.setVisible(showing);
+            header.setText((showing ? "v " : "> ") + headerText);
+            revalidate();
+            repaint();
+        });
+        section.add(header, BorderLayout.NORTH);
+        section.add(rowContainer, BorderLayout.CENTER);
+        return section;
+    }
+
+    /** Harness name plus a "Limited" pill when the plugin's support is partial. */
+    private static JPanel nameWithBadge(HarnessCatalog.Harness harness, ColorTheme theme) {
+        JPanel line = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        line.setOpaque(false);
+        line.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel name = new JLabel(harness.displayName());
+        name.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
+        name.setForeground(theme.foreground());
+        line.add(name);
+        if (harness.hasLimitedSupport()) {
+            line.add(limitedBadge(harness, theme));
+        }
+        return line;
+    }
+
+    /** Muted, non-alarming pill; the word "Limited" carries the meaning without color. */
+    private static JLabel limitedBadge(HarnessCatalog.Harness harness, ColorTheme theme) {
+        JLabel badge = new JLabel(NbBundle.getMessage(
+                OnboardingBubble.class, "OnboardingBubble.Badge.Limited"));
+        badge.setFont(ThemeManager.getFont().deriveFont(Font.BOLD,
+                Math.max(9f, ThemeManager.getFont().getSize() - 2f)));
+        badge.setForeground(theme.mutedForeground());
+        badge.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(theme.bubbleBorder()),
+                BorderFactory.createEmptyBorder(1, 5, 1, 5)));
+        String limitations = harness.limitations();
+        if (!limitations.isBlank()) {
+            badge.setToolTipText(NbBundle.getMessage(OnboardingBubble.class,
+                    "OnboardingBubble.Hint.Limited", limitations));
+        }
+        return badge;
+    }
+
     /** Prominent card for the currently configured harness with a disabled Active badge. */
     private JPanel createActiveCard(String harnessId, String path, ColorTheme theme) {
         HarnessCatalog.Harness harness = harnessId != null ? HarnessCatalog.byId(harnessId) : HarnessCatalog.UNKNOWN;
@@ -230,13 +332,10 @@ class OnboardingBubble extends JPanel {
         JPanel textPanel = new JPanel();
         textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
         textPanel.setOpaque(false);
-        JLabel nameLabel = new JLabel(harness.displayName());
-        nameLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
-        nameLabel.setForeground(theme.foreground());
         JLabel pathLabel = new JLabel(path);
         pathLabel.setFont(IconResourceManager.getMonospaceFont().deriveFont(11f));
         pathLabel.setForeground(theme.mutedForeground());
-        textPanel.add(nameLabel);
+        textPanel.add(nameWithBadge(harness, theme));
         textPanel.add(pathLabel);
         row.add(textPanel, BorderLayout.CENTER);
         JButton activeBtn = new JButton("\u2713 "
@@ -292,10 +391,7 @@ class OnboardingBubble extends JPanel {
         JPanel textPanel = new JPanel();
         textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
         textPanel.setOpaque(false);
-        JLabel nameLabel = new JLabel(harness.displayName());
-        nameLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
-        nameLabel.setForeground(theme.foreground());
-        textPanel.add(nameLabel);
+        textPanel.add(nameWithBadge(harness, theme));
         textPanel.add(pathLabel);
         JPanel activation = createActivationPanel(harness, theme, false, false);
         if (activation != null) {
@@ -336,10 +432,7 @@ class OnboardingBubble extends JPanel {
         JPanel row = new JPanel(new BorderLayout(8, 0));
         row.setOpaque(false);
         row.add(harnessIconLabel(harness), BorderLayout.WEST);
-        JLabel nameLabel = new JLabel(harness.displayName());
-        nameLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
-        nameLabel.setForeground(theme.foreground());
-        row.add(nameLabel, BorderLayout.CENTER);
+        row.add(nameWithBadge(harness, theme), BorderLayout.CENTER);
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         btnPanel.setOpaque(false);
         JButton installBtn = new JButton(NbBundle.getMessage(

@@ -13,7 +13,8 @@ import java.util.List;
  * {@code supportsMcpServer}, {@code supportsSessionSetConfigOption},
  * {@code supportsModelSelection}, {@code supportsSessionList},
  * {@code supportsAgentList} and {@code acceptsMcpAuthToken} are {@code true};
- * every text, list and install field is empty.</p>
+ * {@code separateBubblesPerReplayChunk} is {@code false}; {@code supportTier} is
+ * {@code FULL}; every text, list and install field is empty.</p>
  */
 public final class HarnessBuilder {
 
@@ -33,6 +34,9 @@ public final class HarnessBuilder {
     private boolean supportsModelSelection = true;
     private boolean supportsSessionList = true;
     private boolean supportsAgentList = true;
+    private boolean separateBubblesPerReplayChunk;
+    private HarnessCatalog.SupportTier supportTier = HarnessCatalog.SupportTier.FULL;
+    private String limitationsKey = "";
     private boolean acceptsMcpAuthToken = true;
     private String unsupportedModelSelectionMessage = "";
     private String unsupportedModelSelectionPlaceholder = "";
@@ -115,6 +119,18 @@ public final class HarnessBuilder {
         return this;
     }
 
+    public HarnessBuilder separateBubblesPerReplayChunk(boolean value) {
+        this.separateBubblesPerReplayChunk = value;
+        return this;
+    }
+
+    /** Marks a harness as partially supported, with a bundle key listing what it cannot do. */
+    public HarnessBuilder limited(String limitationsBundleKey) {
+        this.supportTier = HarnessCatalog.SupportTier.LIMITED;
+        this.limitationsKey = limitationsBundleKey;
+        return this;
+    }
+
     public HarnessBuilder acceptsMcpAuthToken(boolean value) {
         this.acceptsMcpAuthToken = value;
         return this;
@@ -155,6 +171,7 @@ public final class HarnessBuilder {
                 requiresMessageQueue, sendsMcpServerConfig, injectsEditorContext, supportsMessageIds,
                 supportsMcpServer, supportsSessionSetMode, supportsSessionSetConfigOption,
                 supportsSessionSetModel, supportsModelSelection, supportsSessionList, supportsAgentList,
+                separateBubblesPerReplayChunk, supportTier, limitationsKey,
                 unsupportedModelSelectionMessage, unsupportedModelSelectionPlaceholder,
                 installWindows, installMac, installLinux, prerequisites, docsUrl,
                 windowsInstallSubDirs, acceptsMcpAuthToken);

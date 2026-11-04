@@ -930,8 +930,13 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         public Component getListCellRendererComponent(JList<?> list, Object value, int index,
                 boolean isSelected, boolean cellHasFocus) {
             super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+            setToolTipText(null);
             if (value instanceof HarnessSelection.Selection selection) {
                 setText(harnessChoiceLabel(selection));
+                HarnessCatalog.Harness harness = selection.harness();
+                if (harness.hasLimitedSupport() && !harness.limitations().isBlank()) {
+                    setToolTipText(harness.limitations());
+                }
             }
             return this;
         }
@@ -940,7 +945,10 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     /** Label for one combo entry; Auto names the detected harness when there is one. */
     private String harnessChoiceLabel(HarnessSelection.Selection selection) {
         if (!selection.auto()) {
-            return selection.harness().displayName();
+            HarnessCatalog.Harness harness = selection.harness();
+            return harness.hasLimitedSupport()
+                    ? NbBundle.getMessage(ACPOptionsPanel.class, "OPT_Harness_Limited", harness.displayName())
+                    : harness.displayName();
         }
         HarnessCatalog.Harness detected = detectedHarness();
         return detected == HarnessCatalog.UNKNOWN
