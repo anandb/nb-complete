@@ -441,7 +441,7 @@ final class PermissionRequestPanel extends JPanel {
         // Show Diff button — secondary style, does not dismiss the prompt
         if (currentFileChanges != null && !currentFileChanges.isEmpty()) {
             JButton showDiffBtn = createButton(NbBundle.getMessage(PermissionBubble.class, "BTN_ShowDiff"), null, null, null);
-            showDiffBtn.setMnemonic('D');
+            ButtonMnemonics.apply(showDiffBtn, 'D');
             showDiffBtn.addActionListener(e -> {
                 stopWobble();
                 openDiffView(currentFileChanges);
@@ -494,12 +494,12 @@ final class PermissionRequestPanel extends JPanel {
                     NbBundle.getMessage(ChatThreadPanel.class, "BTN_Deny"),
                     theme.permissionDenyFg(), theme.permissionDenyBg(),
                     theme.permissionDenyBorder());
-            denyBtn.setMnemonic('R');
+            ButtonMnemonics.apply(denyBtn, 'R');
             JButton allowBtn = createButton(
                     NbBundle.getMessage(ChatThreadPanel.class, "BTN_Allow"),
                     theme.permissionGrantFg(), theme.permissionGrantBg(),
                     theme.permissionGrantBorder());
-            allowBtn.setMnemonic('A');
+            ButtonMnemonics.apply(allowBtn, 'A');
             allowAction = () -> {
                 pendingResponse.complete("allow");
                 slideClose();
@@ -521,9 +521,7 @@ final class PermissionRequestPanel extends JPanel {
 
     /** Applies a row mnemonic; options with an unknown kind get none. */
     private static void applyMnemonic(JButton btn, char mnemonic) {
-        if (mnemonic != 0) {
-            btn.setMnemonic(mnemonic);
-        }
+        ButtonMnemonics.apply(btn, mnemonic);
     }
 
     /** Creates a styled button. Pass null for any color to use defaults. */

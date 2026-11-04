@@ -25,6 +25,8 @@ Each button has a keyboard mnemonic, so this panel never needs the mouse:
 </tbody>
 </table>
 
+On macOS the same keys are <code>Option + A</code>, <code>Option + O</code>, <code>Option + R</code>, <code>Option + W</code> and <code>Option + D</code>. Swing normally binds a button's mnemonic to <code>Ctrl + Option</code> on a Mac (because <code>Option</code> types accented characters there), so the plugin binds the plain <code>Option</code> form itself as well; either combination answers the prompt. While a request is pending, <code>Ctrl + Alt + A</code> (<code>Cmd + Option + A</code> on Mac) answers it from anywhere in the IDE, always with Allow Once rather than a lasting policy.
+
 The letter belongs to the option's scope, not to its label: the harness reports a *once* or *always* kind (and, when it reuses one kind, an id that names the scope), and the plugin maps that to `Alt + O` / `Alt + R` for once and `Alt + A` / `Alt + W` for always, so no two buttons in a row ever share a key. Some harnesses word the buttons so the letter never appears — Claude sends **Yes** and **No** — but `Alt + O`, `Alt + A` and `Alt + R` still answer them; only the underline is missing. The same keys work in the mini assistant, see [[Mini Assistant Permission Requests]].
 
 The header button to the left of the mini-assistant latches break mode, shown as a padlock or a coffee cup. See [[Break Mode]].
