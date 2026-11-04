@@ -752,6 +752,16 @@ divider and the input area (it must borrow space from the thread only).
 - Deleting is confirmed and permanent, unlike the local archive (`setHidden`) flag.
 
 ### UI Sizing & Document Re-use
+- **Collapsible pane sizing is cached**: `BaseCollapsiblePane` caches `getPreferredSize()` and
+  `getMaximumSize()` and clears both in `invalidate()` (AWT propagates invalidation up from a
+  child whose content or width changed). Keep the cache — `BoxLayout` asks for preferred and
+  maximum size per child, and every miss re-wraps all text bodies. Do NOT restore the old
+  `getMaximumSize()` that called `getPreferredSize()` unconditionally on every query.
+- **Expand/collapse must repaint the viewport after layout**: `updateParentLayout` repaints the
+  enclosing `JViewport` via `SwingUtilities.invokeLater` after the queued validate. The pane's
+  own repaint still targets its pre-layout bounds, and a BLIT viewport then leaves the newly
+  exposed strip blank until the user scrolls. Do NOT drop that deferred repaint or move it
+  before the layout pass.
 - Bubbles use a cheap `JTextArea` during streaming (timer flush every `TimingConstants.STREAM_FLUSH_MS` ms).
 - `finalizeStreaming(expanded, immediate=false)` starts a cooldown timer (`TimingConstants.STREAM_FLUSH_MS` ms). New content
   resets the timer. Full update runs once on cooldown expiry. `stopStreaming()` calls it with

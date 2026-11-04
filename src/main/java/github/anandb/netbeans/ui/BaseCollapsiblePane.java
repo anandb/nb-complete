@@ -21,6 +21,8 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
+import javax.swing.JViewport;
+import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
@@ -250,15 +252,40 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         return inBatch;
     }
 
+    private Dimension cachedPreferredSize;
     private Dimension cachedMaxSize;
+
+    /**
+     * A layout pass asks for the preferred AND maximum size of every child, and
+     * a wrapped text body recomputes its height from scratch on each query. The
+     * cached values are discarded by {@link #invalidate()}, which AWT also
+     * propagates from any child whose content or width changes.
+     */
+    @Override
+    public void invalidate() {
+        cachedPreferredSize = null;
+        cachedMaxSize = null;
+        super.invalidate();
+    }
+
+    @Override
+    public Dimension getPreferredSize() {
+        Dimension cached = cachedPreferredSize;
+        if (cached == null) {
+            cached = super.getPreferredSize();
+            cachedPreferredSize = cached;
+        }
+        return cached;
+    }
 
     @Override
     public Dimension getMaximumSize() {
-        Dimension pref = getPreferredSize();
-        if (cachedMaxSize == null || cachedMaxSize.height != pref.height) {
-            cachedMaxSize = new Dimension(Integer.MAX_VALUE, pref.height);
+        Dimension cached = cachedMaxSize;
+        if (cached == null) {
+            cached = new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
+            cachedMaxSize = cached;
         }
-        return cachedMaxSize;
+        return cached;
     }
 
     protected void updateParentLayout() {
@@ -275,6 +302,15 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         }
         top.revalidate();
         top.repaint();
+
+        // The pane changes height inside a scroll pane. The repaint above still
+        // targets the pre-layout bounds, and a BLIT viewport then leaves the
+        // newly exposed strip blank until a scroll forces a full repaint.
+        // Repaint the viewport after the queued validate has resized the view.
+        JViewport viewport = (JViewport) SwingUtilities.getAncestorOfClass(JViewport.class, this);
+        if (viewport != null) {
+            SwingUtilities.invokeLater(viewport::repaint);
+        }
     }
 
     public boolean isExpanded() {
