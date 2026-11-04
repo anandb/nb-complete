@@ -50,9 +50,13 @@ import org.openide.util.RequestProcessor;
 public class UIUtils {
 
     // --- font stacks (merged from FontStacks) --------------------------------
-    // Override via system properties (beanbot.* namespace)
-    private static final String FONT_OVERRIDE = System.getProperty("beanbot.font.family");
-    private static final String MONO_OVERRIDE = System.getProperty("beanbot.mono.font.family");
+    // Override via system properties (beanbot.* namespace). IconResourceManager reads the
+    // same keys live, so the Swing chat font (user bubbles are a JTextArea) follows them too.
+    public static final String FONT_FAMILY_PROPERTY = "beanbot.font.family";
+    public static final String MONO_FONT_FAMILY_PROPERTY = "beanbot.mono.font.family";
+
+    private static final String FONT_OVERRIDE = System.getProperty(FONT_FAMILY_PROPERTY);
+    private static final String MONO_OVERRIDE = System.getProperty(MONO_FONT_FAMILY_PROPERTY);
 
     public static final String FONT_STACK = FONT_OVERRIDE != null
             ? "'" + FONT_OVERRIDE + "'"

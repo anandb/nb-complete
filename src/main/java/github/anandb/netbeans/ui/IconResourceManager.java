@@ -33,10 +33,15 @@ final class IconResourceManager {
 
     static {
         UIManager.addPropertyChangeListener(e -> {
-            cachedFont = null;
-            cachedMonospaceFont = null;
+            clearFontCache();
             cachedIsDark = null;
         });
+    }
+
+    /** Drops the resolved fonts so the next read picks up a new LAF or system property. */
+    static void clearFontCache() {
+        cachedFont = null;
+        cachedMonospaceFont = null;
     }
 
     private static final Cache<String, Icon> ICON_CACHE = Caffeine.newBuilder()
@@ -117,8 +122,18 @@ final class IconResourceManager {
         if (f == null) {
             f = new Font("Dialog", Font.PLAIN, 12);
         }
+        f = withFamilyOverride(f, UIUtils.FONT_FAMILY_PROPERTY);
         cachedFont = f;
         return f;
+    }
+
+    /** Applies {@code -J-Dbeanbot.font.family} over the LAF family, keeping its style and size. */
+    private static Font withFamilyOverride(Font base, String property) {
+        String family = System.getProperty(property);
+        if (family == null || family.isBlank() || family.equals(base.getFamily())) {
+            return base;
+        }
+        return new Font(family, base.getStyle(), base.getSize());
     }
 
     static Font getMonospaceFont() {
@@ -127,6 +142,12 @@ final class IconResourceManager {
 
         Font editorFont = UIManager.getFont("EditorPane.font");
         int size = (editorFont != null) ? editorFont.getSize() : 13;
+
+        String monoFamily = System.getProperty(UIUtils.MONO_FONT_FAMILY_PROPERTY);
+        if (monoFamily != null && !monoFamily.isBlank()) {
+            cachedMonospaceFont = new Font(monoFamily, Font.PLAIN, size);
+            return cachedMonospaceFont;
+        }
 
         Font fira = new Font("Fira Code", Font.PLAIN, size);
         if (fira.getFamily().equalsIgnoreCase("Fira Code")) {
