@@ -222,6 +222,16 @@ class HarnessCatalogTest {
     }
 
     @Test
+    void onlyPiAndJcodeRejectMcpAuthTokens() {
+        for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
+            boolean tokenless = "pi".equals(h.id()) || "jcode".equals(h.id());
+            assertEquals(!tokenless, h.acceptsMcpAuthToken(), h.id() + " MCP token capability");
+        }
+        // A custom binary the catalog cannot identify keeps the token requirement.
+        assertTrue(HarnessCatalog.UNKNOWN.acceptsMcpAuthToken());
+    }
+
+    @Test
     void ompSupportsAllExceptTokenStats() {
         assertFalse(HarnessCatalog.OMP.requiresMessageQueue());
         assertTrue(HarnessCatalog.OMP.sendsMcpServerConfig());
@@ -346,6 +356,7 @@ class HarnessCatalogTest {
         assertTrue(HarnessCatalog.JCODE.supportsModelSelection());
         assertFalse(HarnessCatalog.JCODE.supportsSessionList());
         assertFalse(HarnessCatalog.JCODE.supportsAgentList());
+        assertFalse(HarnessCatalog.JCODE.acceptsMcpAuthToken());
         assertEquals("powershell -c \"irm https://jcode.sh/install.ps1 | iex\"",
                 HarnessCatalog.JCODE.installWindows());
         assertEquals("curl -fsSL https://jcode.sh/install | bash", HarnessCatalog.JCODE.installMac());

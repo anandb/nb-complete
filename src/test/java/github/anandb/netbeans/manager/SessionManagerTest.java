@@ -1384,7 +1384,7 @@ class SessionManagerTest {
                 List.of("agent"), "",
                 false, true, true, true, true, false, false, true, true, true, true,
                 "", "", "", "", "", "", "",
-                List.of());
+                List.of(), true);
         when(processManager.getCapabilities()).thenReturn(setModelOnly);
 
         when(processManager.sendRequest(eq("session/set_model"), any(), eq(30L), eq(TimeUnit.SECONDS)))

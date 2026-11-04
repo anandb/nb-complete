@@ -266,11 +266,11 @@ class ServerProcessLifecycle {
             readyFuture = new CompletableFuture<>();
         }
 
-        // Token auth for the embedded MCP server is skipped only for the PI
-        // harness binaries (pi, pi-acp, pi-agent) — they cannot carry tokens
-        // on MCP URLs. Must be set BEFORE the MCP server starts so there is
-        // no unauthenticated window.
-        toolExecutor.setMcpAuthRequired(!BinaryResolver.isPiHarness());
+        // Token auth for the embedded MCP server is skipped for a harness that
+        // cannot carry a token on an MCP URL (the PI family and Jcode), read off
+        // its catalog capability. Must be set BEFORE the MCP server starts so
+        // there is no unauthenticated window.
+        toolExecutor.setMcpAuthRequired(requiresMcpAuthToken());
         toolExecutor.start();
 
         LOG.info("Starting ACP server...");
@@ -484,17 +484,7 @@ class ServerProcessLifecycle {
                         embeddedContextSupported = promptCaps.path("embeddedContext").asBoolean(false);
                         // Resolve harness from stored preferences, ignoring the
                         // agent name from the initialize response.
-                        String harnessId = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                                .get(PreferenceKeys.ACP_HARNESS_ID, null);
-                        if (harnessId != null && !harnessId.isEmpty()) {
-                            capabilities = HarnessCatalog.byId(harnessId);
-                        }
-                        if (capabilities == HarnessCatalog.UNKNOWN) {
-                            String binName = BinaryResolver.resolveBinaryName();
-                            if (binName != null) {
-                                capabilities = HarnessCatalog.byBinaryName(binName);
-                            }
-                        }
+                        capabilities = configuredHarness();
                         // Version-dependent deltas win over the static catalog entry:
                         // OpenCode v2 dropped mid-turn steering, so its messages
                         // must be queued until turn end (used live by MessageSender).
@@ -536,6 +526,34 @@ class ServerProcessLifecycle {
                     stopServer();
                     return null;
                 });
+    }
+
+    /**
+     * Whether the embedded MCP server must enforce its auth token. Resolved
+     * before the handshake spawns the server, so the configured harness comes
+     * from preferences; a custom binary the catalog cannot identify falls back
+     * to the PI binary-name check that covers bare {@code pi}/{@code pi-agent}
+     * installs.
+     */
+    private static boolean requiresMcpAuthToken() {
+        HarnessCatalog.Harness harness = configuredHarness();
+        if (harness != HarnessCatalog.UNKNOWN) {
+            return harness.acceptsMcpAuthToken();
+        }
+        // A bare pi/pi-agent binary has no catalog entry, so its name decides.
+        return !BinaryResolver.isPiHarness();
+    }
+
+    /** Configured harness before the handshake: stored id, then binary name, then {@link HarnessCatalog#UNKNOWN}. */
+    private static HarnessCatalog.Harness configuredHarness() {
+        String harnessId = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .get(PreferenceKeys.ACP_HARNESS_ID, null);
+        HarnessCatalog.Harness harness = harnessId == null || harnessId.isEmpty()
+                ? null : HarnessCatalog.byId(harnessId);
+        if (harness == null || harness == HarnessCatalog.UNKNOWN) {
+            harness = HarnessCatalog.byBinaryName(BinaryResolver.resolveBinaryName());
+        }
+        return harness;
     }
 
     /** True when {@code client}/{@code generation} still own the lifecycle state. */

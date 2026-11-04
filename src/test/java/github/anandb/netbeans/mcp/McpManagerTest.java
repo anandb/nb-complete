@@ -57,7 +57,7 @@ class McpManagerTest {
                 List.of("test-harness"), "",
                 false, false, false, false, mcpSupported,
                 false, false, false, false, false, false,
-                "", "", "", "", "", "", "", List.of());
+                "", "", "", "", "", "", "", List.of(), true);
     }
 
     // ---- config gating ------------------------------------------------------

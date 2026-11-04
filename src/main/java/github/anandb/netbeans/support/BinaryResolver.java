@@ -158,9 +158,10 @@ public final class BinaryResolver {
     /**
      * Returns {@code true} when the configured ACP binary is a PI harness
      * variant ({@code pi}, {@code pi-acp}, {@code pi-agent}). These harnesses
-     * do not support auth tokens on MCP server URLs, so the embedded MCP
-     * server runs without token auth for them; all other agents (opencode,
-     * goose, ...) get token-protected URLs.
+     * do not support auth tokens on MCP server URLs. The token policy itself is
+     * the catalog's {@code acceptsMcpAuthToken} capability; this check only
+     * covers a bare {@code pi}/{@code pi-agent} binary that no catalog entry
+     * names, so the harness resolves to {@code UNKNOWN}.
      */
     public static boolean isPiHarness() {
         String name = resolveBinaryName();

@@ -1041,9 +1041,14 @@ public void toggleVisibility() {
   It is Java-only; other languages still go through `search_project`. Follow a returned `path` with
   `open_pos` (no `focus`) to read the file.
 - **Token auth**: `MessageServlet` verifies a per-instance token whenever `authRequired` is set.
-  `BinaryResolver.isPiHarness()` exempts the PI family (`pi`, `pi-acp`, `pi-agent`) — they cannot
-  carry tokens. `ServerProcessLifecycle` sets the flag BEFORE `toolExecutor.start()`; do NOT move
-  it after, and do NOT hand authenticated URLs to PI harness sessions
+  `Harness.acceptsMcpAuthToken()` (false for the PI family and Jcode, true for every other
+  catalog entry) is the policy: those agents cannot carry a token on an MCP URL, so the embedded
+  MCP server runs without token enforcement for them. `ServerProcessLifecycle` resolves the
+  configured harness from preferences before the handshake (stored id → binary name → `UNKNOWN`)
+  because the flag must be set BEFORE `toolExecutor.start()`; do NOT move
+  it after. A custom binary the catalog cannot identify keeps the token requirement unless
+  `BinaryResolver.isPiHarness()` matches a bare `pi`/`pi-agent` install. Do NOT hand
+  authenticated URLs to PI harness sessions
   (`McpManager.getServerConfig()`). `run_command` is gated on its *working directory*
   (`ProjectPathGuard.isInOpenProject(workDir)`, defaulting to the current session directory) and
   by `support/RunCommandPolicy`: when either the allowlist or denylist (*Options > BeanBot >

@@ -51,7 +51,11 @@ public final class HarnessCatalog {
             String installLinux,
             String prerequisites,
             String docsUrl,
-            List<String> windowsInstallSubDirs) {
+            List<String> windowsInstallSubDirs,
+            /** True when the agent can carry the embedded MCP server's auth token on its
+             *  MCP URL. False for the PI family and Jcode, which cannot, so the server
+             *  runs without token enforcement for them. */
+            boolean acceptsMcpAuthToken) {
 
         /**
          * Resolves the unsupported-model-selection message from the model
@@ -85,7 +89,7 @@ public final class HarnessCatalog {
                     supportsModelSelection, supportsSessionList, supportsAgentList,
                     unsupportedModelSelectionMessage, unsupportedModelSelectionPlaceholder,
                     installWindows, installMac, installLinux, prerequisites, docsUrl,
-                    windowsInstallSubDirs);
+                    windowsInstallSubDirs, acceptsMcpAuthToken);
         }
 
         /** True when the given binary basename belongs to this harness, with or
@@ -135,7 +139,7 @@ public final class HarnessCatalog {
         "brew install anomalyco/tap/opencode",
         "curl -fsSL https://opencode.ai/install | bash",
         "", "https://opencode.ai/docs/",
-        List.of()
+        List.of(), true
     );
 
     /**
@@ -170,7 +174,7 @@ public final class HarnessCatalog {
         "Requires Node.js and a ChatGPT account or OPENAI_API_KEY. Bundles the Codex CLI, "
                 + "so a separate codex install is not needed.",
         "https://github.com/agentclientprotocol/codex-acp",
-        List.of()
+        List.of(), true
     );
 
     public static final Harness GOOSE = new Harness(
@@ -183,7 +187,7 @@ public final class HarnessCatalog {
         "brew install block-goose-cli",
         "curl -fsSL https://github.com/aaif-goose/goose/releases/download/stable/download_cli.sh | bash",
         "", "https://goose-docs.ai/docs/getting-started/installation",
-        List.of()
+        List.of(), true
     );
 
     public static final Harness PI = new Harness(
@@ -198,7 +202,7 @@ public final class HarnessCatalog {
             "Requires Node.js 22+ and pi 0.80.4+ on your PATH. Install the ACP adapter separately: "
                     + "npm install -g @geohar/pi-acp. For MCP Tools, add pi-mcp-adapter to your Pi packages.",
             "https://github.com/georgeharker/pi-acp",
-            List.of("%LOCALAPPDATA%\\pi-node\\current")
+            List.of("%LOCALAPPDATA%\\pi-node\\current"), false
     );
 
     public static final Harness CURSOR = new Harness(
@@ -212,7 +216,7 @@ public final class HarnessCatalog {
         "curl https://cursor.com/install -fsSL | bash",
         "The ACP entry point is the cursor-agent CLI itself (run with \"agent acp\").",
         "https://cursor.com/docs/cli/acp",
-        List.of()
+        List.of(), true
     );
 
     public static final Harness COPILOT = new Harness(
@@ -226,7 +230,7 @@ public final class HarnessCatalog {
         "npm install -g @github/copilot",
         "Requires Node.js 22+. Authenticate with \"copilot login\" before using ACP.",
         "https://github.com/github/copilot-cli",
-        List.of()
+        List.of(), true
     );
 
     public static final Harness CLAUDE = new Harness(
@@ -240,7 +244,7 @@ public final class HarnessCatalog {
         "npm install -g @agentclientprotocol/claude-agent-acp",
         "Requires Node.js 18+. Bundles the Claude Agent SDK, so a separate claude CLI install is not needed.",
         "https://github.com/agentclientprotocol/claude-agent-acp",
-        List.of()
+        List.of(), true
     );
 
     public static final Harness HERMES = new Harness(
@@ -254,7 +258,7 @@ public final class HarnessCatalog {
             "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash",
             "Requires Python 3.10+. Enable ACP with: cd ~/.hermes/hermes-agent && uv pip install -e '.[acp]'.",
             "https://hermes-agent.nousresearch.com/docs/user-guide/features/acp",
-            List.of("%LOCALAPPDATA%\\hermes\\bin")
+            List.of("%LOCALAPPDATA%\\hermes\\bin"), true
     );
 
     public static final Harness GEMINI = new Harness(
@@ -266,7 +270,7 @@ public final class HarnessCatalog {
         "npm install -g @google/gemini-cli", "npm install -g @google/gemini-cli", "npm install -g @google/gemini-cli",
         "Requires Node.js 20+",
         "https://geminicli.com/docs/get-started/installation/",
-        List.of()
+        List.of(), true
     );
 
     public static final Harness OMP = new Harness(
@@ -280,7 +284,7 @@ public final class HarnessCatalog {
         "curl -fsSL https://omp.sh/install | sh",
         "Authenticate a model provider in a terminal (omp, then /login) before ACP. The ACP entry point is omp acp.",
         "https://omp.sh/docs/acp",
-        List.of("%LOCALAPPDATA%\\omp")
+        List.of("%LOCALAPPDATA%\\omp"), true
     );
 
     public static final Harness OPENCLAW = new Harness(
@@ -294,7 +298,7 @@ public final class HarnessCatalog {
         "curl -fsSL https://openclaw.ai/install.sh | bash",
         "Requires Node 24.16+ or 26.1+ - Node 26 is recommended; the installer provisions Node 26 on macOS and Node 24 LTS on Linux",
         "https://docs.openclaw.ai/install",
-        List.of()
+        List.of(), true
     );
 
     public static final Harness DEVIN = new Harness(
@@ -308,7 +312,7 @@ public final class HarnessCatalog {
         "curl -fsSL https://cli.devin.ai/install.sh | bash",
         "",
         "https://docs.devin.ai/cli",
-        List.of()
+        List.of(), true
     );
 
     /**
@@ -332,7 +336,7 @@ public final class HarnessCatalog {
         "Authenticate with kilo auth login (or run kilo and use /connect) before connecting. "
                 + "The npm route requires Node.js.",
         "https://kilo.ai/docs/code-with-ai/platforms/cli",
-        List.of("%USERHOME%/.kilo/bin")
+        List.of("%USERHOME%/.kilo/bin"), true
     );
 
     /**
@@ -361,7 +365,7 @@ public final class HarnessCatalog {
         "Requires Cline CLI 3.0.74+ (npm i -g cline@latest). Run cline auth once (or set CLINE_API_KEY) "
                 + "before connecting; ACP sessions start no interactive login.",
         "https://docs.cline.bot/usage/acp",
-        List.of()
+        List.of(), true
     );
 
     /**
@@ -386,7 +390,7 @@ public final class HarnessCatalog {
         "Sign in once with jcode login (or import an existing provider credential) before connecting. "
                 + "The ACP entry point is jcode acp.",
         "https://jcode.sh/docs",
-        List.of("%LOCALAPPDATA%\\jcode\\bin")
+        List.of("%LOCALAPPDATA%\\jcode\\bin"), false
     );
 
     /** Fallback for unknown harnesses. */
@@ -397,7 +401,7 @@ public final class HarnessCatalog {
         "",
         "",
         "", "", "", "", "",
-        List.of()
+        List.of(), true
     );
 
     /**
