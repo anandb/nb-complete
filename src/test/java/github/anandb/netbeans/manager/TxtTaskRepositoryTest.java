@@ -13,7 +13,6 @@ import org.junit.jupiter.api.io.TempDir;
 import org.openide.util.RequestProcessor;
 
 import github.anandb.netbeans.contract.TaskInput;
-import github.anandb.netbeans.contract.TaskRepositoryControl;
 import github.anandb.netbeans.model.TaskRecord;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -27,7 +26,7 @@ class TxtTaskRepositoryTest {
 
     @Test
     void addGetUpdateDeleteReflectSynchronously() {
-        TaskRepositoryControl repo = new TxtTaskRepository();
+        TxtTaskRepository repo = new TxtTaskRepository();
         repo.registerRepository("r1", tempDir.resolve("tasks.txt").toString(), "Test Repo");
 
         assertTrue(repo.repositoryIds().contains("r1"));
@@ -50,6 +49,9 @@ class TxtTaskRepositoryTest {
 
         assertTrue(repo.delete("r1", added.id()));
         assertEquals(0, repo.list("r1").size());
+
+        // Drain the queued writes before JUnit removes the temp directory.
+        repo.awaitIoIdle();
     }
 
     @Test
@@ -58,7 +60,7 @@ class TxtTaskRepositoryTest {
         String content = "x (A) 2026-08-02 2026-08-01 Already there @urgent +proj id:t-1 estimate:4 consumed:2 upd:2026-08-02T10:00:00Z\n";
         Files.writeString(txt, content);
 
-        TaskRepositoryControl repo = new TxtTaskRepository();
+        TxtTaskRepository repo = new TxtTaskRepository();
         repo.registerRepository("r1", txt.toString(), "Test");
 
         assertTrue(repo.reload("r1"));
@@ -71,11 +73,14 @@ class TxtTaskRepositoryTest {
         assertEquals(List.of("proj"), loaded.get(0).projects());
         assertEquals(4, loaded.get(0).estimate());
         assertEquals(2, loaded.get(0).consumed());
+
+        // registerRepository queues the load; drain it before temp-dir cleanup.
+        repo.awaitIoIdle();
     }
 
     @Test
     void unregisterForgetsRepository() {
-        TaskRepositoryControl repo = new TxtTaskRepository();
+        TxtTaskRepository repo = new TxtTaskRepository();
         repo.registerRepository("r1", tempDir.resolve("a.txt").toString(), "A");
         repo.registerRepository("r2", tempDir.resolve("b.txt").toString(), "B");
         assertEquals(2, repo.repositoryIds().size());
@@ -83,6 +88,9 @@ class TxtTaskRepositoryTest {
         repo.unregisterRepository("r1");
         assertEquals(List.of("r2"), repo.repositoryIds());
         assertTrue(repo.list("r1").isEmpty());
+
+        // Two registrations queued loads; drain them before temp-dir cleanup.
+        repo.awaitIoIdle();
     }
 
     @Test
@@ -118,8 +126,7 @@ class TxtTaskRepositoryTest {
             // which makes TempDir cleanup fail and surfaces as a JUnit
             // "failed to close extension context" error.
             release.countDown();
-            RequestProcessor.Task sentinel = io.post(() -> { });
-            sentinel.waitFinished(5000);
+            repo.awaitIoIdle();
         }
 
         assertEquals(List.of(added), repo.list("r1"));
@@ -128,7 +135,6 @@ class TxtTaskRepositoryTest {
 
         // update() schedules its own persist; drain it too, or the write can land
         // during JUnit's temp-directory cleanup (DirectoryNotEmptyException).
-        RequestProcessor.Task afterUpdate = io.post(() -> { });
-        afterUpdate.waitFinished(5000);
+        repo.awaitIoIdle();
     }
 }

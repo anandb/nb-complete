@@ -356,6 +356,21 @@ public final class TxtTaskRepository implements TaskRepositoryControl {
     }
 
     /**
+     * Test seam: blocks until every queued load/persist on the single I/O thread
+     * has finished. Production never waits for ownership I/O on the caller, but a
+     * test that owns a temp directory must, or the write can land during cleanup.
+     */
+    void awaitIoIdle() {
+        RequestProcessor.Task sentinel = io.post(() -> { });
+        try {
+            sentinel.waitFinished(10_000);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while draining task I/O", ex);
+        }
+    }
+
+    /**
      * Writes the cache to disk, guarding against silently overwriting a file
      * modified outside the IDE. Must run off the EDT.
      */
