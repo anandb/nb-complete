@@ -39,6 +39,17 @@ Supported coding harnesses: **Oh My Pi, OpenCode, Codex, OpenClaw, Pi, Goose, Cu
 3. The generated NBM will be located in the `./target/nbm/` directory.
 4. Install the plugin through the NetBeans Plugin Manager.
 
+### Dependency Security Scan
+
+The `check-cvss` profile runs [OWASP Dependency-Check](https://jeremylong.github.io/DependencyCheck/) against the resolved dependencies:
+
+```bash
+export NVD_API_KEY=<your key>    # free from https://nvd.nist.gov/developers/request-an-api-key
+./mvnw verify -Pcheck-cvss
+```
+
+The key is read from the `NVD_API_KEY` environment variable (or pass `-Dnvd.api.key=...`). Without a key the NVD feed is rate-limited heavily, so the first run is slow either way — it downloads the NVD dataset into the local Maven repository and caches it for later runs. Reports land in `target/dependency-check-report.html` and `.json`; accepted false positives belong in `scripts/dependency-check-suppressions.xml`.
+
 ---
 
 ## Architecture
