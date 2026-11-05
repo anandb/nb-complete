@@ -40,6 +40,9 @@ import github.anandb.netbeans.support.PluginSettings;
 final class PreambleDialog extends JDialog {
     private static final long serialVersionUID = 1L;
     private static final Dimension TEXT_SIZE = new Dimension(500, 300);
+    /** Wrap box for the copy tooltip. Swing's HTML view renders it wider than this
+     *  number (roughly 1.3×), so 320 lands the popup near the 420px other tooltips use. */
+    private static final int TOOLTIP_WIDTH_PX = 320;
     private final JTextArea preambleArea;
     private final JButton copySystemButton;
     /** Shown above the copy button on hover; stays until the dialog closes. */
@@ -126,15 +129,7 @@ final class PreambleDialog extends JDialog {
             return;
         }
         String text = NbBundle.getMessage(PreambleDialog.class, "TT_PreambleCopySystem");
-        StringBuilder html = new StringBuilder("<html><div style=\"width: 320px\">");
-        for (String line : text.split("\n")) {
-            if (html.length() > 40) {
-                html.append("<br>");
-            }
-            html.append(line);
-        }
-        html.append("</div></html>");
-        JLabel tip = new JLabel(html.toString());
+        JLabel tip = new JLabel(copyTooltipHtml(text));
         tip.setOpaque(true);
         tip.setBackground(UIManager.getColor("ToolTip.background"));
         tip.setForeground(UIManager.getColor("ToolTip.foreground"));
@@ -151,6 +146,30 @@ final class PreambleDialog extends JDialog {
             // Button not yet on screen — ignore hover before the dialog shows.
             copyTipPopup = null;
         }
+    }
+
+    /**
+     * Renders the copy-button tooltip: the first line is the bold lead sentence, each
+     * following line becomes its own paragraph. Explicit {@code \n}s carry the structure,
+     * so the bundle text does not depend on character counts to break lines.
+     */
+    static String copyTooltipHtml(String text) {
+        String[] paragraphs = text == null ? new String[0] : text.split("\n");
+        StringBuilder html = new StringBuilder("<html><body style='width: ")
+                .append(TOOLTIP_WIDTH_PX).append("px'>");
+        boolean first = true;
+        for (String paragraph : paragraphs) {
+            String line = paragraph.strip();
+            if (line.isEmpty()) {
+                continue;
+            }
+            if (!first) {
+                html.append("<br><br>");
+            }
+            html.append(first ? "<b>" + line + "</b>" : line);
+            first = false;
+        }
+        return html.append("</body></html>").toString();
     }
 
     private void hideCopyTooltip() {
