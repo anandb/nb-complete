@@ -344,7 +344,7 @@ public class SessionLifecycleHandler implements SessionListener {
                     statusController.startThinking();
                 } else {
                     String current = statusController.getStatusText();
-                    String thinking = NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Thinking");
+                    String thinking = NbBundle.getMessage(UIBundle.class, "STATUS_Thinking");
                     if (current != null && current.contains(thinking.replace(".", "").trim())) {
                         statusController.setStatus("STATUS_Responding");
                     }
@@ -450,8 +450,8 @@ public class SessionLifecycleHandler implements SessionListener {
                     boolean hidden = hiddenById.getOrDefault(currentId, false);
                     hideBtn.setIcon(ThemeManager.getIcon(hidden ? "unarchive.svg" : "archive.svg", PluginSettings.getToolbarIconSize()));
                     hideBtn.setToolTipText(hidden
-                        ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_UnarchiveSession")
-                        : NbBundle.getMessage(AssistantTopComponent.class, "HINT_ArchiveSession"));
+                        ? NbBundle.getMessage(UIBundle.class, "HINT_UnarchiveSession")
+                        : NbBundle.getMessage(UIBundle.class, "HINT_ArchiveSession"));
                 }
                 newSessionBtn.setEnabled(hasProjects);
                 renameSessionBtn.setEnabled(hasSessions);
@@ -647,7 +647,7 @@ public class SessionLifecycleHandler implements SessionListener {
                 return;
             }
             chatPanel.addMessage(ProcessedMessage.createInfo(
-                    NbBundle.getMessage(SessionLifecycleHandler.class, "INFO_PostingPreamble")));
+                    NbBundle.getMessage(UIBundle.class, "INFO_PostingPreamble")));
         });
     }
 
@@ -662,7 +662,7 @@ public class SessionLifecycleHandler implements SessionListener {
                 return;
             }
             chatPanel.addMessage(ProcessedMessage.createInfo(
-                    NbBundle.getMessage(SessionLifecycleHandler.class, "INFO_SessionReady")));
+                    NbBundle.getMessage(UIBundle.class, "INFO_SessionReady")));
         });
     }
 
@@ -772,8 +772,8 @@ public class SessionLifecycleHandler implements SessionListener {
             boolean hidden = sessionService.get().isHidden(sessionId);
             hideBtn.setIcon(ThemeManager.getIcon(hidden ? "unarchive.svg" : "archive.svg", PluginSettings.getToolbarIconSize()));
             hideBtn.setToolTipText(hidden
-                ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_UnarchiveSession")
-                : NbBundle.getMessage(AssistantTopComponent.class, "HINT_ArchiveSession"));
+                ? NbBundle.getMessage(UIBundle.class, "HINT_UnarchiveSession")
+                : NbBundle.getMessage(UIBundle.class, "HINT_ArchiveSession"));
             // Sync the dropdown to the loaded session so it always reflects what's displayed.
             boolean found = false;
             for (int i = 0; i < sessionDropdown.getItemCount(); i++) {
@@ -845,7 +845,7 @@ public class SessionLifecycleHandler implements SessionListener {
             chatPanel.stopStreaming();
             chatPanel.addMessage(ProcessedMessage.createError(
                 MessageType.error_response,
-                NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Error", message),
+                NbBundle.getMessage(UIBundle.class, "STATUS_Error", message),
                 null, null
             ));
             // On server crash/error, dismiss any stuck permission/config-confirm

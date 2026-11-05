@@ -288,7 +288,7 @@ public class ActionItemsCopyButton implements Runnable, PropertyChangeListener, 
             return null;
         }
         JButton button = UIUtils.createToolbarButton("copy-action-items.svg", 16,
-                NbBundle.getMessage(ActionItemsCopyButton.class, "TT_ActionItemsCopyAll"),
+                NbBundle.getMessage(UIBundle.class, "TT_ActionItemsCopyAll"),
                 event -> onCopy.run());
         button.setName(BUTTON_NAME);
         button.setFocusable(false);

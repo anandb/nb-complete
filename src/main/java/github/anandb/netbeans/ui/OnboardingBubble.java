@@ -104,14 +104,14 @@ class OnboardingBubble extends JPanel {
         headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
         headerPanel.setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 0));
         JLabel titleLabel = new JLabel(
-                NbBundle.getMessage(OnboardingBubble.class, "OnboardingBubble.Title"));
+                NbBundle.getMessage(UIBundle.class, "OnboardingBubble.Title"));
         titleLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD,
                 ThemeManager.getFont().getSize() + 4f));
         titleLabel.setForeground(theme.foreground());
         titleLabel.setBorder(BorderFactory.createEmptyBorder(2, 0, 2, 0));
         titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         JTextAreaNoWrap subtitle = new JTextAreaNoWrap(NbBundle.getMessage(
-                OnboardingBubble.class, "OnboardingBubble.Subtitle"));
+                UIBundle.class, "OnboardingBubble.Subtitle"));
         subtitle.setForeground(theme.mutedForeground());
         subtitle.setBorder(BorderFactory.createEmptyBorder(2, 0, 10, 0));
         subtitle.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -160,12 +160,12 @@ class OnboardingBubble extends JPanel {
             }
         }
         rowsPanel.add(createSectionLabel(NbBundle.getMessage(
-                OnboardingBubble.class, "OnboardingBubble.Section.Installed", switchable.size()), theme), gbc);
+                UIBundle.class, "OnboardingBubble.Section.Installed", switchable.size()), theme), gbc);
         for (HarnessCatalog.Harness harness : switchable) {
             rowsPanel.add(createInstalledRow(harness, false, theme), gbc);
         }
         rowsPanel.add(createSectionLabel(NbBundle.getMessage(
-                OnboardingBubble.class, "OnboardingBubble.Section.Uninstalled", uninstalled.size()), theme), gbc);
+                UIBundle.class, "OnboardingBubble.Section.Uninstalled", uninstalled.size()), theme), gbc);
         for (HarnessCatalog.Harness harness : uninstalled) {
             rowsPanel.add(createUninstalledRow(harness, theme), gbc);
         }
@@ -181,7 +181,7 @@ class OnboardingBubble extends JPanel {
         buttonsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
         buttonsPanel.setOpaque(false);
         JButton manualSetupBtn = new JButton(NbBundle.getMessage(
-                OnboardingBubble.class, "OnboardingBubble.Button.ManualSetup"));
+                UIBundle.class, "OnboardingBubble.Button.ManualSetup"));
         manualSetupBtn.setFocusPainted(false);
         manualSetupBtn.setIcon(ThemeManager.getIcon("settings.svg", 16));
         manualSetupBtn.setIconTextGap(6);
@@ -190,7 +190,7 @@ class OnboardingBubble extends JPanel {
         buttonsPanel.add(manualSetupBtn);
         if (dismissCallback != null) {
             JButton closeBtn = new JButton(NbBundle.getMessage(
-                    OnboardingBubble.class, "OnboardingBubble.Button.Close"));
+                    UIBundle.class, "OnboardingBubble.Button.Close"));
             closeBtn.setFocusPainted(false);
             closeBtn.addActionListener(e -> dismissCallback.run());
             buttonsPanel.add(closeBtn);
@@ -255,7 +255,7 @@ class OnboardingBubble extends JPanel {
         }
         JPanel section = new JPanel(new BorderLayout(0, 4));
         section.setOpaque(false);
-        String headerText = NbBundle.getMessage(OnboardingBubble.class,
+        String headerText = NbBundle.getMessage(UIBundle.class,
                 "OnboardingBubble.Section.Limited", rows.size());
         JButton header = createCollapsibleSectionHeader("v " + headerText, theme);
         JPanel rowContainer = new JPanel();
@@ -300,7 +300,7 @@ class OnboardingBubble extends JPanel {
     /** Muted, non-alarming pill; the word "Limited" carries the meaning without color. */
     private static JLabel limitedBadge(HarnessCatalog.Harness harness, ColorTheme theme) {
         JLabel badge = new JLabel(NbBundle.getMessage(
-                OnboardingBubble.class, "OnboardingBubble.Badge.Limited"));
+                UIBundle.class, "OnboardingBubble.Badge.Limited"));
         badge.setFont(ThemeManager.getFont().deriveFont(Font.BOLD,
                 Math.max(9f, ThemeManager.getFont().getSize() - 2f)));
         badge.setForeground(theme.mutedForeground());
@@ -309,7 +309,7 @@ class OnboardingBubble extends JPanel {
                 BorderFactory.createEmptyBorder(1, 5, 1, 5)));
         String limitations = harness.limitations();
         if (!limitations.isBlank()) {
-            badge.setToolTipText(NbBundle.getMessage(OnboardingBubble.class,
+            badge.setToolTipText(NbBundle.getMessage(UIBundle.class,
                     "OnboardingBubble.Hint.Limited", limitations));
         }
         return badge;
@@ -325,7 +325,7 @@ class OnboardingBubble extends JPanel {
                 BorderFactory.createLineBorder(theme.bubbleBorder()),
                 BorderFactory.createEmptyBorder(10, 12, 10, 12)));
         card.add(createSectionLabel(NbBundle.getMessage(
-                OnboardingBubble.class, "OnboardingBubble.Section.Active"), theme), BorderLayout.NORTH);
+                UIBundle.class, "OnboardingBubble.Section.Active"), theme), BorderLayout.NORTH);
         JPanel row = new JPanel(new BorderLayout(8, 0));
         row.setOpaque(false);
         row.add(harnessIconLabel(harness), BorderLayout.WEST);
@@ -339,7 +339,7 @@ class OnboardingBubble extends JPanel {
         textPanel.add(pathLabel);
         row.add(textPanel, BorderLayout.CENTER);
         JButton activeBtn = new JButton("\u2713 "
-                + NbBundle.getMessage(OnboardingBubble.class, "OnboardingBubble.Badge.Active"));
+                + NbBundle.getMessage(UIBundle.class, "OnboardingBubble.Badge.Active"));
         activeBtn.setEnabled(false);
         activeBtn.setFocusPainted(false);
         row.add(activeBtn, BorderLayout.EAST);
@@ -349,7 +349,7 @@ class OnboardingBubble extends JPanel {
             card.add(activation, BorderLayout.SOUTH);
         } else {
             JLabel auth = new JLabel("\u24D8 " + NbBundle.getMessage(
-                    OnboardingBubble.class, "OnboardingBubble.AuthWarning"));
+                    UIBundle.class, "OnboardingBubble.AuthWarning"));
             auth.setFont(ThemeManager.getFont().deriveFont(11f));
             auth.setForeground(theme.mutedForeground());
             auth.setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 0));
@@ -373,12 +373,12 @@ class OnboardingBubble extends JPanel {
         JButton disclosure = new JButton(">");
         disclosure.setFocusPainted(false);
         disclosure.setMargin(new Insets(0, 2, 0, 2));
-        disclosure.setToolTipText(NbBundle.getMessage(OnboardingBubble.class, "OnboardingBubble.Hint.Expand"));
+        disclosure.setToolTipText(NbBundle.getMessage(UIBundle.class, "OnboardingBubble.Hint.Expand"));
         disclosure.addActionListener(e -> {
             boolean showing = !pathLabel.isVisible();
             pathLabel.setVisible(showing);
             disclosure.setText(showing ? "v" : ">");
-            disclosure.setToolTipText(NbBundle.getMessage(OnboardingBubble.class,
+            disclosure.setToolTipText(NbBundle.getMessage(UIBundle.class,
                     showing ? "OnboardingBubble.Hint.Collapse" : "OnboardingBubble.Hint.Expand"));
             revalidate();
             repaint();
@@ -402,12 +402,12 @@ class OnboardingBubble extends JPanel {
         btnPanel.setOpaque(false);
         if (isActive) {
             JButton activeBtn = new JButton("\u2713 "
-                    + NbBundle.getMessage(OnboardingBubble.class, "OnboardingBubble.Badge.Active"));
+                    + NbBundle.getMessage(UIBundle.class, "OnboardingBubble.Badge.Active"));
             activeBtn.setEnabled(false);
             activeBtn.setFocusPainted(false);
             btnPanel.add(activeBtn);
         } else {
-            JButton useBtn = new JButton(NbBundle.getMessage(OnboardingBubble.class, "OnboardingBubble.Button.Use"));
+            JButton useBtn = new JButton(NbBundle.getMessage(UIBundle.class, "OnboardingBubble.Button.Use"));
             useBtn.setFocusPainted(false);
             useBtn.setIcon(ThemeManager.getIcon("check.svg", 14));
             useBtn.setIconTextGap(6);
@@ -436,7 +436,7 @@ class OnboardingBubble extends JPanel {
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         btnPanel.setOpaque(false);
         JButton installBtn = new JButton(NbBundle.getMessage(
-                OnboardingBubble.class, "OnboardingBubble.Button.GetPlugin"));
+                UIBundle.class, "OnboardingBubble.Button.GetPlugin"));
         installBtn.setFocusPainted(false);
         installBtn.setIcon(ThemeManager.getIcon("download.svg", 14));
         installBtn.setIconTextGap(6);
@@ -476,7 +476,7 @@ class OnboardingBubble extends JPanel {
         panel.setBorder(BorderFactory.createEmptyBorder(withTitle ? 8 : 2, 0, 0, 0));
         if (withTitle) {
             JLabel title = new JLabel(NbBundle.getMessage(
-                    OnboardingBubble.class, "OnboardingBubble.Activation.BeforeFirstChat"));
+                    UIBundle.class, "OnboardingBubble.Activation.BeforeFirstChat"));
             title.setFont(ThemeManager.getFont().deriveFont(Font.BOLD, 11f));
             title.setForeground(theme.foreground());
             title.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -487,7 +487,7 @@ class OnboardingBubble extends JPanel {
             line.setOpaque(false);
             line.setAlignmentX(Component.LEFT_ALIGNMENT);
             JLabel prompt = new JLabel(NbBundle.getMessage(
-                    OnboardingBubble.class, "OnboardingBubble.Activation.SignIn"));
+                    UIBundle.class, "OnboardingBubble.Activation.SignIn"));
             prompt.setFont(ThemeManager.getFont().deriveFont(11f));
             prompt.setForeground(theme.mutedForeground());
             line.add(prompt);
@@ -503,7 +503,7 @@ class OnboardingBubble extends JPanel {
         }
         if (afterInstall) {
             JTextAreaNoWrap restart = new JTextAreaNoWrap(NbBundle.getMessage(
-                    OnboardingBubble.class, "OnboardingBubble.Activation.AfterInstall"), 10f);
+                    UIBundle.class, "OnboardingBubble.Activation.AfterInstall"), 10f);
             restart.setForeground(theme.mutedForeground());
             restart.setBorder(BorderFactory.createEmptyBorder(2, 0, 0, 0));
             restart.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -521,7 +521,7 @@ class OnboardingBubble extends JPanel {
         chip.setBackground(theme.isDark() ? new Color(0x1A1B26) : new Color(0xF0F0F0));
         chip.setBorder(BorderFactory.createEmptyBorder(1, 6, 1, 6));
         chip.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        chip.setToolTipText(NbBundle.getMessage(OnboardingBubble.class, "OnboardingBubble.Hint.Copy"));
+        chip.setToolTipText(NbBundle.getMessage(UIBundle.class, "OnboardingBubble.Hint.Copy"));
         chip.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mousePressed(java.awt.event.MouseEvent e) {
@@ -540,14 +540,14 @@ class OnboardingBubble extends JPanel {
                 BorderFactory.createLineBorder(theme.bubbleBorder()),
                 BorderFactory.createEmptyBorder(8, 10, 8, 10)));
         JButton header = new JButton("\u26A0 "
-                + NbBundle.getMessage(OnboardingBubble.class, "OnboardingBubble.Note") + "  "
-                + NbBundle.getMessage(OnboardingBubble.class, "OnboardingBubble.Note.Title"));
+                + NbBundle.getMessage(UIBundle.class, "OnboardingBubble.Note") + "  "
+                + NbBundle.getMessage(UIBundle.class, "OnboardingBubble.Note.Title"));
         header.setFocusPainted(false);
         header.setHorizontalAlignment(JButton.LEFT);
         header.setContentAreaFilled(false);
         header.setBorderPainted(false);
         JTextAreaNoWrap body = new JTextAreaNoWrap(NbBundle.getMessage(
-                OnboardingBubble.class, "OnboardingBubble.Note.Body"));
+                UIBundle.class, "OnboardingBubble.Note.Body"));
         body.setForeground(theme.mutedForeground());
         body.setBorder(BorderFactory.createEmptyBorder(0, 4, 0, 0));
         body.setVisible(true);
@@ -594,7 +594,7 @@ class OnboardingBubble extends JPanel {
         cmdLabel.setFont(IconResourceManager.getMonospaceFont());
         cmdLabel.setForeground(cmdFg);
         cmdLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        cmdLabel.setToolTipText(NbBundle.getMessage(OnboardingBubble.class, "OnboardingBubble.Hint.Copy"));
+        cmdLabel.setToolTipText(NbBundle.getMessage(UIBundle.class, "OnboardingBubble.Hint.Copy"));
         JPanel cmdPanel = new JPanel(new BorderLayout());
         cmdPanel.setOpaque(true);
         cmdPanel.setBackground(cmdBg);
@@ -632,7 +632,7 @@ class OnboardingBubble extends JPanel {
         // install (the "Use" path shows the same message in a dialog).
         if ("gemini".equals(harness.id())) {
             JTextAreaNoWrap modelHint = new JTextAreaNoWrap(
-                    NbBundle.getMessage(OnboardingBubble.class, "MSG_GeminiDefaultModel"), 10f);
+                    NbBundle.getMessage(UIBundle.class, "MSG_GeminiDefaultModel"), 10f);
             modelHint.setForeground(theme.mutedForeground());
             modelHint.setBorder(BorderFactory.createEmptyBorder(4, 0, 4, 0));
             modelHint.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -640,7 +640,7 @@ class OnboardingBubble extends JPanel {
         }
 
         JButton docsBtn = new JButton(NbBundle.getMessage(
-                OnboardingBubble.class, "OnboardingBubble.Button.Docs"));
+                UIBundle.class, "OnboardingBubble.Button.Docs"));
         docsBtn.setFocusPainted(false);
         docsBtn.addActionListener(e ->
                 BrowserUtils.openOrCopyUrl(harness.docsUrl(), null, null));
@@ -671,7 +671,7 @@ class OnboardingBubble extends JPanel {
      *  given anchor, fading out after a moment. */
     private void showCopiedTip(Component anchor) {
         ColorTheme theme = ThemeManager.getCurrentTheme();
-        JLabel tip = new JLabel(NbBundle.getMessage(OnboardingBubble.class, "OnboardingBubble.Copied"));
+        JLabel tip = new JLabel(NbBundle.getMessage(UIBundle.class, "OnboardingBubble.Copied"));
         tip.setOpaque(true);
         tip.setBackground(theme.isDark() ? new Color(0x2A2B33) : new Color(0xFFFFE1));
         tip.setForeground(theme.foreground());

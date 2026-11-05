@@ -118,7 +118,7 @@ class BubbleActionBar {
         this.pinned = (pinStore != null && pinStore.isPinned(sessionId, messageId));
 
         pinBtn = UIUtils.createToolbarButton("pin.svg", 32,
-                NbBundle.getMessage(BubbleActionBar.class,
+                NbBundle.getMessage(UIBundle.class,
                         pinned ? "HINT_UnpinMessage" : "HINT_PinMessage"),
                 e -> flipPin(pinStore));
         pinBtn.setBorder(BorderFactory.createEmptyBorder());
@@ -133,7 +133,7 @@ class BubbleActionBar {
         }
 
         copyBtn = UIUtils.createToolbarButton("copy.svg", 32,
-                NbBundle.getMessage(BubbleActionBar.class, "HINT_CopyAssistantMessage"),
+                NbBundle.getMessage(UIBundle.class, "HINT_CopyAssistantMessage"),
                 e -> copyMessageToClipboard());
         copyBtn.setBorder(BorderFactory.createEmptyBorder());
         copyBtn.setContentAreaFilled(false);
@@ -164,7 +164,7 @@ class BubbleActionBar {
 
     private void setupCopyOnlyButton(ColorTheme theme) {
         copyBtn = UIUtils.createToolbarButton("copy.svg", 32,
-                NbBundle.getMessage(BubbleActionBar.class, "HINT_CopyAssistantMessage"),
+                NbBundle.getMessage(UIBundle.class, "HINT_CopyAssistantMessage"),
                 e -> copyMessageToClipboard());
         copyBtn.setBorder(BorderFactory.createEmptyBorder());
         copyBtn.setContentAreaFilled(false);
@@ -295,7 +295,7 @@ class BubbleActionBar {
         store.setPinned(sid, messageId, pinned);
         pinBtn.setIcon(ThemeManager.getIcon(
                 pinned ? "pinned.svg" : "pin.svg", 32));
-        pinBtn.setToolTipText(NbBundle.getMessage(BubbleActionBar.class,
+        pinBtn.setToolTipText(NbBundle.getMessage(UIBundle.class,
                 pinned ? "HINT_UnpinMessage" : "HINT_PinMessage"));
         pinBtn.getAccessibleContext().setAccessibleName(pinBtn.getToolTipText());
         pinBtn.getAccessibleContext().setAccessibleDescription(pinBtn.getToolTipText());
@@ -331,7 +331,7 @@ class BubbleActionBar {
         if (pinBtn != null) {
             pinBtn.setIcon(ThemeManager.getIcon(
                     pinned ? "pinned.svg" : "pin.svg", 32));
-            pinBtn.setToolTipText(NbBundle.getMessage(BubbleActionBar.class,
+            pinBtn.setToolTipText(NbBundle.getMessage(UIBundle.class,
                     pinned ? "HINT_UnpinMessage" : "HINT_PinMessage"));
             pinBtn.getAccessibleContext().setAccessibleName(pinBtn.getToolTipText());
             pinBtn.getAccessibleContext().setAccessibleDescription(pinBtn.getToolTipText());

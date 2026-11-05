@@ -46,7 +46,7 @@ public final class SendToAssistantFileAction extends NodeAction {
 
     @Override
     public String getName() {
-        return NbBundle.getMessage(SendToAssistantFileAction.class, "CTL_SendToAssistantAction");
+        return NbBundle.getMessage(UIBundle.class, "CTL_SendToAssistantAction");
     }
 
     @Override

@@ -45,7 +45,7 @@ public final class SearchWebAction extends AbstractAction implements Presenter.P
             item.setVisible(false);
             return item;
         }
-        JMenuItem item = new JMenuItem(NbBundle.getMessage(SearchWebAction.class, "CTL_SearchWebAction"));
+        JMenuItem item = new JMenuItem(NbBundle.getMessage(UIBundle.class, "CTL_SearchWebAction"));
         item.addActionListener(this);
         return item;
     }

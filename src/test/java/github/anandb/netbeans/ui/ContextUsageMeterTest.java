@@ -47,7 +47,7 @@ class ContextUsageMeterTest {
     void unknownSizeSetsUnavailableTooltip() {
         ContextUsageMeter m = new ContextUsageMeter();
         m.setUsage(100, 0);
-        assertEquals(NbBundle.getMessage(AssistantTopComponent.class,
+        assertEquals(NbBundle.getMessage(UIBundle.class,
                 "HINT_ContextUsageUnavailable"), m.getToolTipText());
     }
 
@@ -57,7 +57,7 @@ class ContextUsageMeterTest {
         m.setUsage(12400L, 200000L);
         String tip = m.getToolTipText();
         // Existing bundle key: "Context Usage: {0}/{1} tokens"
-        String expected = NbBundle.getMessage(AssistantTopComponent.class,
+        String expected = NbBundle.getMessage(UIBundle.class,
                 "HINT_ContextUsage", java.text.NumberFormat.getInstance().format(12400L),
                 java.text.NumberFormat.getInstance().format(200000L));
         assertEquals(expected, tip);
@@ -87,7 +87,7 @@ class ContextUsageMeterTest {
     void accessibleNameAndDescriptionSet() {
         ContextUsageMeter m = new ContextUsageMeter();
         if (m.getAccessibleContext() != null) {
-            assertEquals(NbBundle.getMessage(AssistantTopComponent.class, "LBL_ContextUsage"),
+            assertEquals(NbBundle.getMessage(UIBundle.class, "LBL_ContextUsage"),
                     m.getAccessibleContext().getAccessibleName());
         }
         assertTrue(m.getToolTipText() == null || m.getToolTipText().isEmpty());

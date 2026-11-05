@@ -37,7 +37,7 @@ class PreambleDialogTooltipTest {
 
     @Test
     void bundleTextRendersLeadPlusTwoFollowUpParagraphs() {
-        String text = NbBundle.getMessage(PreambleDialog.class, "TT_PreambleCopySystem");
+        String text = NbBundle.getMessage(UIBundle.class, "TT_PreambleCopySystem");
 
         String html = PreambleDialog.copyTooltipHtml(text);
 
@@ -50,7 +50,7 @@ class PreambleDialogTooltipTest {
     @Test
     void renderedTooltipWrapsInsideTheGivenWidth() {
         TestUiUtils.setupTestUIManager();
-        String text = NbBundle.getMessage(PreambleDialog.class, "TT_PreambleCopySystem");
+        String text = NbBundle.getMessage(UIBundle.class, "TT_PreambleCopySystem");
 
         javax.swing.JLabel tip = new javax.swing.JLabel(PreambleDialog.copyTooltipHtml(text));
         java.awt.Dimension preferred = tip.getPreferredSize();

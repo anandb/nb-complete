@@ -107,7 +107,7 @@ class ConfigPanelControllerModeLabelTest {
 
     /** The bundle text for {@code key}, so assertions track the key rather than its copy. */
     private static String message(String key) {
-        return NbBundle.getMessage(ConfigPanelController.class, key);
+        return NbBundle.getMessage(UIBundle.class, key);
     }
 
     @AfterEach

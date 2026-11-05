@@ -53,7 +53,7 @@ class OnboardingBubbleTest {
     @Test
     void closeButtonPresentOnlyWhenDismissable() {
         String closeLabel = org.openide.util.NbBundle.getMessage(
-                OnboardingBubble.class, "OnboardingBubble.Button.Close");
+                UIBundle.class, "OnboardingBubble.Button.Close");
 
         OnboardingBubble dismissable = new OnboardingBubble(java.util.List.of(),
                 (id, path) -> { }, () -> { });

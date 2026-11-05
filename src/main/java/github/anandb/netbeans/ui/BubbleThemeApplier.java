@@ -78,7 +78,7 @@ class BubbleThemeApplier {
         JLabel userLabel = new JLabel(userIcon);
         userLabel.setBorder(new EmptyBorder(10, 8, 0, 10));
         userLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        userLabel.setToolTipText(NbBundle.getMessage(MessageBubble.class, "HINT_CopyToInput"));
+        userLabel.setToolTipText(NbBundle.getMessage(UIBundle.class, "HINT_CopyToInput"));
 
         userLabel.addMouseListener(new MessageCopyMouseAdapter(
             userLabel,
@@ -97,7 +97,7 @@ class BubbleThemeApplier {
         if (ms <= 0) return;
         String label = formatElapsed(ms);
         JLabel ttftLabel = new JLabel(label);
-        ttftLabel.setToolTipText(NbBundle.getMessage(MessageBubble.class, "HINT_TimeToFirstToken", label));
+        ttftLabel.setToolTipText(NbBundle.getMessage(UIBundle.class, "HINT_TimeToFirstToken", label));
         ttftLabel.setFont(ThemeManager.getFont().deriveFont(10f));
         ttftLabel.setForeground(ThemeManager.getCurrentTheme().mutedForeground());
         ttftLabel.setBorder(new EmptyBorder(0, 0, 0, 12));

@@ -35,7 +35,7 @@ final class ContextActionsDialog extends JDialog {
     private boolean[] result;
 
     private ContextActionsDialog(Window owner, List<Toggle> toggles) {
-        super(owner, NbBundle.getMessage(ACPOptionsPanel.class, "TITLE_ContextActions"),
+        super(owner, NbBundle.getMessage(UIBundle.class, "TITLE_ContextActions"),
                 ModalityType.APPLICATION_MODAL);
         this.selected = new boolean[toggles.size()];
         setLayout(new BorderLayout(0, 8));
@@ -60,8 +60,8 @@ final class ContextActionsDialog extends JDialog {
         }
         add(grid, BorderLayout.CENTER);
 
-        JButton ok = new JButton(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_OK"));
-        JButton cancel = new JButton(NbBundle.getMessage(ACPOptionsPanel.class, "BTN_Cancel"));
+        JButton ok = new JButton(NbBundle.getMessage(UIBundle.class, "LBL_OK"));
+        JButton cancel = new JButton(NbBundle.getMessage(UIBundle.class, "BTN_Cancel"));
         ok.addActionListener(evt -> {
             result = selected.clone();
             dispose();

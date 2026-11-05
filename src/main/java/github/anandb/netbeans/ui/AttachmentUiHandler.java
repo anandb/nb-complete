@@ -40,7 +40,7 @@ public class AttachmentUiHandler {
         this.parentWindow = parentWindow;
 
         this.paperclipBtn = UIUtils.createToolbarButton("paperclip.svg",
-                NbBundle.getMessage(AssistantTopComponent.class, "HINT_AttachFiles"), null);
+                NbBundle.getMessage(UIBundle.class, "HINT_AttachFiles"), null);
         this.paperclipBtn.addActionListener(e -> showPaperclipMenu(e));
         // The paperclip follows the input text area's enabled state (disabled
         // while no session is active or a message is in flight).
@@ -56,14 +56,14 @@ public class AttachmentUiHandler {
     /** Updates the paperclip button tooltip and icon based on attachment count. */
     public void updateTooltip() {
         if (attachmentManager.getAttachments().isEmpty()) {
-            paperclipBtn.setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_AttachFiles"));
+            paperclipBtn.setToolTipText(NbBundle.getMessage(UIBundle.class, "HINT_AttachFiles"));
             Icon icon = ThemeManager.getIcon("paperclip.svg", PluginSettings.getToolbarIconSize());
             paperclipBtn.setIcon(icon);
             if (icon != null) {
                 paperclipBtn.setDisabledIcon(ImageUtilities.createDisabledIcon(icon));
             }
         } else {
-            paperclipBtn.setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_FilesAttached", attachmentManager.size()));
+            paperclipBtn.setToolTipText(NbBundle.getMessage(UIBundle.class, "HINT_FilesAttached", attachmentManager.size()));
             Icon base = ThemeManager.getIcon("paperclip.svg", PluginSettings.getToolbarIconSize());
             Icon icon = new AttachmentBadgeIcon(base, attachmentManager.size());
             paperclipBtn.setIcon(icon);
@@ -117,7 +117,7 @@ public class AttachmentUiHandler {
 
     private void showPaperclipMenu(ActionEvent e) {
         JPopupMenu menu = new JPopupMenu();
-        JMenuItem addItem = new JMenuItem(NbBundle.getMessage(AssistantTopComponent.class, "BTN_SelectFile"));
+        JMenuItem addItem = new JMenuItem(NbBundle.getMessage(UIBundle.class, "BTN_SelectFile"));
         addItem.addActionListener(ev -> selectFiles());
         menu.add(addItem);
         List<AttachedFile> currentFiles = attachmentManager.getAttachments();

@@ -44,7 +44,7 @@ class GlobalConfigBubble extends JPanel {
 
         bubbleContent = UIUtils.createBubbleContentPanel();
 
-        JLabel titleLabel = new JLabel(NbBundle.getMessage(GlobalConfigBubble.class,
+        JLabel titleLabel = new JLabel(NbBundle.getMessage(UIBundle.class,
                 overwrite ? "GlobalConfigBubble.Title.Overwrite" : "GlobalConfigBubble.Title.Setup"));
         titleLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD, ThemeManager.getFont().getSize() + 4f));
         titleLabel.setForeground(theme.foreground());
@@ -52,8 +52,8 @@ class GlobalConfigBubble extends JPanel {
 
         String bodyKey = overwrite ? "GlobalConfigBubble.Body.Overwrite" : "GlobalConfigBubble.Body.Setup";
         String body = overwrite
-                ? NbBundle.getMessage(GlobalConfigBubble.class, bodyKey, result.fileName)
-                : NbBundle.getMessage(GlobalConfigBubble.class, bodyKey);
+                ? NbBundle.getMessage(UIBundle.class, bodyKey, result.fileName)
+                : NbBundle.getMessage(UIBundle.class, bodyKey);
         JTextArea bodyLabel = new JTextArea(body);
         bodyLabel.setLineWrap(true);
         bodyLabel.setWrapStyleWord(true);
@@ -68,7 +68,7 @@ class GlobalConfigBubble extends JPanel {
         JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
         buttonsPanel.setOpaque(false);
 
-        JButton yesBtn = new JButton(NbBundle.getMessage(GlobalConfigBubble.class,
+        JButton yesBtn = new JButton(NbBundle.getMessage(UIBundle.class,
                 overwrite ? "GlobalConfigBubble.Button.Replace" : "GlobalConfigBubble.Button.Setup"));
         yesBtn.setFocusPainted(false);
         yesBtn.addActionListener(e -> {
@@ -77,7 +77,7 @@ class GlobalConfigBubble extends JPanel {
             }
         });
 
-        JButton noBtn = new JButton(NbBundle.getMessage(GlobalConfigBubble.class,
+        JButton noBtn = new JButton(NbBundle.getMessage(UIBundle.class,
                 overwrite ? "GlobalConfigBubble.Button.Keep" : "GlobalConfigBubble.Button.NotNow"));
         noBtn.setFocusPainted(false);
         noBtn.addActionListener(e -> {

@@ -250,7 +250,7 @@ public class MiniAssistantDialog extends JDialog {
         stopBtn.setFocusPainted(false);
         stopBtn.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 4));
         stopBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        stopBtn.setToolTipText(NbBundle.getMessage(MiniAssistantDialog.class, "HINT_Stop"));
+        stopBtn.setToolTipText(NbBundle.getMessage(UIBundle.class, "HINT_Stop"));
         stopBtn.setIcon(ThemeManager.getIcon("stop.svg", 16));
         stopBtn.setVisible(false);
         stopBtn.addActionListener(e -> stopCurrentMessage());
@@ -999,7 +999,7 @@ public class MiniAssistantDialog extends JDialog {
             ColorTheme theme = ThemeManager.getCurrentTheme();
 
             if (fileChanges != null && !fileChanges.isEmpty()) {
-                JButton showDiffBtn = new JButton(NbBundle.getMessage(PermissionBubble.class, "BTN_ShowDiff"));
+                JButton showDiffBtn = new JButton(NbBundle.getMessage(UIBundle.class, "BTN_ShowDiff"));
                 showDiffBtn.setFocusPainted(false);
                 showDiffBtn.setBorder(BorderFactory.createCompoundBorder(
                         BorderFactory.createLineBorder(theme.bubbleBorder(), 1),
@@ -1049,7 +1049,7 @@ public class MiniAssistantDialog extends JDialog {
                     miniPermissionButtons.add(btn);
                 }
             } else {
-                JButton denyBtn = new JButton(NbBundle.getMessage(ChatThreadPanel.class, "BTN_Deny"));
+                JButton denyBtn = new JButton(NbBundle.getMessage(UIBundle.class, "BTN_Deny"));
                 denyBtn.setFocusPainted(false);
                 ButtonMnemonics.apply(denyBtn, 'R');
                 denyBtn.setForeground(theme.permissionDenyFg());
@@ -1062,12 +1062,12 @@ public class MiniAssistantDialog extends JDialog {
                         activePermissionFuture.complete("reject");
                         AssistantTopComponent tc = AssistantTopComponent.findInstance();
                         if (tc != null) {
-                            tc.getChatThreadPanel().addPermissionResult(NbBundle.getMessage(ChatThreadPanel.class, "MSG_PermissionDenied"), false);
+                            tc.getChatThreadPanel().addPermissionResult(NbBundle.getMessage(UIBundle.class, "MSG_PermissionDenied"), false);
                         }
                     }
                 });
 
-                JButton allowBtn = new JButton(NbBundle.getMessage(ChatThreadPanel.class, "BTN_Allow"));
+                JButton allowBtn = new JButton(NbBundle.getMessage(UIBundle.class, "BTN_Allow"));
                 allowBtn.setFocusPainted(false);
                 ButtonMnemonics.apply(allowBtn, 'A');
                 allowBtn.setForeground(theme.permissionGrantFg());
@@ -1080,7 +1080,7 @@ public class MiniAssistantDialog extends JDialog {
                         activePermissionFuture.complete("allow");
                         AssistantTopComponent tc = AssistantTopComponent.findInstance();
                         if (tc != null) {
-                            tc.getChatThreadPanel().addPermissionResult(NbBundle.getMessage(ChatThreadPanel.class, "MSG_PermissionGranted"), true);
+                            tc.getChatThreadPanel().addPermissionResult(NbBundle.getMessage(UIBundle.class, "MSG_PermissionGranted"), true);
                         }
                     }
                 });
@@ -1118,7 +1118,7 @@ public class MiniAssistantDialog extends JDialog {
             }
             // Drop any existing Show Diff button (e.g. a stale one from a prior request).
             for (Component c : miniPermissionButtons.getComponents()) {
-                if (c instanceof JButton b && NbBundle.getMessage(PermissionBubble.class, "BTN_ShowDiff").equals(b.getText())) {
+                if (c instanceof JButton b && NbBundle.getMessage(UIBundle.class, "BTN_ShowDiff").equals(b.getText())) {
                     miniPermissionButtons.remove(b);
                 }
             }
@@ -1135,7 +1135,7 @@ public class MiniAssistantDialog extends JDialog {
                     }
                 }
                 ColorTheme theme = ThemeManager.getCurrentTheme();
-                JButton showDiffBtn = new JButton(NbBundle.getMessage(PermissionBubble.class, "BTN_ShowDiff"));
+                JButton showDiffBtn = new JButton(NbBundle.getMessage(UIBundle.class, "BTN_ShowDiff"));
                 showDiffBtn.setFocusPainted(false);
                 ButtonMnemonics.apply(showDiffBtn, 'D');
                 showDiffBtn.setBorder(BorderFactory.createCompoundBorder(

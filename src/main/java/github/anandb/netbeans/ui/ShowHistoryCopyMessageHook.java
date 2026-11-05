@@ -85,7 +85,7 @@ public final class ShowHistoryCopyMessageHook implements Runnable {
         }
         popup.putClientProperty(CLIENT_PROP_INJECTED, Boolean.TRUE);
         popup.addSeparator();
-        JMenuItem item = new JMenuItem(NbBundle.getMessage(ShowHistoryCopyMessageHook.class,
+        JMenuItem item = new JMenuItem(NbBundle.getMessage(UIBundle.class,
                 "CTL_CopyMessage")); // NOI18N
         item.addActionListener(e -> copyToClipboard(String.join("\n\n", messages)));
         popup.add(item);

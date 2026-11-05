@@ -105,7 +105,7 @@ public final class ShowChangesLocateHook implements Runnable {
         }
         popup.putClientProperty(CLIENT_PROP_INJECTED, Boolean.TRUE);
         popup.addSeparator();
-        JMenuItem item = new JMenuItem(NbBundle.getMessage(ShowChangesLocateHook.class,
+        JMenuItem item = new JMenuItem(NbBundle.getMessage(UIBundle.class,
                 "CTL_LocateInSystem")); // NOI18N
         item.addActionListener(e -> revealInSystem(files));
         popup.add(item);

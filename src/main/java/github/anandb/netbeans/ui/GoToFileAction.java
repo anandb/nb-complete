@@ -25,7 +25,7 @@ import github.anandb.netbeans.support.PluginSettings;
 public class GoToFileAction extends AbstractAction {
 
     public GoToFileAction() {
-        putValue(NAME, NbBundle.getMessage(GoToFileAction.class, "CTL_GoToFileAction"));
+        putValue(NAME, NbBundle.getMessage(UIBundle.class, "CTL_GoToFileAction"));
     }
 
     @Override

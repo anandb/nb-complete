@@ -45,15 +45,15 @@ final class RunCommandPolicyDialog extends JDialog {
     private Result result;
 
     private RunCommandPolicyDialog(Window owner, String allowlist, String denylist) {
-        super(owner, NbBundle.getMessage(ACPOptionsPanel.class, "TITLE_RunCommandPolicy"),
+        super(owner, NbBundle.getMessage(UIBundle.class, "TITLE_RunCommandPolicy"),
                 ModalityType.APPLICATION_MODAL);
         setLayout(new BorderLayout(0, 8));
         getRootPane().setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         JPanel lists = new JPanel(new GridBagLayout());
-        lists.add(new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_DeniedBinaries")),
+        lists.add(new JLabel(NbBundle.getMessage(UIBundle.class, "LBL_DeniedBinaries")),
                 gbc(0, 0, true, new Insets(0, 0, 4, 8)));
-        lists.add(new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_AllowedBinaries")),
+        lists.add(new JLabel(NbBundle.getMessage(UIBundle.class, "LBL_AllowedBinaries")),
                 gbc(1, 0, true, new Insets(0, 0, 4, 0)));
         allowArea.setText(asLines(allowlist));
         denyArea.setText(asLines(denylist));
@@ -62,13 +62,13 @@ final class RunCommandPolicyDialog extends JDialog {
         add(lists, BorderLayout.CENTER);
 
         JLabel hint = new JLabel("<html><body style='width:420px'>"
-                + NbBundle.getMessage(ACPOptionsPanel.class, "HINT_RunCommandPolicy")
+                + NbBundle.getMessage(UIBundle.class, "HINT_RunCommandPolicy")
                 + "</body></html>");
         hint.setBorder(BorderFactory.createEmptyBorder(0, 0, 4, 0));
         add(hint, BorderLayout.NORTH);
 
-        JButton ok = new JButton(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_OK"));
-        JButton cancel = new JButton(NbBundle.getMessage(ACPOptionsPanel.class, "BTN_Cancel"));
+        JButton ok = new JButton(NbBundle.getMessage(UIBundle.class, "LBL_OK"));
+        JButton cancel = new JButton(NbBundle.getMessage(UIBundle.class, "BTN_Cancel"));
         ok.addActionListener(evt -> {
             result = new Result(asSetting(allowArea.getText()), asSetting(denyArea.getText()));
             dispose();
@@ -116,9 +116,9 @@ final class RunCommandPolicyDialog extends JDialog {
         String allow = asSetting(allowArea.getText());
         String deny = asSetting(denyArea.getText());
         if (RunCommandPolicy.deniesAllCommands(allow, deny)) {
-            statusLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_RunPolicyAllDenied"));
+            statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_RunPolicyAllDenied"));
         } else if (RunCommandPolicy.allowsAllCommands(allow, deny)) {
-            statusLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_RunPolicyAllAllowed"));
+            statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_RunPolicyAllAllowed"));
         } else {
             statusLabel.setText(" ");
         }

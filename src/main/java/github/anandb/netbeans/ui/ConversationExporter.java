@@ -189,14 +189,14 @@ final class ConversationExporter {
     static void export(Component parent, String markdown, String defaultName, boolean openAfter,
                        ExportListener listener) {
         JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle(NbBundle.getMessage(ConversationExporter.class, "TITLE_ExportConv"));
+        chooser.setDialogTitle(NbBundle.getMessage(UIBundle.class, "TITLE_ExportConv"));
         chooser.setSelectedFile(new File(defaultName));
         if (chooser.showSaveDialog(parent) == JFileChooser.APPROVE_OPTION) {
             File file = chooser.getSelectedFile();
             if (file.exists()) {
                 Object confirm = DialogDisplayer.getDefault().notify(new NotifyDescriptor.Confirmation(
-                        NbBundle.getMessage(ConversationExporter.class, "MSG_OverwriteConfirm", file.getName()),
-                        NbBundle.getMessage(ConversationExporter.class, "TITLE_ExportConv"),
+                        NbBundle.getMessage(UIBundle.class, "MSG_OverwriteConfirm", file.getName()),
+                        NbBundle.getMessage(UIBundle.class, "TITLE_ExportConv"),
                         NotifyDescriptor.YES_NO_OPTION,
                         NotifyDescriptor.WARNING_MESSAGE));
                 if (confirm != NotifyDescriptor.YES_OPTION) {

@@ -90,14 +90,14 @@ final class HtmlConversationExporter {
                 .getResourceAsStream("export-style.css.template")) {
             if (in == null) {
                 throw new IllegalStateException(NbBundle.getMessage(
-                        HtmlConversationExporter.class, "ERR_ExportCssTemplateNotFound"));
+                        UIBundle.class, "ERR_ExportCssTemplateNotFound"));
             }
             template = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             cachedCssTemplate = template;
             return template;
         } catch (IOException e) {
             throw new IllegalStateException(NbBundle.getMessage(
-                    HtmlConversationExporter.class, "ERR_LoadExportCssTemplateFailed"), e);
+                    UIBundle.class, "ERR_LoadExportCssTemplateFailed"), e);
         }
     }
 

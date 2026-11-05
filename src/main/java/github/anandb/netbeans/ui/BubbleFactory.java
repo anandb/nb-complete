@@ -26,7 +26,7 @@ final class BubbleFactory {
     static MessageBubble createToolThoughtBubble(MessageType type, String text,
             String messageId, String toolTitle, boolean streaming) {
         if (type.isThought() && (toolTitle == null || toolTitle.isEmpty())) {
-            toolTitle = NbBundle.getMessage(CollapsibleToolPane.class, "LBL_ThinkingProcess");
+            toolTitle = NbBundle.getMessage(UIBundle.class, "LBL_ThinkingProcess");
         }
         return new MessageBubble(type, text, messageId, toolTitle,
                 MessageBubble.AvatarPosition.NONE, streaming, null);

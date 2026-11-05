@@ -84,7 +84,7 @@ public class StatusController {
         this.thinkingTimer = new Timer(500, e -> animateThinkingTick());
         this.statusResetTimer = new Timer(STATUS_RESET_MS, e -> {
             if (statusLabel != null) {
-                show(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Ready"));
+                show(NbBundle.getMessage(UIBundle.class, "STATUS_Ready"));
             }
         });
         this.statusResetTimer.setRepeats(false);
@@ -131,7 +131,7 @@ public class StatusController {
     // -- Status text --
 
     public void setStatus(String key, Object... args) {
-        show(NbBundle.getMessage(AssistantTopComponent.class, key, args));
+        show(NbBundle.getMessage(UIBundle.class, key, args));
     }
 
     public void setStatusText(String text) {
@@ -200,7 +200,7 @@ public class StatusController {
     }
 
     public void setTooltip(String key, Object... args) {
-        statusLabel.setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, key, args));
+        statusLabel.setToolTipText(NbBundle.getMessage(UIBundle.class, key, args));
     }
 
     // -- Thinking animation --
@@ -270,7 +270,7 @@ public class StatusController {
             if (statusLabel != null
                     && statusLabel.getText() != null
                     && statusLabel.getText().startsWith(
-                            NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Stalled"))) {
+                            NbBundle.getMessage(UIBundle.class, "STATUS_Stalled"))) {
                 LOG.info("Clearing Stalled Status during arm");
                 setStatus("STATUS_Thinking");
             }

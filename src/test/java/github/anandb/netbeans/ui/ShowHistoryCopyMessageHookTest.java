@@ -73,7 +73,7 @@ class ShowHistoryCopyMessageHookTest {
     void injectAddsOneItemAfterASeparator() {
         JPopupMenu popup = new JPopupMenu();
         popup.add(new JMenuItem("Diff Previous"));
-        String label = NbBundle.getMessage(ShowHistoryCopyMessageHook.class, "CTL_CopyMessage");
+        String label = NbBundle.getMessage(UIBundle.class, "CTL_CopyMessage");
 
         ShowHistoryCopyMessageHook.inject(popup, List.of("first commit"));
 

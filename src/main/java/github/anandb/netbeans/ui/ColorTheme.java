@@ -133,11 +133,11 @@ public final class ColorTheme {
     private static JsonNode loadColorConfig() {
         try (InputStream in = ColorTheme.class.getResourceAsStream("colors.json")) {
             if (in == null) {
-                throw new IllegalStateException(NbBundle.getMessage(ColorTheme.class, "ERR_ColorsNotFound"));
+                throw new IllegalStateException(NbBundle.getMessage(UIBundle.class, "ERR_ColorsNotFound"));
             }
             return MapperSupplier.get().readTree(in);
         } catch (IOException e) {
-            throw new IllegalStateException(NbBundle.getMessage(ColorTheme.class, "ERR_LoadColorsFailed"), e);
+            throw new IllegalStateException(NbBundle.getMessage(UIBundle.class, "ERR_LoadColorsFailed"), e);
         }
     }
 }

@@ -105,7 +105,7 @@ public class TokenUsageDialog extends JDialog {
     private static final RequestProcessor STATS_RP = new RequestProcessor("token-stats", 1);
 
     public TokenUsageDialog(Frame owner) {
-        super(owner, NbBundle.getMessage(TokenUsageDialog.class, "LBL_TokenStats"), false);
+        super(owner, NbBundle.getMessage(UIBundle.class, "LBL_TokenStats"), false);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setPreferredSize(new Dimension(540, 460));
         setResizable(true);
@@ -116,7 +116,7 @@ public class TokenUsageDialog extends JDialog {
         content.setBackground(theme.background());
 
         // --- Title ---
-        JLabel titleLabel = new JLabel(NbBundle.getMessage(TokenUsageDialog.class, "LBL_TokenStats"));
+        JLabel titleLabel = new JLabel(NbBundle.getMessage(UIBundle.class, "LBL_TokenStats"));
         titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 16f));
         titleLabel.setBorder(new EmptyBorder(0, 0, 8, 0));
         content.add(titleLabel, BorderLayout.NORTH);
@@ -134,15 +134,15 @@ public class TokenUsageDialog extends JDialog {
         daysSpinner.setPreferredSize(new Dimension(80, 28));
         daysSpinner.setMaximumSize(new Dimension(80, 28));
 
-        JLabel daysLabel = new JLabel(NbBundle.getMessage(TokenUsageDialog.class, "LBL_Days"));
+        JLabel daysLabel = new JLabel(NbBundle.getMessage(UIBundle.class, "LBL_Days"));
         daysLabel.setLabelFor(daysSpinner);
         formPanel.add(daysLabel,  new GridBagConstraints(0, 0, 1, 1, 0, 0, GridBagConstraints.WEST, GridBagConstraints.NONE, ins, 0, 0));
         formPanel.add(daysSpinner, new GridBagConstraints(1, 0, 1, 1, 0, 0, GridBagConstraints.WEST, GridBagConstraints.NONE, ins, 0, 0));
 
         // Project (flexible — fills available space)
         projectCombo = new JComboBox<>(new String[]{
-            NbBundle.getMessage(TokenUsageDialog.class, "LBL_CurrentProject"),
-            NbBundle.getMessage(TokenUsageDialog.class, "LBL_AllProjects")});
+            NbBundle.getMessage(UIBundle.class, "LBL_CurrentProject"),
+            NbBundle.getMessage(UIBundle.class, "LBL_AllProjects")});
         projectCombo.setPreferredSize(new Dimension(140, 28));
         projectCombo.setRenderer(new DefaultListCellRenderer() {
             private static final long serialVersionUID = 1L;
@@ -150,7 +150,7 @@ public class TokenUsageDialog extends JDialog {
             public Component getListCellRendererComponent(JList<?> list, Object value,
                     int index, boolean isSelected, boolean cellHasFocus) {
                 super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (NbBundle.getMessage(TokenUsageDialog.class, "LBL_CurrentProject").equals(value) && !isCurrentProjectAvailable()) {
+                if (NbBundle.getMessage(UIBundle.class, "LBL_CurrentProject").equals(value) && !isCurrentProjectAvailable()) {
                     setEnabled(false);
                     if (!isSelected) {
                         setForeground(Color.GRAY);
@@ -162,22 +162,22 @@ public class TokenUsageDialog extends JDialog {
         // Revert to "All" if "Current Project" is somehow selected when unavailable
         projectCombo.addItemListener(e -> {
             if (e.getStateChange() == ItemEvent.SELECTED
-                    && NbBundle.getMessage(TokenUsageDialog.class, "LBL_CurrentProject").equals(e.getItem()) && !isCurrentProjectAvailable()) {
-                projectCombo.setSelectedItem(NbBundle.getMessage(TokenUsageDialog.class, "LBL_AllProjects"));
+                    && NbBundle.getMessage(UIBundle.class, "LBL_CurrentProject").equals(e.getItem()) && !isCurrentProjectAvailable()) {
+                projectCombo.setSelectedItem(NbBundle.getMessage(UIBundle.class, "LBL_AllProjects"));
             }
         });
         // Default to "All" when "Current Project" is unavailable
         if (!isCurrentProjectAvailable()) {
-            projectCombo.setSelectedItem(NbBundle.getMessage(TokenUsageDialog.class, "LBL_AllProjects"));
+            projectCombo.setSelectedItem(NbBundle.getMessage(UIBundle.class, "LBL_AllProjects"));
         }
 
-        JLabel projectLabel = new JLabel(NbBundle.getMessage(TokenUsageDialog.class, "LBL_Project"));
+        JLabel projectLabel = new JLabel(NbBundle.getMessage(UIBundle.class, "LBL_Project"));
         projectLabel.setLabelFor(projectCombo);
         formPanel.add(projectLabel, new GridBagConstraints(2, 0, 1, 1, 0, 0, GridBagConstraints.WEST, GridBagConstraints.NONE, ins, 0, 0));
         formPanel.add(projectCombo, new GridBagConstraints(3, 0, 1, 1, 1.0, 0, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, ins, 0, 0));
 
         // Refresh button (fixed, rightmost)
-        refreshBtn = new JButton(NbBundle.getMessage(TokenUsageDialog.class, "LBL_Refresh"));
+        refreshBtn = new JButton(NbBundle.getMessage(UIBundle.class, "LBL_Refresh"));
         refreshBtn.addActionListener(this::onRefresh);
         formPanel.add(refreshBtn, new GridBagConstraints(4, 0, 1, 1, 0, 0, GridBagConstraints.EAST, GridBagConstraints.NONE, ins, 0, 0));
 
@@ -205,7 +205,7 @@ public class TokenUsageDialog extends JDialog {
         // --- Close button (centered) ---
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
         btnPanel.setOpaque(false);
-        JButton closeBtn = new JButton(NbBundle.getMessage(TokenUsageDialog.class, "LBL_Close"));
+        JButton closeBtn = new JButton(NbBundle.getMessage(UIBundle.class, "LBL_Close"));
         closeBtn.addActionListener(e -> dispose());
         btnPanel.add(closeBtn);
 
@@ -269,11 +269,11 @@ public class TokenUsageDialog extends JDialog {
             return;
         }
         int days = (int) daysSpinner.getValue();
-        boolean currentProject = NbBundle.getMessage(TokenUsageDialog.class, "LBL_CurrentProject")
+        boolean currentProject = NbBundle.getMessage(UIBundle.class, "LBL_CurrentProject")
                 .equals(projectCombo.getSelectedItem());
         refreshBtn.setEnabled(false);
         ColorTheme currentTheme = ThemeManager.getCurrentTheme();
-        statsPane.setText(buildPlaceholderHtml(currentTheme, NbBundle.getMessage(TokenUsageDialog.class, "LBL_FetchingStats")));
+        statsPane.setText(buildPlaceholderHtml(currentTheme, NbBundle.getMessage(UIBundle.class, "LBL_FetchingStats")));
 
         STATS_RP.post(() -> {
             try {
@@ -318,7 +318,7 @@ public class TokenUsageDialog extends JDialog {
                 LOG.log(Level.WARNING, "Failed to read local token usage stats", ex);
                 SwingUtilities.invokeLater(() -> {
                     statsPane.setText(buildPlaceholderHtml(currentTheme,
-                            NbBundle.getMessage(TokenUsageDialog.class, "ERR_StatsError",
+                            NbBundle.getMessage(UIBundle.class, "ERR_StatsError",
                                     ExceptionUtils.getMessage(ex))));
                     SwingUtilities.invokeLater(() -> scrollPane.getVerticalScrollBar().setValue(0));
                 });
@@ -414,14 +414,14 @@ public class TokenUsageDialog extends JDialog {
                 .getResourceAsStream("token-usage-style.css.template")) {
             if (in == null) {
                 throw new IllegalStateException(NbBundle.getMessage(
-                        TokenUsageDialog.class, "ERR_TokenUsageCssTemplateNotFound"));
+                        UIBundle.class, "ERR_TokenUsageCssTemplateNotFound"));
             }
             template = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             cachedCssTemplate = template;
             return template;
         } catch (IOException e) {
             throw new IllegalStateException(NbBundle.getMessage(
-                    TokenUsageDialog.class, "ERR_LoadTokenUsageCssTemplateFailed"), e);
+                    UIBundle.class, "ERR_LoadTokenUsageCssTemplateFailed"), e);
         }
     }
 
@@ -520,7 +520,7 @@ public class TokenUsageDialog extends JDialog {
         List<String[]> rows = new ArrayList<>();
         rows.add(new String[]{"LBL_ContextModel", model});
         rows.add(new String[]{"LBL_ContextUsed", report.providerManagesContext()
-                ? NbBundle.getMessage(TokenUsageDialog.class, "LBL_ContextManaged")
+                ? NbBundle.getMessage(UIBundle.class, "LBL_ContextManaged")
                 : UsageStatsFormat.thousands(report.totalTokens()) + " / "
                         + UsageStatsFormat.thousands(report.contextLimit())
                         + " (" + report.usedPercent() + "%)"});
@@ -544,7 +544,7 @@ public class TokenUsageDialog extends JDialog {
     private static void appendSegmentsTable(StringBuilder sb, ContextReport report,
                                             String headerBg, String altBg) {
         sb.append("<table><tr><th colspan='2'>")
-          .append(escapeHtml(NbBundle.getMessage(TokenUsageDialog.class, "LBL_ContextSegments")))
+          .append(escapeHtml(NbBundle.getMessage(UIBundle.class, "LBL_ContextSegments")))
           .append("</th></tr>");
         boolean alt = false;
         for (ContextReport.Segment segment : report.segments()) {
@@ -568,7 +568,7 @@ public class TokenUsageDialog extends JDialog {
     /** A single explanatory line under the context block. */
     private static void appendNote(StringBuilder sb, String key) {
         sb.append("<div style='margin:4px 0;'>")
-          .append(escapeHtml(NbBundle.getMessage(TokenUsageDialog.class, key)))
+          .append(escapeHtml(NbBundle.getMessage(UIBundle.class, key)))
           .append("</div>");
     }
 
@@ -600,7 +600,7 @@ public class TokenUsageDialog extends JDialog {
                                             String altBg) {
         long total = byTool.stream().mapToLong(ToolTotals::calls).sum();
         sb.append("<table><tr><th colspan='3'>")
-          .append(escapeHtml(NbBundle.getMessage(TokenUsageDialog.class, "LBL_McpToolCalls")))
+          .append(escapeHtml(NbBundle.getMessage(UIBundle.class, "LBL_McpToolCalls")))
           .append("</th></tr>");
         boolean alt = false;
         for (ToolTotals tool : byTool) {
@@ -629,7 +629,7 @@ public class TokenUsageDialog extends JDialog {
         if (tool.failures() <= 0) {
             return label;
         }
-        return label + " · " + NbBundle.getMessage(TokenUsageDialog.class, "LBL_McpToolFailures",
+        return label + " · " + NbBundle.getMessage(UIBundle.class, "LBL_McpToolFailures",
                 UsageStatsFormat.thousands(tool.failures()));
     }
 
@@ -654,10 +654,10 @@ public class TokenUsageDialog extends JDialog {
      */
     private static void appendGroupTables(StringBuilder sb, String titleKey, List<GroupTotals> rows,
                                           String headerBg, String altBg) {
-        String kind = NbBundle.getMessage(TokenUsageDialog.class, titleKey);
+        String kind = NbBundle.getMessage(UIBundle.class, titleKey);
         for (GroupTotals row : rows) {
             String label = row.groupKey() == null || row.groupKey().isBlank()
-                    ? NbBundle.getMessage(TokenUsageDialog.class, "LBL_NotAttributed")
+                    ? NbBundle.getMessage(UIBundle.class, "LBL_NotAttributed")
                     : row.groupKey();
             appendTable(sb, kind + " · " + label, headerBg, altBg, new String[][]{
                 {"LBL_Sessions", UsageStatsFormat.thousands(row.sessions())},
@@ -674,7 +674,7 @@ public class TokenUsageDialog extends JDialog {
     /** Renders a two-column metric table titled by a bundle key. */
     private static void appendLocalizedTable(StringBuilder sb, String titleKey, String headerBg,
                                              String altBg, String[][] rows) {
-        appendTable(sb, NbBundle.getMessage(TokenUsageDialog.class, titleKey), headerBg, altBg, rows);
+        appendTable(sb, NbBundle.getMessage(UIBundle.class, titleKey), headerBg, altBg, rows);
     }
 
     /**
@@ -703,7 +703,7 @@ public class TokenUsageDialog extends JDialog {
             String trAttr = style.isEmpty() ? "" : " style='" + style + "'";
             sb.append("<tr").append(trAttr).append(">")
               .append("<td style='white-space:nowrap;'>")
-              .append(escapeHtml(NbBundle.getMessage(TokenUsageDialog.class, row[0]))).append("</td>")
+              .append(escapeHtml(NbBundle.getMessage(UIBundle.class, row[0]))).append("</td>")
               .append("<td style='text-align:right;'>").append(escapeHtml(row[1])).append("</td>")
               .append("</tr>");
             alt = !alt;
@@ -713,7 +713,7 @@ public class TokenUsageDialog extends JDialog {
 
     /** Builds a simple placeholder HTML message for the stats pane. */
     private static String buildPlaceholderHtml(ColorTheme theme) {
-        return buildPlaceholderHtml(theme, NbBundle.getMessage(TokenUsageDialog.class, "LBL_PressRefreshStats"));
+        return buildPlaceholderHtml(theme, NbBundle.getMessage(UIBundle.class, "LBL_PressRefreshStats"));
     }
 
     private static String buildPlaceholderHtml(ColorTheme theme, String message) {

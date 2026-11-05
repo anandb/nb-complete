@@ -82,7 +82,7 @@ class ACPOptionsPanelTooltipTest {
 
     @Test
     void scopeLegendExplainsEveryMarker() {
-        String legend = NbBundle.getMessage(ACPOptionsPanel.class, "SCOPE_Legend");
+        String legend = NbBundle.getMessage(UIBundle.class, "SCOPE_Legend");
 
         assertTrue(legend.contains("\u00b9"), legend);
         assertTrue(legend.contains("\u00b2"), legend);
@@ -90,7 +90,7 @@ class ACPOptionsPanelTooltipTest {
     }
 
     private static void assertMarker(String key, char glyph) {
-        String marker = NbBundle.getMessage(ACPOptionsPanel.class, key);
+        String marker = NbBundle.getMessage(UIBundle.class, key);
         assertEquals(" " + glyph, marker);
         assertTrue(marker.length() <= 2, "marker must stay a single glyph, was: " + marker);
     }
@@ -102,12 +102,12 @@ class ACPOptionsPanelTooltipTest {
         ACPOptionsPanel panel = new ACPOptionsPanel(new ACPOptionsPanelController());
         JCheckBox mcp = (JCheckBox) field(panel, "mcpServerCheckbox");
 
-        assertEquals(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EnableMcpServers") + " \u00b9",
+        assertEquals(NbBundle.getMessage(UIBundle.class, "LBL_EnableMcpServers") + " \u00b9",
                 mcp.getText());
-        assertNotNull(findLabel(panel, NbBundle.getMessage(ACPOptionsPanel.class, "SCOPE_Legend")),
+        assertNotNull(findLabel(panel, NbBundle.getMessage(UIBundle.class, "SCOPE_Legend")),
                 "the marker legend must be visible at the top of the panel");
         assertEquals(Component.CENTER_ALIGNMENT,
-                findLabel(panel, NbBundle.getMessage(ACPOptionsPanel.class, "SCOPE_Legend")).getAlignmentX(),
+                findLabel(panel, NbBundle.getMessage(UIBundle.class, "SCOPE_Legend")).getAlignmentX(),
                 "the legend must be centred, not lost among the left-aligned rows");
     }
 

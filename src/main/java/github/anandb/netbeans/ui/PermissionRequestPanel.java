@@ -244,7 +244,7 @@ final class PermissionRequestPanel extends JPanel {
     }
 
     private void addPromptToggle() {
-        promptToggle = new JButton(NbBundle.getMessage(PermissionRequestPanel.class, "BTN_ShowMorePrompt"));
+        promptToggle = new JButton(NbBundle.getMessage(UIBundle.class, "BTN_ShowMorePrompt"));
         promptToggle.setBorder(BorderFactory.createEmptyBorder(2, 0, 4, 0));
         promptToggle.setContentAreaFilled(false);
         promptToggle.setBorderPainted(false);
@@ -273,10 +273,10 @@ final class PermissionRequestPanel extends JPanel {
         promptExpanded = !promptExpanded;
         if (promptExpanded) {
             setPromptHtml(promptFullText);
-            promptToggle.setText(NbBundle.getMessage(PermissionRequestPanel.class, "BTN_ShowLessPrompt"));
+            promptToggle.setText(NbBundle.getMessage(UIBundle.class, "BTN_ShowLessPrompt"));
         } else {
             setPromptHtml(clampedPromptText());
-            promptToggle.setText(NbBundle.getMessage(PermissionRequestPanel.class, "BTN_ShowMorePrompt"));
+            promptToggle.setText(NbBundle.getMessage(UIBundle.class, "BTN_ShowMorePrompt"));
         }
         Container wrapper = promptLabel.getParent();
         if (wrapper != null) {
@@ -416,7 +416,7 @@ final class PermissionRequestPanel extends JPanel {
         if (requestActive && pendingResponse != null && !pendingResponse.isDone()) {
             pendingResponse.complete("reject");
             slideClose();
-            fireResult(NbBundle.getMessage(ChatThreadPanel.class, "MSG_PermissionDenied"), false);
+            fireResult(NbBundle.getMessage(UIBundle.class, "MSG_PermissionDenied"), false);
         }
     }
 
@@ -440,7 +440,7 @@ final class PermissionRequestPanel extends JPanel {
 
         // Show Diff button — secondary style, does not dismiss the prompt
         if (currentFileChanges != null && !currentFileChanges.isEmpty()) {
-            JButton showDiffBtn = createButton(NbBundle.getMessage(PermissionBubble.class, "BTN_ShowDiff"), null, null, null);
+            JButton showDiffBtn = createButton(NbBundle.getMessage(UIBundle.class, "BTN_ShowDiff"), null, null, null);
             ButtonMnemonics.apply(showDiffBtn, 'D');
             showDiffBtn.addActionListener(e -> {
                 stopWobble();
@@ -460,7 +460,7 @@ final class PermissionRequestPanel extends JPanel {
                             theme.permissionGrantBg(), theme.permissionGrantBorder());
                     applyMnemonic(btn, mnemonic);
                     if (po.name().toLowerCase(Locale.ROOT).contains("always")) {
-                        btn.setToolTipText(NbBundle.getMessage(PermissionRequestPanel.class, "HINT_AlwaysAllow"));
+                        btn.setToolTipText(NbBundle.getMessage(UIBundle.class, "HINT_AlwaysAllow"));
                     }
                     // Ctrl+Alt+A is labelled "Allow Once", so it must answer the first
                     // allow option (the plain/once one). Taking the last would turn the
@@ -491,19 +491,19 @@ final class PermissionRequestPanel extends JPanel {
             }
         } else {
             JButton denyBtn = createButton(
-                    NbBundle.getMessage(ChatThreadPanel.class, "BTN_Deny"),
+                    NbBundle.getMessage(UIBundle.class, "BTN_Deny"),
                     theme.permissionDenyFg(), theme.permissionDenyBg(),
                     theme.permissionDenyBorder());
             ButtonMnemonics.apply(denyBtn, 'R');
             JButton allowBtn = createButton(
-                    NbBundle.getMessage(ChatThreadPanel.class, "BTN_Allow"),
+                    NbBundle.getMessage(UIBundle.class, "BTN_Allow"),
                     theme.permissionGrantFg(), theme.permissionGrantBg(),
                     theme.permissionGrantBorder());
             ButtonMnemonics.apply(allowBtn, 'A');
             allowAction = () -> {
                 pendingResponse.complete("allow");
                 slideClose();
-                fireResult(NbBundle.getMessage(ChatThreadPanel.class, "MSG_PermissionGranted"), true);
+                fireResult(NbBundle.getMessage(UIBundle.class, "MSG_PermissionGranted"), true);
             };
 
             allowBtn.addActionListener(e -> allowAction.run());
@@ -511,7 +511,7 @@ final class PermissionRequestPanel extends JPanel {
             denyBtn.addActionListener(e -> {
                 pendingResponse.complete("reject");
                 slideClose();
-                fireResult(NbBundle.getMessage(ChatThreadPanel.class, "MSG_PermissionDenied"), false);
+                fireResult(NbBundle.getMessage(UIBundle.class, "MSG_PermissionDenied"), false);
             });
 
             buttonPanel.add(denyBtn);
@@ -897,7 +897,7 @@ final class PermissionRequestPanel extends JPanel {
         setPrompt(prompt);
 
         buttonPanel.removeAll();
-        JButton continueBtn = new JButton(NbBundle.getMessage(PermissionRequestPanel.class, "BTN_Continue"));
+        JButton continueBtn = new JButton(NbBundle.getMessage(UIBundle.class, "BTN_Continue"));
         continueBtn.setFocusPainted(false);
         continueBtn.addActionListener(e -> {
             pendingResponse.complete("continue");
@@ -950,7 +950,7 @@ final class PermissionRequestPanel extends JPanel {
             LOG.info("Permission rejected via Escape key binding");
             pendingResponse.complete("reject");
             slideClose();
-            fireResult(NbBundle.getMessage(ChatThreadPanel.class, "MSG_PermissionDenied"), false);
+            fireResult(NbBundle.getMessage(UIBundle.class, "MSG_PermissionDenied"), false);
         }
     }
 

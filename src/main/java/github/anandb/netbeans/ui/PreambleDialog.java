@@ -50,7 +50,7 @@ final class PreambleDialog extends JDialog {
     private boolean confirmed;
 
     PreambleDialog(Window owner, String currentText) {
-        super(owner, NbBundle.getMessage(PreambleDialog.class, "TITLE_PreambleDialog"), Dialog.ModalityType.APPLICATION_MODAL);
+        super(owner, NbBundle.getMessage(UIBundle.class, "TITLE_PreambleDialog"), Dialog.ModalityType.APPLICATION_MODAL);
         this.confirmed = false;
 
         preambleArea = new JTextArea(15, 50);
@@ -61,7 +61,7 @@ final class PreambleDialog extends JDialog {
         scrollPane.setBorder(BorderFactory.createEmptyBorder(8, 8, 0, 8));
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
-        copySystemButton = new JButton(NbBundle.getMessage(PreambleDialog.class, "LBL_PreambleCopySystem"));
+        copySystemButton = new JButton(NbBundle.getMessage(UIBundle.class, "LBL_PreambleCopySystem"));
         // Standard tooltip is dismissed too quickly for the long text; a
         // persistent popup above the button replaces it (hidden on dialog
         // close or mouse exit).
@@ -72,16 +72,16 @@ final class PreambleDialog extends JDialog {
         });
         copySystemButton.addActionListener(e -> copyConsolidatedPrompt());
 
-        JButton resetButton = new JButton(NbBundle.getMessage(PreambleDialog.class, "LBL_PreambleReset"));
+        JButton resetButton = new JButton(NbBundle.getMessage(UIBundle.class, "LBL_PreambleReset"));
         resetButton.addActionListener(e -> preambleArea.setText(PluginSettings.getDefaultPreamble()));
 
-        JButton clearButton = new JButton(NbBundle.getMessage(PreambleDialog.class, "LBL_PreambleClear"));
+        JButton clearButton = new JButton(NbBundle.getMessage(UIBundle.class, "LBL_PreambleClear"));
         clearButton.addActionListener(e -> preambleArea.setText(""));
 
-        JButton cancelButton = new JButton(NbBundle.getMessage(PreambleDialog.class, "BTN_Cancel"));
+        JButton cancelButton = new JButton(NbBundle.getMessage(UIBundle.class, "BTN_Cancel"));
         cancelButton.addActionListener(e -> dispose());
 
-        JButton okButton = new JButton(NbBundle.getMessage(PreambleDialog.class, "BTN_Ok"));
+        JButton okButton = new JButton(NbBundle.getMessage(UIBundle.class, "BTN_Ok"));
         okButton.addActionListener(e -> {
             confirmed = true;
             dispose();
@@ -96,7 +96,7 @@ final class PreambleDialog extends JDialog {
         JPanel contentPanel = new JPanel();
         contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
 
-        JLabel descLabel = new JLabel(NbBundle.getMessage(PreambleDialog.class, "LBL_PreambleDescription"));
+        JLabel descLabel = new JLabel(NbBundle.getMessage(UIBundle.class, "LBL_PreambleDescription"));
         descLabel.setBorder(BorderFactory.createEmptyBorder(8, 8, 4, 8));
         contentPanel.add(descLabel);
 
@@ -128,7 +128,7 @@ final class PreambleDialog extends JDialog {
         if (copyTipPopup != null || !SwingUtilities.isEventDispatchThread()) {
             return;
         }
-        String text = NbBundle.getMessage(PreambleDialog.class, "TT_PreambleCopySystem");
+        String text = NbBundle.getMessage(UIBundle.class, "TT_PreambleCopySystem");
         JLabel tip = new JLabel(copyTooltipHtml(text));
         tip.setOpaque(true);
         tip.setBackground(UIManager.getColor("ToolTip.background"));
@@ -207,11 +207,11 @@ final class PreambleDialog extends JDialog {
     private JPopupMenu createPopupMenu() {
         JPopupMenu menu = new JPopupMenu();
         JMenuItem clearItem = new JMenuItem(
-                NbBundle.getMessage(PreambleDialog.class, "LBL_PreambleClear"));
+                NbBundle.getMessage(UIBundle.class, "LBL_PreambleClear"));
         clearItem.addActionListener(e -> preambleArea.setText(""));
         menu.add(clearItem);
         JMenuItem resetItem = new JMenuItem(
-                NbBundle.getMessage(PreambleDialog.class, "LBL_PreambleReset"));
+                NbBundle.getMessage(UIBundle.class, "LBL_PreambleReset"));
         resetItem.addActionListener(e -> preambleArea.setText(PluginSettings.getDefaultPreamble()));
         menu.add(resetItem);
         return menu;

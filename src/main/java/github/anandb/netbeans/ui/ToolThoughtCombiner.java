@@ -122,9 +122,9 @@ public final class ToolThoughtCombiner {
                     if (text != null && !text.isEmpty()) {
                         String segTitle = mb.getToolTitle();
                         if ("thought".equals(role) && (segTitle == null || segTitle.isEmpty())) {
-                            segTitle = NbBundle.getMessage(CollapsibleToolPane.class, "LBL_ThinkingProcess");
+                            segTitle = NbBundle.getMessage(UIBundle.class, "LBL_ThinkingProcess");
                         } else if ("tool".equals(role) && (segTitle == null || segTitle.isEmpty())) {
-                            segTitle = NbBundle.getMessage(CollapsibleToolPane.class, "LBL_ToolFallback");
+                            segTitle = NbBundle.getMessage(UIBundle.class, "LBL_ToolFallback");
                         }
                         // For "read" tool segments, skip body content — show header only
                         if ("tool".equals(role) && segTitle != null) {

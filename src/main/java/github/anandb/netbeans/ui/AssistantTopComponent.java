@@ -157,7 +157,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private transient Timer turnEndFlushTimer;
 
     public AssistantTopComponent() {
-        setName(NbBundle.getMessage(AssistantTopComponent.class, "CTL_AssistantTopComponent"));
+        setName(NbBundle.getMessage(UIBundle.class, "CTL_AssistantTopComponent"));
 
         setLayout(new BorderLayout());
         chatPanel = new ChatThreadPanel();
@@ -261,7 +261,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         // Add token usage button (visible only when the
         // harness supports the stats subprocess — see applyHarnessCapabilities)
         tokenUsageBtn = UIUtils.createToolbarButton("currency.svg", iconSize,
-                NbBundle.getMessage(AssistantTopComponent.class, "TT_TokenStats"), e -> {
+                NbBundle.getMessage(UIBundle.class, "TT_TokenStats"), e -> {
             Window win = SwingUtilities.getWindowAncestor(AssistantTopComponent.this);
             if (win instanceof Frame frame) {
                 TokenUsageDialog.show(frame);
@@ -311,8 +311,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     ProcessControl currentPc = Lookup.getDefault().lookup(ProcessControl.class);
                     boolean isGemini = currentPc != null && "gemini".equals(currentPc.getCapabilities().id());
                     String promptMsg = isGemini
-                        ? NbBundle.getMessage(AssistantTopComponent.class, "MSG_SelectAgentLevel")
-                        : NbBundle.getMessage(AssistantTopComponent.class, "MSG_SelectAgentModelLevel");
+                        ? NbBundle.getMessage(UIBundle.class, "MSG_SelectAgentLevel")
+                        : NbBundle.getMessage(UIBundle.class, "MSG_SelectAgentModelLevel");
                     layoutBuilder.getConfigConfirmPanel().showConfigConfirm(promptMsg, uiFuture);
                     // Lock combos — SSE/RPC config_option_update must not
                     // repopulate while the user is choosing model/level.
@@ -498,8 +498,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         String currentTitle = selectedIdToTitle(selectedItem.getSession());
         NotifyDescriptor.InputLine input = new NotifyDescriptor.InputLine(
-            NbBundle.getMessage(AssistantTopComponent.class, "MSG_EnterTitle"),
-            NbBundle.getMessage(AssistantTopComponent.class, "HINT_RenameSession")
+            NbBundle.getMessage(UIBundle.class, "MSG_EnterTitle"),
+            NbBundle.getMessage(UIBundle.class, "HINT_RenameSession")
         );
         input.setInputText(currentTitle);
         Object result = DialogDisplayer.getDefault().notify(input);
@@ -527,8 +527,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
         String title = sc.getCustomTitle(sessionId, sessionId);
         NotifyDescriptor confirm = new NotifyDescriptor.Confirmation(
-                NbBundle.getMessage(AssistantTopComponent.class, "MSG_ConfirmDeleteSession", title),
-                NbBundle.getMessage(AssistantTopComponent.class, "LBL_DeleteSession"),
+                NbBundle.getMessage(UIBundle.class, "MSG_ConfirmDeleteSession", title),
+                NbBundle.getMessage(UIBundle.class, "LBL_DeleteSession"),
                 NotifyDescriptor.OK_CANCEL_OPTION, NotifyDescriptor.WARNING_MESSAGE);
         if (DialogDisplayer.getDefault().notify(confirm) != NotifyDescriptor.OK_OPTION) {
             return;
@@ -564,7 +564,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     private String selectedIdToTitle(Session session) {
-        String title = defaultIfBlank(session.title(), NbBundle.getMessage(AssistantTopComponent.class, "LBL_ChatDefault", left(session.id(), 8)));
+        String title = defaultIfBlank(session.title(), NbBundle.getMessage(UIBundle.class, "LBL_ChatDefault", left(session.id(), 8)));
         return sessionService.get().getCustomTitle(session.id(), title);
     }
 
@@ -585,7 +585,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
         JButton sendBtn = layoutBuilder.getSendBtn();
         if (sendBtn != null) {
-            String goText = NbBundle.getMessage(AssistantTopComponent.class, "BTN_Go");
+            String goText = NbBundle.getMessage(UIBundle.class, "BTN_Go");
             sendBtn.setToolTipText(goText + " (" + caps.displayName() + ")");
         }
     }
@@ -809,17 +809,17 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         // If messages are being trimmed, ask user whether to show all first.
         if (!chatPanel.isKeepOlderMessages()) {
             NotifyDescriptor nd = new NotifyDescriptor(
-                    NbBundle.getMessage(AssistantTopComponent.class, "MSG_ExportPrompt"),
-                    NbBundle.getMessage(AssistantTopComponent.class, "TITLE_ExportConversation"),
+                    NbBundle.getMessage(UIBundle.class, "MSG_ExportPrompt"),
+                    NbBundle.getMessage(UIBundle.class, "TITLE_ExportConversation"),
                     NotifyDescriptor.DEFAULT_OPTION,
                     NotifyDescriptor.QUESTION_MESSAGE,
                     new Object[]{
-                        NbBundle.getMessage(AssistantTopComponent.class, "BTN_ExportDisplayed"),
-                        NbBundle.getMessage(AssistantTopComponent.class, "BTN_ExportAll")
+                        NbBundle.getMessage(UIBundle.class, "BTN_ExportDisplayed"),
+                        NbBundle.getMessage(UIBundle.class, "BTN_ExportAll")
                     },
-                    NbBundle.getMessage(AssistantTopComponent.class, "BTN_ExportDisplayed"));
+                    NbBundle.getMessage(UIBundle.class, "BTN_ExportDisplayed"));
             Object choice = DialogDisplayer.getDefault().notify(nd);
-            if (NbBundle.getMessage(AssistantTopComponent.class, "BTN_ExportAll").equals(choice)) {
+            if (NbBundle.getMessage(UIBundle.class, "BTN_ExportAll").equals(choice)) {
                 // Reload then export via flush timer callback.
                 pendingExportFormat = format;
                 chatPanel.setOnMessagesStable(() -> {
@@ -860,7 +860,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             if (modelName != null && !modelName.isEmpty()) {
                 setName(modelName);
             } else {
-                setName(NbBundle.getMessage(AssistantTopComponent.class, "CTL_AssistantTopComponent"));
+                setName(NbBundle.getMessage(UIBundle.class, "CTL_AssistantTopComponent"));
             }
         });
     }
@@ -1050,13 +1050,13 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         if (cwd == null || cwd.isEmpty()) return;
 
         JPopupMenu popup = new JPopupMenu();
-        JMenuItem locateItem = new JMenuItem(NbBundle.getMessage(AssistantTopComponent.class, "CTL_LocateInSystem"));
+        JMenuItem locateItem = new JMenuItem(NbBundle.getMessage(UIBundle.class, "CTL_LocateInSystem"));
         locateItem.addActionListener(ev -> openCwdInSystemBrowser(cwd));
         popup.add(locateItem);
 
         // Live cwd move for a harness that supports it: no restart, no terminated sessions.
         JMenuItem changeDir = new JMenuItem(
-                NbBundle.getMessage(AssistantTopComponent.class, "LBL_ChangeWorkingDir"));
+                NbBundle.getMessage(UIBundle.class, "LBL_ChangeWorkingDir"));
         changeDir.setEnabled(sessionService.get().canChangeWorkingDirectory());
         changeDir.addActionListener(ev -> changeWorkingDirectory(cwd));
         popup.add(changeDir);
@@ -1072,7 +1072,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
         JFileChooser chooser = new JFileChooser(currentCwd);
         chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-        chooser.setDialogTitle(NbBundle.getMessage(AssistantTopComponent.class, "TITLE_ChangeWorkingDir"));
+        chooser.setDialogTitle(NbBundle.getMessage(UIBundle.class, "TITLE_ChangeWorkingDir"));
         if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION
                 || chooser.getSelectedFile() == null) {
             return;
@@ -1265,7 +1265,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
         if ("gemini".equals(harnessId)) {
             DialogDisplayer.getDefault().notify(new NotifyDescriptor.Message(
-                    NbBundle.getMessage(AssistantTopComponent.class, "MSG_GeminiDefaultModel"),
+                    NbBundle.getMessage(UIBundle.class, "MSG_GeminiDefaultModel"),
                     NotifyDescriptor.INFORMATION_MESSAGE));
         }
         java.util.prefs.Preferences prefs =

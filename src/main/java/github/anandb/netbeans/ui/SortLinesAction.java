@@ -18,6 +18,6 @@ public class SortLinesAction extends BaseSortLinesAction {
 
     @Override
     protected String getDisplayName() {
-        return NbBundle.getMessage(SortLinesAction.class, "CTL_SortLinesAction");
+        return NbBundle.getMessage(UIBundle.class, "CTL_SortLinesAction");
     }
 }

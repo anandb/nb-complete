@@ -89,7 +89,7 @@ class BubbleStreamer {
             @Override
             public JPopupMenu getComponentPopupMenu() {
                 JPopupMenu menu = new JPopupMenu();
-                JMenuItem copyItem = new JMenuItem(NbBundle.getMessage(MessageBubble.class, "LBL_Copy"));
+                JMenuItem copyItem = new JMenuItem(NbBundle.getMessage(UIBundle.class, "LBL_Copy"));
                 copyItem.setEnabled(getSelectedText() != null);
                 copyItem.addActionListener(e -> {
                     String t = getSelectedText();

@@ -143,9 +143,9 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
 
     public CollapsibleCodePane(String language, String code, boolean expandedByDefault) {
         super(12, (language != null && !language.isEmpty() ? language
-                : NbBundle.getMessage(CollapsibleCodePane.class, "LBL_CodeFallback")).toUpperCase(),
+                : NbBundle.getMessage(UIBundle.class, "LBL_CodeFallback")).toUpperCase(),
                 ThemeManager.getCurrentTheme().codeHeaderBorder(), expandedByDefault);
-        this.language = language != null && !language.isEmpty() ? language : NbBundle.getMessage(CollapsibleCodePane.class, "LBL_CodeFallback");
+        this.language = language != null && !language.isEmpty() ? language : NbBundle.getMessage(UIBundle.class, "LBL_CodeFallback");
         this.code = code;
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
@@ -161,7 +161,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         // Remove only the base class hover listener — not all MouseListeners,
         // which would also strip L&F-installed ones (e.g. BasicButtonListener).
         copyButton.removeMouseListener(copyButtonHoverListener);
-        copyButton.setToolTipText(NbBundle.getMessage(CollapsibleCodePane.class, "HINT_CopyCode"));
+        copyButton.setToolTipText(NbBundle.getMessage(UIBundle.class, "HINT_CopyCode"));
         copyButton.setBorder(UIUtils.COPY_BUTTON_BORDER);
         copyButton.setForeground(theme.codeHeaderForeground());
         copyButton.setVisible(true);
@@ -169,7 +169,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         if (expandedByDefault) {
             initCodeTextArea();
         } else {
-            JLabel placeholder = new JLabel(NbBundle.getMessage(CollapsibleCodePane.class, "LBL_CodeBlockCollapsed"));
+            JLabel placeholder = new JLabel(NbBundle.getMessage(UIBundle.class, "LBL_CodeBlockCollapsed"));
             placeholder.setForeground(theme.codeHeaderForeground());
             placeholder.setFont(ThemeManager.getMonospaceFont().deriveFont(Font.PLAIN, 11f));
             contentPanel.add(placeholder, BorderLayout.CENTER);
@@ -223,15 +223,15 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
                 if (!e.isPopupTrigger()) return;
                 JPopupMenu menu = new JPopupMenu();
 
-                JMenuItem copyMenuItem = new JMenuItem(NbBundle.getMessage(CollapsibleCodePane.class, "LBL_CodePane_Copy"));
+                JMenuItem copyMenuItem = new JMenuItem(NbBundle.getMessage(UIBundle.class, "LBL_CodePane_Copy"));
                 copyMenuItem.addActionListener(ev -> copySelectedOrAll());
                 menu.add(copyMenuItem);
 
-                JMenuItem copyAllMenuItem = new JMenuItem(NbBundle.getMessage(CollapsibleCodePane.class, "LBL_CodePane_CopyAll"));
+                JMenuItem copyAllMenuItem = new JMenuItem(NbBundle.getMessage(UIBundle.class, "LBL_CodePane_CopyAll"));
                 copyAllMenuItem.addActionListener(ev -> copyAll());
                 menu.add(copyAllMenuItem);
 
-                JMenuItem copyAsMarkdownMenuItem = new JMenuItem(NbBundle.getMessage(CollapsibleCodePane.class, "LBL_CodePane_CopyAsMarkdown"));
+                JMenuItem copyAsMarkdownMenuItem = new JMenuItem(NbBundle.getMessage(UIBundle.class, "LBL_CodePane_CopyAsMarkdown"));
                 copyAsMarkdownMenuItem.addActionListener(ev -> copyAsMarkdown());
                 menu.add(copyAsMarkdownMenuItem);
 
@@ -259,7 +259,7 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         if (!code.equals(this.code)) {
             String prevLanguage = this.language;
             this.code = code;
-            this.language = (language != null && !language.isEmpty()) ? language : NbBundle.getMessage(CollapsibleCodePane.class, "LBL_CodeFallback");
+            this.language = (language != null && !language.isEmpty()) ? language : NbBundle.getMessage(UIBundle.class, "LBL_CodeFallback");
             boolean languageChanged = !Objects.equals(prevLanguage, this.language);
             if (codeAreaInitialized) {
                 codeTextArea.setText(code);

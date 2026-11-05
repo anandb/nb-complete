@@ -109,9 +109,9 @@ public class MessageBubble extends JPanel implements Scrollable {
         setBorder(new EmptyBorder(2, 8, 2, 8));
 
         // Accessible context for screen readers
-        getAccessibleContext().setAccessibleName(NbBundle.getMessage(MessageBubble.class,
+        getAccessibleContext().setAccessibleName(NbBundle.getMessage(UIBundle.class,
                 "ACR_MessageBubble_" + role));
-        getAccessibleContext().setAccessibleDescription(NbBundle.getMessage(MessageBubble.class,
+        getAccessibleContext().setAccessibleDescription(NbBundle.getMessage(UIBundle.class,
                 "ACR_MessageBubbleDesc_" + role));
 
         segments = new JPanel();

@@ -409,8 +409,8 @@ public class ComponentLifecycleHandler {
             return;
         }
         NotifyDescriptor.Confirmation confirm = new NotifyDescriptor.Confirmation(
-            NbBundle.getMessage(AssistantTopComponent.class, "MSG_ConfirmRestart"),
-            NbBundle.getMessage(AssistantTopComponent.class, "TITLE_RestartServer"),
+            NbBundle.getMessage(UIBundle.class, "MSG_ConfirmRestart"),
+            NbBundle.getMessage(UIBundle.class, "TITLE_RestartServer"),
             NotifyDescriptor.YES_NO_OPTION,
             NotifyDescriptor.WARNING_MESSAGE
         );
@@ -501,7 +501,7 @@ public class ComponentLifecycleHandler {
                     statusController.setStatus("STATUS_RestartFailed", msg);
                     chatPanel.stopStreaming();
                     chatPanel.addMessage(ProcessedMessage.createError(
-                        MessageType.error_response, NbBundle.getMessage(AssistantTopComponent.class, "STATUS_RestartFailed", msg), null, null
+                        MessageType.error_response, NbBundle.getMessage(UIBundle.class, "STATUS_RestartFailed", msg), null, null
                     ));
                 }
             });

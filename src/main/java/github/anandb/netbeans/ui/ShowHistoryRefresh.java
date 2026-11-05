@@ -147,7 +147,7 @@ public class ShowHistoryRefresh implements Runnable, PropertyChangeListener {
                 : toolbar.getComponentCount();
         ActionListener onRefresh = e -> runSearch(searchPanel);
         JButton refresh = UIUtils.createToolbarButton("refresh.svg",
-                NbBundle.getMessage(ShowHistoryRefresh.class, "HINT_ShowHistoryRefresh"), onRefresh);
+                NbBundle.getMessage(UIBundle.class, "HINT_ShowHistoryRefresh"), onRefresh);
         refresh.setName(REFRESH_BUTTON_NAME);
         refresh.setFocusable(false);
 

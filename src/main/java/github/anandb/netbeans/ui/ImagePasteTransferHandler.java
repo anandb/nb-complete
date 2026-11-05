@@ -107,7 +107,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
                 }
             }
         } catch (UnsupportedFlavorException | IOException e) {
-            reportError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_ReadClipboard", ExceptionUtils.getMessage(e)));
+            reportError(NbBundle.getMessage(UIBundle.class, "ERR_ReadClipboard", ExceptionUtils.getMessage(e)));
         }
 
         // Fallback: text paste on EDT
@@ -139,7 +139,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
                 SwingUtilities.invokeLater(() -> callback.onAttachmentAdded(attachedFile));
             }
         } catch (Exception e) {
-            reportError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_SavePastedImage", ExceptionUtils.getMessage(e)));
+            reportError(NbBundle.getMessage(UIBundle.class, "ERR_SavePastedImage", ExceptionUtils.getMessage(e)));
         }
     }
 
@@ -150,14 +150,14 @@ public class ImagePasteTransferHandler extends TransferHandler {
                 SwingUtilities.invokeLater(() -> callback.onAttachmentAdded(attachedFile));
             }
         } catch (Exception e) {
-            reportError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_ProcessPastedFile", ExceptionUtils.getMessage(e)));
+            reportError(NbBundle.getMessage(UIBundle.class, "ERR_ProcessPastedFile", ExceptionUtils.getMessage(e)));
         }
     }
 
     private void processWaylandClipboardAsync() {
         try {
             if (!isWlPasteAvailable()) {
-                reportError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_WlPasteNotFound"));
+                reportError(NbBundle.getMessage(UIBundle.class, "ERR_WlPasteNotFound"));
                 return;
             }
             AttachedFile attachedFile = fetchWaylandClipboardImage();
@@ -165,7 +165,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
                 SwingUtilities.invokeLater(() -> callback.onAttachmentAdded(attachedFile));
             }
         } catch (Exception e) {
-            reportError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_ReadClipboard", ExceptionUtils.getMessage(e)));
+            reportError(NbBundle.getMessage(UIBundle.class, "ERR_ReadClipboard", ExceptionUtils.getMessage(e)));
         }
     }
 
@@ -185,7 +185,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
                 int h = image.getHeight(null);
                 if (w <= 0 || h <= 0) {
                     if (callback != null) {
-                        callback.onError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_InvalidDimensions"));
+                        callback.onError(NbBundle.getMessage(UIBundle.class, "ERR_InvalidDimensions"));
                     }
                     return null;
                 }
@@ -198,7 +198,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
             }
         } catch (IOException | RuntimeException e) {
             if (callback != null) {
-                callback.onError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_SavePastedImage", ExceptionUtils.getMessage(e)));
+                callback.onError(NbBundle.getMessage(UIBundle.class, "ERR_SavePastedImage", ExceptionUtils.getMessage(e)));
             }
         }
 
@@ -213,7 +213,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
         long size = (long) bufferedImage.getWidth() * bufferedImage.getHeight() * 4;
         if (size > MAX_FILE_SIZE) {
             if (callback != null) {
-                callback.onError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_FileTooLarge"));
+                callback.onError(NbBundle.getMessage(UIBundle.class, "ERR_FileTooLarge"));
             }
             return null;
         }
@@ -225,7 +225,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
         boolean success = ImageIO.write(bufferedImage, "png", tempFile.toFile());
         if (!success) {
             if (callback != null) {
-                callback.onError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_NoPngWriter"));
+                callback.onError(NbBundle.getMessage(UIBundle.class, "ERR_NoPngWriter"));
             }
             return null;
         }
@@ -304,7 +304,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
         try {
             if (file.length() > MAX_FILE_SIZE) {
                 if (callback != null) {
-                    callback.onError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_FileTooLarge"));
+                    callback.onError(NbBundle.getMessage(UIBundle.class, "ERR_FileTooLarge"));
                 }
                 return null;
             }
@@ -331,7 +331,7 @@ public class ImagePasteTransferHandler extends TransferHandler {
 
         } catch (IOException e) {
             if (callback != null) {
-                callback.onError(NbBundle.getMessage(ImagePasteTransferHandler.class, "ERR_ProcessPastedFile", ExceptionUtils.getMessage(e)));
+                callback.onError(NbBundle.getMessage(UIBundle.class, "ERR_ProcessPastedFile", ExceptionUtils.getMessage(e)));
             }
             return null;
         }

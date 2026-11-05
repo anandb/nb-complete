@@ -83,10 +83,10 @@ public class ScrollController implements KeyEventDispatcher {
         btn.setFocusPainted(false);
         btn.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btn.setToolTipText(NbBundle.getMessage(ChatThreadPanel.class, "HINT_ScrollToBottom"));
+        btn.setToolTipText(NbBundle.getMessage(UIBundle.class, "HINT_ScrollToBottom"));
         btn.getAccessibleContext().setAccessibleName("Scroll to bottom");
         btn.getAccessibleContext().setAccessibleDescription(
-                NbBundle.getMessage(ChatThreadPanel.class, "HINT_ScrollToBottom"));
+                NbBundle.getMessage(UIBundle.class, "HINT_ScrollToBottom"));
         btn.setVisible(false);
         btn.addActionListener(e -> {
             scrollToBottom(true);

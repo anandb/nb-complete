@@ -137,7 +137,7 @@ final class PermissionDialogManager {
                         new Object[] { sessionId, autoOption });
                 String label = PermissionOption.autoAllowName(options, autoOption);
                 addResultToChat(label != null ? label
-                        : NbBundle.getMessage(PermissionDialogManager.class, "MSG_PermissionAutoAllowed"),
+                        : NbBundle.getMessage(UIBundle.class, "MSG_PermissionAutoAllowed"),
                         true);
                 response.complete(autoOption);
             }
@@ -145,7 +145,7 @@ final class PermissionDialogManager {
         }
 
         JsonNode toolCall = null;
-        String prompt = NbBundle.getMessage(PermissionDialogManager.class, "MSG_PermissionRequested");
+        String prompt = NbBundle.getMessage(UIBundle.class, "MSG_PermissionRequested");
         if (params.has("message")) {
             prompt = params.get("message").asText();
         } else if (params.has("content")) {
@@ -174,9 +174,9 @@ final class PermissionDialogManager {
             }
 
             if (context != null) {
-                prompt = NbBundle.getMessage(PermissionDialogManager.class, "MSG_PermissionToolWithContext", title, "");
+                prompt = NbBundle.getMessage(UIBundle.class, "MSG_PermissionToolWithContext", title, "");
             } else {
-                prompt = NbBundle.getMessage(PermissionDialogManager.class, "MSG_PermissionTool", title);
+                prompt = NbBundle.getMessage(UIBundle.class, "MSG_PermissionTool", title);
             }
         }
 

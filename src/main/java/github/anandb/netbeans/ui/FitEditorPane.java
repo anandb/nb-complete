@@ -243,7 +243,7 @@ public class FitEditorPane extends JTextPane {
     @Override
     public JPopupMenu getComponentPopupMenu() {
         JPopupMenu menu = new JPopupMenu();
-        JMenuItem copyItem = new JMenuItem(NbBundle.getMessage(FitEditorPane.class, "LBL_Copy"));
+        JMenuItem copyItem = new JMenuItem(NbBundle.getMessage(UIBundle.class, "LBL_Copy"));
         copyItem.setEnabled(getSelectedText() != null);
         copyItem.addActionListener((ActionEvent e) -> {
             String text = getSelectedText();

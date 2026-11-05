@@ -131,11 +131,11 @@ public class PlanPanel extends JPanel {
         // Added after the toggle wiring so a click on the close button hides the
         // slideout instead of also expanding/collapsing it.
         closeButton = UIUtils.createToolbarButton("plan-close.svg", ICON_SIZE,
-                NbBundle.getMessage(PlanPanel.class, "TT_HidePlan"), e -> hidePlan());
+                NbBundle.getMessage(UIBundle.class, "TT_HidePlan"), e -> hidePlan());
         closeButton.setContentAreaFilled(false);
         closeButton.setBorderPainted(false);
         closeButton.getAccessibleContext().setAccessibleName(
-                NbBundle.getMessage(PlanPanel.class, "ACSN_HidePlan"));
+                NbBundle.getMessage(UIBundle.class, "ACSN_HidePlan"));
         barSlot.add(Box.createHorizontalStrut(2));
         barSlot.add(closeButton);
 
@@ -230,7 +230,7 @@ public class PlanPanel extends JPanel {
         if (expanded) {
             setChevron("plan-chevron-down.svg", "\u2304"); // ⌄ down chevron fallback
             badgeIcon.setIcon(null);
-            headerLabel.setFullText(NbBundle.getMessage(PlanPanel.class, "LBL_Plan") + count);
+            headerLabel.setFullText(NbBundle.getMessage(UIBundle.class, "LBL_Plan") + count);
             rowsScroll.setVisible(true);
             // Size the viewport from the rows themselves, never from the scrollpane's
             // own preferred size: that would freeze the slideout at the height of the
@@ -251,7 +251,7 @@ public class PlanPanel extends JPanel {
             } else {
                 badgeIcon.setIcon(null);
                 headerLabel.setFullText(
-                        NbBundle.getMessage(PlanPanel.class, "LBL_PlanCompleted") + count);
+                        NbBundle.getMessage(UIBundle.class, "LBL_PlanCompleted") + count);
             }
             rowsScroll.setVisible(false);
         }
@@ -260,7 +260,7 @@ public class PlanPanel extends JPanel {
         progressBar.setFraction(done, total,
                 theme.accent(), theme.tableBorder());
         progressBar.getAccessibleContext().setAccessibleName(
-                NbBundle.getMessage(PlanPanel.class, "ACSN_PlanProgress", done, total));
+                NbBundle.getMessage(UIBundle.class, "ACSN_PlanProgress", done, total));
         setVisible(!dismissed);
         revalidate();
         repaint();

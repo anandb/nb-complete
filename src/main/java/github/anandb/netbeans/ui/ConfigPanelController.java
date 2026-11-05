@@ -136,7 +136,7 @@ public class ConfigPanelController {
             }
         };
         thinkingCombo.setPrototypeDisplayValue(new ConfigItem("High (Slow)", "High (Slow)"));
-        thinkingCombo.setToolTipText(NbBundle.getMessage(ConfigPanelController.class, "HINT_Thinking"));
+        thinkingCombo.setToolTipText(NbBundle.getMessage(UIBundle.class, "HINT_Thinking"));
 
         gbc.gridx = 0;
         gbc.gridy = 0;
@@ -151,15 +151,15 @@ public class ConfigPanelController {
 
         gbc.gridx = 2;
         gbc.weightx = 0;
-        JLabel thinkingLabel = new JLabel(NbBundle.getMessage(ConfigPanelController.class, "LBL_Thinking"));
-        thinkingLabel.setToolTipText(NbBundle.getMessage(ConfigPanelController.class, "HINT_Thinking"));
+        JLabel thinkingLabel = new JLabel(NbBundle.getMessage(UIBundle.class, "LBL_Thinking"));
+        thinkingLabel.setToolTipText(NbBundle.getMessage(UIBundle.class, "HINT_Thinking"));
         configPanel.add(thinkingLabel, gbc);
 
         gbc.gridx = 3;
         gbc.weightx = 0.0;
         configPanel.add(thinkingCombo, gbc);
 
-        String copyHint = NbBundle.getMessage(ConfigPanelController.class, "HINT_CopyModelID");
+        String copyHint = NbBundle.getMessage(UIBundle.class, "HINT_CopyModelID");
         copyModelBtn = UIUtils.createToolbarButton("copy.svg", 20, copyHint, e -> {
             ConfigItem selected = (ConfigItem) modelCombo.getSelectedItem();
             if (selected != null && selected.value() != null) {
@@ -370,10 +370,10 @@ public class ConfigPanelController {
             }
         }
         modeLabel.setText(label != null ? label
-                : NbBundle.getMessage(ConfigPanelController.class, modesField ? "LBL_Mode" : "LBL_Agent"));
+                : NbBundle.getMessage(UIBundle.class, modesField ? "LBL_Mode" : "LBL_Agent"));
         String description = modeConfigOption != null && !modesField ? modeConfigOption.description() : null;
         modeLabel.setToolTipText(description != null && !description.isBlank() ? description
-                : NbBundle.getMessage(ConfigPanelController.class, hintKey));
+                : NbBundle.getMessage(UIBundle.class, hintKey));
     }
 
     /** True when model switching must use the dedicated ACP session/set_model RPC (Hermes-style agents). */
@@ -843,14 +843,14 @@ public class ConfigPanelController {
     /** Returns the static fallback hint for the given combo category. */
     private String comboFallbackHint(String category) {
         if ("mode".equals(category)) return modeFallbackHint();
-        if (isThinkingCategory(category)) return NbBundle.getMessage(ConfigPanelController.class, "HINT_Thinking");
+        if (isThinkingCategory(category)) return NbBundle.getMessage(UIBundle.class, "HINT_Thinking");
         return null;
     }
 
     /** Returns the appropriate static fallback hint for the mode/agent combo. */
     private String modeFallbackHint() {
         String key = agentSupportsSessionSetMode() ? "HINT_Mode" : "HINT_Agent";
-        return NbBundle.getMessage(ConfigPanelController.class, key);
+        return NbBundle.getMessage(UIBundle.class, key);
     }
 
     /** Sets the combo tooltip to the description of the currently selected option, falling back to {@code fallback}. */

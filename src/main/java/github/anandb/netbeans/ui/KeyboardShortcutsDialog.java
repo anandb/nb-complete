@@ -55,7 +55,7 @@ final class KeyboardShortcutsDialog extends JDialog {
     private ShortcutSection[] sections;
 
     private KeyboardShortcutsDialog(Frame owner) {
-        super(owner, NbBundle.getMessage(KeyboardShortcutsDialog.class, "TITLE_KeyboardShortcuts"), false);
+        super(owner, NbBundle.getMessage(UIBundle.class, "TITLE_KeyboardShortcuts"), false);
         setResizable(true);
         initComponents();
         pack();
@@ -95,13 +95,13 @@ final class KeyboardShortcutsDialog extends JDialog {
         // Header: title + search
         JPanel headerPanel = new JPanel(new BorderLayout(8, 0));
         headerPanel.setOpaque(false);
-        JLabel titleLabel = new JLabel(NbBundle.getMessage(KeyboardShortcutsDialog.class, "TITLE_KeyboardShortcuts"));
+        JLabel titleLabel = new JLabel(NbBundle.getMessage(UIBundle.class, "TITLE_KeyboardShortcuts"));
         titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, titleLabel.getFont().getSize() + 3f));
         headerPanel.add(titleLabel, BorderLayout.WEST);
 
         searchField = new JTextField(16);
         searchField.putClientProperty("JTextField.placeholderText",
-                NbBundle.getMessage(KeyboardShortcutsDialog.class, "LBL_FilterShortcuts"));
+                NbBundle.getMessage(UIBundle.class, "LBL_FilterShortcuts"));
         searchField.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) { rebuildContent(); }
@@ -125,7 +125,7 @@ final class KeyboardShortcutsDialog extends JDialog {
         root.add(scrollPane, BorderLayout.CENTER);
 
         // Close hint
-        JLabel closeHint = new JLabel(NbBundle.getMessage(KeyboardShortcutsDialog.class, "LBL_CloseHint"));
+        JLabel closeHint = new JLabel(NbBundle.getMessage(UIBundle.class, "LBL_CloseHint"));
         closeHint.setFont(closeHint.getFont().deriveFont(Font.ITALIC, closeHint.getFont().getSize() - 1f));
         closeHint.setForeground(closeHint.getForeground().brighter());
         closeHint.setHorizontalAlignment(SwingConstants.CENTER);
@@ -245,7 +245,7 @@ final class KeyboardShortcutsDialog extends JDialog {
                 String key = val != null ? val.toString() : "";
                 if (isUnassigned(key)) {
                     setText("<html><i style='color:" + unassignedFg + ";'>"
-                            + NbBundle.getMessage(KeyboardShortcutsDialog.class, "LBL_Unassigned") + "</i></html>");
+                            + NbBundle.getMessage(UIBundle.class, "LBL_Unassigned") + "</i></html>");
                 } else {
                     setText("<html>" + renderKbdBadge(key, kbdBg, kbdFg, unassignedFg) + "</html>");
                 }
@@ -319,11 +319,11 @@ final class KeyboardShortcutsDialog extends JDialog {
 
         // Summary label — full width, looks like a table row
         String actionWord = unassigned.size() == 1
-                ? NbBundle.getMessage(KeyboardShortcutsDialog.class, "LBL_Action")
-                : NbBundle.getMessage(KeyboardShortcutsDialog.class, "LBL_Actions");
+                ? NbBundle.getMessage(UIBundle.class, "LBL_Action")
+                : NbBundle.getMessage(UIBundle.class, "LBL_Actions");
         String count = unassigned.size() + actionWord;
         JLabel summary = new JLabel("  "
-                + NbBundle.getMessage(KeyboardShortcutsDialog.class, "LBL_Unassigned")
+                + NbBundle.getMessage(UIBundle.class, "LBL_Unassigned")
                 + " \u00a0\u00a0\u00a0 " + count + "  \u25BC");
         summary.setFont(summary.getFont().deriveFont(Font.BOLD, summary.getFont().getSize() + 1f));
         summary.setForeground(unassignedFg);

@@ -59,7 +59,7 @@ class StartupInfoBubble extends JPanel {
         // Parse context files
         List<String> contextFiles = extractContextFiles(text);
         if (!contextFiles.isEmpty()) {
-            JLabel contextHeader = new JLabel("\uD83D\uDCC4 " + NbBundle.getMessage(StartupInfoBubble.class, "StartupInfoBubble.Context"));
+            JLabel contextHeader = new JLabel("\uD83D\uDCC4 " + NbBundle.getMessage(UIBundle.class, "StartupInfoBubble.Context"));
             contextHeader.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN, ThemeManager.getFont().getSize() - 1f));
             contextHeader.setForeground(theme.secondary2());
             contextHeader.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -78,7 +78,7 @@ class StartupInfoBubble extends JPanel {
         // Parse extensions
         List<String[]> extensions = extractExtensions(text);
         if (!extensions.isEmpty()) {
-            JLabel extHeader = new JLabel("\uD83D\uDCE6 " + NbBundle.getMessage(StartupInfoBubble.class, "StartupInfoBubble.Extensions"));
+            JLabel extHeader = new JLabel("\uD83D\uDCE6 " + NbBundle.getMessage(UIBundle.class, "StartupInfoBubble.Extensions"));
             extHeader.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN, ThemeManager.getFont().getSize() - 1f));
             extHeader.setForeground(theme.secondary2());
             extHeader.setAlignmentX(Component.LEFT_ALIGNMENT);

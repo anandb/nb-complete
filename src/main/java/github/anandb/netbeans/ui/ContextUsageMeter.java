@@ -68,11 +68,11 @@ final class ContextUsageMeter extends JComponent {
             return;
         }
         if (ac.getAccessibleName() == null) {
-            ac.setAccessibleName(NbBundle.getMessage(AssistantTopComponent.class,
+            ac.setAccessibleName(NbBundle.getMessage(UIBundle.class,
                     "LBL_ContextUsage"));
         }
         ac.setAccessibleDescription(getToolTipText() != null ? getToolTipText()
-                : NbBundle.getMessage(AssistantTopComponent.class, "HINT_ContextUsage"));
+                : NbBundle.getMessage(UIBundle.class, "HINT_ContextUsage"));
     }
 
     /** Sets used/size and the tooltip. Unknown size (≤ 0) resets to an empty
@@ -81,7 +81,7 @@ final class ContextUsageMeter extends JComponent {
     void setUsage(long used, long size) {
         if (size <= 0) {
             fraction = UNKNOWN_FRACTION;
-            setToolTipText(NbBundle.getMessage(AssistantTopComponent.class,
+            setToolTipText(NbBundle.getMessage(UIBundle.class,
                     "HINT_ContextUsageUnavailable"));
         } else {
             long clamped = Math.max(0, used);
@@ -89,7 +89,7 @@ final class ContextUsageMeter extends JComponent {
             fraction = Math.max(0.0, Math.min(1.0, f));
             NumberFormat nf = NumberFormat.getInstance(Locale.getDefault());
             Object[] args = {nf.format(clamped), nf.format(size)};
-            setToolTipText(NbBundle.getMessage(AssistantTopComponent.class,
+            setToolTipText(NbBundle.getMessage(UIBundle.class,
                     "HINT_ContextUsage", args));
         }
         initAccessibleContext();

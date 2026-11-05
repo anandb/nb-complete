@@ -187,11 +187,11 @@ final class ChatLayoutBuilder {
                     var tmpSc = Lookup.getDefault()
                         .lookup(SessionControl.class);
 
-                    JMenuItem rename = new JMenuItem(NbBundle.getMessage(ChatLayoutBuilder.class, "LBL_Rename"));
+                    JMenuItem rename = new JMenuItem(NbBundle.getMessage(UIBundle.class, "LBL_Rename"));
                     rename.addActionListener(ev -> topComponent.renameCurrentSession());
                     add(rename);
 
-                    JMenuItem fork = new JMenuItem(NbBundle.getMessage(ChatLayoutBuilder.class, "LBL_ForkSession"));
+                    JMenuItem fork = new JMenuItem(NbBundle.getMessage(UIBundle.class, "LBL_ForkSession"));
                     var forkSc = Lookup.getDefault().lookup(SessionControl.class);
                     fork.setEnabled(forkSc != null && forkSc.canForkSession());
                     fork.addActionListener(ev -> topComponent.forkSession(sessionId));
@@ -199,7 +199,7 @@ final class ChatLayoutBuilder {
 
                     if (tmpSc != null) {
                         boolean hidden = tmpSc.isHidden(sessionId);
-                        String archiveText = NbBundle.getMessage(ChatLayoutBuilder.class,
+                        String archiveText = NbBundle.getMessage(UIBundle.class,
                                 hidden ? "LBL_Unarchive" : "LBL_Archive");
                         JMenuItem archive = new JMenuItem(archiveText);
                         archive.addActionListener(ev -> {
@@ -231,20 +231,20 @@ final class ChatLayoutBuilder {
                         otherIds.remove(sessionId);
 
                         JMenuItem archiveAll = new JMenuItem(
-                                NbBundle.getMessage(ChatLayoutBuilder.class, "LBL_ArchiveAll"));
+                                NbBundle.getMessage(UIBundle.class, "LBL_ArchiveAll"));
                         archiveAll.setEnabled(!visibleIds.isEmpty());
                         archiveAll.addActionListener(ev -> archiveSessions(visibleIds, false));
                         add(archiveAll);
 
                         // Keeps the session the user is looking at; archives every other one.
                         JMenuItem archiveOthers = new JMenuItem(
-                                NbBundle.getMessage(ChatLayoutBuilder.class, "LBL_ArchiveOthers"));
+                                NbBundle.getMessage(UIBundle.class, "LBL_ArchiveOthers"));
                         archiveOthers.setEnabled(!otherIds.isEmpty());
                         archiveOthers.addActionListener(ev -> archiveSessions(otherIds, true));
                         add(archiveOthers);
 
                         // ACP session/delete: the row is gone for good, unlike archiving.
-                        JMenuItem delete = new JMenuItem(NbBundle.getMessage(ChatLayoutBuilder.class, "LBL_DeleteSession"));
+                        JMenuItem delete = new JMenuItem(NbBundle.getMessage(UIBundle.class, "LBL_DeleteSession"));
                         delete.setEnabled(tmpSc.canDeleteSession());
                         delete.addActionListener(ev -> topComponent.deleteSession(sessionId));
                         add(delete);
@@ -252,7 +252,7 @@ final class ChatLayoutBuilder {
 
                     addSeparator();
 
-                    JMenuItem reload = new JMenuItem(NbBundle.getMessage(ChatLayoutBuilder.class, "LBL_Reload"));
+                    JMenuItem reload = new JMenuItem(NbBundle.getMessage(UIBundle.class, "LBL_Reload"));
                     reload.addActionListener(ev -> topComponent.reloadCurrentSession());
                     add(reload);
                 }
@@ -265,7 +265,7 @@ final class ChatLayoutBuilder {
 
         // Archive/Unarchive toggle for current session (debounced to prevent accidental double-click)
         final JButton[] hbRef = new JButton[1];
-        JButton hb = UIUtils.createToolbarButton("archive.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_ArchiveSession"), e -> {
+        JButton hb = UIUtils.createToolbarButton("archive.svg", NbBundle.getMessage(UIBundle.class, "HINT_ArchiveSession"), e -> {
             JButton btn = hbRef[0];
             btn.setEnabled(false);
             Timer timer = new Timer(500, ev -> {
@@ -297,13 +297,13 @@ final class ChatLayoutBuilder {
 
         // Show/hidden sessions filter toggle
         final JButton[] shbRef = new JButton[1];
-        JButton shb = UIUtils.createToolbarButton("show.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_ShowArchivedSessions"), e -> {
+        JButton shb = UIUtils.createToolbarButton("show.svg", NbBundle.getMessage(UIBundle.class, "HINT_ShowArchivedSessions"), e -> {
             boolean showing = !isShowingHidden();
             PluginSettings.setShowHiddenSessions(showing);
             shbRef[0].setIcon(ThemeManager.getIcon(showing ? "hide.svg" : "show.svg", PluginSettings.getToolbarIconSize()));
             shbRef[0].setToolTipText(showing
-                ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_HideArchivedSessions")
-                : NbBundle.getMessage(AssistantTopComponent.class, "HINT_ShowArchivedSessions"));
+                ? NbBundle.getMessage(UIBundle.class, "HINT_HideArchivedSessions")
+                : NbBundle.getMessage(UIBundle.class, "HINT_ShowArchivedSessions"));
             var sc = Lookup.getDefault().lookup(SessionControl.class);
             if (sc != null) {
                 sc.refreshSessionList();
@@ -316,49 +316,49 @@ final class ChatLayoutBuilder {
         // Restore icon state from preference
         if (isShowingHidden()) {
             shb.setIcon(ThemeManager.getIcon("hide.svg", PluginSettings.getToolbarIconSize()));
-            shb.setToolTipText(NbBundle.getMessage(AssistantTopComponent.class, "HINT_HideArchivedSessions"));
+            shb.setToolTipText(NbBundle.getMessage(UIBundle.class, "HINT_HideArchivedSessions"));
         }
 
         newSessionBtn = UIUtils.createAttentionToolbarButton(
                 "new.svg",
                 PluginSettings.getToolbarIconSize(),
-                NbBundle.getMessage(AssistantTopComponent.class, "HINT_NewSession"),
+                NbBundle.getMessage(UIBundle.class, "HINT_NewSession"),
                 e -> newSessionDebounceTimer.restart()
         );
-        String renameHint = NbBundle.getMessage(AssistantTopComponent.class, "HINT_RenameSession");
+        String renameHint = NbBundle.getMessage(UIBundle.class, "HINT_RenameSession");
         renameSessionBtn = UIUtils.createToolbarButton("rename.svg", renameHint, e -> topComponent.renameCurrentSession());
         refreshBtn = UIUtils.createToolbarButton("reload.svg",
-                NbBundle.getMessage(AssistantTopComponent.class, "HINT_ReloadConversation"), e -> {
+                NbBundle.getMessage(UIBundle.class, "HINT_ReloadConversation"), e -> {
             topComponent.reloadCurrentSession();
         });
 
-        String exportHint = NbBundle.getMessage(AssistantTopComponent.class, "HINT_ExportConversation");
+        String exportHint = NbBundle.getMessage(UIBundle.class, "HINT_ExportConversation");
         exportBtn = UIUtils.createToolbarButton("export.svg", exportHint, e -> {
             JPopupMenu exportPopup = new JPopupMenu();
             JMenuItem mdItem = new JMenuItem(NbBundle.getMessage(
-                    ChatLayoutBuilder.class, "LBL_ExportMarkDown"));
+                    UIBundle.class, "LBL_ExportMarkDown"));
             mdItem.addActionListener(ev -> topComponent.exportConversationAs("md"));
             exportPopup.add(mdItem);
             JMenuItem htmlItem = new JMenuItem(NbBundle.getMessage(
-                    ChatLayoutBuilder.class, "LBL_ExportHtml"));
+                    UIBundle.class, "LBL_ExportHtml"));
             htmlItem.addActionListener(ev -> topComponent.exportConversationAs("html"));
             exportPopup.add(htmlItem);
             exportPopup.show(exportBtn, 0, exportBtn.getHeight());
         });
-        String restartHint = NbBundle.getMessage(AssistantTopComponent.class, "HINT_RestartServer");
+        String restartHint = NbBundle.getMessage(UIBundle.class, "HINT_RestartServer");
         restartServerBtn = UIUtils.createToolbarButton("restart.svg", restartHint, e -> {
             topComponent.promptRestartServer();
         });
 
-        JButton tb = UIUtils.createToolbarButton("expand.svg", NbBundle.getMessage(AssistantTopComponent.class, "HINT_ExpandAll"), null);
+        JButton tb = UIUtils.createToolbarButton("expand.svg", NbBundle.getMessage(UIBundle.class, "HINT_ExpandAll"), null);
         tb.addActionListener(e -> {
             boolean expanded = !chatPanel.isAllBlocksExpanded();
             chatPanel.toggleAllBlocks(expanded);
             String newState = expanded ? "collapse" : "expand";
             tb.putClientProperty("state", newState);
             tb.setToolTipText(expanded
-                ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_CollapseAll")
-                : NbBundle.getMessage(AssistantTopComponent.class, "HINT_ExpandAll"));
+                ? NbBundle.getMessage(UIBundle.class, "HINT_CollapseAll")
+                : NbBundle.getMessage(UIBundle.class, "HINT_ExpandAll"));
             tb.setIcon(ThemeManager.getIcon(expanded ? "collapse.svg" : "expand.svg", PluginSettings.getToolbarIconSize()));
         });
         toggleBlocksBtn = tb;
@@ -367,15 +367,15 @@ final class ChatLayoutBuilder {
         final boolean savedKeepState = PluginSettings.isKeepOlderMessages();
         chatPanel.setKeepOlderMessages(savedKeepState);
         JButton forgetBtn = UIUtils.createToolbarButton(savedKeepState ? "forget.svg" : "remember.svg",
-                NbBundle.getMessage(AssistantTopComponent.class, savedKeepState ? "HINT_TruncateMessages" : "HINT_KeepMessages"), null);
+                NbBundle.getMessage(UIBundle.class, savedKeepState ? "HINT_TruncateMessages" : "HINT_KeepMessages"), null);
         forgetBtn.addActionListener(e -> {
             boolean keep = !chatPanel.isKeepOlderMessages();
             chatPanel.setKeepOlderMessages(keep);
             PluginSettings.setKeepOlderMessages(keep);
             forgetBtn.setIcon(ThemeManager.getIcon(keep ? "forget.svg" : "remember.svg", PluginSettings.getToolbarIconSize()));
             forgetBtn.setToolTipText(keep
-                ? NbBundle.getMessage(AssistantTopComponent.class, "HINT_TruncateMessages")
-                : NbBundle.getMessage(AssistantTopComponent.class, "HINT_KeepMessages"));
+                ? NbBundle.getMessage(UIBundle.class, "HINT_TruncateMessages")
+                : NbBundle.getMessage(UIBundle.class, "HINT_KeepMessages"));
         });
         keepBtn = forgetBtn;
         keepBtn.putClientProperty("state", savedKeepState ? "forget" : "remember");
@@ -438,7 +438,7 @@ final class ChatLayoutBuilder {
         String customGuideUrl = AppLinks.userGuideUrl();
 
         helpBtn = UIUtils.createToolbarButton("help.svg",
-            NbBundle.getMessage(AssistantTopComponent.class, "HINT_QuickstartGuide"), null);
+            NbBundle.getMessage(UIBundle.class, "HINT_QuickstartGuide"), null);
         helpBtn.setContentAreaFilled(false);
         helpBtn.setBorderPainted(false);
         helpBtn.addActionListener(e -> {
@@ -447,12 +447,12 @@ final class ChatLayoutBuilder {
             JPopupMenu helpPopup = new JPopupMenu();
 
             JMenuItem openGuideItem = new JMenuItem(NbBundle.getMessage(
-                    AssistantTopComponent.class, "LBL_HelpOpenGuide"));
+                    UIBundle.class, "LBL_HelpOpenGuide"));
             openGuideItem.addActionListener(ev -> UserGuideOpener.open(guideFallback(customGuideUrl)));
             helpPopup.add(openGuideItem);
 
             JMenuItem checkUpdatesItem = new JMenuItem(NbBundle.getMessage(
-                    AssistantTopComponent.class, "LBL_HelpCheckUpdates"));
+                    UIBundle.class, "LBL_HelpCheckUpdates"));
             checkUpdatesItem.addActionListener(ev -> {
                 UpdateCheckerControl updateChecker = Lookup.getDefault().lookup(UpdateCheckerControl.class);
                 if (updateChecker == null) {
@@ -477,12 +477,12 @@ final class ChatLayoutBuilder {
             helpPopup.add(checkUpdatesItem);
 
             JMenuItem shortcutsItem = new JMenuItem(NbBundle.getMessage(
-                    AssistantTopComponent.class, "LBL_HelpKeyboardShortcuts"));
+                    UIBundle.class, "LBL_HelpKeyboardShortcuts"));
             shortcutsItem.addActionListener(ev -> KeyboardShortcutsDialog.show(topComponent));
             helpPopup.add(shortcutsItem);
 
             JMenuItem chooseAgentItem = new JMenuItem(NbBundle.getMessage(
-                    AssistantTopComponent.class, "LBL_HelpChooseAgent"));
+                    UIBundle.class, "LBL_HelpChooseAgent"));
             chooseAgentItem.addActionListener(ev ->
                 java.util.concurrent.CompletableFuture.runAsync(() -> {
                     java.util.List<BinaryResolver.FoundBinary> found = BinaryResolver.findAllKnownOnPath();
@@ -494,7 +494,7 @@ final class ChatLayoutBuilder {
         });
 
         PulsingToggleButton breakModeBtn = UIUtils.createToggleToolbarButton("lock.svg", "take-break.svg",
-                NbBundle.getMessage(ChatLayoutBuilder.class, "HINT_BreakModeOff"));
+                NbBundle.getMessage(UIBundle.class, "HINT_BreakModeOff"));
         applyLockIcon(breakModeBtn);
         breakModeBtn.setSelected(PermissionAutoAllow.isEnabled());
         updateBreakModeTooltip(breakModeBtn);
@@ -551,7 +551,7 @@ final class ChatLayoutBuilder {
         statusPanel.setBorder(new EmptyBorder(4, 12, 4, 12));
         statusPanel.setOpaque(false);
 
-        statusLabel = new JLabel(NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Ready"));
+        statusLabel = new JLabel(NbBundle.getMessage(UIBundle.class, "STATUS_Ready"));
         statusLabel.setFont(statusLabel.getFont().deriveFont(12f));
         GridBagConstraints statusGbc = new GridBagConstraints();
         statusGbc.gridx = 0;
@@ -593,7 +593,7 @@ final class ChatLayoutBuilder {
 
         int tsz = PluginSettings.getToolbarIconSize();
         toggleOptionsBtn = UIUtils.createToolbarButton("settings.svg", tsz,
-                NbBundle.getMessage(AssistantTopComponent.class, "HINT_Options"), null);
+                NbBundle.getMessage(UIBundle.class, "HINT_Options"), null);
 
         rightStatusPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         rightStatusPanel.setOpaque(false);
@@ -612,7 +612,7 @@ final class ChatLayoutBuilder {
         bottomNorth.add(statusPanel);
         bottomPanel.add(bottomNorth, BorderLayout.NORTH);
 
-        inputArea = new PlaceholderTextArea(NbBundle.getMessage(AssistantTopComponent.class, "LBL_TypeMessage"));
+        inputArea = new PlaceholderTextArea(NbBundle.getMessage(UIBundle.class, "LBL_TypeMessage"));
         inputArea.setLineWrap(true);
         inputArea.setWrapStyleWord(true);
         inputArea.setBorder(new EmptyBorder(12, 12, 12, 12));
@@ -634,14 +634,14 @@ final class ChatLayoutBuilder {
         inputMainPanel.add(inputScrollPane, BorderLayout.CENTER);
 
         JPanel btnCard = UIUtils.createTransparentPanel(new CardLayout());
-        String goText = NbBundle.getMessage(AssistantTopComponent.class, "BTN_Go");
+        String goText = NbBundle.getMessage(UIBundle.class, "BTN_Go");
         sendBtn = UIUtils.createTextButton(goText, null, true);
         applyHarnessIcon(sendBtn, goText);
         String agentName = BinaryResolver.resolveDisplayName();
         sendBtn.setToolTipText(goText + " (" + (agentName != null ? agentName : "Agent") + ")");
         sendBtn.setMnemonic(KeyEvent.VK_G);
         sendBtn.setDisplayedMnemonicIndex(0);
-        stopBtn = UIUtils.createTextButton(NbBundle.getMessage(AssistantTopComponent.class, "BTN_Stop"), null);
+        stopBtn = UIUtils.createTextButton(NbBundle.getMessage(UIBundle.class, "BTN_Stop"), null);
         stopBtn.setPreferredSize(new Dimension(100, sendBtn.getPreferredSize().height));
         stopBtn.setMnemonic(KeyEvent.VK_S);
         stopBtn.setDisplayedMnemonicIndex(0);
@@ -656,7 +656,7 @@ final class ChatLayoutBuilder {
         versionLabel.setFont(versionLabel.getFont().deriveFont(labelFont != null ? labelFont.getSize() - 1f : 9f));
         versionLabel.setForeground(ThemeManager.getCurrentTheme().mutedForeground());
         versionLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        versionLabel.setToolTipText(NbBundle.getMessage(ChatLayoutBuilder.class, "LBL_ViewReleaseNotes"));
+        versionLabel.setToolTipText(NbBundle.getMessage(UIBundle.class, "LBL_ViewReleaseNotes"));
         versionLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         versionLabel.addMouseListener(new MouseAdapter() {
             @Override
@@ -689,7 +689,7 @@ final class ChatLayoutBuilder {
         int tsz = PluginSettings.getToolbarIconSize();
         final JButton[] btnRef = new JButton[1];
         JButton btn = UIUtils.createToolbarButton("filter.svg", tsz,
-                NbBundle.getMessage(AssistantTopComponent.class, "HINT_FilterMessages"), e -> {
+                NbBundle.getMessage(UIBundle.class, "HINT_FilterMessages"), e -> {
             JPopupMenu popup = new JPopupMenu();
             for (String type : MessageFilterManager.getEffectiveMessageTypes()) {
                 JCheckBoxMenuItem item = new JCheckBoxMenuItem(type, !MessageFilterManager.isTypeHidden(type));
@@ -897,8 +897,8 @@ final class ChatLayoutBuilder {
         KeyboardFocusManager kfm = KeyboardFocusManager.getCurrentKeyboardFocusManager();
         Component focusBefore = kfm.getFocusOwner();
         NotifyDescriptor.Confirmation confirm = new NotifyDescriptor.Confirmation(
-                NbBundle.getMessage(ChatLayoutBuilder.class, "MSG_ConfirmBreakMode"),
-                NbBundle.getMessage(ChatLayoutBuilder.class, "TITLE_ConfirmBreakMode"),
+                NbBundle.getMessage(UIBundle.class, "MSG_ConfirmBreakMode"),
+                NbBundle.getMessage(UIBundle.class, "TITLE_ConfirmBreakMode"),
                 NotifyDescriptor.YES_NO_OPTION,
                 NotifyDescriptor.WARNING_MESSAGE);
         boolean confirmed = DialogDisplayer.getDefault().notify(confirm) == NotifyDescriptor.YES_OPTION;
@@ -936,7 +936,7 @@ final class ChatLayoutBuilder {
     }
 
     private void updateBreakModeTooltip(JToggleButton btn) {
-        String text = NbBundle.getMessage(ChatLayoutBuilder.class,
+        String text = NbBundle.getMessage(UIBundle.class,
                 btn.isSelected() ? "HINT_BreakModeOn" : "HINT_BreakModeOff");
         btn.setToolTipText(text);
         btn.getAccessibleContext().setAccessibleName(text);

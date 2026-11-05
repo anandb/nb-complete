@@ -31,13 +31,13 @@ public final class CssGenerator {
         }
         try (InputStream in = CssGenerator.class.getResourceAsStream("chat-style.css.template")) {
             if (in == null) {
-                throw new IllegalStateException(NbBundle.getMessage(ColorTheme.class, "ERR_CssTemplateNotFound"));
+                throw new IllegalStateException(NbBundle.getMessage(UIBundle.class, "ERR_CssTemplateNotFound"));
             }
             template = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             cachedCssTemplate = template;
             return template;
         } catch (IOException e) {
-            throw new IllegalStateException(NbBundle.getMessage(ColorTheme.class, "ERR_LoadCssTemplateFailed"), e);
+            throw new IllegalStateException(NbBundle.getMessage(UIBundle.class, "ERR_LoadCssTemplateFailed"), e);
         }
     }
 

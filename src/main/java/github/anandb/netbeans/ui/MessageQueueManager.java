@@ -58,7 +58,7 @@ public final class MessageQueueManager {
         this.iconSize = iconSize;
         baseIcon = ThemeManager.getIcon("queue.svg", iconSize);
         queueBtn = UIUtils.createToolbarButton("queue.svg", iconSize,
-                NbBundle.getMessage(MessageQueueManager.class, "HINT_MessageQueue", 0), null);
+                NbBundle.getMessage(UIBundle.class, "HINT_MessageQueue", 0), null);
         queueBtn.setIcon(baseIcon);
         queueBtn.setVisible(false);
         // Show popup on right-click (and platform-native popup trigger).
@@ -197,7 +197,7 @@ public final class MessageQueueManager {
         if (count > 0) {
             queueBtn.setIcon(baseIcon);
             queueBtn.setToolTipText(
-                    NbBundle.getMessage(MessageQueueManager.class, "HINT_MessageQueue", count));
+                    NbBundle.getMessage(UIBundle.class, "HINT_MessageQueue", count));
             // One-shot flash on first enqueue (0→1 transition).
             if (!wasVisible) {
                 triggerFlash();
@@ -206,7 +206,7 @@ public final class MessageQueueManager {
             stopFlash();
             queueBtn.setIcon(baseIcon);
             queueBtn.setToolTipText(
-                    NbBundle.getMessage(MessageQueueManager.class, "HINT_MessageQueue", 0));
+                    NbBundle.getMessage(UIBundle.class, "HINT_MessageQueue", 0));
         }
         queueBtn.revalidate();
         queueBtn.repaint();
@@ -215,7 +215,7 @@ public final class MessageQueueManager {
     private void showPopupAt(int x, int y) {
         JPopupMenu popup = new JPopupMenu();
         JMenuItem sendNowItem = new JMenuItem(
-                NbBundle.getMessage(MessageQueueManager.class, "MENU_SendNow"));
+                NbBundle.getMessage(UIBundle.class, "MENU_SendNow"));
         sendNowItem.addActionListener(ev -> {
             if (sendNowCallback != null) {
                 sendNowCallback.run();
@@ -223,7 +223,7 @@ public final class MessageQueueManager {
         });
         popup.add(sendNowItem);
         JMenuItem cancelItem = new JMenuItem(
-                NbBundle.getMessage(MessageQueueManager.class, "MENU_CancelQueue"));
+                NbBundle.getMessage(UIBundle.class, "MENU_CancelQueue"));
         cancelItem.addActionListener(ev -> cancelAll());
         popup.add(cancelItem);
         popup.show(queueBtn, x, y);

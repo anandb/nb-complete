@@ -82,7 +82,7 @@ public class GoToFileDialog extends JDialog {
     private volatile boolean indexingComplete;
 
     public GoToFileDialog(Window owner) {
-        super(owner, NbBundle.getMessage(GoToFileDialog.class, "LBL_GoToFile"), ModalityType.MODELESS);
+        super(owner, NbBundle.getMessage(UIBundle.class, "LBL_GoToFile"), ModalityType.MODELESS);
         FileCacheQuery cache = Lookup.getDefault().lookup(FileCacheQuery.class);
         this.allFiles = new ArrayList<>(cache.getAllFiles());
         this.indexingComplete = cache.isReady();
@@ -95,7 +95,7 @@ public class GoToFileDialog extends JDialog {
         // --- Search field ---
         searchField = new JTextField();
         searchField.setFont(ThemeManager.getMonospaceFont());
-        searchField.putClientProperty("JTextField.placeholderText", NbBundle.getMessage(GoToFileDialog.class, "LBL_SearchHint"));
+        searchField.putClientProperty("JTextField.placeholderText", NbBundle.getMessage(UIBundle.class, "LBL_SearchHint"));
         searchField.addKeyListener(new ArrowKeyHandler());
         searchField.getDocument().addDocumentListener(new SearchUpdater());
 
@@ -202,9 +202,9 @@ public class GoToFileDialog extends JDialog {
 
     private void updateStatusLabel(String query) {
         if (!indexingComplete) {
-            statusLabel.setText(NbBundle.getMessage(GoToFileDialog.class, "LBL_Indexing", allFiles.size()));
+            statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_Indexing", allFiles.size()));
         } else if (query == null || query.trim().isEmpty()) {
-            statusLabel.setText(NbBundle.getMessage(GoToFileDialog.class, "LBL_FilesFound", allFiles.size()));
+            statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_FilesFound", allFiles.size()));
         }
     }
 
@@ -240,7 +240,7 @@ public class GoToFileDialog extends JDialog {
 
         // 3-char minimum for plain text; glob patterns are always accepted
         if (globMatcher == null && query.length() < 3) {
-            statusLabel.setText(NbBundle.getMessage(GoToFileDialog.class, "LBL_FilesFound", allFiles.size()));
+            statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_FilesFound", allFiles.size()));
             return;
         }
 
@@ -255,11 +255,11 @@ public class GoToFileDialog extends JDialog {
         }
 
         if (count == 0) {
-            statusLabel.setText(NbBundle.getMessage(GoToFileDialog.class, "LBL_NoMatch"));
+            statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_NoMatch"));
         } else if (!indexingComplete) {
-            statusLabel.setText(NbBundle.getMessage(GoToFileDialog.class, "LBL_Indexing", allFiles.size()));
+            statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_Indexing", allFiles.size()));
         } else {
-            statusLabel.setText(NbBundle.getMessage(GoToFileDialog.class, "LBL_FilesFound", count));
+            statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_FilesFound", count));
         }
     }
 

@@ -56,27 +56,27 @@ final class WelcomeScreen {
         messagesContainer.removeAll();
 
         JLabel titleLabel = new JLabel(sessions.isEmpty()
-            ? NbBundle.getMessage(ChatThreadPanel.class, "LBL_WelcomeToACP")
-            : NbBundle.getMessage(ChatThreadPanel.class, "LBL_WelcomeBack"));
+            ? NbBundle.getMessage(UIBundle.class, "LBL_WelcomeToACP")
+            : NbBundle.getMessage(UIBundle.class, "LBL_WelcomeBack"));
         titleLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
         titleLabel.setBorder(BorderFactory.createEmptyBorder(20, 12, 10, 12));
         messagesContainer.add(titleLabel);
 
-        JLabel valueProp = new JLabel(NbBundle.getMessage(ChatThreadPanel.class, "LBL_ValueProp"));
+        JLabel valueProp = new JLabel(NbBundle.getMessage(UIBundle.class, "LBL_ValueProp"));
         valueProp.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
         valueProp.setForeground(ThemeManager.getCurrentTheme().mutedForeground());
         valueProp.setBorder(BorderFactory.createEmptyBorder(0, 12, 20, 12));
         messagesContainer.add(valueProp);
 
         JLabel subtitle = new JLabel(sessions.isEmpty()
-            ? NbBundle.getMessage(ChatThreadPanel.class, "MSG_NewChatPrompt")
-            : NbBundle.getMessage(ChatThreadPanel.class, "MSG_ExistingChatPrompt"));
+            ? NbBundle.getMessage(UIBundle.class, "MSG_NewChatPrompt")
+            : NbBundle.getMessage(UIBundle.class, "MSG_ExistingChatPrompt"));
         subtitle.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
         subtitle.setForeground(ThemeManager.getCurrentTheme().mutedForeground());
         subtitle.setBorder(BorderFactory.createEmptyBorder(0, 12, 20, 12));
         messagesContainer.add(subtitle);
 
-        JButton newChatBtn = createSelectionButton(NbBundle.getMessage(ChatThreadPanel.class, "BTN_StartNewChat"), null);
+        JButton newChatBtn = createSelectionButton(NbBundle.getMessage(UIBundle.class, "BTN_StartNewChat"), null);
         newChatBtn.addActionListener(e -> onNewChat.run());
         messagesContainer.add(newChatBtn);
         messagesContainer.add(Box.createVerticalStrut(12));
@@ -94,7 +94,7 @@ final class WelcomeScreen {
                 if (!showHidden && svc.get().isHidden(s.id())) {
                     continue;
                 }
-                String title = defaultIfBlank(s.title(), NbBundle.getMessage(AssistantTopComponent.class, "LBL_ChatDefault", left(s.id(), 8)));
+                String title = defaultIfBlank(s.title(), NbBundle.getMessage(UIBundle.class, "LBL_ChatDefault", left(s.id(), 8)));
                 String label = svc.get().getCustomTitle(s.id(), title);
                 String dir = s.effectiveDirectory();
                 JButton sessionBtn = createSelectionButton(label, dir);
@@ -130,7 +130,7 @@ final class WelcomeScreen {
 
         if (isNotBlank(subtext)) {
             String folder = new File(subtext).getName();
-            JLabel subLabel = new JLabel(NbBundle.getMessage(ChatThreadPanel.class, "LBL_InFolder", folder));
+            JLabel subLabel = new JLabel(NbBundle.getMessage(UIBundle.class, "LBL_InFolder", folder));
             subLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
             subLabel.setForeground(ThemeManager.getCurrentTheme().mutedForeground());
             textPanel.add(subLabel);

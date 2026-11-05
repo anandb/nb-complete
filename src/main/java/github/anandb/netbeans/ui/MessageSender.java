@@ -418,18 +418,18 @@ public class MessageSender {
     private static String promptFailureText(Throwable ex, String reason) {
         RpcFailure failure = RpcFailure.find(ex);
         if (failure == null) {
-            return NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Error", reason);
+            return NbBundle.getMessage(UIBundle.class, "STATUS_Error", reason);
         }
         if (failure.code() == RpcFailure.AUTH_REQUIRED) {
-            return NbBundle.getMessage(AssistantTopComponent.class, "MSG_AuthRequired", reason);
+            return NbBundle.getMessage(UIBundle.class, "MSG_AuthRequired", reason);
         }
         if (RpcFailure.REASON_CREDITS_EXHAUSTED.equals(failure.dataField("reason"))) {
             String url = failure.dataField("url");
             return url == null || url.isBlank()
-                    ? NbBundle.getMessage(AssistantTopComponent.class, "MSG_CreditsExhausted", reason)
-                    : NbBundle.getMessage(AssistantTopComponent.class, "MSG_CreditsExhaustedWithUrl", reason, url);
+                    ? NbBundle.getMessage(UIBundle.class, "MSG_CreditsExhausted", reason)
+                    : NbBundle.getMessage(UIBundle.class, "MSG_CreditsExhaustedWithUrl", reason, url);
         }
-        return NbBundle.getMessage(AssistantTopComponent.class, "STATUS_Error", reason);
+        return NbBundle.getMessage(UIBundle.class, "STATUS_Error", reason);
     }
 
     /**
@@ -443,7 +443,7 @@ public class MessageSender {
             return;
         }
         chatPanel.addMessage(ProcessedMessage.createInfo(
-                NbBundle.getMessage(AssistantTopComponent.class, "INFO_ResponseTruncated")));
+                NbBundle.getMessage(UIBundle.class, "INFO_ResponseTruncated")));
     }
 
     /** Failure path for an accepted prompt, on the EDT. A failed mid-turn send must not end the
@@ -663,8 +663,8 @@ public class MessageSender {
             for (AttachedFile af : attachedFiles) {
                 echoBuilder.append("\n[")
                         .append(af.isImage()
-                                ? NbBundle.getMessage(MessageSender.class, "LBL_Image")
-                                : NbBundle.getMessage(MessageSender.class, "LBL_File")).append(": ")
+                                ? NbBundle.getMessage(UIBundle.class, "LBL_Image")
+                                : NbBundle.getMessage(UIBundle.class, "LBL_File")).append(": ")
                         .append(af.filename()).append("]");
             }
         }

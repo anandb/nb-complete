@@ -50,7 +50,7 @@ class PermissionBubble extends JPanel {
             BorderFactory.createEmptyBorder(12, 16, 12, 16)
         ));
 
-        String permTitle = NbBundle.getMessage(ChatThreadPanel.class, "LBL_PermissionRequired");
+        String permTitle = NbBundle.getMessage(UIBundle.class, "LBL_PermissionRequired");
         JLabel titleLabel = new JLabel(permTitle, ThemeManager.getIcon("shield.svg", 18), SwingConstants.LEFT);
         titleLabel.setIconTextGap(8);
         titleLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
@@ -150,7 +150,7 @@ class PermissionBubble extends JPanel {
         buttons.setOpaque(false);
 
         if (hasChanges) {
-            JButton showDiffBtn = new JButton(NbBundle.getMessage(PermissionBubble.class, "BTN_ShowDiff"));
+            JButton showDiffBtn = new JButton(NbBundle.getMessage(UIBundle.class, "BTN_ShowDiff"));
             showDiffBtn.setFocusPainted(false);
             showDiffBtn.addActionListener(e -> PermissionRequestPanel.openDiffView(changes));
             buttons.add(showDiffBtn);
@@ -176,21 +176,21 @@ class PermissionBubble extends JPanel {
                 buttons.add(btn);
             }
         } else {
-            JButton allowBtn = new JButton(NbBundle.getMessage(ChatThreadPanel.class, "BTN_Allow"));
+            JButton allowBtn = new JButton(NbBundle.getMessage(UIBundle.class, "BTN_Allow"));
             allowBtn.setFocusPainted(false);
 
-            JButton denyBtn = new JButton(NbBundle.getMessage(ChatThreadPanel.class, "BTN_Deny"));
+            JButton denyBtn = new JButton(NbBundle.getMessage(UIBundle.class, "BTN_Deny"));
             denyBtn.setFocusPainted(false);
 
             allowBtn.addActionListener(e -> {
                 responseFuture.complete("allow");
-                collapse(content, NbBundle.getMessage(ChatThreadPanel.class, "MSG_PermissionGranted"), ThemeManager.getIcon("check.svg", 16),
+                collapse(content, NbBundle.getMessage(UIBundle.class, "MSG_PermissionGranted"), ThemeManager.getIcon("check.svg", 16),
                          theme.permissionGrantFg(), theme.permissionGrantBg(), theme.permissionGrantBorder());
             });
 
             denyBtn.addActionListener(e -> {
                 responseFuture.complete("reject");
-                collapse(content, NbBundle.getMessage(ChatThreadPanel.class, "MSG_PermissionDenied"), ThemeManager.getIcon("x.svg", 16),
+                collapse(content, NbBundle.getMessage(UIBundle.class, "MSG_PermissionDenied"), ThemeManager.getIcon("x.svg", 16),
                         theme.permissionDenyFg(), theme.permissionDenyBg(), theme.permissionDenyBorder());
             });
 

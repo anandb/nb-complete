@@ -149,7 +149,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         header.addMouseListener(toggleListener);
 
         // Copy button — visible only on header hover
-        String hint = NbBundle.getMessage(BaseCollapsiblePane.class, "HINT_CopyContent");
+        String hint = NbBundle.getMessage(UIBundle.class, "HINT_CopyContent");
         copyButton = UIUtils.createToolbarButton("copy.svg", 20, hint, e -> copyContentToClipboard());
         copyButton.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
         copyButton.setForeground(theme.foreground());
@@ -185,10 +185,10 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         groupToggleBtn.setContentAreaFilled(false);
         groupToggleBtn.setFocusPainted(false);
         groupToggleBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        groupToggleBtn.setToolTipText(NbBundle.getMessage(BaseCollapsiblePane.class, "HINT_CollapseExpandAll"));
+        groupToggleBtn.setToolTipText(NbBundle.getMessage(UIBundle.class, "HINT_CollapseExpandAll"));
         groupToggleBtn.getAccessibleContext().setAccessibleName("Collapse or expand all panes");
         groupToggleBtn.getAccessibleContext().setAccessibleDescription(
-                NbBundle.getMessage(BaseCollapsiblePane.class, "HINT_CollapseExpandAll"));
+                NbBundle.getMessage(UIBundle.class, "HINT_CollapseExpandAll"));
         groupToggleBtn.setVisible(false);
         groupToggleBtn.addActionListener(e -> {
             AccordionGroup g = getAccordionGroup();
@@ -488,7 +488,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
             @Override
             public JPopupMenu getComponentPopupMenu() {
                 JPopupMenu menu = new JPopupMenu();
-                JMenuItem copyItem = new JMenuItem(NbBundle.getMessage(BaseCollapsiblePane.class, "LBL_Copy"));
+                JMenuItem copyItem = new JMenuItem(NbBundle.getMessage(UIBundle.class, "LBL_Copy"));
                 copyItem.setEnabled(getSelectedText() != null);
                 copyItem.addActionListener(e -> {
                     String sel = getSelectedText();
@@ -555,7 +555,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
             final JButton[] segCopyBtnRef = new JButton[1];
             Timer[] segRevertTimer = new Timer[1];
             segCopyBtnRef[0] = UIUtils.createToolbarButton("copy.svg", 20,
-                    NbBundle.getMessage(BaseCollapsiblePane.class, "HINT_CopyContent"),
+                    NbBundle.getMessage(UIBundle.class, "HINT_CopyContent"),
                     e -> {
                         StringSelection sel =
                                 new StringSelection(segmentText);

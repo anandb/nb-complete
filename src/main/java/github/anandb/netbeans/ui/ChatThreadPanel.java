@@ -853,7 +853,7 @@ public class ChatThreadPanel extends JPanel {
     public void addPermissionResult(String statusText, boolean allowed) {
         final String displayStatusText =
                 ("Allow once".equalsIgnoreCase(statusText) || "allow_once".equalsIgnoreCase(statusText))
-                    ? NbBundle.getMessage(ChatThreadPanel.class, "MSG_PermissionAllowedOnce")
+                    ? NbBundle.getMessage(UIBundle.class, "MSG_PermissionAllowedOnce")
                     : statusText;
 
         SwingUtilities.invokeLater(() -> {
@@ -1012,7 +1012,7 @@ public class ChatThreadPanel extends JPanel {
             String fontFamily = ThemeManager.getFont().getFamily();
             int fontSize = ThemeManager.getFont().getSize() + 1;
             String fg = Integer.toHexString(theme.foreground().getRGB() & 0xFFFFFF);
-            String html = NbBundle.getMessage(ChatThreadPanel.class,
+            String html = NbBundle.getMessage(UIBundle.class,
                     "StartSessionHint", fontFamily, fontSize, fg);
             JTextPane text = new JTextPane();
             text.setContentType("text/html");
@@ -1032,7 +1032,7 @@ public class ChatThreadPanel extends JPanel {
             });
             bubble.add(text, BorderLayout.CENTER);
 
-            JButton okBtn = new JButton(NbBundle.getMessage(ChatThreadPanel.class, "StartSessionHint.Ok"));
+            JButton okBtn = new JButton(NbBundle.getMessage(UIBundle.class, "StartSessionHint.Ok"));
             okBtn.setFocusPainted(false);
             okBtn.addActionListener(e -> {
                 if (!startSessionHintShown) {

@@ -37,16 +37,16 @@ final class CollapsibleHeaderRenderer {
     static String translateTag(String tag) {
         if (tag == null) return null;
         return switch (tag.toLowerCase(Locale.ROOT)) {
-            case "read" -> NbBundle.getMessage(CollapsibleHeaderRenderer.class, "LBL_TagRead");
-            case "execute" -> NbBundle.getMessage(CollapsibleHeaderRenderer.class, "LBL_TagExecute");
-            case "write" -> NbBundle.getMessage(CollapsibleHeaderRenderer.class, "LBL_TagWrite");
-            case "edit" -> NbBundle.getMessage(CollapsibleHeaderRenderer.class, "LBL_TagEdit");
-            case "search" -> NbBundle.getMessage(CollapsibleHeaderRenderer.class, "LBL_TagSearch");
-            case "skill" -> NbBundle.getMessage(CollapsibleHeaderRenderer.class, "LBL_TagSkill");
-            case "context" -> NbBundle.getMessage(CollapsibleHeaderRenderer.class, "LBL_TagContext");
-            case "mcp" -> NbBundle.getMessage(CollapsibleHeaderRenderer.class, "LBL_TagMcp");
-            case "other" -> NbBundle.getMessage(CollapsibleHeaderRenderer.class, "LBL_TagOther");
-            case "think" -> NbBundle.getMessage(CollapsibleHeaderRenderer.class, "LBL_TagThink");
+            case "read" -> NbBundle.getMessage(UIBundle.class, "LBL_TagRead");
+            case "execute" -> NbBundle.getMessage(UIBundle.class, "LBL_TagExecute");
+            case "write" -> NbBundle.getMessage(UIBundle.class, "LBL_TagWrite");
+            case "edit" -> NbBundle.getMessage(UIBundle.class, "LBL_TagEdit");
+            case "search" -> NbBundle.getMessage(UIBundle.class, "LBL_TagSearch");
+            case "skill" -> NbBundle.getMessage(UIBundle.class, "LBL_TagSkill");
+            case "context" -> NbBundle.getMessage(UIBundle.class, "LBL_TagContext");
+            case "mcp" -> NbBundle.getMessage(UIBundle.class, "LBL_TagMcp");
+            case "other" -> NbBundle.getMessage(UIBundle.class, "LBL_TagOther");
+            case "think" -> NbBundle.getMessage(UIBundle.class, "LBL_TagThink");
             default -> null;
         };
     }
@@ -54,13 +54,13 @@ final class CollapsibleHeaderRenderer {
     /** Formats a raw tool title into a display-friendly string. */
     static String formatTitle(String rawTitle) {
         if (rawTitle.toUpperCase(Locale.ROOT).contains("THINKING")) {
-            return NbBundle.getMessage(CollapsibleHeaderRenderer.class, "LBL_ThinkingProcess");
+            return NbBundle.getMessage(UIBundle.class, "LBL_ThinkingProcess");
         }
 
         String stripped = ToolPrefixPattern.stripPrefix(rawTitle);
 
         if (stripped.isEmpty() || "Tool".equalsIgnoreCase(stripped) || "Tool Call".equalsIgnoreCase(stripped)) {
-            return NbBundle.getMessage(CollapsibleHeaderRenderer.class, "LBL_ToolFallback");
+            return NbBundle.getMessage(UIBundle.class, "LBL_ToolFallback");
         }
 
         int pos = stripped.indexOf(' ');
@@ -79,7 +79,7 @@ final class CollapsibleHeaderRenderer {
 
     /** Returns the "Thinking" label for thinking panes. */
     static String thinkingLabel(boolean expanded) {
-        String tp = NbBundle.getMessage(CollapsibleHeaderRenderer.class, "LBL_ThinkingProcess");
+        String tp = NbBundle.getMessage(UIBundle.class, "LBL_ThinkingProcess");
         return expanded ? tp : tp + "...";
     }
 }

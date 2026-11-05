@@ -120,9 +120,9 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                 if (enabledIcon != null) {
                     setDisabledIcon(ImageUtilities.createDisabledIcon(enabledIcon));
                 }
-                setToolTipText(NbBundle.getMessage(StashDiffAction.class, "CTL_StashDiffAction_Tip"));
-                getAccessibleContext().setAccessibleName(NbBundle.getMessage(StashDiffAction.class, "CTL_StashDiffAction_Tip"));
-                getAccessibleContext().setAccessibleDescription(NbBundle.getMessage(StashDiffAction.class, "CTL_StashDiffAction_Tip"));
+                setToolTipText(NbBundle.getMessage(UIBundle.class, "CTL_StashDiffAction_Tip"));
+                getAccessibleContext().setAccessibleName(NbBundle.getMessage(UIBundle.class, "CTL_StashDiffAction_Tip"));
+                getAccessibleContext().setAccessibleDescription(NbBundle.getMessage(UIBundle.class, "CTL_StashDiffAction_Tip"));
                 UIUtils.styleToolbarButton(this);
                 addActionListener(StashDiffAction.this);
             }
@@ -159,8 +159,8 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                 boolean enabled = isGitRepositoriesOpen() && PluginSettings.isStashDiffEnabled();
                 setEnabled(enabled);
                 StashDiffAction.this.setEnabled(enabled);
-                String tip = enabled ? NbBundle.getMessage(StashDiffAction.class, "CTL_StashDiffAction_Tip")
-                        : NbBundle.getMessage(StashDiffAction.class, "CTL_StashDiffAction_DisabledTip");
+                String tip = enabled ? NbBundle.getMessage(UIBundle.class, "CTL_StashDiffAction_Tip")
+                        : NbBundle.getMessage(UIBundle.class, "CTL_StashDiffAction_DisabledTip");
                 setToolTipText(tip);
                 getAccessibleContext().setAccessibleName(tip);
                 getAccessibleContext().setAccessibleDescription(tip);
@@ -506,7 +506,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                 if (idx < 0) return;
                 FileDiff fd = listModel.getElementAt(idx);
                 JPopupMenu popup = new JPopupMenu();
-                JMenuItem applyItem = new JMenuItem(NbBundle.getMessage(StashDiffAction.class, "CTL_StashDiffAction_ApplyChange"));
+                JMenuItem applyItem = new JMenuItem(NbBundle.getMessage(UIBundle.class, "CTL_StashDiffAction_ApplyChange"));
                 applyItem.addActionListener(ev -> {
                     applyItem.setEnabled(false);
                     GIT_RP.post(() -> {
@@ -529,9 +529,9 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         JPanel diffPanel = new JPanel(new BorderLayout());
 
         // Toolbar with toggle buttons
-        JToggleButton btnBase = new JToggleButton(NbBundle.getMessage(StashDiffAction.class, "CTL_StashDiffAction_DiffToBase"));
-        JToggleButton btnHead = new JToggleButton(NbBundle.getMessage(StashDiffAction.class, "CTL_StashDiffAction_DiffToHead"));
-        JToggleButton btnWork = new JToggleButton(NbBundle.getMessage(StashDiffAction.class, "CTL_StashDiffAction_DiffToWorking"));
+        JToggleButton btnBase = new JToggleButton(NbBundle.getMessage(UIBundle.class, "CTL_StashDiffAction_DiffToBase"));
+        JToggleButton btnHead = new JToggleButton(NbBundle.getMessage(UIBundle.class, "CTL_StashDiffAction_DiffToHead"));
+        JToggleButton btnWork = new JToggleButton(NbBundle.getMessage(UIBundle.class, "CTL_StashDiffAction_DiffToWorking"));
         ButtonGroup group = new ButtonGroup();
         group.add(btnBase);
         group.add(btnHead);
@@ -552,12 +552,12 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         final TopComponent[] tcRef = new TopComponent[1];
         toolbar.add(Box.createHorizontalStrut(32));
 
-        JButton btnDropStash = new JButton(NbBundle.getMessage(StashDiffAction.class, "CTL_StashDiffAction_Drop"),
+        JButton btnDropStash = new JButton(NbBundle.getMessage(UIBundle.class, "CTL_StashDiffAction_Drop"),
                 ThemeManager.getIcon("stash_drop.svg", PluginSettings.getToolbarIconSize()));
-        JButton btnApplyStash = new JButton(NbBundle.getMessage(StashDiffAction.class, "CTL_StashDiffAction_Apply"),
+        JButton btnApplyStash = new JButton(NbBundle.getMessage(UIBundle.class, "CTL_StashDiffAction_Apply"),
                 ThemeManager.getIcon("stash_apply.svg", PluginSettings.getToolbarIconSize()));
         btnApplyStash.setHorizontalTextPosition(SwingConstants.RIGHT);
-        btnApplyStash.setToolTipText(NbBundle.getMessage(StashDiffAction.class, "CTL_StashDiffAction_ApplyStashTooltip"));
+        btnApplyStash.setToolTipText(NbBundle.getMessage(UIBundle.class, "CTL_StashDiffAction_ApplyStashTooltip"));
         btnApplyStash.addActionListener(ev -> {
             btnApplyStash.setEnabled(false);
             btnDropStash.setEnabled(false);
@@ -584,7 +584,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         });
 
         btnDropStash.setHorizontalTextPosition(SwingConstants.RIGHT);
-        btnDropStash.setToolTipText(NbBundle.getMessage(StashDiffAction.class, "CTL_StashDiffAction_DropStashTooltip"));
+        btnDropStash.setToolTipText(NbBundle.getMessage(UIBundle.class, "CTL_StashDiffAction_DropStashTooltip"));
         btnDropStash.addActionListener(ev -> {
             Object confirm = DialogDisplayer.getDefault().notify(new NotifyDescriptor.Confirmation(
                     "Are you sure you want to drop stash@{" + data.stashIndex + "}?",
@@ -661,7 +661,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         tcRef[0] = tc;
         tc.setLayout(new BorderLayout());
         tc.add(split, BorderLayout.CENTER);
-        tc.setDisplayName(data.isStash ? NbBundle.getMessage(StashDiffAction.class, "CTL_StashDiffAction_TopComponentName", data.title) : data.title);
+        tc.setDisplayName(data.isStash ? NbBundle.getMessage(UIBundle.class, "CTL_StashDiffAction_TopComponentName", data.title) : data.title);
         tc.putClientProperty("PersistenceType", "Never");
 
         // Key bindings for navigating files in the list
@@ -711,7 +711,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                 // Identical content: show clear message instead of empty diff view
                 if (baseContent.equals(stashContent)) {
                     JLabel identicalLabel = new JLabel(NbBundle.getMessage(
-                            StashDiffAction.class, "CTL_StashDiffAction_FilesIdentical"), JLabel.CENTER);
+                            UIBundle.class, "CTL_StashDiffAction_FilesIdentical"), JLabel.CENTER);
                     identicalLabel.setFont(identicalLabel.getFont().deriveFont(Font.ITALIC, 16f));
                     identicalLabel.setForeground(new Color(128, 128, 128));
                     diffPanel.add(identicalLabel, BorderLayout.CENTER);
@@ -755,8 +755,8 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                 JButton nextBtn = new JButton(ThemeManager.getIcon("down.svg", navIconSize));
                 prevBtn.setMargin(new Insets(4, 8, 4, 8));
                 nextBtn.setMargin(new Insets(4, 8, 4, 8));
-                prevBtn.setToolTipText(NbBundle.getMessage(StashDiffAction.class, "CTL_StashDiffAction_PrevDiff"));
-                nextBtn.setToolTipText(NbBundle.getMessage(StashDiffAction.class, "CTL_StashDiffAction_NextDiff"));
+                prevBtn.setToolTipText(NbBundle.getMessage(UIBundle.class, "CTL_StashDiffAction_PrevDiff"));
+                nextBtn.setToolTipText(NbBundle.getMessage(UIBundle.class, "CTL_StashDiffAction_NextDiff"));
                 prevBtn.addActionListener(e -> {
                     int i = ctrl.getDifferenceIndex();
                     if (i > 0) ctrl.setLocation(DiffController.DiffPane.Base,

@@ -68,7 +68,7 @@ class ACPOptionsPanelHarnessTest {
 
         HarnessSelection.Selection selection = selectedChoice(panel);
         assertTrue(selection.auto());
-        assertEquals(NbBundle.getMessage(ACPOptionsPanel.class, "HLP_HarnessDetected"), hintText(panel));
+        assertEquals(NbBundle.getMessage(UIBundle.class, "HLP_HarnessDetected"), hintText(panel));
 
         panel.store();
         assertEquals("copilot", prefs.get(PreferenceKeys.ACP_HARNESS_ID, null));
@@ -84,7 +84,7 @@ class ACPOptionsPanelHarnessTest {
         HarnessSelection.Selection selection = selectedChoice(panel);
         assertFalse(selection.auto());
         assertEquals("goose", selection.harness().id());
-        assertEquals(NbBundle.getMessage(ACPOptionsPanel.class, "HLP_HarnessManual"), hintText(panel));
+        assertEquals(NbBundle.getMessage(UIBundle.class, "HLP_HarnessManual"), hintText(panel));
 
         panel.store();
         assertEquals("goose", prefs.get(PreferenceKeys.ACP_HARNESS_ID, null));
@@ -99,7 +99,7 @@ class ACPOptionsPanelHarnessTest {
         ACPOptionsPanel panel = loadPanel();
 
         assertTrue(selectedChoice(panel).auto());
-        assertEquals(NbBundle.getMessage(ACPOptionsPanel.class, "HLP_HarnessContainer"), hintText(panel));
+        assertEquals(NbBundle.getMessage(UIBundle.class, "HLP_HarnessContainer"), hintText(panel));
     }
 
     private void seed(String path, String harnessId, String args) {

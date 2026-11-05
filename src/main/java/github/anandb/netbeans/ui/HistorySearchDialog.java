@@ -51,7 +51,7 @@ final class HistorySearchDialog extends JDialog {
     private final ArrayList<String> allEntries;
 
     private HistorySearchDialog(Frame owner, PlaceholderTextArea inputArea, MessageHistory messageHistory) {
-        super(owner, NbBundle.getMessage(HistorySearchDialog.class, "LBL_HistorySearch"), false);
+        super(owner, NbBundle.getMessage(UIBundle.class, "LBL_HistorySearch"), false);
         this.inputArea = inputArea;
         this.allEntries = messageHistory.getEntries(); // newest first
         this.listModel = new DefaultListModel<>();
@@ -91,7 +91,7 @@ final class HistorySearchDialog extends JDialog {
 
         // Search field
         searchField.setFont(DIALOG_FONT);
-        searchField.putClientProperty("JTextField.placeholderText", NbBundle.getMessage(HistorySearchDialog.class, "LBL_TypeToSearchHistory"));
+        searchField.putClientProperty("JTextField.placeholderText", NbBundle.getMessage(UIBundle.class, "LBL_TypeToSearchHistory"));
         searchField.getDocument().addDocumentListener(new DocumentListener() {
             @Override public void insertUpdate(DocumentEvent e) { filterList(); }
             @Override public void removeUpdate(DocumentEvent e) { filterList(); }
@@ -135,7 +135,7 @@ final class HistorySearchDialog extends JDialog {
         contentPanel.add(listScroll, BorderLayout.CENTER);
 
         // Footer hint
-        JLabel hint = new JLabel(NbBundle.getMessage(HistorySearchDialog.class, "LBL_HistorySearchHint"));
+        JLabel hint = new JLabel(NbBundle.getMessage(UIBundle.class, "LBL_HistorySearchHint"));
         hint.setFont(hint.getFont().deriveFont(Font.ITALIC,
                 hint.getFont().getSize() - 1f));
         hint.setForeground(hint.getForeground().brighter());

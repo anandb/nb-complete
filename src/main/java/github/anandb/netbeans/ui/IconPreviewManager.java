@@ -60,7 +60,7 @@ final class IconPreviewManager {
         previewLabel.setMinimumSize(new Dimension(32, 32));
         previewLabel.setHorizontalAlignment(SwingConstants.CENTER);
         previewLabel.setVerticalAlignment(SwingConstants.CENTER);
-        previewLabel.setToolTipText(NbBundle.getMessage(IconPreviewManager.class, "LBL_IconPreview_RightClickClear"));
+        previewLabel.setToolTipText(NbBundle.getMessage(UIBundle.class, "LBL_IconPreview_RightClickClear"));
         previewLabel.addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent e) {
@@ -80,7 +80,7 @@ final class IconPreviewManager {
             private void showPopup(MouseEvent e) {
                 if (pathField.getText().isEmpty()) return;
                 JPopupMenu popup = new JPopupMenu();
-                JMenuItem clearItem = new JMenuItem(NbBundle.getMessage(IconPreviewManager.class, "LBL_IconPreview_Clear"));
+                JMenuItem clearItem = new JMenuItem(NbBundle.getMessage(UIBundle.class, "LBL_IconPreview_Clear"));
                 clearItem.addActionListener(evt -> {
                     pathField.setText("");
                     updatePreview("");
@@ -121,7 +121,7 @@ final class IconPreviewManager {
                         originalImage = null;
                         previewLabel.setIcon(null);
                         previewLabel.setText("<html><center>"
-                + NbBundle.getMessage(IconPreviewManager.class, "LBL_IconPreview_SvgNoPreview")
+                + NbBundle.getMessage(UIBundle.class, "LBL_IconPreview_SvgNoPreview")
                 + "</center></html>");
                     });
                     return;

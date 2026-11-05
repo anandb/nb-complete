@@ -172,8 +172,8 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         JPanel essentialsTab = newTabPanel();
         JPanel advancedTab = newTabPanel();
         JTabbedPane tabbedPane = new JTabbedPane();
-        tabbedPane.addTab(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_TabEssentials"), essentialsTab);
-        tabbedPane.addTab(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_TabAdvanced"), advancedTab);
+        tabbedPane.addTab(NbBundle.getMessage(UIBundle.class, "LBL_TabEssentials"), essentialsTab);
+        tabbedPane.addTab(NbBundle.getMessage(UIBundle.class, "LBL_TabAdvanced"), advancedTab);
         tabbedPane.setBorder(BorderFactory.createEmptyBorder(4, 0, 0, 0));
         add(tabbedPane);
 
@@ -245,7 +245,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         servicePanel.add(pathCombo, UIUtils.createGbc(1, row, 1.0, 0, GridBagConstraints.HORIZONTAL,
                                          GridBagConstraints.WEST, new Insets(0, 0, 5, 5)));
 
-        browseButton.setText(NbBundle.getMessage(ACPOptionsPanel.class, "BTN_Browse"));
+        browseButton.setText(NbBundle.getMessage(UIBundle.class, "BTN_Browse"));
         browseButton.setToolTipText(tooltip("TT_BrowseExecutable"));
         browseButton.addActionListener(evt -> browseButtonActionPerformed());
         servicePanel.add(browseButton, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE, GridBagConstraints.WEST,
@@ -343,7 +343,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         JPanel systemPanel = createSectionPanel("LBL_SystemHeader");
         systemPanel.setLayout(new GridBagLayout());
 
-        checkForUpdatesCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_CheckForUpdates"));
+        checkForUpdatesCheckbox.setText(NbBundle.getMessage(UIBundle.class, "LBL_CheckForUpdates"));
         checkForUpdatesCheckbox.setToolTipText(tooltip("TT_CheckForUpdates"));
         checkForUpdatesCheckbox.addActionListener(evt -> controller.changed());
         systemPanel.add(checkForUpdatesCheckbox, UIUtils.createGbc(0, 0, 1.0, 0, GridBagConstraints.HORIZONTAL,
@@ -367,7 +367,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         systemPanel.add(mcpPortSpinner, UIUtils.createGbc(3, 1, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
 
-        JLabel lineHeightLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_LineHeightCorrection"));
+        JLabel lineHeightLabel = new JLabel(NbBundle.getMessage(UIBundle.class, "LBL_LineHeightCorrection"));
         lineHeightLabel.setToolTipText(tooltip("TT_LineHeightCorrection"));
         systemPanel.add(lineHeightLabel, UIUtils.createGbc(2, 0, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.WEST, new Insets(0, 15, 5, 5)));
@@ -380,7 +380,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         systemPanel.add(lineHeightCorrectionSpinner, UIUtils.createGbc(3, 0, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
 
-        JLabel fsLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_FsLabel"));
+        JLabel fsLabel = new JLabel(NbBundle.getMessage(UIBundle.class, "LBL_FsLabel"));
         fsLabel.setToolTipText(tooltip("TT_FsNote"));
         systemPanel.add(fsLabel, UIUtils.createGbc(2, 2, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.WEST, new Insets(0, 15, 5, 5)));
@@ -404,7 +404,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
                 GridBagConstraints.EAST, new Insets(0, 0, 0, 12)));
 
         runCommandPolicyButton = new JButton(
-                NbBundle.getMessage(ACPOptionsPanel.class, "LBL_RunCommandPolicy"));
+                NbBundle.getMessage(UIBundle.class, "LBL_RunCommandPolicy"));
         runCommandPolicyButton.setToolTipText(tooltip("TT_RunCommandPolicy"));
         runCommandPolicyButton.addActionListener(evt -> editRunCommandPolicy());
         systemPanel.add(runCommandPolicyButton, UIUtils.createGbc(3, 3, 0.0, 0, GridBagConstraints.NONE,
@@ -421,7 +421,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
 
         // Visible without a hover: the cost of this option must be readable before it is ticked.
         // Two lines, so the whole sentence reads instead of being cut off at the button.
-        String restartHint = NbBundle.getMessage(ACPOptionsPanel.class, "HLP_ProjectSwitchRestart");
+        String restartHint = NbBundle.getMessage(UIBundle.class, "HLP_ProjectSwitchRestart");
         projectSwitchHint = new JPanel();
         projectSwitchHint.setOpaque(false);
         projectSwitchHint.setLayout(new BoxLayout(projectSwitchHint, BoxLayout.Y_AXIS));
@@ -459,7 +459,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         behaviorPanel.setLayout(new GridBagLayout());
         row = 0;
 
-        echoCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EchoInput"));
+        echoCheckbox.setText(NbBundle.getMessage(UIBundle.class, "LBL_EchoInput"));
         echoCheckbox.setToolTipText(tooltip("TT_EchoInput"));
         echoCheckbox.addActionListener(evt -> controller.changed());
         behaviorPanel.add(echoCheckbox, UIUtils.createGbc(0, row, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
@@ -473,7 +473,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
 
         editPreambleButton = new JButton();
         editPreambleButton.setIcon(ThemeManager.getIcon("pencil.svg", 16));
-        editPreambleButton.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EditPreamble"));
+        editPreambleButton.setText(NbBundle.getMessage(UIBundle.class, "LBL_EditPreamble"));
         editPreambleButton.setToolTipText(tooltip("TT_PreambleEditor"));
         editPreambleButton.addActionListener(evt -> openPreambleDialog());
 
@@ -495,7 +495,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         limitsPanel.setLayout(new GridBagLayout());
         row = 0;
 
-        JLabel idleTimeoutLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_SessionIdleTimeout"));
+        JLabel idleTimeoutLabel = new JLabel(NbBundle.getMessage(UIBundle.class, "LBL_SessionIdleTimeout"));
         idleTimeoutLabel.setToolTipText(tooltip("TT_SessionIdleTimeout"));
         limitsPanel.add(idleTimeoutLabel, UIUtils.createGbc(0, row, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
@@ -507,7 +507,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         limitsPanel.add(idleTimeoutSpinner, UIUtils.createGbc(3, row, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
 
-        JLabel maxMessagesLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_MaxMessages"));
+        JLabel maxMessagesLabel = new JLabel(NbBundle.getMessage(UIBundle.class, "LBL_MaxMessages"));
         maxMessagesLabel.setToolTipText(tooltip("TT_MaxMessages"));
         limitsPanel.add(maxMessagesLabel, UIUtils.createGbc(0, ++row, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
@@ -519,7 +519,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         limitsPanel.add(maxMessagesSpinner, UIUtils.createGbc(3, row, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
 
-        autoBackupChangesCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_AutoBackupChanges"));
+        autoBackupChangesCheckbox.setText(NbBundle.getMessage(UIBundle.class, "LBL_AutoBackupChanges"));
         autoBackupChangesCheckbox.setToolTipText(tooltip("TT_AutoBackupChanges"));
         autoBackupChangesCheckbox.addActionListener(evt -> controller.changed());
         GridBagConstraints backupGbc = UIUtils.createGbc(0, ++row, 1.0, 0, GridBagConstraints.HORIZONTAL,
@@ -533,19 +533,19 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         JPanel actionsPanel = createSectionPanel("LBL_ActionsHeader");
         actionsPanel.setLayout(new GridBagLayout());
 
-        markdownProjectCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EnableMarkdownProject"));
+        markdownProjectCheckbox.setText(NbBundle.getMessage(UIBundle.class, "LBL_EnableMarkdownProject"));
         markdownProjectCheckbox.setToolTipText(tooltip("TT_EnableMarkdownProject"));
         markdownProjectCheckbox.addActionListener(evt -> controller.changed());
         actionsPanel.add(markdownProjectCheckbox, UIUtils.createGbc(0, 0, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
 
-        miniAssistantCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EnableMiniAssistant"));
+        miniAssistantCheckbox.setText(NbBundle.getMessage(UIBundle.class, "LBL_EnableMiniAssistant"));
         miniAssistantCheckbox.setToolTipText(tooltip("TT_EnableMiniAssistant"));
         miniAssistantCheckbox.addActionListener(evt -> controller.changed());
         actionsPanel.add(miniAssistantCheckbox, UIUtils.createGbc(1, 0, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
 
-        taskRepositoryCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_EnableTaskRepository"));
+        taskRepositoryCheckbox.setText(NbBundle.getMessage(UIBundle.class, "LBL_EnableTaskRepository"));
         taskRepositoryCheckbox.setToolTipText(tooltip("TT_EnableTaskRepository"));
         taskRepositoryCheckbox.addActionListener(evt -> controller.changed());
         actionsPanel.add(taskRepositoryCheckbox, UIUtils.createGbc(0, 1, 1.0, 0, GridBagConstraints.HORIZONTAL,
@@ -556,7 +556,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         actionsPanel.add(contextActionsSummary, UIUtils.createGbc(0, 2, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
 
-        contextActionsButton = new JButton(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_Configure"));
+        contextActionsButton = new JButton(NbBundle.getMessage(UIBundle.class, "LBL_Configure"));
         contextActionsButton.setToolTipText(tooltip("TT_ContextActions"));
         contextActionsButton.addActionListener(evt -> editContextActions());
         actionsPanel.add(contextActionsButton, UIUtils.createGbc(1, 2, 0.0, 0, GridBagConstraints.NONE,
@@ -569,7 +569,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         appearancePanel.setLayout(new GridBagLayout());
         row = 0;
 
-        iconLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_UserIcon"));
+        iconLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_UserIcon"));
         iconLabel.setToolTipText(tooltip("TT_UserIcon"));
         appearancePanel.add(iconLabel, UIUtils.createGbc(0, row, 0.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
@@ -585,7 +585,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         appearancePanel.add(iconPathField, UIUtils.createGbc(1, row, 1.0, 0, GridBagConstraints.HORIZONTAL,
                                              GridBagConstraints.EAST, new Insets(0, 0, 5, 5)));
 
-        iconBrowseButton.setText(NbBundle.getMessage(ACPOptionsPanel.class, "BTN_Browse"));
+        iconBrowseButton.setText(NbBundle.getMessage(UIBundle.class, "BTN_Browse"));
         iconBrowseButton.setToolTipText(tooltip("TT_UserIcon"));
         iconBrowseButton.addActionListener(evt -> iconBrowseButtonActionPerformed());
         appearancePanel.add(iconBrowseButton, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE,
@@ -664,7 +664,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         JPanel panel = new JPanel();
         TitledBorder border = BorderFactory.createTitledBorder(
                 BorderFactory.createEtchedBorder(),
-                NbBundle.getMessage(ACPOptionsPanel.class, headerKey),
+                NbBundle.getMessage(UIBundle.class, headerKey),
                 TitledBorder.LEADING,
                 TitledBorder.TOP,
                 panel.getFont().deriveFont(Font.BOLD),
@@ -682,7 +682,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
                 chooser.setSelectedFile(currentFile);
             }
         }
-        chooser.setDialogTitle(NbBundle.getMessage(ACPOptionsPanel.class, "TITLE_SelectExecutable"));
+        chooser.setDialogTitle(NbBundle.getMessage(UIBundle.class, "TITLE_SelectExecutable"));
         if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
             userEditedPath = true;
             pathCombo.getEditor().setItem(chooser.getSelectedFile().getAbsolutePath());
@@ -693,7 +693,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private void iconBrowseButtonActionPerformed() {
         JFileChooser chooser = new JFileChooser();
         chooser.setFileFilter(new FileNameExtensionFilter("PNG Images (*.png)", "png"));
-        chooser.setDialogTitle(NbBundle.getMessage(ACPOptionsPanel.class, "TITLE_SelectIcon"));
+        chooser.setDialogTitle(NbBundle.getMessage(UIBundle.class, "TITLE_SelectIcon"));
         String currentPath = iconPathField.getText();
         if (!currentPath.isEmpty()) {
             File currentFile = new File(currentPath);
@@ -901,7 +901,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
 
     /** Summarises the current run_command policy in the button tooltip. */
     private void updateRunCommandTooltip() {
-        String summary = NbBundle.getMessage(ACPOptionsPanel.class, "TT_RunCommandPolicy")
+        String summary = NbBundle.getMessage(UIBundle.class, "TT_RunCommandPolicy")
                 + "\nAllowed: " + (runCommandAllowlist.isBlank() ? "(any)" : runCommandAllowlist)
                 + "\nDenied: " + (runCommandDenylist.isBlank() ? "(none)" : runCommandDenylist);
         runCommandPolicyButton.setToolTipText(wrapTooltip(summary));
@@ -934,7 +934,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
 
     private static ContextActionsDialog.Toggle toggle(String labelKey, String tooltipKey, JCheckBox box) {
         return new ContextActionsDialog.Toggle(
-                NbBundle.getMessage(ACPOptionsPanel.class, labelKey),
+                NbBundle.getMessage(UIBundle.class, labelKey),
                 tooltip(tooltipKey),
                 box::isSelected,
                 box::setSelected);
@@ -944,7 +944,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private void updateContextActionsSummary() {
         List<ContextActionsDialog.Toggle> toggles = contextActionToggles();
         long enabled = toggles.stream().filter(t -> t.selected().getAsBoolean()).count();
-        contextActionsSummary.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_ContextActions",
+        contextActionsSummary.setText(NbBundle.getMessage(UIBundle.class, "LBL_ContextActions",
                 enabled, toggles.size()));
     }
 
@@ -955,7 +955,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
             case READ_ANY_WRITE_PROJECT -> "LBL_FsReadExternalShort";
             case READ_ONLY -> "LBL_FsReadOnlyShort";
         };
-        return NbBundle.getMessage(ACPOptionsPanel.class, key);
+        return NbBundle.getMessage(UIBundle.class, key);
     }
 
     /** Explains the selected policy in the combo's tooltip. */
@@ -975,7 +975,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         String binName = BinaryResolver.binaryNameFromPath(getExecutablePath());
         HarnessCatalog.Harness h = binName != null ? HarnessCatalog.byBinaryName(binName) : null;
         if (h != null && "gemini".equals(h.id())) {
-            argsHintLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "MSG_GeminiDefaultModel"));
+            argsHintLabel.setText(NbBundle.getMessage(UIBundle.class, "MSG_GeminiDefaultModel"));
             argsHintLabel.setVisible(true);
         } else {
             argsHintLabel.setText("");
@@ -1011,13 +1011,13 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         if (!selection.auto()) {
             HarnessCatalog.Harness harness = selection.harness();
             return harness.hasLimitedSupport()
-                    ? NbBundle.getMessage(ACPOptionsPanel.class, "OPT_Harness_Limited", harness.displayName())
+                    ? NbBundle.getMessage(UIBundle.class, "OPT_Harness_Limited", harness.displayName())
                     : harness.displayName();
         }
         HarnessCatalog.Harness detected = detectedHarness();
         return detected == HarnessCatalog.UNKNOWN
-                ? NbBundle.getMessage(ACPOptionsPanel.class, "OPT_Harness_AutoDetectUnknown")
-                : NbBundle.getMessage(ACPOptionsPanel.class, "OPT_Harness_AutoDetect", detected.displayName());
+                ? NbBundle.getMessage(UIBundle.class, "OPT_Harness_AutoDetectUnknown")
+                : NbBundle.getMessage(UIBundle.class, "OPT_Harness_AutoDetect", detected.displayName());
     }
 
     /**
@@ -1035,18 +1035,18 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         boolean auto = selection == null || selection.auto();
         boolean conflict = !auto && detected != HarnessCatalog.UNKNOWN && detected != selection.harness();
         if (conflict) {
-            harnessHintLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "HLP_HarnessConflict",
+            harnessHintLabel.setText(NbBundle.getMessage(UIBundle.class, "HLP_HarnessConflict",
                     detected.displayName(), selection.harness().displayName()));
-            harnessUseDetectedButton.setText(NbBundle.getMessage(ACPOptionsPanel.class,
+            harnessUseDetectedButton.setText(NbBundle.getMessage(UIBundle.class,
                     "BTN_HarnessUseDetected", detected.displayName()));
         } else if (!auto) {
-            harnessHintLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "HLP_HarnessManual"));
+            harnessHintLabel.setText(NbBundle.getMessage(UIBundle.class, "HLP_HarnessManual"));
         } else if (detected != HarnessCatalog.UNKNOWN) {
-            harnessHintLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "HLP_HarnessDetected"));
+            harnessHintLabel.setText(NbBundle.getMessage(UIBundle.class, "HLP_HarnessDetected"));
         } else if (HarnessSelection.launcherKind(binaryName) == HarnessSelection.Launcher.CONTAINER) {
-            harnessHintLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "HLP_HarnessContainer"));
+            harnessHintLabel.setText(NbBundle.getMessage(UIBundle.class, "HLP_HarnessContainer"));
         } else {
-            harnessHintLabel.setText(NbBundle.getMessage(ACPOptionsPanel.class, "HLP_HarnessNotDetected"));
+            harnessHintLabel.setText(NbBundle.getMessage(UIBundle.class, "HLP_HarnessNotDetected"));
         }
         harnessUseDetectedButton.setVisible(conflict);
         harnessHintRow.revalidate();
@@ -1110,16 +1110,16 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
      */
     private static String scopeSuffix(PluginSettings.Effect effect) {
         return switch (effect) {
-            case IDE_RESTART -> NbBundle.getMessage(ACPOptionsPanel.class, "SCOPE_Restart");
-            case NEW_SESSION -> NbBundle.getMessage(ACPOptionsPanel.class, "SCOPE_NewSession");
-            case SESSION_RELOAD -> NbBundle.getMessage(ACPOptionsPanel.class, "SCOPE_SessionReload");
+            case IDE_RESTART -> NbBundle.getMessage(UIBundle.class, "SCOPE_Restart");
+            case NEW_SESSION -> NbBundle.getMessage(UIBundle.class, "SCOPE_NewSession");
+            case SESSION_RELOAD -> NbBundle.getMessage(UIBundle.class, "SCOPE_SessionReload");
             case IMMEDIATE -> "";
         };
     }
 
     /** One muted line explaining the footnote markers appended by {@link #scopedLabel}. */
     private static JLabel createScopeLegend() {
-        JLabel legend = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "SCOPE_Legend"));
+        JLabel legend = new JLabel(NbBundle.getMessage(UIBundle.class, "SCOPE_Legend"));
         legend.setForeground(UIManager.getColor("Label.disabledForeground"));
         legend.setFont(legend.getFont().deriveFont(Font.PLAIN, legend.getFont().getSize() - 1f));
         legend.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -1128,12 +1128,12 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
 
     /** Bundle label plus its permanent scope marker. */
     private static String scopedLabel(String key, PluginSettings.Effect effect) {
-        return NbBundle.getMessage(ACPOptionsPanel.class, key) + scopeSuffix(effect);
+        return NbBundle.getMessage(UIBundle.class, key) + scopeSuffix(effect);
     }
 
     /** Bundle-backed tooltip, wrapped so long hints stay readable. */
     private static String tooltip(String key) {
-        return wrapTooltip(NbBundle.getMessage(ACPOptionsPanel.class, key));
+        return wrapTooltip(NbBundle.getMessage(UIBundle.class, key));
     }
 
     /**
@@ -1213,7 +1213,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
 
         pendingRestartTitle = new JLabel();
         pendingRestartTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
-        pendingRestartBody = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "RST_Pending_Body"));
+        pendingRestartBody = new JLabel(NbBundle.getMessage(UIBundle.class, "RST_Pending_Body"));
         pendingRestartBody.setAlignmentX(Component.LEFT_ALIGNMENT);
         pendingRestartBody.setForeground(theme.mutedForeground());
         pendingRestartBody.setFont(pendingRestartBody.getFont()
@@ -1243,9 +1243,9 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private static String pendingBarText(List<String> keys) {
         String first = pendingItemLabel(keys.get(0));
         if (keys.size() == 1) {
-            return NbBundle.getMessage(ACPOptionsPanel.class, "RST_Pending_Single", first);
+            return NbBundle.getMessage(UIBundle.class, "RST_Pending_Single", first);
         }
-        return NbBundle.getMessage(ACPOptionsPanel.class, "RST_Pending_Multiple", first, keys.size() - 1);
+        return NbBundle.getMessage(UIBundle.class, "RST_Pending_Multiple", first, keys.size() - 1);
     }
 
     /** Short display name for a restart-scoped preference inside the bar. */
@@ -1260,7 +1260,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
             case PreferenceKeys.MCP_SERVER_PORT -> "RST_Item_McpPort";
             default -> null;
         };
-        return bundleKey == null ? key : NbBundle.getMessage(ACPOptionsPanel.class, bundleKey);
+        return bundleKey == null ? key : NbBundle.getMessage(UIBundle.class, bundleKey);
     }
 
     public void store() {
@@ -1346,8 +1346,8 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
      * the rest of the Options save still applies, and the previous preamble is kept.
      */
     private void warnPreambleTooLong(int length) {
-        String title = NbBundle.getMessage(ACPOptionsPanel.class, "LBL_PreambleTooLong");
-        String message = NbBundle.getMessage(ACPOptionsPanel.class, "MSG_PreambleTooLong",
+        String title = NbBundle.getMessage(UIBundle.class, "LBL_PreambleTooLong");
+        String message = NbBundle.getMessage(UIBundle.class, "MSG_PreambleTooLong",
                 length, PluginSettings.MAX_PREAMBLE_LENGTH);
         LOG.log(Level.WARNING, "Session preamble not saved: {0} characters", length);
         SwingUtilities.invokeLater(() -> NotificationDisplayer.getDefault().notify(
@@ -1362,7 +1362,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         }
         String path = getExecutablePath();
         if (isBlank(path)) {
-            setPathError(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_EmptyPath"));
+            setPathError(NbBundle.getMessage(UIBundle.class, "ERR_EmptyPath"));
             pathErrorLabel.setForeground(UIManager.getColor("Label.errorForeground"));
             return false;
         }
@@ -1373,7 +1373,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
         if (path.startsWith("/") && isWindows) {
             if (!BinaryResolver.isWslAvailable()) {
-                setPathError(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_WslNotAvailable"));
+                setPathError(NbBundle.getMessage(UIBundle.class, "ERR_WslNotAvailable"));
                 pathErrorLabel.setForeground(UIManager.getColor("Label.errorForeground"));
                 return false;
             }
@@ -1382,24 +1382,24 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         }
         File f = new File(path.trim());
         if (!f.exists()) {
-            setPathError(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_PathNotFound"));
+            setPathError(NbBundle.getMessage(UIBundle.class, "ERR_PathNotFound"));
             pathErrorLabel.setForeground(UIManager.getColor("Label.errorForeground"));
             return false;
         }
         if (!f.isFile()) {
-            setPathError(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_PathNotFile"));
+            setPathError(NbBundle.getMessage(UIBundle.class, "ERR_PathNotFile"));
             pathErrorLabel.setForeground(UIManager.getColor("Label.errorForeground"));
             return false;
         }
         if (!f.canExecute()) {
-            setPathError(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_PathNotExecutable"));
+            setPathError(NbBundle.getMessage(UIBundle.class, "ERR_PathNotExecutable"));
             pathErrorLabel.setForeground(UIManager.getColor("Label.errorForeground"));
             return false;
         }
         if (isWindows) {
             String lower = path.toLowerCase();
             if (!lower.endsWith(".exe") && !lower.endsWith(".cmd") && !lower.endsWith(".bat")) {
-                setPathError(NbBundle.getMessage(ACPOptionsPanel.class, "ERR_MissingExeExtension"));
+                setPathError(NbBundle.getMessage(UIBundle.class, "ERR_MissingExeExtension"));
                 pathErrorLabel.setForeground(UIManager.getColor("Label.errorForeground"));
                 return false;
             }

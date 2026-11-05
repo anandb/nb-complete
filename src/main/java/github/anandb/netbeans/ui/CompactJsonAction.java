@@ -35,7 +35,7 @@ public class CompactJsonAction extends AbstractAction implements Presenter.Popup
             item.setVisible(false);
             return item;
         }
-        JMenuItem item = new JMenuItem(NbBundle.getMessage(CompactJsonAction.class, "CTL_CompactJsonAction"));
+        JMenuItem item = new JMenuItem(NbBundle.getMessage(UIBundle.class, "CTL_CompactJsonAction"));
         item.addActionListener(this);
         return item;
     }
@@ -73,7 +73,7 @@ public class CompactJsonAction extends AbstractAction implements Presenter.Popup
             doc.remove(start, end - start);
             doc.insertString(start, compacted, null);
         } catch (Exception ex) {
-            StatusDisplayer.getDefault().setStatusText(NbBundle.getMessage(CompactJsonAction.class,
+            StatusDisplayer.getDefault().setStatusText(NbBundle.getMessage(UIBundle.class,
                     "ERR_InvalidJson", ExceptionUtils.getMessage(ex)));
         }
     }
