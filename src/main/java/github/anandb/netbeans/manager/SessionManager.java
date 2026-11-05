@@ -14,6 +14,7 @@ import github.anandb.netbeans.model.ModesInfo;
 import github.anandb.netbeans.model.SessionMetadata;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.contract.ProjectQuery;
+import github.anandb.netbeans.contract.RpcFailure;
 import org.apache.commons.lang3.StringUtils;
 import org.netbeans.api.project.Project;
 
@@ -1922,8 +1923,13 @@ public class SessionManager implements SessionQuery, SessionControl,
     private static boolean isStartupRetryable(Throwable ex) {
         Throwable cause = ex;
         while (cause != null) {
-            if (cause instanceof AcpRpcException) {
-                return ((AcpRpcException) cause).code() == AcpRpcException.INTERNAL_ERROR;
+            if (cause instanceof AcpRpcException rpc) {
+                // A stored session whose saved model is gone fails identically on
+                // every attempt; retrying only delays telling the user why.
+                if (isUnrestorableModel(rpc)) {
+                    return false;
+                }
+                return rpc.code() == AcpRpcException.INTERNAL_ERROR;
             }
             if (cause instanceof IOException) {
                 return true;
@@ -1933,14 +1939,33 @@ public class SessionManager implements SessionQuery, SessionControl,
         return false;
     }
 
-    /** Unwrap the cause chain and return the root error message. */
-    private static String rootMessage(Throwable ex) {
+    /** True when the harness rejected the call because a session's saved model no longer resolves. */
+    private static boolean isUnrestorableModel(RpcFailure failure) {
+        String details = failure.dataField("details");
+        return details != null && details.startsWith("Could not restore model");
+    }
+
+    /**
+     * Unwrap the cause chain and return the root error message, appending the
+     * harness's {@code error.data.details} when it sent one — a generic
+     * "Internal error" alone hides the actual cause (e.g. an unstorable model).
+     */
+    static String rootMessage(Throwable ex) {
         Throwable cause = ex;
         while (cause.getCause() != null) {
             cause = cause.getCause();
         }
         String msg = ExceptionUtils.getMessage(cause);
-        return msg != null ? msg : ExceptionUtils.getMessage(ex);
+        if (msg == null) {
+            msg = ExceptionUtils.getMessage(ex);
+        }
+        if (cause instanceof RpcFailure failure) {
+            String details = failure.dataField("details");
+            if (details != null && !details.isBlank() && (msg == null || !msg.contains(details))) {
+                return msg == null ? details : msg + ": " + details;
+            }
+        }
+        return msg;
     }
 
     /**

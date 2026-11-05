@@ -1910,6 +1910,30 @@ class SessionManagerTest {
     }
 
     @Test
+    void sessionLoadDoesNotRetryUnrestorableModelEvenDuringStartup() {
+        // omp refuses to open a stored session whose saved model is gone; the same
+        // answer comes back forever, so the startup retry must not spin on it.
+        sessionManager.setHarnessStartupPendingForTest(true);
+        JsonNode data = mapper.createObjectNode()
+                .put("details", "Could not restore model opencode-go/iceman-contributor-free");
+        when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(CompletableFuture.failedFuture(
+                        new AcpRpcException(AcpRpcException.INTERNAL_ERROR, "Internal error", data)));
+
+        assertNull(sessionManager.loadSessionFromServer("sid", "/x").join());
+        verify(processManager, times(1)).sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES));
+    }
+
+    @Test
+    void rootMessageSurfacesHarnessErrorDetails() {
+        JsonNode data = mapper.createObjectNode().put("details", "Could not restore model provider/model");
+        AcpRpcException rpc = new AcpRpcException(AcpRpcException.INTERNAL_ERROR, "Internal error", data);
+
+        assertEquals("AcpRpcException: Internal error: Could not restore model provider/model",
+                SessionManager.rootMessage(new java.util.concurrent.CompletionException(rpc)));
+    }
+
+    @Test
     void getSessionsFallbackTitleToSessionIdWhenServerOmitsTitle() throws Exception {
         // Pi's session/list may return sessions without a title field.
         // The dropdown should show the GUID, not null.
