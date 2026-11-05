@@ -49,7 +49,7 @@ final class DbLifecycle {
      * Version 6 adds {@code pinned_message} and {@code harness_model}, the two
      * datasets that outgrew preference values; purely additive.
      * Version 7 adds {@code harness_model.last_seen} so a model the harness stops
-     * reporting is retained for two days before its row is dropped; existing rows
+     * reporting is retained for one hour before its row is dropped; existing rows
      * are stamped at upgrade time.
      * Version 8 adds {@code tool_call_usage.duration_ms} and {@code .status}: one
      * row now records one finished MCP tool execution instead of a turn's per-tool

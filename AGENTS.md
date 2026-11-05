@@ -860,8 +860,8 @@ enqueues and returns — never add a query that runs inline on the calling threa
 caches are primed by `load()` and are memory-only for readers; writes update the cache and enqueue a
 row-level delta (`pinsDirty`/`modelsDirty` keep a write that races startup from being overwritten by the
 older snapshot). `harness_model` rows carry `last_seen`: `updateModels` stamps every model in a received
-list and keeps omitted models until two days have passed since they were last seen, measured from that
-harness's newest report — never from wall-clock at load, so a weekend without the IDE does not empty the
+list and keeps omitted models until one hour has passed since they were last seen, measured from that
+harness's newest report — never from wall-clock at load, so a gap without a report does not empty the
 cache. Pruning happens only when the harness reports again. `SCHEMA_VERSION` is the upgrade cursor: bump it and extend `applySchemaMigration` when
 stored semantics change, and never alter a released version's branch in place. Model ids are canonicalised
 (`support/ModelIdNormalizer`) inside `bindAttribution`, the one method every captured row from every table

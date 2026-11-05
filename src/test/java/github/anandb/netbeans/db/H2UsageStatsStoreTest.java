@@ -57,6 +57,7 @@ class H2UsageStatsStoreTest {
 
     private static final long NOW = 1_700_000_000_000L;
     private static final long DAY = 86_400_000L;
+    private static final long HOUR = 3_600_000L;
 
     private String url;
     private H2UsageStatsStore store;
@@ -1198,8 +1199,8 @@ class H2UsageStatsStoreTest {
     @Test
     void omittedModelsArePrunedOnlyAfterTheRetentionWindow() throws SQLException {
         store.load();
-        long stale = NOW - 3 * DAY;
-        long fresh = NOW - DAY;
+        long stale = NOW - 2 * HOUR;
+        long fresh = NOW - HOUR / 2;
         execute("INSERT INTO harness_model (harness_id, position, model_id, name, description, last_seen)"
                 + " VALUES ('omp', 0, 'old', 'Old', NULL, " + stale + ")");
         execute("INSERT INTO harness_model (harness_id, position, model_id, name, description, last_seen)"

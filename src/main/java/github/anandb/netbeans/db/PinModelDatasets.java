@@ -29,7 +29,7 @@ import github.anandb.netbeans.support.Logger;
 final class PinModelDatasets {
 
     /** How long a model the harness stops reporting is kept before its row is dropped. */
-    static final long MODEL_RETENTION_MS = TimeUnit.DAYS.toMillis(2);
+    static final long MODEL_RETENTION_MS = TimeUnit.HOURS.toMillis(1);
 
     /**
      * Pinned message ids per session, as immutable snapshots. Reads come from the
