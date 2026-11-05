@@ -53,6 +53,7 @@ import javax.swing.ListCellRenderer;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.JPanel;
+import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 import javax.swing.UIManager;
 import javax.swing.SwingUtilities;
@@ -165,6 +166,16 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         createPendingRestartBar();
         add(createScopeLegend());
         add(Box.createVerticalStrut(2));
+
+        // Two tabs: the handful of controls a normal user needs, and the expert knobs
+        // (server ports, limits, restart policy) behind them. Same controls, same store().
+        JPanel essentialsTab = newTabPanel();
+        JPanel advancedTab = newTabPanel();
+        JTabbedPane tabbedPane = new JTabbedPane();
+        tabbedPane.addTab(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_TabEssentials"), essentialsTab);
+        tabbedPane.addTab(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_TabAdvanced"), advancedTab);
+        tabbedPane.setBorder(BorderFactory.createEmptyBorder(4, 0, 0, 0));
+        add(tabbedPane);
 
         jLabel1 = new JLabel();
         pathCombo = new JComboBox<>();
@@ -326,8 +337,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
             servicePanel.add(useWslCheckbox, gbcWsl);
         }
 
-        add(servicePanel);
-        add(Box.createVerticalStrut(4));
+        addSection(essentialsTab, servicePanel);
 
         // --- System ---
         JPanel systemPanel = createSectionPanel("LBL_SystemHeader");
@@ -442,10 +452,9 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         runCommandPolicyButton.setPreferredSize(
                 new Dimension(rightColumnWidth, whitelistSize.height));
 
-        add(systemPanel);
-        add(Box.createVerticalStrut(4));
+        addSection(advancedTab, systemPanel);
 
-        // --- Chat Behavior ---
+        // --- Chat Behavior (essentials) ---
         JPanel behaviorPanel = createSectionPanel("LBL_BehaviorHeader");
         behaviorPanel.setLayout(new GridBagLayout());
         row = 0;
@@ -456,40 +465,10 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         behaviorPanel.add(echoCheckbox, UIUtils.createGbc(0, row, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
                 new Insets(0, 12, 5, 0)));
 
-        JLabel idleTimeoutLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_SessionIdleTimeout"));
-        idleTimeoutLabel.setToolTipText(tooltip("TT_SessionIdleTimeout"));
-        behaviorPanel.add(idleTimeoutLabel, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE,
-                GridBagConstraints.WEST, new Insets(0, 15, 5, 5)));
-        SpinnerNumberModel spinnerModel = new SpinnerNumberModel(600, 0, 3600, 5);
-        idleTimeoutSpinner = new JSpinner(spinnerModel);
-        ((JSpinner.DefaultEditor) idleTimeoutSpinner.getEditor()).getTextField().setColumns(4);
-        idleTimeoutSpinner.setToolTipText(tooltip("TT_SessionIdleTimeout"));
-        idleTimeoutSpinner.addChangeListener(evt -> controller.changed());
-        behaviorPanel.add(idleTimeoutSpinner, UIUtils.createGbc(3, row, 0.0, 0, GridBagConstraints.NONE,
-                GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
-
         combineCheckbox.setText(scopedLabel("LBL_CombineToolThought", PluginSettings.Effect.SESSION_RELOAD));
         combineCheckbox.setToolTipText(tooltip("TT_CombineToolThought"));
         combineCheckbox.addActionListener(evt -> controller.changed());
         behaviorPanel.add(combineCheckbox, UIUtils.createGbc(0, ++row, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
-                new Insets(0, 12, 5, 0)));
-
-        JLabel maxMessagesLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_MaxMessages"));
-        maxMessagesLabel.setToolTipText(tooltip("TT_MaxMessages"));
-        behaviorPanel.add(maxMessagesLabel, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE,
-                GridBagConstraints.WEST, new Insets(0, 15, 5, 5)));
-        SpinnerNumberModel maxMessagesModel = new SpinnerNumberModel(25, 10, 200, 5);
-        maxMessagesSpinner = new JSpinner(maxMessagesModel);
-        ((JSpinner.DefaultEditor) maxMessagesSpinner.getEditor()).getTextField().setColumns(4);
-        maxMessagesSpinner.setToolTipText(tooltip("TT_MaxMessages"));
-        maxMessagesSpinner.addChangeListener(evt -> controller.changed());
-        behaviorPanel.add(maxMessagesSpinner, UIUtils.createGbc(3, row, 0.0, 0, GridBagConstraints.NONE,
-                GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
-
-        autoBackupChangesCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_AutoBackupChanges"));
-        autoBackupChangesCheckbox.setToolTipText(tooltip("TT_AutoBackupChanges"));
-        autoBackupChangesCheckbox.addActionListener(evt -> controller.changed());
-        behaviorPanel.add(autoBackupChangesCheckbox, UIUtils.createGbc(0, ++row, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
                 new Insets(0, 12, 5, 0)));
 
         editPreambleButton = new JButton();
@@ -509,8 +488,46 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         behaviorPanel.add(editPreambleButton, UIUtils.createGbc(3, row, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
 
-        add(behaviorPanel);
-        add(Box.createVerticalStrut(4));
+        addSection(essentialsTab, behaviorPanel);
+
+        // --- Session Limits (advanced) ---
+        JPanel limitsPanel = createSectionPanel("LBL_LimitsHeader");
+        limitsPanel.setLayout(new GridBagLayout());
+        row = 0;
+
+        JLabel idleTimeoutLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_SessionIdleTimeout"));
+        idleTimeoutLabel.setToolTipText(tooltip("TT_SessionIdleTimeout"));
+        limitsPanel.add(idleTimeoutLabel, UIUtils.createGbc(0, row, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
+        SpinnerNumberModel spinnerModel = new SpinnerNumberModel(600, 0, 3600, 5);
+        idleTimeoutSpinner = new JSpinner(spinnerModel);
+        ((JSpinner.DefaultEditor) idleTimeoutSpinner.getEditor()).getTextField().setColumns(4);
+        idleTimeoutSpinner.setToolTipText(tooltip("TT_SessionIdleTimeout"));
+        idleTimeoutSpinner.addChangeListener(evt -> controller.changed());
+        limitsPanel.add(idleTimeoutSpinner, UIUtils.createGbc(3, row, 0.0, 0, GridBagConstraints.NONE,
+                GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
+
+        JLabel maxMessagesLabel = new JLabel(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_MaxMessages"));
+        maxMessagesLabel.setToolTipText(tooltip("TT_MaxMessages"));
+        limitsPanel.add(maxMessagesLabel, UIUtils.createGbc(0, ++row, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
+        SpinnerNumberModel maxMessagesModel = new SpinnerNumberModel(25, 10, 200, 5);
+        maxMessagesSpinner = new JSpinner(maxMessagesModel);
+        ((JSpinner.DefaultEditor) maxMessagesSpinner.getEditor()).getTextField().setColumns(4);
+        maxMessagesSpinner.setToolTipText(tooltip("TT_MaxMessages"));
+        maxMessagesSpinner.addChangeListener(evt -> controller.changed());
+        limitsPanel.add(maxMessagesSpinner, UIUtils.createGbc(3, row, 0.0, 0, GridBagConstraints.NONE,
+                GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
+
+        autoBackupChangesCheckbox.setText(NbBundle.getMessage(ACPOptionsPanel.class, "LBL_AutoBackupChanges"));
+        autoBackupChangesCheckbox.setToolTipText(tooltip("TT_AutoBackupChanges"));
+        autoBackupChangesCheckbox.addActionListener(evt -> controller.changed());
+        GridBagConstraints backupGbc = UIUtils.createGbc(0, ++row, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 0));
+        backupGbc.gridwidth = 4;
+        limitsPanel.add(autoBackupChangesCheckbox, backupGbc);
+
+        addSection(advancedTab, limitsPanel);
 
         // --- IDE Extensions ---
         JPanel actionsPanel = createSectionPanel("LBL_ActionsHeader");
@@ -545,8 +562,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         actionsPanel.add(contextActionsButton, UIUtils.createGbc(1, 2, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
 
-        add(actionsPanel);
-        add(Box.createVerticalStrut(4));
+        addSection(advancedTab, actionsPanel);
 
         // --- Appearance ---
         JPanel appearancePanel = createSectionPanel("LBL_AppearanceHeader");
@@ -601,13 +617,47 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
 
         chatFontCombo = new JComboBox<>(new String[]{"Inherited", "10", "11", "12", "13", "14", "16", "18", "20", "22", "24"});
         chatFontCombo.setToolTipText(tooltip("TT_ChatFontSize"));
-        chatFontCombo.setPrototypeDisplayValue("100");
+        // "Inherited" is the widest value and the stored default, so it sets the width.
+        chatFontCombo.setPrototypeDisplayValue("Inherited");
         chatFontCombo.addActionListener(evt -> controller.changed());
         appearancePanel.add(chatFontCombo, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.EAST, new Insets(0, 0, 5, 5)));
 
-        add(appearancePanel);
-        add(Box.createVerticalStrut(4));
+        addSection(essentialsTab, appearancePanel);
+        finishTab(essentialsTab);
+        finishTab(advancedTab);
+    }
+
+    private static final int SECTION_GAP = 6;
+
+    /** Tab content: sections stacked top-down at their natural height, spare space at the bottom. */
+    private static JPanel newTabPanel() {
+        JPanel tab = new JPanel(new GridBagLayout());
+        tab.setBorder(BorderFactory.createEmptyBorder(6, 2, 2, 2));
+        return tab;
+    }
+
+    /** Appends one titled section to a tab, full width, in insertion order. */
+    private static void addSection(JPanel tab, JPanel section) {
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = tab.getComponentCount();
+        gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.NORTHWEST;
+        gbc.insets = new Insets(0, 0, SECTION_GAP, 0);
+        tab.add(section, gbc);
+    }
+
+    /** Hands the remaining height to one filler, so the sections keep their preferred height. */
+    private static void finishTab(JPanel tab) {
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = tab.getComponentCount();
+        gbc.weightx = 1.0;
+        gbc.weighty = 1.0;
+        gbc.fill = GridBagConstraints.BOTH;
+        tab.add(Box.createGlue(), gbc);
     }
 
     private JPanel createSectionPanel(String headerKey) {
