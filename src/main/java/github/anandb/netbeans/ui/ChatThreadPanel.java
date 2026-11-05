@@ -72,6 +72,8 @@ public class ChatThreadPanel extends JPanel {
     // --- Static constants ---
     private static final Logger LOG = Logger.from(ChatThreadPanel.class);
     private static final long serialVersionUID = 1L;
+    /** Test seam for {@link #ignoresMessageIdForStreaming()}. */
+    private Boolean ignoresMessageIdForStreamingForTest;
 
     // --- UI components ---
     private final JPanel messagesContainer;
@@ -413,6 +415,9 @@ public class ChatThreadPanel extends JPanel {
             processMessageSections(pm, text, role, wasAtBottom, replay);
         } else {
             stopStreaming();
+            if (pm.messageType().isAssistant() && isDotPlaceholder(text)) {
+                return;
+            }
             addSingleBubble(pm.messageType(), text, pm.messageId(), pm.toolTitle(), false, wasAtBottom);
         }
         trimMessages();
@@ -475,6 +480,20 @@ public class ChatThreadPanel extends JPanel {
                             canMerge = !"user".equals(role) && canMergeMessages(pm.messageId(), lastBubble.getMessageId());
                         }
                     }
+                }
+            }
+
+            // An assistant message can continue after interleaved tool or thought
+            // blocks: resolve its own bubble by message id instead of opening a
+            // second one. A dot-only chunk with no such message is the
+            // empty-message placeholder harnesses emit between tool calls.
+            if (!canMerge && "assistant".equals(role) && pm.messageId() != null) {
+                MessageBubble owner = findAssistantBubble(pm.messageId());
+                if (owner != null) {
+                    lastBubble = owner;
+                    canMerge = true;
+                } else if (isDotPlaceholder(part)) {
+                    continue;
                 }
             }
 
@@ -565,13 +584,16 @@ public class ChatThreadPanel extends JPanel {
 
         // Generate messageId for non-streaming assistant messages that lack one.
         // Streaming messages get their ID assigned after finalization in assignMissingMessageIds().
+        boolean generatedId = false;
         if (type.isAssistant() && messageId == null && !streaming && sid != null) {
             messageId = MessageIdGenerator.generate(sid, text);
+            generatedId = true;
             // Add to seen set so retainPinned() doesn't remove pins for this ID
             seenMessageIdsBySession.computeIfAbsent(sid, k -> ConcurrentHashMap.newKeySet()).add(messageId);
         }
 
         MessageBubble bubble = BubbleFactory.createRoleBubble(type, text, messageId, toolTitle, streaming, userMessageCount, sid);
+        bubble.setGeneratedMessageId(generatedId);
 
         if (lastUserTimestamp > 0 && !"user".equals(type.roleName())) {
             long elapsed = System.currentTimeMillis() - lastUserTimestamp;
@@ -723,7 +745,9 @@ public class ChatThreadPanel extends JPanel {
         for (int i = start; i < all.length; i++) {
             if (all[i] instanceof MessageBubble mb) {
                 String role = mb.getRole();
-                if (("assistant".equals(role) || "thought".equals(role)) && isBlank(mb.getRawText())) {
+                String raw = mb.getRawText();
+                if (("assistant".equals(role) || "thought".equals(role))
+                        && (isBlank(raw) || ("assistant".equals(role) && isDotPlaceholder(raw)))) {
                     blankBubbles.add(mb);
                 }
             }
@@ -1438,6 +1462,22 @@ public class ChatThreadPanel extends JPanel {
         });
     }
 
+    /** The assistant bubble already rendered for {@code messageId}, if any (a dot chunk
+     *  continues that message rather than starting one of its own). Only harness ids
+     *  qualify: a generated id is a text hash, so equal-text messages would collide. */
+    private MessageBubble findAssistantBubble(String messageId) {
+        Component[] comps = messagesContainer.getComponents();
+        for (int i = comps.length - 1; i >= currentTurnStartIndex(comps, 1); i--) {
+            if (comps[i] instanceof MessageBubble mb
+                    && "assistant".equals(mb.getRole())
+                    && !mb.isGeneratedMessageId()
+                    && canMergeMessages(messageId, mb.getMessageId())) {
+                return mb;
+            }
+        }
+        return null;
+    }
+
     private MessageBubble findLastNonIgnorableBubble() {
         int count = messagesContainer.getComponentCount();
         for (int i = count - 1; i >= 0; i--) {
@@ -1470,10 +1510,30 @@ public class ChatThreadPanel extends JPanel {
                 if (text != null && !text.isEmpty()) {
                     String generatedId = MessageIdGenerator.generate(sid, text);
                     mb.setMessageId(generatedId);
+                    mb.setGeneratedMessageId(true);
                     seen.add(generatedId);
                 }
             }
         }
+    }
+
+    /**
+     * True when the whole text is nothing but dots — the empty-message
+     * placeholder some harnesses/models emit between tool calls ("."), which
+     * must never become its own bubble. A dot continuing real text is not a
+     * placeholder: that bubble already exists and is merged instead.
+     */
+    private static boolean isDotPlaceholder(String text) {
+        String trimmed = text == null ? "" : text.trim();
+        if (trimmed.isEmpty()) {
+            return false;
+        }
+        for (int i = 0; i < trimmed.length(); i++) {
+            if (trimmed.charAt(i) != '.') {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static boolean canMergeMessages(String messageId, String existingMessageId) {
@@ -1495,9 +1555,18 @@ public class ChatThreadPanel extends JPanel {
      * messageId check during merge decisions.
      */
     private boolean ignoresMessageIdForStreaming() {
+        if (ignoresMessageIdForStreamingForTest != null) {
+            return ignoresMessageIdForStreamingForTest;
+        }
         ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
         HarnessCatalog.Harness caps = pc != null ? pc.getCapabilities() : null;
         return caps != null && !caps.supportsMessageIds();
+    }
+
+    /** Test seam: {@code null} defers to the harness capability, otherwise forces the
+     *  id-ignoring (true) or id-strict (false) merge path. */
+    void setIgnoresMessageIdForStreamingForTest(Boolean ignores) {
+        this.ignoresMessageIdForStreamingForTest = ignores;
     }
 
     /** True when a loaded history must draw every {@code agent_message_chunk} in its

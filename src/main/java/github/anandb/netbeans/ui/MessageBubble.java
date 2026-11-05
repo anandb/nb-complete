@@ -50,6 +50,9 @@ public class MessageBubble extends JPanel implements Scrollable {
     private final JPanel segments;
     private final MessageType type;
     private String messageId;
+    /** True when {@link #messageId} is our content hash, not a harness id: two
+     *  messages with equal text share it, so it must never drive merging. */
+    private boolean generatedMessageId;
     private final String role;
     private final StringBuilder text;
     private final transient BubbleAccordionManager accordionManager;
@@ -435,6 +438,17 @@ public class MessageBubble extends JPanel implements Scrollable {
     public void setMessageId(String messageId) {
         this.messageId = messageId;
         actionBar.setMessageId(messageId);
+    }
+
+    /** Marks {@link #messageId} as a locally generated content hash (see {@link
+     *  github.anandb.netbeans.support.MessageIdGenerator}). Such an id is stable for
+     *  a given text, so it identifies a pinned message — never a harness message. */
+    public void setGeneratedMessageId(boolean generated) {
+        this.generatedMessageId = generated;
+    }
+
+    public boolean isGeneratedMessageId() {
+        return generatedMessageId;
     }
 
     public void setFontSizeOverride(int size) {

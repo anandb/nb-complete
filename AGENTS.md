@@ -715,6 +715,17 @@ divider and the input area (it must borrow space from the thread only).
   `removeMessageBubble()` drops a failed send's user echo, and resets on session create/load.
   Same inputs always produce same hash (stable across reloads). It drives the avatar
   alternation (`BubbleFactory.resolveAvatarPosition`), so a skipped decrement flips the side.
+- **One message id, one bubble, across interleaved blocks**: `processMessageSections` resolves an
+  assistant chunk whose immediate predecessor is not mergeable to the bubble that already owns
+  its message id (`findAssistantBubble`, bounded to the current turn), so text that continues
+  after a tool/thought block appends to its message's bubble instead of opening a second one.
+- **Only harness ids merge**: a bubble whose id came from `MessageIdGenerator` is flagged
+  (`MessageBubble.setGeneratedMessageId`) and is never an owner — that hash is the same for any
+  two messages with equal text.
+- **Dot-only assistant text is a placeholder**: a chunk whose whole text is dots and that has no
+  owning message bubble is dropped, and `removeBlankBubbles` sweeps a dot-only assistant bubble
+  like a blank one. omp emits one between tool calls; a dot that ends real text still merges into
+  that text (same id), so a sentence period is never lost.
 
 ### Startup Session/List Optimization
 - Only `deferStartupSessionLoad()` calls `session/list` at startup (after
