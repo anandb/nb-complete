@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.composer;
 
 import org.junit.jupiter.api.Test;
 

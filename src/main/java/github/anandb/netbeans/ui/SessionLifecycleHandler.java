@@ -38,6 +38,7 @@ import org.netbeans.api.project.Project;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.ui.chat.ChatThreadPanel;
 import github.anandb.netbeans.ui.chat.PlanPanel;
+import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
 
 /**
  * Handles all SessionListener callbacks, updating the chat panel, session dropdown,

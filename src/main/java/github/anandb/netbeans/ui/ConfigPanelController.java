@@ -56,6 +56,7 @@ import java.util.Locale;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComponent;
 import javax.swing.JPopupMenu;
+import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
 
 // DSL-LEAF: not a view-pure form — builds the agent/model/thinking combo panel
 // (GridBagLayout). Migration target: OptionsFormSpec + ConfigComboSpec; the

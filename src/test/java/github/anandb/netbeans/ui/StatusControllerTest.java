@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
 
 /**
  * Guards the status label's length cap. The label sits left of the model

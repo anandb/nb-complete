@@ -71,6 +71,12 @@ import org.netbeans.api.project.Project;
 import java.util.prefs.Preferences;
 import github.anandb.netbeans.ui.chat.ChatThreadPanel;
 import github.anandb.netbeans.ui.chat.PlanPanel;
+import github.anandb.netbeans.ui.composer.AttachmentUiHandler;
+import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
+import github.anandb.netbeans.ui.composer.AttachmentManager;
+import github.anandb.netbeans.ui.composer.InputHandler;
+import github.anandb.netbeans.ui.composer.AutocompleteManager;
+import github.anandb.netbeans.ui.composer.MessageHistory;
 
 
 @ConvertAsProperties(
@@ -689,7 +695,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
     }
 
-    void sendMessage() {
+    public void sendMessage() {
         if (messageSender != null) {
             messageSender.sendMessage();
         }

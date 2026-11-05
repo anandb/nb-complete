@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.composer;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.awt.Color;
@@ -36,6 +36,7 @@ import javax.swing.undo.UndoableEdit;
 import java.util.regex.Pattern;
 
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.ui.ThemeManager;
 
 // DSL-LEAF: keep imperative, wrap via UI.of(...) — paintComponent placeholder overlay + word-wise undo. Not ported to withStyle.
 public class PlaceholderTextArea extends JTextArea implements Scrollable {

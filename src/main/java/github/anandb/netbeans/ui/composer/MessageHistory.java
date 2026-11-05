@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.composer;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,12 +33,12 @@ public class MessageHistory {
     }
 
     /** Constructor for unit tests: {@code false} keeps the history purely in memory. */
-    MessageHistory(boolean useStore) {
+    public MessageHistory(boolean useStore) {
         this(useStore ? Lookup.getDefault().lookup(SessionStore.class) : null);
     }
 
     /** Explicit store, for the tests; production resolves it from the registry. */
-    MessageHistory(SessionStore store) {
+    public MessageHistory(SessionStore store) {
         this.store = store;
     }
 

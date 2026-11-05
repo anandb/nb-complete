@@ -41,6 +41,7 @@ import github.anandb.netbeans.ui.platform.ProjectContext;
 import github.anandb.netbeans.ui.platform.SessionService;
 import github.anandb.netbeans.ui.chat.ChatThreadPanel;
 import github.anandb.netbeans.ui.chat.PlanPanel;
+import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
 
 /**
  * Headless regression tests for {@link SessionLifecycleHandler#onSessionListUpdated}.

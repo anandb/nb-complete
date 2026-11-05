@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.composer;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -9,6 +9,8 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import javax.swing.Icon;
+import github.anandb.netbeans.ui.ThemeManager;
+import github.anandb.netbeans.ui.ColorTheme;
 
 /**
  * Wraps the paperclip icon and overlays a count badge in its top-right corner,

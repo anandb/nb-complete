@@ -10,6 +10,7 @@ import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import org.openide.util.NbBundle;
+import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
 
 /**
  * Manages status bar display, thinking animation, send/stop button states,

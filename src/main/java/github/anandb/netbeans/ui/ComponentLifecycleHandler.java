@@ -39,6 +39,7 @@ import github.anandb.netbeans.ui.platform.ProcessService;
 import github.anandb.netbeans.ui.platform.ProjectContext;
 import github.anandb.netbeans.ui.platform.SessionService;
 import github.anandb.netbeans.ui.chat.ChatThreadPanel;
+import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
 
 /**
  * Manages the component lifecycle: open, activate, deactivate, close, and remove notify.

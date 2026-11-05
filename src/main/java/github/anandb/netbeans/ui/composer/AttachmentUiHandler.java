@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.composer;
 
 import github.anandb.netbeans.contract.PasteCallback;
 import java.awt.Component;
@@ -15,6 +15,10 @@ import org.openide.util.ImageUtilities;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.model.AttachedFile;
 import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.ui.UIUtils;
+import github.anandb.netbeans.ui.ThemeManager;
+import github.anandb.netbeans.ui.StatusController;
+import github.anandb.netbeans.ui.UIBundle;
 
 /**
  * Handles all attachment-related UI: paperclip button, file selection popup,

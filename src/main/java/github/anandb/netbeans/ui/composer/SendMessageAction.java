@@ -1,9 +1,10 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.composer;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import org.openide.awt.ActionID;
 import org.openide.awt.ActionRegistration;
+import github.anandb.netbeans.ui.AssistantTopComponent;
 
 @ActionID(category = "Assistant", id = "github.anandb.netbeans.ui.SendMessageAction")
 @ActionRegistration(displayName = "#CTL_SendMessageAction")

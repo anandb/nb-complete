@@ -9,6 +9,7 @@ import github.anandb.netbeans.support.Logger;
 
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.SessionService;
+import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
 
 /**
  * Handles session dropdown popup behavior: tracking session selection changes

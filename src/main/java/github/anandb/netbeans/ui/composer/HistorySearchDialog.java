@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.composer;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -32,6 +32,8 @@ import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import github.anandb.netbeans.ui.ThemeManager;
+import github.anandb.netbeans.ui.UIBundle;
 
 /**
  * Non-modal dialog for searching message history with type-as-you-search filtering.

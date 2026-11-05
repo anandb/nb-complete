@@ -64,6 +64,7 @@ import javax.swing.Timer;
 import org.netbeans.api.project.Project;
 import github.anandb.netbeans.ui.chat.ChatThreadPanel;
 import github.anandb.netbeans.ui.chat.MessageFilterManager;
+import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
 
 // DSL-CONTROLLER: not a view — newSessionDebounceTimer (300ms) lives here per
 // AGENTS.md. Construction body is the Phase 2 seam target (ChatLayoutSpec);

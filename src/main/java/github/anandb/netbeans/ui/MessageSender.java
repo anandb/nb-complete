@@ -39,6 +39,9 @@ import github.anandb.netbeans.support.SteerEchoes;
 import github.anandb.netbeans.support.VcsUtils;
 import org.openide.util.RequestProcessor;
 import github.anandb.netbeans.ui.chat.ChatThreadPanel;
+import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
+import github.anandb.netbeans.ui.composer.AttachmentManager;
+import github.anandb.netbeans.ui.composer.MessageHistory;
 
 /**
  * Handles sending user messages and stopping message processing.

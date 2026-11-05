@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.composer;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import github.anandb.netbeans.contract.PasteCallback;
@@ -29,6 +29,7 @@ import javax.swing.SwingUtilities;
 
 import github.anandb.netbeans.model.AttachedFile;
 import github.anandb.netbeans.support.ImagePasteIoProcessor;
+import github.anandb.netbeans.ui.UIBundle;
 
 // DSL-CONTROLLER: not a view — image paste background I/O thread pool + EDT
 // bridge to AttachmentManager. Stays imperative; the input area + preview

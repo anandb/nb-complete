@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.composer;
 
 import java.awt.Dimension;
 import java.awt.Rectangle;
@@ -30,6 +30,7 @@ import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.ProcessService;
+import github.anandb.netbeans.ui.ThemeManager;
 
 // DSL-CONTROLLER: not a view — autocomplete popup state (filter, navigate,
 // enter-to-send). The popup JPopupMenu is a leaf the DSL wraps; the keyboard
@@ -260,7 +261,7 @@ public class AutocompleteManager {
         inputArea.requestFocusInWindow();
     }
 
-    void selectCommand() {
+    public void selectCommand() {
         SessionUpdate.AvailableCommand selected = commandList.getSelectedValue();
         if (selected != null) {
             String text = inputArea.getText();

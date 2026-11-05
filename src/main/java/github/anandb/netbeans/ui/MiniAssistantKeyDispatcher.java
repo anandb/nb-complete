@@ -9,6 +9,8 @@ import org.openide.util.Lookup;
 import org.openide.util.Utilities;
 
 import github.anandb.netbeans.contract.ProcessControl;
+import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
+import github.anandb.netbeans.ui.composer.AutocompleteManager;
 
 /**
  * Global key dispatcher installed by {@link MiniAssistantDialog}. Handles bubble

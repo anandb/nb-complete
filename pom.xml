@@ -388,7 +388,7 @@
                                     <resource>
                                         <directory>${project.basedir}/src/main/resources/github/anandb/netbeans/ui</directory>
                                         <includes>
-                                            <include>Bundle.properties</include>
+                                            <include>**/Bundle.properties</include>
                                         </includes>
                                     </resource>
                                 </resources>
