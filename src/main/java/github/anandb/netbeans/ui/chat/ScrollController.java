@@ -1,0 +1,274 @@
+package github.anandb.netbeans.ui.chat;
+
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.KeyEventDispatcher;
+import java.awt.KeyboardFocusManager;
+import java.awt.RenderingHints;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelListener;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BooleanSupplier;
+
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JLayeredPane;
+import javax.swing.JScrollBar;
+import javax.swing.JScrollPane;
+import javax.swing.SwingUtilities;
+
+import github.anandb.netbeans.support.Logger;
+import org.openide.util.NbBundle;
+import github.anandb.netbeans.ui.ThemeManager;
+import github.anandb.netbeans.ui.UIBundle;
+
+public class ScrollController implements KeyEventDispatcher {
+    private static final Logger LOG = Logger.from(ScrollController.class);
+
+    private static final Color SCROLL_BTN_COLOR_A;
+    private static final Color SCROLL_BTN_COLOR_B;
+    
+    static {
+        Color base = ThemeManager.getCurrentTheme().scrollButtonColor();
+        SCROLL_BTN_COLOR_A = new Color(base.getRed(), base.getGreen(), base.getBlue(), 200);
+        SCROLL_BTN_COLOR_B = new Color(base.getRed(), base.getGreen(), base.getBlue(), 240);
+    }
+
+    private final JScrollPane scrollPane;
+    private final Component parentComponent;
+    private final JButton scrollDownBtn;
+    private final Map<Component, MouseWheelListener> wheelListeners = new ConcurrentHashMap<>();
+    private BooleanSupplier scrollBlocker;
+
+    public ScrollController(JScrollPane scrollPane, Component parentComponent, JLayeredPane layeredPane) {
+        this.scrollPane = scrollPane;
+        this.parentComponent = parentComponent;
+
+        this.scrollDownBtn = createScrollDownBtn();
+
+        layeredPane.add(scrollDownBtn, JLayeredPane.PALETTE_LAYER);
+
+        scrollPane.getVerticalScrollBar().addAdjustmentListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                updateScrollDownBtnVisibility();
+            }
+        });
+    }
+
+    private JButton createScrollDownBtn() {
+        // DSL-LEAF: keep imperative, wrap via UI.of(...) — anonymous JComponent with
+// Graphics2D paintComponent for the floating scroll-down button. Not ported to withStyle.
+        JButton btn = new JButton(ThemeManager.getIcon("scroll-down.svg", 24)) {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(SCROLL_BTN_COLOR_A);
+                g2.fillOval(1, 1, getWidth() - 3, getHeight() - 3);
+                g2.setColor(SCROLL_BTN_COLOR_B);
+                g2.fillOval(2, 2, getWidth() - 5, getHeight() - 5);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        btn.setOpaque(false);
+        btn.setContentAreaFilled(false);
+        btn.setBorderPainted(false);
+        btn.setFocusPainted(false);
+        btn.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setToolTipText(NbBundle.getMessage(UIBundle.class, "HINT_ScrollToBottom"));
+        btn.getAccessibleContext().setAccessibleName("Scroll to bottom");
+        btn.getAccessibleContext().setAccessibleDescription(
+                NbBundle.getMessage(UIBundle.class, "HINT_ScrollToBottom"));
+        btn.setVisible(false);
+        btn.addActionListener(e -> {
+            scrollToBottom(true);
+            btn.setVisible(false);
+        });
+        return btn;
+    }
+
+
+    public void setScrollBlocker(BooleanSupplier scrollBlocker) {
+        this.scrollBlocker = scrollBlocker;
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent e) {
+        if (e.getID() == KeyEvent.KEY_PRESSED) {
+            int keyCode = e.getKeyCode();
+            if (keyCode == KeyEvent.VK_PAGE_UP || keyCode == KeyEvent.VK_PAGE_DOWN
+                    || ((e.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0
+                        && (keyCode == KeyEvent.VK_HOME || keyCode == KeyEvent.VK_END))) {
+                // External components (e.g. slash command autocomplete popup) can
+                // request that Page Up/Down be left for their own navigation.
+                if (keyCode == KeyEvent.VK_PAGE_UP || keyCode == KeyEvent.VK_PAGE_DOWN) {
+                    if (scrollBlocker != null && scrollBlocker.getAsBoolean()) {
+                        return false;
+                    }
+                }
+                Component src = e.getComponent();
+                if (src != null && SwingUtilities.isDescendingFrom(src, parentComponent)) {
+                    if (keyCode == KeyEvent.VK_PAGE_UP || keyCode == KeyEvent.VK_PAGE_DOWN) {
+                        Component c = src;
+                        while (c != null) {
+                            if (c instanceof JComboBox) {
+                                return false;
+                            }
+                            c = c.getParent();
+                        }
+                    }
+                    switch (keyCode) {
+                        case KeyEvent.VK_PAGE_UP -> scrollByBlock(true);
+                        case KeyEvent.VK_PAGE_DOWN -> scrollByBlock(false);
+                        case KeyEvent.VK_HOME -> scrollToTop();
+                        case KeyEvent.VK_END -> scrollToBottom(true);
+                        default -> {}
+                    }
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public void redirectMouseWheel(Component source, MouseEvent e) {
+        scrollPane.dispatchEvent(SwingUtilities.convertMouseEvent(source, e, scrollPane));
+    }
+
+    public void fixMouseWheel(Component c) {
+        MouseWheelListener listener = e -> {
+            scrollPane.dispatchEvent(SwingUtilities.convertMouseEvent(c, e, scrollPane));
+            e.consume();
+        };
+        c.addMouseWheelListener(listener);
+        wheelListeners.put(c, listener);
+    }
+
+    /** Removes the wheel-redirect listener installed by {@link #fixMouseWheel}
+     *  and drops the entry from the tracking map. Callers that remove a bubble
+     *  from the container MUST call this so the bubble (and its component
+     *  subtree) is not retained by the strong-keyed {@code wheelListeners} map
+     *  until panel teardown (memory leak). */
+    public void unfixMouseWheel(Component c) {
+        MouseWheelListener listener = wheelListeners.remove(c);
+        if (listener != null) {
+            c.removeMouseWheelListener(listener);
+        }
+    }
+
+    /** Removes wheel-redirect listeners from every tracked component and clears
+     *  the map. Used by {@link #cleanup()} and by bulk-content replacement
+     *  paths ({@code clearMessages}/{@code setMessages}). */
+    public void unfixAllMouseWheel() {
+        wheelListeners.forEach((c, l) -> c.removeMouseWheelListener(l));
+        wheelListeners.clear();
+    }
+
+    public boolean isAtBottom() {
+        JScrollBar vertical = scrollPane.getVerticalScrollBar();
+        int extent = vertical.getModel().getExtent();
+        int value = vertical.getValue();
+        int maximum = vertical.getMaximum();
+        // Sticky zone: if the user is within 150px of the bottom, treat it
+        // as "at bottom" so new bubbles auto-scroll. A tight margin (50px)
+        // fails because adding a bubble shifts the viewport past the threshold
+        // before we capture wasAtBottom.
+        return (value + extent >= maximum - 150);
+    }
+
+    public void positionScrollDownBtn(int parentWidth, int parentHeight) {
+        int btnSize = 36;
+        int margin = 12;
+        scrollDownBtn.setBounds(
+            parentWidth - btnSize - margin,
+            parentHeight - btnSize - 37,
+            btnSize,
+            btnSize
+        );
+    }
+
+    private void updateScrollDownBtnVisibility() {
+        scrollDownBtn.setVisible(!isAtBottom());
+    }
+
+    public void scrollByBlock(boolean pageUp) {
+        JScrollBar vertical = scrollPane.getVerticalScrollBar();
+        if (pageUp) {
+            vertical.setValue(vertical.getValue() - vertical.getVisibleAmount());
+        } else {
+            vertical.setValue(vertical.getValue() + vertical.getVisibleAmount());
+        }
+    }
+
+    public void scrollToTop() {
+        SwingUtilities.invokeLater(() -> {
+            // Force layout so getMaximum() reflects newly added components.
+            scrollPane.validate();
+            JScrollBar vertical = scrollPane.getVerticalScrollBar();
+            vertical.setValue(0);
+            SwingUtilities.invokeLater(() -> {
+                scrollPane.validate();
+                vertical.setValue(0);
+            });
+        });
+    }
+
+    public void scrollToBottom() {
+        scrollToBottom(false);
+    }
+
+    public void scrollToBottom(boolean force) {
+        SwingUtilities.invokeLater(() -> {
+            if (!force && !isAtBottom()) {
+                return;
+            }
+            // Force layout so getMaximum() reflects newly added components.
+            // Without this, invokeLater fires before Swing's layout pass,
+            // and getMaximum() returns the stale (pre-add) value.
+            doScrollToBottom();
+        });
+    }
+
+    /**
+     * Applies the actual bottom scroll and schedules a single follow-up
+     * "settle" pass on the next EDT tick. Content (especially streaming
+     * JTextAreas) can grow asynchronously — the validate() in the first pass
+     * may compute a preferred size that is itself invalidated again once the
+     * document/layout fully settles. The settle pass re-reads getMaximum()
+     * after that second layout pass and re-pins to the true bottom, without a
+     * fixed delay so there is no added streaming lag.
+     */
+    private void doScrollToBottom() {
+        // Validate the scrollPane (not just the view) so ScrollPaneLayout runs
+        // and updates the scrollbar model with the view's current preferred
+        // size. Validating only the view re-layouts children but leaves the
+        // scrollbar's getMaximum() stale — setValue(max) then scrolls to the
+        // old bottom, not the true one after a bubble was just added.
+        // Note: revalidate() is intentionally omitted — validate() already
+        // processes all pending layout requests, so marking invalid first is
+        // redundant overhead on this hot path (called every streaming tick).
+        scrollPane.validate();
+        JScrollBar vertical = scrollPane.getVerticalScrollBar();
+        vertical.setValue(vertical.getMaximum());
+        scrollDownBtn.setVisible(false);
+        SwingUtilities.invokeLater(() -> {
+            scrollPane.validate();
+            vertical.setValue(vertical.getMaximum());
+        });
+    }
+
+    public void cleanup() {
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(this);
+        unfixAllMouseWheel();
+    }
+}

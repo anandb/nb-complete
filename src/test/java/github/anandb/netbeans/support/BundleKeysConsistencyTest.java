@@ -97,6 +97,7 @@ class BundleKeysConsistencyTest {
     @Test
     void everyDirectGetMessageKeyExistsInThePropertiesFile() throws IOException {
         List<String> failures = new java.util.ArrayList<>();
+        Map<String, String> typePackages = indexTypePackages();
         try (Stream<Path> javaFiles = Files.walk(JAVA_ROOT)) {
             for (Path javaFile : (Iterable<Path>) javaFiles
                     .filter(p -> p.toString().endsWith(".java"))::iterator) {
@@ -115,7 +116,7 @@ class BundleKeysConsistencyTest {
                     }
                     String pkg = ownerClass.contains(".")
                             ? ownerClass.substring(0, ownerClass.lastIndexOf('.'))
-                            : packageName(source);
+                            : typePackages.getOrDefault(ownerClass, packageName(source));
                     Path bundle = RES_ROOT.resolve(pkg.replace('.', '/'))
                             .resolve("Bundle.properties");
                     if (!Files.isRegularFile(bundle)
@@ -185,6 +186,29 @@ class BundleKeysConsistencyTest {
     private static String packageName(String source) {
         Matcher m = Pattern.compile("^package\\s+([\\w.]+);", Pattern.MULTILINE).matcher(source);
         return m.find() ? m.group(1) : "";
+    }
+
+    /**
+     * Maps every top-level type declared under {@code src/main/java} to its package, so a lookup
+     * written against a shared anchor class resolves the bundle of the package that declares it.
+     */
+    private static Map<String, String> indexTypePackages() throws IOException {
+        Map<String, String> packages = new HashMap<>();
+        Pattern declaration = Pattern.compile(
+                "^(?:public |final |abstract |sealed |non-sealed )*(?:class|interface|enum|record) (\\w+)",
+                Pattern.MULTILINE);
+        try (Stream<Path> javaFiles = Files.walk(JAVA_ROOT)) {
+            for (Path javaFile : (Iterable<Path>) javaFiles
+                    .filter(p -> p.toString().endsWith(".java"))::iterator) {
+                String source = Files.readString(javaFile, StandardCharsets.UTF_8);
+                String pkg = packageName(source);
+                Matcher m = declaration.matcher(source);
+                while (m.find()) {
+                    packages.put(m.group(1), pkg);
+                }
+            }
+        }
+        return packages;
     }
 
     private static Set<String> propertyKeys(Path bundle) throws IOException {

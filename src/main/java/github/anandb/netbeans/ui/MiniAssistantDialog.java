@@ -69,6 +69,8 @@ import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.ShortcutUtils;
 import github.anandb.netbeans.support.ToolCallDiffParser.FileChange;
 import github.anandb.netbeans.support.ToolContextExtractor;
+import github.anandb.netbeans.ui.chat.BubbleThemeApplier;
+import github.anandb.netbeans.ui.chat.MessageBubble;
 
 public class MiniAssistantDialog extends JDialog {
 

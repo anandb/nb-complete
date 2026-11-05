@@ -28,6 +28,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import github.anandb.netbeans.ui.chat.ChatThreadPanel;
 
 /**
  * The permission guard sits below the slash interception, so local commands keep working

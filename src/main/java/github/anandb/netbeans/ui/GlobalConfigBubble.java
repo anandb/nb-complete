@@ -18,7 +18,7 @@ import org.openide.util.NbBundle;
  * offers to set up the starter global OpenCode configuration, or — with the
  * user's consent — to replace a file that cannot be parsed.
  */
-class GlobalConfigBubble extends JPanel {
+public class GlobalConfigBubble extends JPanel {
     private static final long serialVersionUID = 1L;
 
     /** Guards against duplicate action events (e.g. a click plus a focus-lost release). */
@@ -32,7 +32,7 @@ class GlobalConfigBubble extends JPanel {
      * @param onYes         run when the user accepts (write the starter config)
      * @param onNo          run when the user declines for now
      */
-    GlobalConfigBubble(GlobalOpencodeConfig.CheckResult result, Runnable onYes, Runnable onNo) {
+    public GlobalConfigBubble(GlobalOpencodeConfig.CheckResult result, Runnable onYes, Runnable onNo) {
         boolean overwrite = result.state == GlobalOpencodeConfig.State.UNPARSEABLE;
 
         setLayout(new BorderLayout());

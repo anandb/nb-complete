@@ -30,11 +30,11 @@ import github.anandb.netbeans.pattern.ExtensionsBlockPattern;
  * └────────────────────────────────────────┘
  * </pre>
  */
-class StartupInfoBubble extends JPanel {
+public class StartupInfoBubble extends JPanel {
 
     private static final long serialVersionUID = 1L;
 
-    StartupInfoBubble(String text) {
+    public StartupInfoBubble(String text) {
         setLayout(new BorderLayout());
         setAlignmentY(Component.CENTER_ALIGNMENT);
         setOpaque(false);
@@ -166,7 +166,7 @@ class StartupInfoBubble extends JPanel {
     /** Returns true if the text is a harness startup banner: an
      *  {@code <agent> v<version>} first line plus the Context/Extensions
      *  markers. */
-    static boolean isStartupMessage(String text) {
+    public static boolean isStartupMessage(String text) {
         if (text == null || text.isEmpty()) {
             return false;
         }

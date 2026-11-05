@@ -26,12 +26,14 @@ import github.anandb.netbeans.pattern.TitleSanitizePattern;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import github.anandb.netbeans.ui.chat.CollapsibleToolPane;
+import github.anandb.netbeans.ui.chat.MessageBubble;
 
 /**
  * Stateless utility for exporting conversation history to self-contained
  * HTML files that mimic the sidebar chat view.
  */
-final class HtmlConversationExporter {
+public final class HtmlConversationExporter {
 
     private static final Logger LOG = Logger.from(HtmlConversationExporter.class);
 
@@ -228,7 +230,7 @@ final class HtmlConversationExporter {
      * @return HTML string, never null
      */
     @SuppressWarnings("unchecked")
-    static String generateHtml(JPanel messagesContainer, String sessionTitle) {
+    public static String generateHtml(JPanel messagesContainer, String sessionTitle) {
         PageSetup setup = initPage(sessionTitle);
 
         for (Component c : messagesContainer.getComponents()) {

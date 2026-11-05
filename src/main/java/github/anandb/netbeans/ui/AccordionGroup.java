@@ -3,6 +3,7 @@ package github.anandb.netbeans.ui;
 import java.util.ArrayList;
 import java.util.List;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.ui.chat.BaseCollapsiblePane;
 
 /**
  * Manages a group of collapsible panes so that at most one is expanded at a time

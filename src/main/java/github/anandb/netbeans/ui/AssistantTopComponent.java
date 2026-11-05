@@ -69,6 +69,8 @@ import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
 import org.netbeans.api.project.Project;
 import java.util.prefs.Preferences;
+import github.anandb.netbeans.ui.chat.ChatThreadPanel;
+import github.anandb.netbeans.ui.chat.PlanPanel;
 
 
 @ConvertAsProperties(

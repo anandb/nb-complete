@@ -36,7 +36,7 @@ import org.openide.util.Lookup;
 // DSL-LEAF: not a controller — static factory that builds the welcome/session
 // list view. The DSL migration ports build to WelcomeSpec; the
 // SessionControl.lookup calls move to PlatformBridge.SessionService (see MIGRATION.md Phase 4).
-final class WelcomeScreen {
+public final class WelcomeScreen {
 
     private static final Logger LOG = Logger.from(WelcomeScreen.class);
 

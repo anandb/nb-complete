@@ -28,13 +28,16 @@ import org.openide.util.NbBundle;
 import org.openide.util.RequestProcessor;
 import org.openide.NotifyDescriptor;
 import org.openide.DialogDisplayer;
+import github.anandb.netbeans.ui.chat.ChatThreadPanel;
+import github.anandb.netbeans.ui.chat.CollapsibleToolPane;
+import github.anandb.netbeans.ui.chat.MessageBubble;
 
 /**
  * Stateless utility for exporting conversation history to Markdown files.
  * Extracted from {@link AssistantTopComponent} and {@link ChatThreadPanel}
  * to keep export logic in one place.
  */
-final class ConversationExporter {
+public final class ConversationExporter {
 
     private static final Logger LOG = Logger.from(ConversationExporter.class);
 
@@ -70,7 +73,7 @@ final class ConversationExporter {
     }
 
     @SuppressWarnings("unchecked")
-    static String generateMarkdown(JPanel messagesContainer, String sessionTitle) {
+    public static String generateMarkdown(JPanel messagesContainer, String sessionTitle) {
         StringBuilder sb = new StringBuilder();
         // YAML frontmatter
         sb.append("---\n");

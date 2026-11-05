@@ -26,10 +26,10 @@ import org.openide.util.NbBundle;
  * Extensions section to one summary row instead of one row per toggle; the
  * choices apply when the Options dialog is applied.
  */
-final class ContextActionsDialog extends JDialog {
+public final class ContextActionsDialog extends JDialog {
 
     /** One editable toggle: its copy and how to read/write the panel's checkbox. */
-    record Toggle(String label, String tooltip, BooleanSupplier selected, Consumer<Boolean> setter) { }
+    public record Toggle(String label, String tooltip, BooleanSupplier selected, Consumer<Boolean> setter) { }
 
     private final boolean[] selected;
     private boolean[] result;

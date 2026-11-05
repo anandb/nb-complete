@@ -45,11 +45,11 @@ import github.anandb.netbeans.support.BrowserUtils;
  * directly. A manual-configuration option opens the Assistant settings for
  * pointing the plugin at an arbitrary executable path.
  */
-class OnboardingBubble extends JPanel {
+public class OnboardingBubble extends JPanel {
     private static final long serialVersionUID = 1L;
 
     /** Callback for "Use this harness": receives the harness id and the found path. */
-    interface SelectionCallback {
+    public interface SelectionCallback {
         void onUse(String harnessId, String path);
     }
 
@@ -72,7 +72,7 @@ class OnboardingBubble extends JPanel {
      * @param selectionCallback invoked when the user picks a found harness
      * @param restartCallback invoked by the Restart button
      */
-    OnboardingBubble(java.util.List<BinaryResolver.FoundBinary> found,
+    public OnboardingBubble(java.util.List<BinaryResolver.FoundBinary> found,
             SelectionCallback selectionCallback) {
         this(found, selectionCallback, null);
     }
@@ -83,7 +83,7 @@ class OnboardingBubble extends JPanel {
      * @param dismissCallback invoked by the Close button; {@code null} hides
      *        the Close button (first-install view must be non-dismissable)
      */
-    OnboardingBubble(java.util.List<BinaryResolver.FoundBinary> found,
+    public OnboardingBubble(java.util.List<BinaryResolver.FoundBinary> found,
             SelectionCallback selectionCallback,
             Runnable dismissCallback) {
         this.selectionCallback = selectionCallback;

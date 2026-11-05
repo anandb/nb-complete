@@ -1,0 +1,1592 @@
+package github.anandb.netbeans.ui.chat;
+
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.KeyboardFocusManager;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.awt.event.ContainerAdapter;
+import java.awt.event.ContainerEvent;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BooleanSupplier;
+import java.util.function.Function;
+import java.util.function.Consumer;
+
+import org.openide.util.NbBundle;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JLayeredPane;
+import javax.swing.JPanel;
+import javax.swing.JTextPane;
+import javax.swing.JProgressBar;
+import javax.swing.JScrollPane;
+import javax.swing.JViewport;
+import javax.swing.ScrollPaneConstants;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.Timer;
+import javax.swing.border.EmptyBorder;
+import javax.swing.event.HyperlinkEvent;
+import java.util.logging.Level;
+
+import github.anandb.netbeans.contract.PinnedMessageControl;
+import github.anandb.netbeans.contract.SessionControl;
+import github.anandb.netbeans.model.Message;
+import github.anandb.netbeans.model.MessageTransformer;
+import github.anandb.netbeans.model.MessageType;
+import github.anandb.netbeans.model.ProcessedMessage;
+import github.anandb.netbeans.model.Session;
+import github.anandb.netbeans.contract.ProcessControl;
+import github.anandb.netbeans.model.HarnessCatalog;
+import github.anandb.netbeans.pattern.SectionSplitPattern;
+import github.anandb.netbeans.support.BinaryResolver;
+import github.anandb.netbeans.support.GlobalOpencodeConfig;
+import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.MessageIdGenerator;
+import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.support.TimingConstants;
+import java.util.concurrent.ConcurrentHashMap;
+import org.openide.util.Lookup;
+
+import static org.apache.commons.lang3.StringUtils.defaultString;
+import static org.apache.commons.lang3.StringUtils.isBlank;
+import github.anandb.netbeans.ui.ColorTheme;
+import github.anandb.netbeans.ui.ConversationExporter;
+import github.anandb.netbeans.ui.GlobalConfigBubble;
+import github.anandb.netbeans.ui.HtmlConversationExporter;
+import github.anandb.netbeans.ui.OnboardingBubble;
+import github.anandb.netbeans.ui.PermissionBubble;
+import github.anandb.netbeans.ui.RoundedPanel;
+import github.anandb.netbeans.ui.ScrollablePanel;
+import github.anandb.netbeans.ui.StartupInfoBubble;
+import github.anandb.netbeans.ui.ThemeManager;
+import github.anandb.netbeans.ui.UIBundle;
+import github.anandb.netbeans.ui.UIUtils;
+import github.anandb.netbeans.ui.WelcomeScreen;
+
+// DSL-CONTROLLER: not a view — flushTimer/messageQueue EDT bridge + trimMessages/cachedMessages.
+public class ChatThreadPanel extends JPanel {
+
+    // --- Static constants ---
+    private static final Logger LOG = Logger.from(ChatThreadPanel.class);
+    private static final long serialVersionUID = 1L;
+    /** Test seam for {@link #ignoresMessageIdForStreaming()}. */
+    private Boolean ignoresMessageIdForStreamingForTest;
+
+    // --- UI components ---
+    private final JPanel messagesContainer;
+    private final JScrollPane scrollPane;
+    private final JLayeredPane layeredPane;
+    private final JProgressBar sessionProgressBar;
+
+    // --- Collaborators ---
+    private final transient ScrollController scrollController;
+    private final transient MessageTransformer messageTransformer;
+    private final transient StreamingCoordinator streamingCoordinator;
+    private final transient MessageTrimmer messageTrimmer;
+
+    // --- Message queue ---
+    private final ConcurrentLinkedQueue<Runnable> messageQueue = new ConcurrentLinkedQueue<>();
+    /** CAS-guarded so concurrent addMessage() calls can't double-schedule the drain. */
+    private final AtomicBoolean draining = new AtomicBoolean(false);
+    /** Message IDs that are queued (not yet posted to the server). Used to
+     *  apply the "queued" visual indicator (amber accent + label) on bubbles. */
+    private final Set<String> queuedMessageIds = ConcurrentHashMap.newKeySet();
+    /** Queued user bubbles, keyed by message ID, so the indicator can be
+     *  removed when the message is actually posted or the queue is cancelled. */
+    private final Map<String, MessageBubble> queuedBubbles = new ConcurrentHashMap<>();
+
+    // --- State flags ---
+    private volatile boolean allBlocksExpanded = false;
+    private volatile boolean keepOlderMessages = false;
+    private volatile boolean isBatchMode = false;
+    /** True while a chunked load/refresh render is in flight; blocks live
+     *  {@link #drainMessageQueue()} so arriving deltas can't interleave with
+     *  half-drawn history (order correctness). */
+    private volatile boolean loadRenderInProgress = false;
+    /** True while the "start a session" hint bubble is shown; reset by clearMessages(). */
+    private volatile boolean startSessionHintShown;
+    private volatile boolean sessionLoading = false;
+
+    // --- Session state ---
+    private String currentSessionId;
+    private long lastUserTimestamp = -1L;
+    private int userMessageCount = 0;
+    /** Max visible bubbles via PluginSettings.getMaxMessages(); 0 = unlimited. */
+    private transient volatile List<Message> cachedMessages;
+    /** Session-keyed buffer for loading; switch-session-safe. */
+    private final transient Map<String, List<ProcessedMessage>> pendingMessagesBySession = new ConcurrentHashMap<>();
+    /** Seen message IDs during loading, for stale-pin cleanup in flushSessionBuffer(). */
+    private final transient Map<String, Set<String>> seenMessageIdsBySession = new ConcurrentHashMap<>();
+
+    // --- Permission state ---
+    /** Client-property keys stored on permission result labels. */
+    private static final String PERM_ALLOWED_KEY = "permission.allowed";
+    private static final String PERM_COUNT_KEY = "permission.count";
+
+    // --- Callbacks ---
+    /** Debounced flush timer. Reset on each processed message, fires 300ms after last drain. */
+    private final Timer flushTimer;
+    /** Callback fired when flush timer completes (messages stable). Used for post-reload export. */
+    private transient volatile Runnable onMessagesStable;
+
+
+    public ChatThreadPanel() {
+        ColorTheme theme = ThemeManager.getCurrentTheme();
+        setLayout(new BorderLayout());
+        setOpaque(true);
+        setBackground(theme.background());
+        setDoubleBuffered(true);
+
+        messageTransformer = new MessageTransformer();
+        messagesContainer = new ScrollablePanel();
+        messagesContainer.setLayout(new BoxLayout(messagesContainer, BoxLayout.Y_AXIS));
+        messagesContainer.setOpaque(true);
+        messagesContainer.setBackground(theme.sunkenBackground());
+        messagesContainer.setBorder(new EmptyBorder(0, 0, 0, 0));
+        messagesContainer.setDoubleBuffered(true);
+
+        scrollPane = new JScrollPane(messagesContainer);
+
+        // Sunken feel border
+        Color shadow = theme.isDark() ? Color.BLACK : (theme.bubbleBorder() != null ? theme.bubbleBorder() : Color.LIGHT_GRAY);
+        scrollPane.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(1, 0, 1, 0, shadow),
+            BorderFactory.createEmptyBorder(0, 0, 0, 0)
+        ));
+        scrollPane.setOpaque(true);
+        scrollPane.setBackground(theme.sunkenBackground());
+        scrollPane.getViewport().setOpaque(true);
+        scrollPane.getViewport().setBackground(theme.sunkenBackground());
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.getViewport().setScrollMode(JViewport.BLIT_SCROLL_MODE);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+
+        layeredPane = new JLayeredPane();
+        add(layeredPane, BorderLayout.CENTER);
+
+        scrollController = new ScrollController(scrollPane, this, layeredPane);
+        messageTrimmer = new MessageTrimmer(messagesContainer, scrollController);
+
+        layeredPane.add(scrollPane, JLayeredPane.DEFAULT_LAYER);
+
+        // Determinate progress bar for session creation/load (4px tall, full width at top)
+        sessionProgressBar = new JProgressBar(0, 100);
+        sessionProgressBar.setValue(0);
+        sessionProgressBar.setBorderPainted(false);
+        sessionProgressBar.setStringPainted(false);
+        sessionProgressBar.setPreferredSize(new Dimension(0, 4));
+        sessionProgressBar.setVisible(false);
+        sessionProgressBar.setFocusable(false);
+        sessionProgressBar.setBackground(new Color(220, 220, 220));
+        sessionProgressBar.setForeground(new Color(0, 120, 212));
+        layeredPane.add(sessionProgressBar, JLayeredPane.PALETTE_LAYER);
+
+        // Fix: Mouse wheel scrolling breaks when over child components. Redirect to main scroll pane.
+        messagesContainer.addMouseWheelListener(e -> {
+            scrollController.redirectMouseWheel(messagesContainer, e);
+        });
+
+        // Automatically fix mouse wheel for message bubbles (skip strut spacers)
+        messagesContainer.addContainerListener(new ContainerAdapter() {
+            @Override
+            public void componentAdded(ContainerEvent e) {
+                Component c = e.getChild();
+                if (c instanceof MessageBubble || c instanceof PermissionBubble || c instanceof StartupInfoBubble) {
+                    scrollController.fixMouseWheel(c);
+                }
+            }
+        });
+
+        // Listen on layeredPane so children get correct bounds at first layout.
+        // Also forces a full re-layout+repaint of the scroll pane on resize,
+        // which prevents the viewport backing store from going stale during
+        // dock rearrange (the component gets resized without addNotify).
+        layeredPane.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                int w = layeredPane.getWidth();
+                int h = layeredPane.getHeight();
+                scrollPane.setBounds(0, 0, w, h);
+                sessionProgressBar.setBounds(0, 0, w, 4);
+                scrollController.positionScrollDownBtn(w, h);
+                scrollPane.revalidate();
+                scrollPane.repaint();
+            }
+        });
+
+        streamingCoordinator = new StreamingCoordinator(bubble -> {
+            if (!isShowing() || bubble == null) {
+                return;
+            }
+                // Check wasAtBottom BEFORE flushUpdate changes content height.
+            boolean wasAtBottom = scrollController.isAtBottom();
+            boolean didUpdate = bubble.flushUpdate();
+            if (didUpdate) {
+                // No explicit revalidate — container layout pass (triggered by scrollToBottom) handles it.
+                scrollController.scrollToBottom(wasAtBottom);
+            }
+        }, TimingConstants.STREAM_FLUSH_MS);
+
+        // Shared flush timer for debounced finalization. Reset on each processed message so it
+        flushTimer = new Timer(TimingConstants.STREAM_FLUSH_MS, e -> {
+            if (isDisplayable()) {
+                stopStreaming();
+            }
+            Runnable cb = onMessagesStable;
+            if (cb != null) cb.run();
+        });
+        flushTimer.setRepeats(false);
+    }
+
+    public void setScrollBlocker(BooleanSupplier scrollBlocker) {
+        scrollController.setScrollBlocker(scrollBlocker);
+    }
+
+    /** Registers a message ID as queued (not yet posted to the server). */
+    public void addQueuedMessageId(String messageId) {
+        setMessageQueued(messageId, true);
+    }
+
+    /**
+     * Applies or clears the queued indicator on a message, whether the bubble is already drawn
+     * or arrives later. A steer the harness queued is drawn while the turn has not consumed it,
+     * and cleared when its echo lands.
+     */
+    public void setMessageQueued(String messageId, boolean queued) {
+        if (messageId == null) {
+            return;
+        }
+        if (!queued) {
+            removeQueuedMessageId(messageId);
+            return;
+        }
+        queuedMessageIds.add(messageId);
+        for (Component child : messagesContainer.getComponents()) {
+            if (child instanceof MessageBubble bubble && messageId.equals(bubble.getMessageId())) {
+                bubble.setQueued(true);
+                queuedBubbles.put(messageId, bubble);
+            }
+        }
+    }
+
+    /** Unregisters a message ID from the queued set (message has been posted). */
+    public void removeQueuedMessageId(String messageId) {
+        if (messageId != null) {
+            queuedMessageIds.remove(messageId);
+            MessageBubble b = queuedBubbles.remove(messageId);
+            if (b != null) {
+                b.setQueued(false);
+            }
+        }
+    }
+
+    /** Clears all queued message IDs and removes the queued indicator from bubbles. */
+    public void clearQueuedMessageIds() {
+        for (MessageBubble bubble : queuedBubbles.values()) {
+            bubble.setQueued(false);
+        }
+        queuedBubbles.clear();
+        queuedMessageIds.clear();
+    }
+
+    /** Removes a bubble that was drawn locally but never reached the server, e.g. the echo of
+     *  a failed send. Runs on the EDT; the spacer that follows the bubble is dropped with it.
+     *  A removed user bubble also rolls {@code userMessageCount} back, so the next user
+     *  message keeps its place in the avatar alternation. */
+    public void removeMessageBubble(String messageId) {
+        if (messageId == null) {
+            return;
+        }
+        Component[] children = messagesContainer.getComponents();
+        for (int i = 0; i < children.length; i++) {
+            if (children[i] instanceof MessageBubble b && messageId.equals(b.getMessageId())) {
+                messagesContainer.remove(i);
+                Component next = i < messagesContainer.getComponentCount()
+                        ? messagesContainer.getComponent(i) : null;
+                if (next instanceof Box.Filler) {
+                    messagesContainer.remove(i);
+                }
+                if ("user".equals(b.getRole()) && userMessageCount > 0) {
+                    userMessageCount--;
+                }
+                queuedBubbles.remove(messageId);
+                queuedMessageIds.remove(messageId);
+                messagesContainer.revalidate();
+                messagesContainer.repaint();
+                return;
+            }
+        }
+    }
+
+    /** The running per-turn user message index (drives the avatar alternation); test seam. */
+    int getUserMessageCount() {
+        return userMessageCount;
+    }
+
+    public void addMessage(ProcessedMessage pm) {
+        if (pm.isIgnorable()) {
+            return;
+        }
+
+        // Buffer during loading when trimming is active — avoids create-then-remove churn.
+        if (sessionLoading && shouldBufferMessages()) {
+            String sid = ensureCurrentSessionId();
+            if (sid != null) {
+                pendingMessagesBySession.computeIfAbsent(sid, k -> new ArrayList<>()).add(pm);
+                // Track seen message IDs for stale-pin cleanup.
+                if (pm.messageId() != null) {
+                    seenMessageIdsBySession.computeIfAbsent(sid, k -> ConcurrentHashMap.newKeySet()).add(pm.messageId());
+                }
+                return;
+            }
+            LOG.warn("sessionLoading=true, shouldBufferMessages()=true, but sessionId is null — falling through to unbuffered path");
+        }
+
+        boolean replay = sessionLoading;
+        messageQueue.add(() -> processMessageOnEDT(pm, replay));
+        if (draining.compareAndSet(false, true)) {
+            SwingUtilities.invokeLater(this::drainMessageQueue);
+        }
+    }
+
+    // Messages drained per EDT tick. Yield after every batch so a slow/large
+    // session load or stream never blocks the EDT. Two per tick keeps the queue
+    // moving during bursty SSE arrivals without letting a single tick run long
+    // enough to be felt as input lag; a load replay still yields after each pair.
+    private static final int MESSAGE_DRAIN_BATCH_SIZE = 2;
+    // Max bubbles rendered per EDT tick during a session load, keeping the
+    // IDE responsive while a large history is drawn one message at a time.
+    private static final int LOAD_RENDER_BATCH_SIZE = 1;
+    // How many user turns back (from the tail) blank-bubble cleanup inspects
+    // after a session load. Blanks can precede the last user turn in loaded
+    // history, but we bound the scan to recent turns instead of sweeping the
+    // whole thread on a large history.
+    private static final int RECENT_TURNS = 4;
+
+    private void drainMessageQueue() {
+        if (loadRenderInProgress) {
+            // A load render is drawing history across chunks; hold live deltas
+            // queued until it completes, then it kicks the drain.
+            draining.set(false);
+            return;
+        }
+        int count = 0;
+        Runnable task;
+        while (count < MESSAGE_DRAIN_BATCH_SIZE && (task = messageQueue.poll()) != null) {
+            count++;
+            try {
+                task.run();
+            } catch (Exception ex) {
+                LOG.warn("Error processing message: {0}", ExceptionUtils.getMessage(ex));
+            } finally {
+                // Reset debounced flush timer — fires 300ms after last message drains.
+                flushTimer.restart();
+            }
+        }
+        if (!messageQueue.isEmpty()) {
+            SwingUtilities.invokeLater(this::drainMessageQueue);
+        } else {
+            draining.set(false);
+        }
+    }
+
+    private void processMessageOnEDT(ProcessedMessage pm, boolean replay) {
+        String text = pm.text();
+        if (text == null) text = "";
+        final String role = pm.messageType().roleName();
+        // Capture scroll position BEFORE any mutations (stopStreaming, addSingleBubble, etc.)
+        boolean wasAtBottom = scrollController.isAtBottom();
+
+        // Detect startup info message early — it arrives with streaming=true
+        // but should be rendered as a compact card, not a regular message bubble.
+        if (pm.messageType().isAssistant() && StartupInfoBubble.isStartupMessage(text)) {
+            stopStreaming();
+            addStartupInfoBubble(text, wasAtBottom);
+            trimMessages();
+            return;
+        }
+
+        if (pm.streaming()) {
+            // Unbuffered loading (no trimming cap) drains replay chunks through this
+            // path too; the flag captured at enqueue marks them as history, not live output.
+            processMessageSections(pm, text, role, wasAtBottom, replay);
+        } else {
+            stopStreaming();
+            if (pm.messageType().isAssistant() && isDotPlaceholder(text)) {
+                return;
+            }
+            addSingleBubble(pm.messageType(), text, pm.messageId(), pm.toolTitle(), false, wasAtBottom);
+        }
+        trimMessages();
+    }
+
+    /** Adds a compact startup info bubble instead of a regular message bubble. */
+    private void addStartupInfoBubble(String text, boolean wasAtBottom) {
+        SwingUtilities.invokeLater(() -> {
+            StartupInfoBubble bubble = new StartupInfoBubble(text);
+            bubble.setVisible(!MessageFilterManager.isTypeHidden("assistant"));
+            messagesContainer.add(bubble);
+            messagesContainer.add(Box.createVerticalStrut(4));
+            messagesContainer.revalidate();
+            if (wasAtBottom) {
+                scrollController.scrollToBottom(true);
+            }
+        });
+    }
+
+    /** Process message sections on EDT (shared by addMessage and setMessages). */
+    private void processMessageSections(ProcessedMessage pm, String text, String role, boolean wasAtBottom,
+            boolean replayRender) {
+        if (text == null) return;
+        String[] parts = SectionSplitPattern.split(text);
+        MessageBubble lastBubble = findLastNonIgnorableBubble();
+
+        for (String part : parts) {
+            if (isBlank(part) && parts.length > 1) {
+                continue;
+            }
+
+            boolean canMerge = (lastBubble != null && role.equals(lastBubble.getRole()));
+            // A replaying harness that reports chunks independently gets one bubble
+            // per agent chunk, never a turn's chunks merged into one bubble.
+            if (canMerge && replayRender && pm.messageType() == MessageType.agent_message_chunk
+                    && separateBubblesPerReplayChunk()) {
+                canMerge = false;
+            }
+            if (canMerge) {
+                switch (role) {
+                    case "thought" -> canMerge = true;
+                    case "tool" -> {
+                        /**
+                            Merge if message IDs match (incl. streaming prefixes) OR
+                            if the toolTitle is the same (same tool call in flight).
+                            Also merge when the current fragment has a title but the
+                            last bubble didn't (first fragment lacked a toolTitle).
+                        */
+                        String lastTitle = defaultString(lastBubble.getToolTitle());
+                        canMerge = canMergeMessages(pm.messageId(), lastBubble.getMessageId())
+                                || (pm.toolTitle() != null && pm.toolTitle().equals(lastTitle))
+                                || (pm.toolTitle() != null && pm.streaming() && (isBlank(lastTitle)));
+                    }
+                    default -> {
+                        // pi-agent sends streaming chunks with inconsistent
+                        // messageIds — bypass the ID check for this agent.
+                        if (pm.streaming() && ignoresMessageIdForStreaming()) {
+                            canMerge = !"user".equals(role);
+                        } else {
+                            canMerge = !"user".equals(role) && canMergeMessages(pm.messageId(), lastBubble.getMessageId());
+                        }
+                    }
+                }
+            }
+
+            // An assistant message can continue after interleaved tool or thought
+            // blocks: resolve its own bubble by message id instead of opening a
+            // second one. A dot-only chunk with no such message is the
+            // empty-message placeholder harnesses emit between tool calls.
+            if (!canMerge && "assistant".equals(role) && pm.messageId() != null) {
+                MessageBubble owner = findAssistantBubble(pm.messageId());
+                if (owner != null) {
+                    lastBubble = owner;
+                    canMerge = true;
+                } else if (isDotPlaceholder(part)) {
+                    continue;
+                }
+            }
+
+            if (lastBubble != null && canMerge) {
+                lastBubble.appendText(part, pm.toolTitle());
+                // If the bubble was already finalized (not streaming), put it back
+                // into streaming mode so late deltas are debounced via the coordinator.
+                if (!lastBubble.isStreaming()) {
+                    streamingCoordinator.startStreaming(lastBubble);
+                }
+            } else {
+                if (lastBubble != null) {
+                    if (lastBubble == streamingCoordinator.getActiveStreamBubble()) {
+                        streamingCoordinator.stopStreaming();
+                    }
+                    lastBubble.flushUpdate(true);
+                    lastBubble.finalizeStreaming(allBlocksExpanded);
+                }
+
+                addSingleBubble(pm.messageType(), part, pm.messageId(), pm.toolTitle(), pm.streaming(), wasAtBottom);
+                lastBubble = findLastNonIgnorableBubble();
+                // Force-scroll if user was at bottom before finalize; addSingleBubble may have seen a post-shrink viewport.
+                if (wasAtBottom) {
+                    scrollController.scrollToBottom(true);
+                }
+            }
+        }
+    }
+
+    /** Ensures {@link #currentSessionId} is populated from SessionControl if needed. */
+    private String ensureCurrentSessionId() {
+        if (currentSessionId == null) {
+            SessionControl sc = Lookup.getDefault().lookup(SessionControl.class);
+            currentSessionId = sc != null ? sc.getCurrentSessionId() : null;
+        }
+        return currentSessionId;
+    }
+
+    private void addSingleBubble(MessageType type, String text, String messageId, String toolTitle, boolean streaming, boolean wasAtBottom) {
+
+        // Permission grouping is resolved at addPermissionResult() time by
+        // scanning the container for the last visible permission wrapper, so
+        // no reset is needed here — bubbles that are later hidden, blank-swept
+        // or combined no longer break consecutive permission results.
+        boolean visible = !MessageFilterManager.isTypeHidden(type.roleName());
+
+        // Sweep orphaned streaming JTextAreas before creating new bubble. Skip in batch mode.
+        if (!isBatchMode) {
+            sweepStreamingBubbles(wasAtBottom);
+        }
+
+        // Tool/thought messages create individual bubbles immediately (not accumulated)
+        if (type.isTool() || type.isThought()) {
+            MessageBubble bubble = BubbleFactory.createToolThoughtBubble(type, text, messageId, toolTitle, streaming);
+
+            bubble.setVisible(visible);
+            Component strut = Box.createVerticalStrut(4);
+            strut.setVisible(visible);
+            messagesContainer.add(bubble);
+            messagesContainer.add(strut);
+
+            // Non-streaming: run the same finalize step the streaming path gets,
+            // so both agree on which bubbles survive. Streaming defers to
+            // deferred-finalize/removeBlankBubbles at stopStreaming().
+            if (!streaming) {
+                finalizeNonStreaming(wasAtBottom);
+            } else if (wasAtBottom && !isBatchMode) {
+                scrollController.scrollToBottom(true);
+            }
+
+            if (streaming) {
+                streamingCoordinator.startStreaming(bubble);
+            }
+            return;
+        }
+
+        // Combine tool/thought bubbles before user/assistant. Batch-safe (scanStart limits per-call).
+        if (type.isUser() || type.isAssistant()) {
+            ToolThoughtCombiner.combine(messagesContainer, allBlocksExpanded, scrollController);
+        }
+
+        // Reset turn state for new user message
+        if (type.isUser()) {
+            userMessageCount++;
+        }
+
+        String sid = ensureCurrentSessionId();
+
+        // Generate messageId for non-streaming assistant messages that lack one.
+        // Streaming messages get their ID assigned after finalization in assignMissingMessageIds().
+        boolean generatedId = false;
+        if (type.isAssistant() && messageId == null && !streaming && sid != null) {
+            messageId = MessageIdGenerator.generate(sid, text);
+            generatedId = true;
+            // Add to seen set so retainPinned() doesn't remove pins for this ID
+            seenMessageIdsBySession.computeIfAbsent(sid, k -> ConcurrentHashMap.newKeySet()).add(messageId);
+        }
+
+        MessageBubble bubble = BubbleFactory.createRoleBubble(type, text, messageId, toolTitle, streaming, userMessageCount, sid);
+        bubble.setGeneratedMessageId(generatedId);
+
+        if (lastUserTimestamp > 0 && !"user".equals(type.roleName())) {
+            long elapsed = System.currentTimeMillis() - lastUserTimestamp;
+            bubble.setResponseTimeMs(elapsed);
+            lastUserTimestamp = -1L;
+        }
+
+        // Apply queued indicator (amber accent bar + "Queued" label) if this
+        // message is in the pending queue — user bubble shown before turn ends.
+        if ("user".equals(type.roleName()) && messageId != null && queuedMessageIds.contains(messageId)) {
+            bubble.setQueued(true);
+            queuedBubbles.put(messageId, bubble);
+        }
+
+        bubble.setVisible(visible);
+        Component strut = Box.createVerticalStrut(4);
+        strut.setVisible(visible);
+        messagesContainer.add(bubble);
+        messagesContainer.add(strut);
+        // Non-streaming: run the same finalize step as the streaming path.
+        // Streaming: deferred-finalize handles layout/blanks at stopStreaming().
+        if (!streaming) {
+            finalizeNonStreaming(wasAtBottom);
+        } else if (wasAtBottom && !isBatchMode) {
+            scrollController.scrollToBottom(true);
+        }
+        // User bubbles always pin to bottom — the user just sent a message,
+        // so the latest content must be visible regardless of prior scroll.
+        if (type.isUser() && !isBatchMode) {
+            scrollController.scrollToBottom(true);
+        }
+        if (streaming) {
+            streamingCoordinator.startStreaming(bubble);
+        }
+    }
+
+    /**
+     * Shared finalize step for non-streamed bubbles, mirroring the streaming
+     * finalize ({@link #removeBlankBubbles}) so both paths keep the same set of
+     * bubbles. Runs eagerly for live adds; session loads (isBatchMode=true) defer to
+     * a single pass at the end of {@link #renderLoadedInChunks}.
+     */
+    private void finalizeNonStreaming(boolean wasAtBottom) {
+        if (!isBatchMode) {
+            // Live adds: only the current turn is unfinalized, so scan its tail.
+            removeBlankBubbles(1, wasAtBottom);
+            // Force layout so FitEditorPane (and other components added by
+            // addSingleBubble) get their real width on first paint. Without
+            // this the preferred height is computed before the container has
+            // validated, leaving user bubbles stuck at one line.
+            messagesContainer.revalidate();
+            // Always scroll after adding a non-streaming bubble if user was at bottom.
+            // removeBlankBubbles only scrolls when it removes blanks — user and
+            // thought bubbles are rarely blank, so scroll would never fire.
+            if (wasAtBottom) {
+                scrollController.scrollToBottom(true);
+            }
+        }
+    }
+
+    private void trimMessages() {
+        messageTrimmer.trim(currentMaxMessages(), keepOlderMessages);
+    }
+
+    /** Restart the debounced flush timer. Called when a turn-end signal arrives
+     *  ({@code responding_finished}) or when a session is loaded. The timer is also
+     *  restarted on every processed message in {@link #drainMessageQueue()}, so it
+     *  fires 300ms after the last message drains — no extra boolean flags needed. */
+    public void restartFlushTimer() {
+        flushTimer.restart();
+    }
+
+    public void stopStreaming() {
+        // Already on EDT — do NOT wrap in invokeLater (creates race with late SSE deltas).
+        boolean anyFinalized = false;
+        boolean wasAtBottom = scrollController.isAtBottom();
+
+        MessageBubble activeBubble = streamingCoordinator.stopStreaming();
+        if (activeBubble != null) {
+            activeBubble.flushUpdate(true);
+            if (activeBubble.streamingFlagsSet()) {
+                activeBubble.finalizeStreaming(allBlocksExpanded, true);
+            } else if (activeBubble.hasStreamingTextArea()) {
+                // Boolean flags corrupted mid-finalize; force finalize via JTextArea presence.
+                activeBubble.forceFinalize(allBlocksExpanded);
+            }
+            anyFinalized = true;
+        }
+        // Failsafe sweep for remaining streaming bubbles (missed by activeStreamBubble).
+        anyFinalized |= sweepStreamingBubbles(wasAtBottom);
+        // After finalization, assign messageId to assistant bubbles that lack one.
+        // Must run after sweep so getRawText() has the complete text.
+        assignMissingMessageIds();
+        // Now that all bubbles are finalized, drop any whose complete message is
+        // blank (e.g. an agent_message_chunk of just "\n\n"). Runs after the sweep
+        // so getRawText() reflects the finished text. Only the streamed turn (the
+        // last one) can hold blanks here.
+        boolean anyRemoved = removeBlankBubbles(1, wasAtBottom);
+        if (anyFinalized || anyRemoved) {
+            messagesContainer.revalidate();
+            if (wasAtBottom) {
+                scrollController.scrollToBottom(true);
+            }
+        }
+        // Combine NOT done here — triggered by addSingleBubble on user/assistant messages.
+    }
+
+    /**
+     * Returns the component index marking the start of the most recent {@code
+     * recentTurns} turns' bubbles: one past the {@code recentTurns}-th user
+     * bubble (counting from the end of {@code children}), or 0 if fewer than
+     * {@code recentTurns} user bubbles exist. Streaming and blank bubbles can
+     * only be produced by recent turns, so callers bound their tail-only scans
+     * to this index instead of sweeping the whole thread.
+     */
+    private static int currentTurnStartIndex(Component[] children, int recentTurns) {
+        int usersSeen = 0;
+        // Scan backward: recent user bubbles are near the end, so break quickly —
+        // O(recent turns' bubbles) rather than O(whole thread).
+        for (int i = children.length - 1; i >= 0; i--) {
+            if (children[i] instanceof MessageBubble mb && "user".equals(mb.getRole())) {
+                usersSeen++;
+                if (usersSeen >= recentTurns) {
+                    return i + 1;
+                }
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * Removes assistant/thought bubbles whose complete final text is blank or
+     * whitespace-only (e.g. an {@code agent_message_chunk} whose content is just
+     * "\n\n" before a tool call). Must run only AFTER streaming finalization so
+     * {@link MessageBubble#getRawText()} reflects the whole message — blankness is
+     * judged per message, never per chunk, so whitespace between real content
+     * ("Hello\n\nWorld") is preserved and only truly empty bubbles are dropped.
+     *
+     * @param recentTurns how many turns back (from the tail) to scan for blanks;
+     *                    pass {@code 1} to scan only the current turn
+     * @param wasAtBottom whether the scroll was at bottom before this removal
+     * @return true if any bubble was removed
+     */
+    private boolean removeBlankBubbles(int recentTurns, boolean wasAtBottom) {
+        Component[] all = messagesContainer.getComponents();
+        // Only recent turns (after the last few user bubbles) can contain blanks.
+        int start = currentTurnStartIndex(all, recentTurns);
+        List<MessageBubble> blankBubbles = new ArrayList<>();
+        for (int i = start; i < all.length; i++) {
+            if (all[i] instanceof MessageBubble mb) {
+                String role = mb.getRole();
+                String raw = mb.getRawText();
+                if (("assistant".equals(role) || "thought".equals(role))
+                        && (isBlank(raw) || ("assistant".equals(role) && isDotPlaceholder(raw)))) {
+                    blankBubbles.add(mb);
+                }
+            }
+        }
+        if (blankBubbles.isEmpty()) {
+            return false;
+        }
+        // Remove by component identity, pairing each bubble with its trailing
+        // strut via the snapshot — no index arithmetic, so removals can't
+        // shift positions under us.
+        for (int i = 0; i < all.length; i++) {
+            Component c = all[i];
+            if (c instanceof MessageBubble mb && blankBubbles.contains(mb)) {
+                Container parent = mb.getParent();
+                if (parent != null) {
+                    parent.remove(mb);
+                }
+                // Each bubble was added with a trailing vertical strut; drop it
+                // too so no gap remains.
+                if (i + 1 < all.length && all[i + 1] instanceof Box.Filler) {
+                    Component strut = all[i + 1];
+                    Container strutParent = strut.getParent();
+                    if (strutParent != null) {
+                        strutParent.remove(strut);
+                    }
+                }
+            }
+        }
+        messagesContainer.revalidate();
+        messagesContainer.repaint();
+        if (wasAtBottom) {
+            scrollController.scrollToBottom(true);
+        }
+        return true;
+    }
+
+    /**
+     * Sweeps the current turn's bubbles for orphaned streaming JTextAreas (dual
+     * source of truth). Streaming bubbles only exist after the last user bubble;
+     * earlier turns are already finalized, so only the tail is scanned.
+     * <p>
+     * Three cases:
+     * <ol>
+     *   <li><b>Flags say streaming, no JTextArea</b> — tool/thought bubble
+     *       with content-updater streaming (no JTextArea). Normal finalize.
+     *   <li><b>Flags say streaming, has JTextArea</b> — normal assistant
+     *       stream bubble. Normal finalize works.
+     *   <li><b>Flags say NOT streaming, has JTextArea</b> — flag corruption.
+     *       {@link MessageBubble#finalizeStreaming} would short-circuit
+     *       because it checks the private {@code isStreaming} field directly.
+     *       Use {@link MessageBubble#forceFinalize} to bypass the flag check.
+     * </ol>
+     *
+     * @param wasAtBottom whether the scroll was at bottom before this sweep
+     * @return true if any bubble was finalized
+     */
+    private boolean sweepStreamingBubbles(boolean wasAtBottom) {
+        // Collect first, finalize after: finalizeStreaming()/flushUpdate() can
+        // mutate the container, so deciding from the snapshot and acting in a
+        // second pass keeps the sweep safe against tree changes.
+        Component[] all = messagesContainer.getComponents();
+        // Streaming bubbles only exist in the current turn (after the last user
+        // bubble); earlier turns are already finalized, so skip the thread prefix.
+        int start = currentTurnStartIndex(all, 1);
+        List<MessageBubble> streaming = new ArrayList<>();
+        for (int i = start; i < all.length; i++) {
+            if (all[i] instanceof MessageBubble mb) {
+                if (mb.hasStreamingTextArea() || mb.streamingFlagsSet()) {
+                    streaming.add(mb);
+                }
+            }
+        }
+        boolean anyFinalized = false;
+        for (MessageBubble mb : streaming) {
+            boolean flagSaysStreaming = mb.streamingFlagsSet();
+            if (mb.hasStreamingTextArea()) {
+                mb.flushUpdate(true);
+                if (flagSaysStreaming) {
+                    mb.finalizeStreaming(allBlocksExpanded, true);
+                } else {
+                    // Flags corrupted — finalizeStreaming would short-circuit
+                    // because it checks the private isStreaming flag directly.
+                    mb.forceFinalize(allBlocksExpanded);
+                }
+                anyFinalized = true;
+            } else if (flagSaysStreaming) {
+                // No JTextArea (tool/thought content-updater path),
+                // but flags still say streaming. Normal finalize.
+                mb.flushUpdate(true);
+                mb.finalizeStreaming(allBlocksExpanded, true);
+                anyFinalized = true;
+            }
+        }
+        if (anyFinalized) {
+            messagesContainer.revalidate();
+            if (wasAtBottom) {
+                scrollController.scrollToBottom(true);
+            }
+        }
+        return anyFinalized;
+    }
+
+    public void addPermissionResult(String statusText, boolean allowed) {
+        final String displayStatusText =
+                ("Allow once".equalsIgnoreCase(statusText) || "allow_once".equalsIgnoreCase(statusText))
+                    ? NbBundle.getMessage(UIBundle.class, "MSG_PermissionAllowedOnce")
+                    : statusText;
+
+        SwingUtilities.invokeLater(() -> {
+            ColorTheme theme = ThemeManager.getCurrentTheme();
+            // Match the collapsed tool/thought header style: neutral sunken
+            // background, muted foreground, plain smaller font. The icon (check
+            // vs x) distinguishes allow from deny without colored bars.
+            Color bg = theme.sunkenBackground();
+            Color fg = theme.secondary2();
+
+            // Merge consecutive same-allowed results into a single bubble.
+            // Resolved by scanning the container (not by a cached label
+            // reference): intermediate messages that are later hidden,
+            // blank-swept or combined no longer break the grouping. A visible
+            // user/assistant bubble between two results still prevents merge;
+            // tool/thought activity does not.
+            JLabel lastLabel = findLastPermissionLabel();
+            Boolean lastAllowed = lastLabel == null ? null : (Boolean) lastLabel.getClientProperty(PERM_ALLOWED_KEY);
+            boolean sameAllowed = lastAllowed != null && lastAllowed == allowed;
+            if (lastLabel != null && sameAllowed) {
+                int count = (Integer) lastLabel.getClientProperty(PERM_COUNT_KEY) + 1;
+                lastLabel.putClientProperty(PERM_COUNT_KEY, count);
+                lastLabel.setText(displayStatusText + " \u00D7" + count);
+                lastLabel.getParent().revalidate();
+                scrollController.scrollToBottom(true);
+                return;
+            }
+
+            JLabel lbl = new JLabel(displayStatusText,
+                    ThemeManager.getIcon(allowed ? "check.svg" : "x.svg", 16),
+                    SwingConstants.LEFT);
+            lbl.setIconTextGap(8);
+            lbl.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN,
+                    ThemeManager.getFont().getSize() - 1f));
+            lbl.setForeground(fg);
+            lbl.setOpaque(true);
+            lbl.setBackground(bg);
+
+            lbl.putClientProperty(PERM_ALLOWED_KEY, allowed);
+            lbl.putClientProperty(PERM_COUNT_KEY, 1);
+
+            RoundedPanel rp = new RoundedPanel(12);
+            rp.setLayout(new BorderLayout());
+            rp.setBackground(bg);
+            rp.setBorder(BorderFactory.createEmptyBorder(5, 4, 5, 10));
+            rp.add(lbl, BorderLayout.CENTER);
+
+            JPanel wrapper = new JPanel(new BorderLayout());
+            wrapper.setOpaque(false);
+            wrapper.setBorder(BorderFactory.createEmptyBorder(4, 20, 4, 20));
+            wrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
+            wrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+            wrapper.add(rp, BorderLayout.CENTER);
+
+            messagesContainer.add(wrapper);
+            messagesContainer.add(Box.createVerticalStrut(4));
+            messagesContainer.revalidate();
+            scrollController.scrollToBottom(true);
+        });
+    }
+
+    /**
+     * Scans the message container backwards and returns the label of the
+     * closest preceding permission-result bubble, or {@code null} when the
+     * merge should not happen.
+     *
+     * <p>Invisible components (filtered/blank-swept bubbles, struts) are
+     * skipped. Any visible message bubble stops the scan — its content
+     * belongs between the two permission results.</p>
+     */
+    private JLabel findLastPermissionLabel() {
+        Component[] comps = messagesContainer.getComponents();
+        for (int i = comps.length - 1; i >= 0; i--) {
+            Component c = comps[i];
+            if (c instanceof Box.Filler || !c.isVisible()) {
+                continue;
+            }
+            JLabel lbl = findPermissionLabel(c);
+            if (lbl != null) {
+                return lbl;
+            }
+            if (c instanceof MessageBubble) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /** Unwraps the tagged permission label from a container component, if any. */
+    private static JLabel findPermissionLabel(Component c) {
+        if (c instanceof JPanel p && p.getComponentCount() == 1) {
+            Component inner = p.getComponent(0);
+            if (inner instanceof RoundedPanel rp && rp.getComponentCount() == 1
+                    && rp.getComponent(0) instanceof JLabel lbl
+                    && lbl.getClientProperty(PERM_ALLOWED_KEY) != null) {
+                return lbl;
+            }
+        }
+        return null;
+    }
+
+    /** Shows the harness onboarding bubble (detection + choice + install) as a sidebar bubble. */
+    public void addOnboardingBubble(java.util.List<BinaryResolver.FoundBinary> found,
+            OnboardingBubble.SelectionCallback selectionCallback) {
+        addOnboardingBubble(found, selectionCallback, null);
+    }
+
+    /** Shows the harness onboarding bubble with an optional Close button
+     *  ({@code dismissCallback == null} hides it). */
+    public void addOnboardingBubble(java.util.List<BinaryResolver.FoundBinary> found,
+            OnboardingBubble.SelectionCallback selectionCallback,
+            Runnable dismissCallback) {
+        SwingUtilities.invokeLater(() -> {
+            // Clear the thread so this is the only bubble shown.
+            messagesContainer.removeAll();
+            startSessionHintShown = false;
+            OnboardingBubble bubble = new OnboardingBubble(found, selectionCallback, dismissCallback);
+            messagesContainer.add(bubble);
+            messagesContainer.add(Box.createVerticalStrut(4));
+            messagesContainer.revalidate();
+            scrollController.scrollToTop();
+        });
+    }
+
+    /** Shows the global opencode configuration prompt as a sidebar bubble. */
+    public void addGlobalConfigBubble(GlobalOpencodeConfig.CheckResult result,
+            Runnable onYes, Runnable onNo) {
+        SwingUtilities.invokeLater(() -> {
+            // Clear the thread so this is the only bubble shown.
+            messagesContainer.removeAll();
+            startSessionHintShown = false;
+            GlobalConfigBubble bubble = new GlobalConfigBubble(result, onYes, onNo);
+            messagesContainer.add(bubble);
+            messagesContainer.add(Box.createVerticalStrut(4));
+            messagesContainer.revalidate();
+            scrollController.scrollToBottom(true);
+        });
+    }
+
+    /** Shows a one-off bubble prompting the user to confirm the server restart.
+     *  The bubble stays until the user clicks OK, which dismisses it and runs
+     *  {@code onOk} (the caller then performs the actual restart). Also removed
+     *  immediately if a session starts (see {@link #clearMessages()}). */
+    public void showStartSessionHint(Runnable onOk) {
+        SwingUtilities.invokeLater(() -> {
+            if (startSessionHintShown) {
+                return;
+            }
+            startSessionHintShown = true;
+            // Clear previous messages (e.g. the missing-binary bubble) so the
+            // hint fills the full panel width.
+            messagesContainer.removeAll();
+            messagesContainer.revalidate();
+            ColorTheme theme = ThemeManager.getCurrentTheme();
+            JPanel bubble = UIUtils.createBubbleContentPanel();
+            String fontFamily = ThemeManager.getFont().getFamily();
+            int fontSize = ThemeManager.getFont().getSize() + 1;
+            String fg = Integer.toHexString(theme.foreground().getRGB() & 0xFFFFFF);
+            String html = NbBundle.getMessage(UIBundle.class,
+                    "StartSessionHint", fontFamily, fontSize, fg);
+            JTextPane text = new JTextPane();
+            text.setContentType("text/html");
+            text.setText(html);
+            text.setEditable(false);
+            text.setOpaque(false);
+            text.setFocusable(false);
+            text.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+            text.addHyperlinkListener(e -> {
+                if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
+                    try {
+                        org.openide.awt.HtmlBrowser.URLDisplayer.getDefault().showURL(e.getURL());
+                    } catch (Exception ex) {
+                        LOG.log(Level.WARNING, "Failed to open link", ex);
+                    }
+                }
+            });
+            bubble.add(text, BorderLayout.CENTER);
+
+            JButton okBtn = new JButton(NbBundle.getMessage(UIBundle.class, "StartSessionHint.Ok"));
+            okBtn.setFocusPainted(false);
+            okBtn.addActionListener(e -> {
+                if (!startSessionHintShown) {
+                    return;
+                }
+                startSessionHintShown = false;
+                messagesContainer.removeAll();
+                messagesContainer.revalidate();
+                if (onOk != null) {
+                    onOk.run();
+                }
+            });
+            JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
+            buttonsPanel.setOpaque(false);
+            buttonsPanel.add(okBtn);
+            bubble.add(buttonsPanel, BorderLayout.SOUTH);
+
+            messagesContainer.add(bubble);
+            messagesContainer.add(Box.createVerticalStrut(4));
+            messagesContainer.revalidate();
+            scrollController.scrollToBottom(true);
+        });
+    }
+
+    /** Called by MessageSender when a user message is actually sent via RPC. */
+    public void recordUserMessageSent() {
+        lastUserTimestamp = System.currentTimeMillis();
+    }
+
+    public void setSessionLoading(boolean loading) {
+        this.sessionLoading = loading;
+        SwingUtilities.invokeLater(() -> {
+            sessionProgressBar.setVisible(loading);
+            if (!loading) {
+                sessionProgressBar.setValue(100);
+            }
+        });
+    }
+
+    /** Returns true when messages will be trimmed (max > 0 and not "keep all"). */
+    private boolean shouldBufferMessages() {
+        return currentMaxMessages() > 0 && !keepOlderMessages;
+    }
+
+    public void setSessionProgress(int percent) {
+        SwingUtilities.invokeLater(() -> {
+            sessionProgressBar.setVisible(true);
+            sessionProgressBar.setValue(Math.max(0, Math.min(100, percent)));
+        });
+    }
+
+    @Override
+    public void addNotify() {
+        super.addNotify();
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(scrollController);
+        // Re-register wheel-redirect listeners for bubbles that survived a
+        // close/reopen cycle. removeNotify → cleanup() clears the wheel map
+        // and removes listeners; the ContainerListener only fires for NEW
+        // components, so existing bubbles would otherwise have no wheel
+        // redirect after restore. Re-adding is safe: the map is empty here.
+        for (Component c : messagesContainer.getComponents()) {
+            if (c instanceof MessageBubble || c instanceof PermissionBubble) {
+                scrollController.fixMouseWheel(c);
+            }
+        }
+        // Force full re-layout after a hide/show cycle; the component hierarchy
+        // may be stale because removeNotify() tears down listeners and timers,
+        // leaving the panel blank until the user manually resizes or reopens.
+        revalidate();
+        repaint();
+    }
+
+    @Override
+    public void removeNotify() {
+        // Finalize ALL in-flight streaming bubbles before tearing down —
+        // otherwise non-active streaming bubbles (interrupted by tool/thought
+        // chunks that reset activeStreamBubble, or late SSE deltas) stay as
+        // plain JTextArea indefinitely after a close/reopen. stopStreaming()
+        // finalizes the active bubble AND scans for any remaining streaming
+        // bubbles. Must run before streamingCoordinator.cleanup() stops the
+        // flush timer.
+        stopStreaming();
+        flushTimer.stop();
+        streamingCoordinator.cleanup();
+        if (scrollController != null) {
+            scrollController.cleanup();
+        }
+        super.removeNotify();
+    }
+
+    public void scrollByBlock(boolean pageUp) {
+        scrollController.scrollByBlock(pageUp);
+    }
+
+    public void scrollToTop() {
+        scrollController.scrollToTop();
+    }
+
+    public void scrollToBottom() {
+        scrollController.scrollToBottom();
+    }
+
+    public void scrollToBottom(boolean force) {
+        scrollController.scrollToBottom(force);
+    }
+
+    public JPanel getMessagesContainer() {
+        return messagesContainer;
+    }
+
+    public void toggleAllBlocks(boolean expanded) {
+        LOG.info("Toggling all blocks to {0}", expanded);
+        allBlocksExpanded = expanded;
+        BaseCollapsiblePane.setBatchMode(true);
+        try {
+            for (Component c : messagesContainer.getComponents()) {
+                if (c instanceof MessageBubble bubble) {
+                    bubble.toggleAllBlocks(expanded);
+                }
+            }
+        } finally {
+            BaseCollapsiblePane.setBatchMode(false);
+        }
+        messagesContainer.revalidate();
+    }
+
+    public boolean isAllBlocksExpanded() {
+        return allBlocksExpanded;
+    }
+
+    /** Sets the current session ID. Called by SessionLifecycleHandler on session start. */
+    public void setSessionId(String sessionId) {
+        this.currentSessionId = sessionId;
+    }
+
+    /** Register a callback fired when the flush timer completes (messages stable). */
+    public void setOnMessagesStable(Runnable cb) {
+        this.onMessagesStable = cb;
+    }
+
+    public void setKeepOlderMessages(boolean keep) {
+        keepOlderMessages = keep;
+        if (keep) {
+            // Reload current session to bring back trimmed messages. This needs
+            // the full transcript, so force session/load instead of resume.
+            if (currentSessionId != null) {
+                Lookup.getDefault().lookup(SessionControl.class).reloadSession(currentSessionId);
+            }
+        } else {
+            trimMessages();
+            messagesContainer.revalidate();
+            boolean wasAtBottom = scrollController.isAtBottom();
+            if (wasAtBottom) {
+                scrollController.scrollToBottom(true);
+            }
+        }
+    }
+
+    public boolean isKeepOlderMessages() {
+        return keepOlderMessages;
+    }
+
+    /** Returns the configured max visible message bubbles — 0 means unlimited.
+     *  Reads from {@link PluginSettings} so Options-panel edits take effect
+     *  immediately without restarting the IDE. The in-process default (100)
+     *  is used only when the preference has never been seeded. */
+    private int currentMaxMessages() {
+        return PluginSettings.getMaxMessages();
+    }
+
+    /** Truncates to the tail that fits {@link #currentMaxMessages()}, preserving pinned items before the cutoff. */
+    private <T> List<T> tailWithPinned(List<T> items, Function<T, String> idExtractor) {
+        int max = currentMaxMessages();
+        if (max <= 0 || keepOlderMessages || items.size() <= max) {
+            return items;
+        }
+        int tailStart = items.size() - max;
+        PinnedMessageControl pinStore = (currentSessionId != null)
+                ? Lookup.getDefault().lookup(PinnedMessageControl.class) : null;
+        List<T> pinnedBefore = new ArrayList<>();
+        for (int i = 0; i < tailStart; i++) {
+            T item = items.get(i);
+            String id = idExtractor.apply(item);
+            if (id != null && pinStore != null && pinStore.isPinned(currentSessionId, id)) {
+                pinnedBefore.add(item);
+            }
+        }
+        List<T> result = new ArrayList<>(pinnedBefore.size() + max);
+        result.addAll(pinnedBefore);
+        result.addAll(items.subList(tailStart, items.size()));
+        return result;
+    }
+
+    public String getConversationAsMarkdown() {
+        return getConversationAsMarkdown(null);
+    }
+
+    public String getConversationAsMarkdown(String sessionTitle) {
+        return ConversationExporter.generateMarkdown(messagesContainer, sessionTitle);
+    }
+
+    public String getConversationAsHtml(String sessionTitle) {
+        return HtmlConversationExporter.generateHtml(messagesContainer, sessionTitle);
+    }
+
+    public void applyTypeFilters() {
+        TypeFilterApplier.apply(cachedMessages, this::setMessages, messagesContainer);
+    }
+
+    public void clearMessages() {
+        cachedMessages = null;
+        // Stop the repeating flush timer off-EDT. The per-bubble streaming
+        // finalization (stopStreaming) must run on EDT inside invokeLater
+        // to safely touch the component tree before removeAll.
+        streamingCoordinator.cleanup();
+        SwingUtilities.invokeLater(() -> {
+            // Clear queue/buffers on the EDT: clearing the queue off-EDT and
+            // wiping the container a tick later let a racing addMessage()
+            // enqueue between the two, leaving ghost bubbles on an empty panel.
+            messageQueue.clear();
+            pendingMessagesBySession.clear();
+            seenMessageIdsBySession.clear();
+            stopStreaming();
+            messagesContainer.removeAll();
+            startSessionHintShown = false;
+            scrollController.unfixAllMouseWheel();
+            lastUserTimestamp = -1L;
+            userMessageCount = 0;
+            messagesContainer.revalidate();
+        });
+    }
+
+    /** Flush buffered messages and clean stale pins. Runs for both streaming + history-load paths. */
+    public void flushSessionBuffer() {
+        String sid = ensureCurrentSessionId();
+        if (sid == null) {
+            LOG.warn("flushSessionBuffer: sessionId is null, cannot flush buffer");
+            return;
+        }
+
+        sessionLoading = false;
+        List<ProcessedMessage> buffer = pendingMessagesBySession.remove(sid);
+        if (buffer != null && !buffer.isEmpty()) {
+            // Pin cleanup must wait until every assistant hash is in `seen`.
+            // User/history messages often carry an id; assistants often do not
+            // until addSingleBubble/assignMissingMessageIds. Cleaning immediately
+            // would retain only those user ids and drop stored assistant pins.
+            renderLoadedInChunks(tailWithPinned(buffer, ProcessedMessage::messageId),
+                    () -> retainActivePins(sid));
+        } else if (!loadRenderInProgress) {
+            retainActivePins(sid);
+        }
+    }
+
+    /** Drop stored pins whose message IDs were not seen in this session load/render. */
+    private void retainActivePins(String sid) {
+        if (sid == null) {
+            // setMessages() renders before a session exists; ConcurrentHashMap
+            // rejects a null key, and there are no pins to retain anyway.
+            return;
+        }
+        Set<String> seen = seenMessageIdsBySession.remove(sid);
+        if (seen != null && !seen.isEmpty()) {
+            PinnedMessageControl pinStore = Lookup.getDefault().lookup(PinnedMessageControl.class);
+            if (pinStore != null) {
+                pinStore.retainPinned(sid, seen);
+            }
+        }
+    }
+
+    /**
+     * Renders a list of loaded messages across multiple EDT ticks so a large
+     * history doesn't freeze the IDE in a single monolithic layout pass.
+     * Each tick draws {@link #LOAD_RENDER_BATCH_SIZE} bubbles, then schedules the
+     * next chunk via invokeLater. Batch mode stays on across all chunks, so only
+     * one revalidate + scroll happens at the very end (avoids O(N^2)).
+     * <p>
+     * While the chunked render is in flight, live {@link #drainMessageQueue()}
+     * is blocked so freshly-arrived SSE deltas can't interleave with the
+     * half-drawn history (they're drained right after the render settles). The
+     * debounced {@link #flushTimer} is parked for the same reason.
+     *
+     * @param toRender messages to render (already filtered via tailWithPinned);
+     *                 empty list is fine — finalize still runs.
+     * @param onDone   run on the EDT after the final chunk (may be null)
+     */
+    private void renderLoadedInChunks(List<ProcessedMessage> toRender, Runnable onDone) {
+        if (toRender == null) {
+            if (onDone != null) onDone.run();
+            return;
+        }
+        // Park the debounced flush timer so it can't fire between chunks and
+        // prematurely finalize / trip onMessagesStable. Re-armed unconditionally
+        // once the render settles so a reloaded streaming tail bubble is always
+        // finalized (the drain path restarts it per-message, so this only matters
+        // for the load/reload render path).
+        flushTimer.stop();
+        loadRenderInProgress = true;
+        isBatchMode = true;
+        final int[] offset = {0};
+        final boolean[] seenFirstUserMsg = {false};
+        final String criticalRules = PluginSettings.getCriticalRules().trim();
+        final Runnable[] chunk = new Runnable[1];
+        chunk[0] = () -> {
+            int end = Math.min(offset[0] + LOAD_RENDER_BATCH_SIZE, toRender.size());
+            for (; offset[0] < end; offset[0]++) {
+                ProcessedMessage pm = toRender.get(offset[0]);
+                if (pm.isIgnorable()) continue;
+                String text = pm.text();
+                if (text == null) text = "";
+                // Replace first user message if it matches critical rules verbatim.
+                if (!seenFirstUserMsg[0] && pm.messageType().isUser() && text.trim().startsWith(criticalRules)) {
+                    pm = ProcessedMessage.createInfo("Posting preamble...");
+                    text = pm.text();
+                    seenFirstUserMsg[0] = true;
+                } else if (pm.messageType().isUser()) {
+                    seenFirstUserMsg[0] = true;
+                }
+                // Per-message guard: one malformed bubble must not abort the
+                // chunk chain — an uncaught throw here would leave
+                // loadRenderInProgress/isBatchMode stuck and freeze the drain.
+                try {
+                    if (pm.streaming()) {
+                        processMessageSections(pm, text, pm.messageType().roleName(), false, true);
+                    } else {
+                        addSingleBubble(pm.messageType(), text, pm.messageId(), pm.toolTitle(), false, false);
+                    }
+                } catch (Exception ex) {
+                    LOG.warn("Error rendering loaded message: {0}", ExceptionUtils.getMessage(ex));
+                }
+            }
+            if (offset[0] < toRender.size()) {
+                SwingUtilities.invokeLater(chunk[0]);
+            } else {
+                isBatchMode = false;
+                trimMessages();
+                // Batch adds deferred blank-bubble cleanup per-message; do the
+                // single finalize pass now so loaded history drops empty
+                // assistant/thought bubbles like the streaming path does.
+                // Scan a few recent turns only — blanks can precede the last
+                // user turn in multi-turn history, but we bound to recent turns.
+                removeBlankBubbles(RECENT_TURNS, true);
+                // Assign messageId to assistant bubbles that lack one after reload.
+                assignMissingMessageIds();
+                messagesContainer.revalidate();
+                scrollController.scrollToBottom(true);
+                loadRenderInProgress = false;
+                // Always re-arm finalization (300ms after the last chunk) so the
+                // tail streaming bubble is finalized even when the render was not
+                // entered with the flush timer already running.
+                restartFlushTimer();
+                if (onDone != null) onDone.run();
+                // Drain any live deltas that queued (but couldn't drain) while
+                // the render was in flight — ordering preserved: full history,
+                // then the new delta(s).
+                if (!messageQueue.isEmpty() && draining.compareAndSet(false, true)) {
+                    SwingUtilities.invokeLater(this::drainMessageQueue);
+                }
+            }
+        };
+        chunk[0].run();
+    }
+
+    public void setMessages(List<Message> messages) {
+        cachedMessages = (messages != null) ? new ArrayList<>(messages) : null;
+
+        // Populate seen IDs for flushSessionBuffer() stale-pin cleanup (same EDT tick).
+        if (messages != null && currentSessionId != null) {
+            Set<String> seen = seenMessageIdsBySession
+                    .computeIfAbsent(currentSessionId, k -> ConcurrentHashMap.newKeySet());
+            for (Message m : messages) {
+                if (m.id() != null) seen.add(m.id());
+            }
+        }
+
+        // Stop the repeating flush timer off-EDT. Actual per-bubble
+        // streaming finalization happens inside invokeLater before removeAll.
+        streamingCoordinator.cleanup();
+
+        final String sid = currentSessionId;
+        if (messages != null) {
+            // Hold flushSessionBuffer pin cleanup until chunked render assigns
+            // generated assistant IDs (see retainActivePins).
+            loadRenderInProgress = true;
+        }
+
+        SwingUtilities.invokeLater(() -> {
+            // Finalize any in-flight streaming bubbles before removing content.
+            stopStreaming();
+            // Clear synchronously — avoid clearMessages()'s own invokeLater
+            // which would add an extra EDT tick.
+            messagesContainer.removeAll();
+            scrollController.unfixAllMouseWheel();
+            lastUserTimestamp = -1L;
+            userMessageCount = 0;
+
+            if (messages != null) {
+                // Convert to ProcessedMessage first, then render in chunks so a
+                // large history doesn't freeze the EDT in one layout pass.
+                List<Message> toRender = tailWithPinned(messages, Message::id);
+                List<ProcessedMessage> converted = new ArrayList<>(toRender.size());
+                for (Message m : toRender) {
+                    ProcessedMessage pm = messageTransformer.convert(m);
+                    if (!pm.isIgnorable()) {
+                        converted.add(pm);
+                    }
+                }
+                renderLoadedInChunks(converted, () -> retainActivePins(sid));
+            } else {
+                trimMessages();
+                messagesContainer.revalidate();
+                scrollController.scrollToBottom(true);
+            }
+        });
+    }
+
+    public void setSessionList(List<Session> sessions, Consumer<String> onSessionSelected, Runnable onNewChat) {
+        int count = sessions != null ? sessions.size() : 0;
+        LOG.fine("setSessionList: received {0} sessions, onSessionSelected={1}", new Object[]{count, onSessionSelected});
+        SwingUtilities.invokeLater(() -> {
+            try {
+                clearMessages();
+                WelcomeScreen.show(messagesContainer, sessions, onSessionSelected, onNewChat);
+            } catch (Exception ex) {
+                LOG.warn("setSessionList error: {0}", ExceptionUtils.getMessage(ex));
+            }
+        });
+    }
+
+    /** The assistant bubble already rendered for {@code messageId}, if any (a dot chunk
+     *  continues that message rather than starting one of its own). Only harness ids
+     *  qualify: a generated id is a text hash, so equal-text messages would collide. */
+    private MessageBubble findAssistantBubble(String messageId) {
+        Component[] comps = messagesContainer.getComponents();
+        for (int i = comps.length - 1; i >= currentTurnStartIndex(comps, 1); i--) {
+            if (comps[i] instanceof MessageBubble mb
+                    && "assistant".equals(mb.getRole())
+                    && !mb.isGeneratedMessageId()
+                    && canMergeMessages(messageId, mb.getMessageId())) {
+                return mb;
+            }
+        }
+        return null;
+    }
+
+    private MessageBubble findLastNonIgnorableBubble() {
+        int count = messagesContainer.getComponentCount();
+        for (int i = count - 1; i >= 0; i--) {
+            Component c = messagesContainer.getComponent(i);
+            if (c instanceof MessageBubble mb) {
+                if (ProcessedMessage.isIgnorable(mb.getRole(), mb.getRawText())) {
+                    continue;
+                }
+
+                return mb;
+            }
+        }
+
+        return null;
+    }
+
+    /** Assigns messageId to assistant bubbles that lack one after streaming finalization.
+     *  The ID is a SHA-256 hash of (sessionId + fullText), providing
+     *  a stable identifier for pinning across reloads. Must run AFTER finalization so
+     *  getRawText() returns the complete message text. */
+    private void assignMissingMessageIds() {
+        String sid = ensureCurrentSessionId();
+        if (sid == null) return;
+        Set<String> seen = seenMessageIdsBySession.computeIfAbsent(sid, k -> ConcurrentHashMap.newKeySet());
+        Component[] all = messagesContainer.getComponents();
+        for (Component c : all) {
+            if (c instanceof MessageBubble mb && mb.getMessageId() == null
+                    && "assistant".equals(mb.getRole())) {
+                String text = mb.getRawText();
+                if (text != null && !text.isEmpty()) {
+                    String generatedId = MessageIdGenerator.generate(sid, text);
+                    mb.setMessageId(generatedId);
+                    mb.setGeneratedMessageId(true);
+                    seen.add(generatedId);
+                }
+            }
+        }
+    }
+
+    /**
+     * True when the whole text is nothing but dots — the empty-message
+     * placeholder some harnesses/models emit between tool calls ("."), which
+     * must never become its own bubble. A dot continuing real text is not a
+     * placeholder: that bubble already exists and is merged instead.
+     */
+    private static boolean isDotPlaceholder(String text) {
+        String trimmed = text == null ? "" : text.trim();
+        if (trimmed.isEmpty()) {
+            return false;
+        }
+        for (int i = 0; i < trimmed.length(); i++) {
+            if (trimmed.charAt(i) != '.') {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean canMergeMessages(String messageId, String existingMessageId) {
+        if (messageId == null || existingMessageId == null) {
+            return (messageId == null && existingMessageId == null);
+        }
+        if (messageId.equals(existingMessageId)) {
+            return true;
+        }
+        // Handle streaming suffix IDs like "msg1_0"/"msg1_1" or "msg1-0"/"msg1-1".
+        // If one is a strict prefix of the other followed by a separator, merge.
+        return messageId.startsWith(existingMessageId + "-") || existingMessageId.startsWith(messageId + "-")
+            || messageId.startsWith(existingMessageId + "_") || existingMessageId.startsWith(messageId + "_");
+    }
+
+    /**
+     * Returns true if the current agent sends streaming chunks with
+     * inconsistent or changing messageIds, requiring us to ignore the
+     * messageId check during merge decisions.
+     */
+    private boolean ignoresMessageIdForStreaming() {
+        if (ignoresMessageIdForStreamingForTest != null) {
+            return ignoresMessageIdForStreamingForTest;
+        }
+        ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
+        HarnessCatalog.Harness caps = pc != null ? pc.getCapabilities() : null;
+        return caps != null && !caps.supportsMessageIds();
+    }
+
+    /** Test seam: {@code null} defers to the harness capability, otherwise forces the
+     *  id-ignoring (true) or id-strict (false) merge path. */
+    void setIgnoresMessageIdForStreamingForTest(Boolean ignores) {
+        this.ignoresMessageIdForStreamingForTest = ignores;
+    }
+
+    /** True when a loaded history must draw every {@code agent_message_chunk} in its
+     *  own bubble instead of merging one turn's chunks (Jcode). */
+    private boolean separateBubblesPerReplayChunk() {
+        ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
+        HarnessCatalog.Harness caps = pc != null ? pc.getCapabilities() : null;
+        return caps != null && caps.separateBubblesPerReplayChunk();
+    }
+}

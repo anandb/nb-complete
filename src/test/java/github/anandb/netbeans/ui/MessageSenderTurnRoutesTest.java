@@ -35,6 +35,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import github.anandb.netbeans.ui.chat.ChatThreadPanel;
 
 /**
  * The three mid-turn routes and what a failed send does to the turn.

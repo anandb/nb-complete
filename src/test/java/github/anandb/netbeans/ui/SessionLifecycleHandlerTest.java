@@ -39,6 +39,8 @@ import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.ProjectContext;
 import github.anandb.netbeans.ui.platform.SessionService;
+import github.anandb.netbeans.ui.chat.ChatThreadPanel;
+import github.anandb.netbeans.ui.chat.PlanPanel;
 
 /**
  * Headless regression tests for {@link SessionLifecycleHandler#onSessionListUpdated}.

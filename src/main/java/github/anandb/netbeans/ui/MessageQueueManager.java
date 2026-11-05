@@ -110,7 +110,7 @@ public final class MessageQueueManager {
     }
 
     /** Returns the accent color used for queued bubble indicators. */
-    static Color getAccentColor() {
+    public static Color getAccentColor() {
         return ACCENT_COLOR;
     }
 
