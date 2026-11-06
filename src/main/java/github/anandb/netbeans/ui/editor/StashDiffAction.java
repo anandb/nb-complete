@@ -818,7 +818,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
     }
 
     private static void applyDiffFont(JComponent diffView) {
-        Font diffFont = IconResourceManager.getMonospaceFont();
+        Font diffFont = IconResourceManager.getDiffMonospaceFont();
         setFontRecursive(diffView, diffFont);
         diffView.revalidate();
         diffView.repaint();
@@ -830,7 +830,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
      * user still sees the data instead of an empty error pane.
      */
     private static JComponent buildPlainTextFallback(String name, String baseContent, String stashContent) {
-        Font mono = IconResourceManager.getMonospaceFont();
+        Font mono = IconResourceManager.getDiffMonospaceFont();
         JTextArea baseArea = createReadOnlyTextArea(baseContent, mono);
         JTextArea modArea = createReadOnlyTextArea(stashContent, mono);
         JPanel basePane = wrapTextArea(name + " (base)", baseArea);

@@ -163,6 +163,16 @@ public final class IconResourceManager {
         return f;
     }
 
+    /**
+     * Font for diff panes: one point below the editor font, clamped at 9 so a small editor font
+     * cannot produce an unreadable diff. It is applied to a diff window's own component tree, so
+     * the editor font the user reads and edits is never changed.
+     */
+    public static Font getDiffMonospaceFont() {
+        Font base = getMonospaceFont();
+        return base.deriveFont(Math.max(9f, base.getSize() - 1f));
+    }
+
     static boolean isDark() {
         Boolean cached = cachedIsDark;
         if (cached != null) return cached;
