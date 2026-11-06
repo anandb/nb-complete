@@ -40,9 +40,14 @@ public class RoundedPanel extends JPanel {
     private boolean showBorder = true;
     private boolean dropShadow; // soft drop shadow drawn behind the rounded fill
     private final int shadowOffset = 2; // shadow offset (px) down/right of the fill
-    private final Color shadowColor = new Color(0, 0, 0, 60);
+    /** Shadow pass alphas, darkest first — precomputed so painting allocates no Colors. */
+    private static final Color[] SHADOW_PASS_COLORS = {
+        new Color(0, 0, 0, 60), new Color(0, 0, 0, 40), new Color(0, 0, 0, 20)
+    };
     private RoundRectangle2D.Float cachedShape;
     private RoundRectangle2D.Float cachedBorderShape;
+    /** Reused by the shadow passes: painting must not allocate a shape per pass per repaint. */
+    private final RoundRectangle2D.Float shadowShape = new RoundRectangle2D.Float();
     private int cachedWidth = -1;
     private int cachedHeight = -1;
     /** Cached theme-derived border color; invalidated when theme changes. */
@@ -173,13 +178,10 @@ public class RoundedPanel extends JPanel {
         final int passes = 3;
         for (int i = passes; i >= 1; i--) {
             int spread = i;
-            float alpha = shadowColor.getAlpha() * (passes - i + 1f) / passes;
-            g2.setColor(new Color(shadowColor.getRed(), shadowColor.getGreen(),
-                    shadowColor.getBlue(), Math.round(alpha)));
-            RoundRectangle2D.Float sh = new RoundRectangle2D.Float(
-                    ins.left + shadowOffset, ins.top + shadowOffset,
+            g2.setColor(SHADOW_PASS_COLORS[passes - i]);
+            shadowShape.setRoundRect(ins.left + shadowOffset, ins.top + shadowOffset,
                     w + spread, h + spread, radius, radius);
-            g2.fill(sh);
+            g2.fill(shadowShape);
         }
     }
 

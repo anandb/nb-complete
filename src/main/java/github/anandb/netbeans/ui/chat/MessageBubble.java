@@ -78,6 +78,32 @@ public class MessageBubble extends JPanel implements Scrollable {
 
     private static final Dimension MAX_SIZE = new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE);
 
+    /**
+     * Cached preferred size: the thread's BoxLayout asks every bubble for its preferred and
+     * maximum size on every layout pass, and a pass runs on each streaming tick (the scroll
+     * pin calls validate()). Without the cache each pass re-runs this bubble's GridBagLayout and
+     * its segments' BoxLayout, so a long thread made every tick O(all bubbles). Only the bubble
+     * whose content grew is invalidated, so a tick now costs O(bubbles) dimension reads plus
+     * O(1) real layout.
+     */
+    private Dimension cachedPreferredSize;
+
+    @Override
+    public void invalidate() {
+        cachedPreferredSize = null;
+        super.invalidate();
+    }
+
+    @Override
+    public Dimension getPreferredSize() {
+        Dimension cached = cachedPreferredSize;
+        if (cached == null) {
+            cached = super.getPreferredSize();
+            cachedPreferredSize = cached;
+        }
+        return cached;
+    }
+
     @Override
     public Dimension getMaximumSize() {
         return MAX_SIZE;
