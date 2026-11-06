@@ -183,6 +183,10 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
         setBorderColor(theme.codeHeaderBorder());
         setShowBorder(true);
         setAlignmentX(Component.LEFT_ALIGNMENT);
+        // A 1px inset on each side: RoundedPanel derives its painted shape and clip from the
+        // insets, so the block's background stops one pixel short and the parent's colour shows
+        // through instead of the code block sharing an edge with its bubble.
+        setBorder(BorderFactory.createEmptyBorder(0, 1, 0, 1));
     }
 
     private void ensureCodeTextArea() {
