@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.permission;
 
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
@@ -15,8 +15,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import github.anandb.netbeans.ui.chat.MessageFilterManager;
 import github.anandb.netbeans.ui.chat.ChatThreadPanel;
+import github.anandb.netbeans.ui.chat.MessageFilterManager;
+import github.anandb.netbeans.ui.TestUiUtils;
 
 /**
  * Verifies that consecutive same-allowed permission results merge into a

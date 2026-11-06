@@ -30,11 +30,11 @@ import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
-import github.anandb.netbeans.ui.UIUtils;
 import github.anandb.netbeans.ui.ColorTheme;
+import github.anandb.netbeans.ui.UIUtils;
+import github.anandb.netbeans.ui.RoundedPanel;
 import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.ThemeManager;
-import github.anandb.netbeans.ui.RoundedPanel;
 import github.anandb.netbeans.ui.session.MessageQueueManager;
 
 /**

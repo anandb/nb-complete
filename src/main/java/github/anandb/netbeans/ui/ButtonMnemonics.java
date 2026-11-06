@@ -21,7 +21,7 @@ import javax.swing.KeyStroke;
  * documented Alt+A therefore hit nothing. The extra binding answers the documented stroke
  * regardless of the platform mask; on Windows/Linux it replaces the identical LAF binding.
  */
-final class ButtonMnemonics {
+public final class ButtonMnemonics {
 
     private static final String ACTION_KEY = "mnemonicAlt";
 
@@ -29,7 +29,7 @@ final class ButtonMnemonics {
     }
 
     /** Sets {@code mnemonic} on {@code button} and binds {@code Alt+mnemonic} to a click. */
-    static void apply(JButton button, char mnemonic) {
+    public static void apply(JButton button, char mnemonic) {
         if (mnemonic == 0) {
             return;
         }

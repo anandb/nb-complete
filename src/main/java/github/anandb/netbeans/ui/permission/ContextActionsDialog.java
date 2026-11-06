@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.permission;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -20,6 +20,7 @@ import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 
 import org.openide.util.NbBundle;
+import github.anandb.netbeans.ui.UIBundle;
 
 /**
  * Compact editor for the set-and-forget context-menu toggles. Keeps the IDE
@@ -80,7 +81,7 @@ public final class ContextActionsDialog extends JDialog {
     }
 
     /** Opens the dialog; a returned array aligns with {@code toggles}. */
-    static Optional<boolean[]> show(Component parent, List<Toggle> toggles) {
+    public static Optional<boolean[]> show(Component parent, List<Toggle> toggles) {
         Window owner = parent == null ? null : SwingUtilities.getWindowAncestor(parent);
         ContextActionsDialog dialog = new ContextActionsDialog(owner, toggles);
         dialog.setVisible(true);

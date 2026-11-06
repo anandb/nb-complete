@@ -11,7 +11,7 @@ import github.anandb.netbeans.support.WobbleAnimator;
  * permission request is pending. Used by both the main assistant sidebar and
  * the mini-assistant dialog.
  */
-final class WobblePanel extends JPanel {
+public final class WobblePanel extends JPanel {
 
     private final WobbleAnimator animator = new WobbleAnimator(this);
 

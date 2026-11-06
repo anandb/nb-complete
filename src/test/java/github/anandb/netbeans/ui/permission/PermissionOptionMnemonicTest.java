@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.permission;
 
 import java.util.HashSet;
 import java.util.List;

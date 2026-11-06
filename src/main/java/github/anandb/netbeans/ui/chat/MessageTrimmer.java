@@ -3,7 +3,7 @@ package github.anandb.netbeans.ui.chat;
 import java.awt.Component;
 import javax.swing.Box;
 import javax.swing.JPanel;
-import github.anandb.netbeans.ui.PermissionBubble;
+import github.anandb.netbeans.ui.permission.PermissionBubble;
 
 /**
  * Trims the message container to a maximum number of unpinned bubbles,

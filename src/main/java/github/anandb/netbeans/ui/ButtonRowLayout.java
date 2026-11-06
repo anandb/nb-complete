@@ -23,7 +23,7 @@ import javax.swing.SwingUtilities;
  * the current width: four short answers stay on one line, while Devin's six prose
  * labels fall into two rows on a normally sized sidebar.
  */
-final class ButtonRowLayout implements LayoutManager {
+public final class ButtonRowLayout implements LayoutManager {
 
     private final int hgap;
     private final int vgap;
@@ -32,7 +32,7 @@ final class ButtonRowLayout implements LayoutManager {
     /** True while the deferred relayout below is already queued. */
     private boolean relayoutQueued;
 
-    ButtonRowLayout(int hgap, int vgap) {
+    public ButtonRowLayout(int hgap, int vgap) {
         this.hgap = hgap;
         this.vgap = vgap;
     }

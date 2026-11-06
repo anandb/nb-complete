@@ -15,8 +15,8 @@ import org.mockito.Mockito;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
-import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.SessionService;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 /**
  * The model dropdown is built from the parsed variant map, so a model id must only

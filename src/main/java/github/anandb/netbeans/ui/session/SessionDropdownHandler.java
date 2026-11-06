@@ -7,8 +7,8 @@ import javax.swing.event.PopupMenuListener;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
-import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.SessionService;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 
 /**

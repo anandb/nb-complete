@@ -21,7 +21,7 @@ import github.anandb.netbeans.support.Logger;
  * Manages icon caching, font resolution, and dark mode detection.
  * Extracted from ThemeManager for better separation of concerns.
  */
-final class IconResourceManager {
+public final class IconResourceManager {
 
     private static final Logger LOG = Logger.from(IconResourceManager.class);
 
@@ -136,7 +136,7 @@ final class IconResourceManager {
         return new Font(family, base.getStyle(), base.getSize());
     }
 
-    static Font getMonospaceFont() {
+    public static Font getMonospaceFont() {
         Font f = cachedMonospaceFont;
         if (f != null) return f;
 

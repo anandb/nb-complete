@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.permission;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,7 +9,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 /**
  * Parsed option from a permission request payload.
  */
-record PermissionOption(String id, String name, String kind) {
+public record PermissionOption(String id, String name, String kind) {
     static PermissionOption fromJson(JsonNode opt) {
         String optionId = opt.has("optionId") ? opt.get("optionId").asText() : "";
         String name = opt.has("name") ? opt.get("name").asText() : optionId;
@@ -66,14 +66,14 @@ record PermissionOption(String id, String name, String kind) {
     }
 
     /** A parsed option together with the mnemonic its row assigned to it. */
-    record Choice(PermissionOption option, char mnemonic) {
+    public record Choice(PermissionOption option, char mnemonic) {
     }
 
     /**
      * Parses an options array and assigns each entry the mnemonic its row gave it.
      * Both button builders iterate this, so neither repeats the parse-and-assign loop.
      */
-    static List<Choice> choices(JsonNode options) {
+    public static List<Choice> choices(JsonNode options) {
         List<PermissionOption> parsed = new ArrayList<>(options.size());
         for (JsonNode opt : options) {
             parsed.add(fromJson(opt));

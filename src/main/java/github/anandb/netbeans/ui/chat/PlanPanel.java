@@ -33,8 +33,8 @@ import javax.swing.SwingUtilities;
 import github.anandb.netbeans.model.ModelRecords.PlanEntry;
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.NbBundle;
-import github.anandb.netbeans.ui.UIUtils;
 import github.anandb.netbeans.ui.ColorTheme;
+import github.anandb.netbeans.ui.UIUtils;
 import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.ThemeManager;
 

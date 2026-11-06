@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.permission;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -49,9 +49,19 @@ import github.anandb.netbeans.support.WobbleAnimator;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 import org.openide.windows.WindowManager;
+import github.anandb.netbeans.ui.ColorTheme;
+import github.anandb.netbeans.ui.StashDiffAction;
+import github.anandb.netbeans.ui.IconResourceManager;
+import github.anandb.netbeans.ui.ButtonRowLayout;
+import github.anandb.netbeans.ui.AssistantTopComponent;
+import github.anandb.netbeans.ui.ButtonMnemonics;
+import github.anandb.netbeans.ui.UIBundle;
+import github.anandb.netbeans.ui.StartTruncatingLabel;
+import github.anandb.netbeans.ui.FitEditorPane;
+import github.anandb.netbeans.ui.ThemeManager;
 
 // DSL-LEAF: fixed permission request panel below session dropdown, slides open/closed.
-final class PermissionRequestPanel extends JPanel {
+public final class PermissionRequestPanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
     private static final Logger LOG = Logger.from(PermissionRequestPanel.class);
@@ -97,7 +107,7 @@ final class PermissionRequestPanel extends JPanel {
     /** Called when a permission result is ready — receives (statusText, allowed). */
     private BiConsumer<String, Boolean> onResult;
 
-    PermissionRequestPanel() {
+    public PermissionRequestPanel() {
         setLayout(new BorderLayout());
         setVisible(false);
 
@@ -194,7 +204,7 @@ final class PermissionRequestPanel extends JPanel {
         return parent != null && parent.getHeight() > 0 ? parent.getHeight() / 2 : 0;
     }
 
-    void setOnResult(BiConsumer<String, Boolean> onResult) {
+    public void setOnResult(BiConsumer<String, Boolean> onResult) {
         this.onResult = onResult;
     }
 
@@ -425,7 +435,7 @@ final class PermissionRequestPanel extends JPanel {
      * chat input regardless of state. Used to recover from a server crash so the
      * input text area is never left disabled with a stuck modal panel.
      */
-    void dismissActiveRequest() {
+    public void dismissActiveRequest() {
         if (requestActive && pendingResponse != null && !pendingResponse.isDone()) {
             pendingResponse.complete("reject");
         }
@@ -797,7 +807,7 @@ final class PermissionRequestPanel extends JPanel {
     }
 
     /** Opens a TopComponent with file list + side-by-side diff (delegates to StashDiffAction). */
-    static void openDiffView(List<FileChange> changes) {
+    public static void openDiffView(List<FileChange> changes) {
         StashDiffAction.openPermissionDiffView(changes);
     }
 
@@ -890,7 +900,7 @@ final class PermissionRequestPanel extends JPanel {
      * result is fired (no chat message added), making this suitable for
      * the pre-preamble config flow.
      */
-    void showConfigConfirm(String prompt, CompletableFuture<String> onContinue) {
+    public void showConfigConfirm(String prompt, CompletableFuture<String> onContinue) {
         this.pendingResponse = onContinue;
         this.requestActive = true;
 

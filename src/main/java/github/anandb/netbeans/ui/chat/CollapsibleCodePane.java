@@ -27,8 +27,8 @@ import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.fife.ui.rsyntaxtextarea.Theme;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.ui.UIUtils;
 import github.anandb.netbeans.ui.ColorTheme;
+import github.anandb.netbeans.ui.UIUtils;
 import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.ThemeManager;
 

@@ -1,8 +1,9 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.permission;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import org.openide.awt.ActionID;
+import github.anandb.netbeans.ui.AssistantTopComponent;
 
 /**
  * Global action triggered by Ctrl+Alt+A to allow a permission request.

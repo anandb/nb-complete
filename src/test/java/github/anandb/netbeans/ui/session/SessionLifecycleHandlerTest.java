@@ -36,15 +36,15 @@ import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
+import github.anandb.netbeans.ui.TestUiUtils;
 import github.anandb.netbeans.ui.UIUtils;
 import github.anandb.netbeans.ui.ThemeManager;
 import github.anandb.netbeans.ui.chat.ChatThreadPanel;
 import github.anandb.netbeans.ui.chat.PlanPanel;
 import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
-import github.anandb.netbeans.ui.platform.PlatformBridge;
-import github.anandb.netbeans.ui.platform.SessionService;
 import github.anandb.netbeans.ui.platform.ProjectContext;
-import github.anandb.netbeans.ui.TestUiUtils;
+import github.anandb.netbeans.ui.platform.SessionService;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 /**
  * Headless regression tests for {@link SessionLifecycleHandler#onSessionListUpdated}.

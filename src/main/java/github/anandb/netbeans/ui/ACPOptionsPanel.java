@@ -65,8 +65,9 @@ import github.anandb.netbeans.support.Logger;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import github.anandb.netbeans.support.PreferenceKeys;
 import org.openide.awt.NotificationDisplayer;
-import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.permission.ContextActionsDialog;
 import github.anandb.netbeans.ui.platform.SessionService;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 // DSL-LEAF: keep imperative, wrap via UI.of(...) — NetBeans Options panel
 // (GridBagLayout form). When the DSL lands, port the form to OptionsFormSpec;

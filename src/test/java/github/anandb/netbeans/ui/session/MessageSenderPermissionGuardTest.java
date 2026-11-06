@@ -26,13 +26,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import github.anandb.netbeans.ui.TestUiUtils;
 import github.anandb.netbeans.ui.chat.ChatThreadPanel;
-import github.anandb.netbeans.ui.composer.AttachmentManager;
 import github.anandb.netbeans.ui.composer.MessageHistory;
 import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
-import github.anandb.netbeans.ui.platform.SessionService;
+import github.anandb.netbeans.ui.composer.AttachmentManager;
 import github.anandb.netbeans.ui.platform.ProcessService;
-import github.anandb.netbeans.ui.TestUiUtils;
+import github.anandb.netbeans.ui.platform.SessionService;
 
 /**
  * The permission guard sits below the slash interception, so local commands keep working

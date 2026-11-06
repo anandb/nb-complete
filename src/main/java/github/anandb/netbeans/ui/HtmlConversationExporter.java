@@ -26,8 +26,8 @@ import github.anandb.netbeans.pattern.TitleSanitizePattern;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
 import static org.apache.commons.lang3.StringUtils.isBlank;
-import github.anandb.netbeans.ui.chat.CollapsibleToolPane;
 import github.anandb.netbeans.ui.chat.MessageBubble;
+import github.anandb.netbeans.ui.chat.CollapsibleToolPane;
 
 /**
  * Stateless utility for exporting conversation history to self-contained

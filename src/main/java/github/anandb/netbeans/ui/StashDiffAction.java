@@ -905,7 +905,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
      * diff, but for permission-request file changes. Each diff view includes
      * prev/next hunk navigation buttons.
      */
-    static void openPermissionDiffView(List<FileChange> changes) {
+    public static void openPermissionDiffView(List<FileChange> changes) {
         // Count occurrences per file path to detect multi-hunk files
         Map<String, Integer> pathCount = new HashMap<>();
         for (FileChange fc : changes) {

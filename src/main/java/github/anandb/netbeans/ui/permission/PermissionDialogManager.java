@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.permission;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -19,12 +19,15 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PermissionAutoAllow;
 import github.anandb.netbeans.support.ToolCallDiffParser.FileChange;
 import github.anandb.netbeans.support.ToolContextExtractor;
+import github.anandb.netbeans.ui.MiniAssistantDialog;
+import github.anandb.netbeans.ui.AssistantTopComponent;
+import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.chat.ChatThreadPanel;
-import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.SessionService;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 // DSL-CONTROLLER: orchestrates permission request in the header panel + adds result to chat.
-final class PermissionDialogManager {
+public final class PermissionDialogManager {
 
     private static final Logger LOG = Logger.from(PermissionDialogManager.class);
 
@@ -44,25 +47,25 @@ final class PermissionDialogManager {
      *  requests that belong to a turn already superseded by a newer message. */
     private final AtomicLong permissionEpoch = new AtomicLong(0);
 
-    PermissionDialogManager(ChatThreadPanel chatPanel, PermissionRequestPanel permissionPanel) {
+    public PermissionDialogManager(ChatThreadPanel chatPanel, PermissionRequestPanel permissionPanel) {
         this.chatPanel = chatPanel;
         this.permissionPanel = permissionPanel;
     }
 
-    long currentEpoch() {
+    public long currentEpoch() {
         return permissionEpoch.get();
     }
 
     /** Invoked immediately before a new user message is actually sent to the server.
      *  Advances the epoch so permission requests still in flight from a turn that was
      *  superseded by the new message are dropped rather than displayed. */
-    void recordUserMessageSent() {
+    public void recordUserMessageSent() {
         permissionEpoch.incrementAndGet();
     }
 
     /** True while a permission request is awaiting a user decision. While pending, the
      *  input send is blocked so a new message cannot supersede the outstanding request. */
-    boolean isPermissionPending() {
+    public boolean isPermissionPending() {
         return isRequestShowing;
     }
 
@@ -74,7 +77,7 @@ final class PermissionDialogManager {
      *  rescues it: AcpProtocolClient.checkIdleTimeout deliberately suppresses the whole
      *  watchdog while a permission is pending, precisely so a user deliberating is not
      *  mistaken for a dead server. There is no expiry. The user is the timeout. */
-    void buzzPermissionPanel() {
+    public void buzzPermissionPanel() {
         // Resurface whenever a request is still active, regardless of isVisible():
         // the panel can be stuck in a visible-but-zero-height state (killed slide
         // animation) where isVisible() is true but nothing is shown — gating on
@@ -90,7 +93,7 @@ final class PermissionDialogManager {
         }
     }
 
-    void handlePermissionRequest(String sessionId, JsonNode params,
+    public void handlePermissionRequest(String sessionId, JsonNode params,
             CompletableFuture<String> response, Runnable activateCallback) {
         // Session check runs on any thread — safe to reject unrelated
         // sessions immediately without hopping to EDT.
@@ -295,12 +298,12 @@ final class PermissionDialogManager {
     }
 
     /** Called when a permission result is ready, adds the result to the chat thread. */
-    void addResultToChat(String statusText, boolean allowed) {
+    public void addResultToChat(String statusText, boolean allowed) {
         chatPanel.addPermissionResult(statusText, allowed);
     }
 
     /** Rejects all pending requests in the queue and the currently active one. */
-    void rejectAllRequests() {
+    public void rejectAllRequests() {
         permissionPanel.rejectRequest();
         MiniAssistantDialog miniDialog = MiniAssistantDialog.getInstance();
         if (miniDialog != null) {

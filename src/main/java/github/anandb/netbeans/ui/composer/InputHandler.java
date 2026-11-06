@@ -6,8 +6,8 @@ import java.awt.event.KeyEvent;
 import github.anandb.netbeans.contract.SlashCommandInterceptor;
 import github.anandb.netbeans.contract.SlashCommandCallback;
 import github.anandb.netbeans.ui.session.MessageSender;
-import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.ProcessService;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 /**
  * Handles keyboard input for the chat input area: Tab (switch agent),

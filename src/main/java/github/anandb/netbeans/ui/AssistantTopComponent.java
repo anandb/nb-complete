@@ -69,20 +69,22 @@ import java.util.prefs.Preferences;
 import github.anandb.netbeans.ui.chat.ChatThreadPanel;
 import github.anandb.netbeans.ui.chat.PlanPanel;
 import github.anandb.netbeans.ui.composer.AutocompleteManager;
-import github.anandb.netbeans.ui.composer.AttachmentManager;
-import github.anandb.netbeans.ui.composer.AttachmentUiHandler;
 import github.anandb.netbeans.ui.composer.InputHandler;
+import github.anandb.netbeans.ui.composer.AttachmentUiHandler;
 import github.anandb.netbeans.ui.composer.MessageHistory;
 import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
-import github.anandb.netbeans.ui.session.SessionLifecycleHandler;
-import github.anandb.netbeans.ui.session.MessageSender;
-import github.anandb.netbeans.ui.session.StatusController;
-import github.anandb.netbeans.ui.session.ConfigPanelController;
+import github.anandb.netbeans.ui.composer.AttachmentManager;
 import github.anandb.netbeans.ui.session.SessionDropdownHandler;
 import github.anandb.netbeans.ui.session.MessageQueueManager;
-import github.anandb.netbeans.ui.platform.PlatformBridge;
-import github.anandb.netbeans.ui.platform.SessionService;
+import github.anandb.netbeans.ui.session.StatusController;
+import github.anandb.netbeans.ui.session.SessionLifecycleHandler;
+import github.anandb.netbeans.ui.session.MessageSender;
+import github.anandb.netbeans.ui.session.ConfigPanelController;
+import github.anandb.netbeans.ui.permission.PermissionDialogManager;
+import github.anandb.netbeans.ui.permission.PermissionRequestPanel;
 import github.anandb.netbeans.ui.platform.ProjectContext;
+import github.anandb.netbeans.ui.platform.SessionService;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 
 @ConvertAsProperties(
@@ -1054,7 +1056,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         return null;
     }
 
-    PermissionRequestPanel getPermissionPanel() {
+    public PermissionRequestPanel getPermissionPanel() {
         return permissionPanel;
     }
 

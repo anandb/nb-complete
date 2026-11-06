@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.permission;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -27,6 +27,10 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.ToolCallDiffParser;
 import github.anandb.netbeans.support.ToolCallDiffParser.FileChange;
 import org.openide.util.NbBundle;
+import github.anandb.netbeans.ui.ColorTheme;
+import github.anandb.netbeans.ui.IconResourceManager;
+import github.anandb.netbeans.ui.UIBundle;
+import github.anandb.netbeans.ui.ThemeManager;
 import github.anandb.netbeans.ui.chat.CollapsibleCodePane;
 
 // DSL-LEAF: not a controller — builds a permission request panel inline.

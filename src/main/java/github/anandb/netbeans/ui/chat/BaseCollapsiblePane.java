@@ -32,12 +32,12 @@ import org.apache.commons.lang3.StringUtils;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.pattern.ToolPrefixPattern;
 import github.anandb.netbeans.support.ToolDataExtractor;
-import github.anandb.netbeans.ui.UIUtils;
-import github.anandb.netbeans.ui.AccordionGroup;
 import github.anandb.netbeans.ui.ColorTheme;
+import github.anandb.netbeans.ui.AccordionGroup;
+import github.anandb.netbeans.ui.UIUtils;
+import github.anandb.netbeans.ui.RoundedPanel;
 import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.ThemeManager;
-import github.anandb.netbeans.ui.RoundedPanel;
 
 /**
  * Abstract base class for collapsible UI panes (such as tool, activity, and code panes).
