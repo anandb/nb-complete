@@ -78,6 +78,14 @@
     - `ChatThreadPanel`: Message thread container.
     - `MessageBubble`: Chat turns (thought/tool/code/text bubbles).
     - `CollapsibleCodePane`: Syntax highlighted code block rendering.
+    - **`ui/` is grouped by feature**: `assistant` (panel, mini panel, onboarding),
+      `chat` (thread, bubbles, collapsible panes), `composer` (input, history,
+      attachments), `session` (state, config dropdowns, session actions),
+      `permission`, `options`, `rendering` (markdown/HTML/theme/icons),
+      `components` (reusable widgets), `editor` (IDE actions and hooks), `export`,
+      `stats`, plus the seams in `platform/` and the project type in `mdproject/`.
+      The root holds only `UIBundle` and the `@OnStart` installer. Put a new class
+      in the group it belongs to, not at the root.
 
 ## Important Coding Rules
 - **Headless Testing**: All tests must be able to run in a headless environment (without X11). Do not instantiate UI components (like `JFrame` or `JDialog` via `MiniAssistantDialog.getInstance()`) in tests unless properly mocked, as this will trigger `HeadlessException`.
@@ -113,6 +121,21 @@
   lives under `src/main/resources/` (e.g. `src/main/resources/github/anandb/netbeans/ui/Bundle.properties`).
   There is also a generated copy under `src/main/java/` in the same package path — do NOT edit
   that one. Always edit the `src/main/resources/` version.
+- **One UI bundle, explicit anchor**: `NbBundle.getMessage(X.class, key)` resolves
+  `Bundle.properties` from **X's package**, so moving a class breaks every lookup that names it.
+  All UI code therefore passes `github.anandb.netbeans.ui.UIBundle` and the one
+  `ui/Bundle.properties` stays put — keep `UIBundle` in `ui/` and do NOT reintroduce per-class
+  anchors. Annotations are the exception: `@ActionRegistration(displayName = "#KEY")`,
+  `@TopComponent.OpenActionRegistration` and `@OptionsPanelController.TopLevelRegistration`
+  resolve from the annotated class's own package, so a moved annotated class needs its keys in a
+  `Bundle.properties` beside it (the annotation processor fails the build otherwise).
+- **Moving a class moves its resources**: a class that loads a resource class-relative
+  (`ColorTheme` → `"colors.json"`, `CssGenerator` → `"chat-style.css.template"`,
+  `HtmlConversationExporter` → `"export-style.css.template"`) looks in its **own** package;
+  move the resource with it or it fails at runtime with "… not found", which no import rewrite
+  can catch. Also update hand-written `layer.xml` `delegate`/`newvalue` class strings and any
+  `Class.forName`/`getResource` FQN string: `LayerReferencesTest` guards the layer, the rest is
+  on you.
 - **NbPreferences caching**: If a preference is read in a hot path, cache it in a `static volatile`
   field and register a `PreferenceChangeListener` to update on change. Do NOT call
   `NbPreferences.forModule().getBoolean()` on every invocation. Every cached setting must be read
@@ -284,7 +307,8 @@ NbPreferences.forModule(PreferenceKeys.class)
 ### What Belongs Where
 | Concern | Location | Examples |
 |---------|----------|----------|
-| Swing components, layout | `ui/` | Panels, buttons, dialogs |
+| Swing components, layout | `ui/<feature>/` | `ui.chat`, `ui.assistant`, `ui.components` — see UI Structure |
+| Shared UI bundle anchor | `ui/UIBundle` | Every `NbBundle.getMessage(...)` passes `UIBundle.class` |
 | Platform seams (bridges) | `ui/platform/` | `PlatformBridge`, `SessionService`, `ProcessService`, `ProjectContext`, `PrefStore` |
 | Session state machine | `manager/` | `SessionManager` |
 | Network protocol | `manager/` | `AcpProtocolClient` |
