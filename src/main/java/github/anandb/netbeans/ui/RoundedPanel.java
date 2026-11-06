@@ -10,8 +10,8 @@ import java.awt.RenderingHints;
 import java.awt.geom.Area;
 import java.awt.geom.RoundRectangle2D;
 import javax.swing.JPanel;
-import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
 
 /**
  * A panel that paints itself as a rounded rectangle.

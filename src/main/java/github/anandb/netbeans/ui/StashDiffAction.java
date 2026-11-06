@@ -86,8 +86,8 @@ import javax.swing.JScrollPane;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
 import org.openide.util.NbPreferences;
-import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.rendering.IconResourceManager;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
 
 /**
  * Shows a side-by-side diff of a selected stash.

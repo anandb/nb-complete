@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.options;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -28,6 +28,7 @@ import javax.swing.event.DocumentListener;
 import github.anandb.netbeans.support.RunCommandPolicy;
 
 import org.openide.util.NbBundle;
+import github.anandb.netbeans.ui.UIBundle;
 
 /**
  * Modal editor for the {@code run_command} allow/deny lists. Two text areas keep

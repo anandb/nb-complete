@@ -6,8 +6,8 @@ import github.anandb.netbeans.contract.SessionControl;
 import org.openide.awt.ActionID;
 import org.openide.awt.ActionRegistration;
 import org.openide.util.Lookup;
-import github.anandb.netbeans.ui.assistant.ChatLayoutBuilder;
 import github.anandb.netbeans.ui.assistant.MiniAssistantDialog;
+import github.anandb.netbeans.ui.assistant.ChatLayoutBuilder;
 
 @ActionID(category = "Assistant", id = "github.anandb.netbeans.ui.ArchiveSessionAction")
 @ActionRegistration(displayName = "#CTL_ArchiveSessionAction")

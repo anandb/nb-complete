@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.options;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -71,6 +71,8 @@ import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.rendering.IconPreviewManager;
 import github.anandb.netbeans.ui.platform.SessionService;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.UIUtils;
+import github.anandb.netbeans.ui.UIBundle;
 
 // DSL-LEAF: keep imperative, wrap via UI.of(...) — NetBeans Options panel
 // (GridBagLayout form). When the DSL lands, port the form to OptionsFormSpec;

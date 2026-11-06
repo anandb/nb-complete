@@ -42,9 +42,9 @@ import github.anandb.netbeans.support.PreferenceKeys;
 import org.openide.util.ImageUtilities;
 import org.openide.util.NbPreferences;
 import org.openide.util.RequestProcessor;
-import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.rendering.RaisedIcon;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.assistant.AttentionButton;
 
 // DSL-LEAF: factories are the swingtree replacement seam — createToolbarButton /

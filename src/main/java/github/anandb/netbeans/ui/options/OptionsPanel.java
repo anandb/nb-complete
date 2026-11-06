@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.options;
 
 /**
  * Common contract for options panels hosted by {@link AbstractOptionsPanelController}.

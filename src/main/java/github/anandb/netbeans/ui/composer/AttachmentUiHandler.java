@@ -15,8 +15,8 @@ import org.openide.util.ImageUtilities;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.model.AttachedFile;
 import github.anandb.netbeans.support.PluginSettings;
-import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.UIUtils;
+import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.session.StatusController;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 

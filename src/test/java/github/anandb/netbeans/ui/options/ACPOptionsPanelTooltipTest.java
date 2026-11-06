@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.options;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -17,6 +17,8 @@ import javax.swing.JPanel;
 
 import org.junit.jupiter.api.Test;
 import org.openide.util.NbBundle;
+import github.anandb.netbeans.ui.UIBundle;
+import github.anandb.netbeans.ui.UiTestSupport;
 
 /**
  * Guards the tooltip wrapping contract: every options tooltip is HTML with a pixel width

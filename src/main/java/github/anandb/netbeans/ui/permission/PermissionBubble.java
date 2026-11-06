@@ -29,9 +29,9 @@ import github.anandb.netbeans.support.ToolCallDiffParser.FileChange;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.chat.CollapsibleCodePane;
-import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.rendering.IconResourceManager;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
 
 // DSL-LEAF: not a controller — builds a permission request panel inline.
 // Migration target: PermissionBubbleSpec (refs + actions); stays imperative until then.

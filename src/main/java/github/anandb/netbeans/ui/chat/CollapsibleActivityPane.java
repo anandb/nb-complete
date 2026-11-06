@@ -12,9 +12,9 @@ import javax.swing.JPanel;
 import javax.swing.JTextArea;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
-import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.rendering.MarkdownStyledRenderer;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
 
 /**
  * A collapsible pane for displaying AI activity (tool calls, thoughts, etc.)

@@ -49,15 +49,15 @@ import github.anandb.netbeans.support.WobbleAnimator;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 import org.openide.windows.WindowManager;
-import github.anandb.netbeans.ui.ButtonMnemonics;
-import github.anandb.netbeans.ui.UIBundle;
-import github.anandb.netbeans.ui.ButtonRowLayout;
 import github.anandb.netbeans.ui.StartTruncatingLabel;
+import github.anandb.netbeans.ui.ButtonMnemonics;
+import github.anandb.netbeans.ui.ButtonRowLayout;
 import github.anandb.netbeans.ui.StashDiffAction;
-import github.anandb.netbeans.ui.rendering.ThemeManager;
+import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.rendering.FitEditorPane;
 import github.anandb.netbeans.ui.rendering.IconResourceManager;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.assistant.AssistantTopComponent;
 
 // DSL-LEAF: fixed permission request panel below session dropdown, slides open/closed.

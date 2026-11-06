@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.options;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -39,6 +39,7 @@ import org.openide.util.NbBundle;
 import github.anandb.netbeans.support.ShortcutUtils;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
+import github.anandb.netbeans.ui.UIBundle;
 
 /**
  * Modal dialog listing all keyboard shortcuts supported by the plugin.

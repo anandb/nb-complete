@@ -38,11 +38,11 @@ import org.openide.util.RequestProcessor;
 import github.anandb.netbeans.ui.EditorContextCapture;
 import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.chat.ChatThreadPanel;
+import github.anandb.netbeans.ui.composer.AttachmentManager;
 import github.anandb.netbeans.ui.composer.MessageHistory;
 import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
-import github.anandb.netbeans.ui.composer.AttachmentManager;
-import github.anandb.netbeans.ui.platform.SessionService;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.platform.SessionService;
 import github.anandb.netbeans.ui.platform.ProcessService;
 
 /**

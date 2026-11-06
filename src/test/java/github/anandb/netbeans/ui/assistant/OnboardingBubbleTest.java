@@ -8,8 +8,8 @@ import github.anandb.netbeans.support.BinaryResolver;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.TestUiUtils;
+import github.anandb.netbeans.ui.UIBundle;
 
 /** Headless construction tests for the multi-harness onboarding bubble. */
 class OnboardingBubbleTest {

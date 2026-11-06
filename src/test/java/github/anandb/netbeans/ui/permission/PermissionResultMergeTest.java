@@ -16,8 +16,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import github.anandb.netbeans.ui.TestUiUtils;
-import github.anandb.netbeans.ui.chat.MessageFilterManager;
 import github.anandb.netbeans.ui.chat.ChatThreadPanel;
+import github.anandb.netbeans.ui.chat.MessageFilterManager;
 
 /**
  * Verifies that consecutive same-allowed permission results merge into a

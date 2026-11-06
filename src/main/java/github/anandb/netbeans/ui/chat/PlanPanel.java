@@ -33,10 +33,10 @@ import javax.swing.SwingUtilities;
 import github.anandb.netbeans.model.ModelRecords.PlanEntry;
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.NbBundle;
-import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.UIUtils;
-import github.anandb.netbeans.ui.rendering.ThemeManager;
+import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
 
 /**
  * Live plan slideout docked above the message thread. Takes its height from

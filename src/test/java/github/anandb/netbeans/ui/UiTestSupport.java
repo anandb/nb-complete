@@ -13,13 +13,13 @@ import org.junit.jupiter.api.Assumptions;
  * ({@code DISPLAY}, and {@code WAYLAND_DISPLAY} for a Wayland session where AWT still needs
  * XWayland) or an {@code xvfb-run} install, which is how a headless build obtains one.</p>
  */
-final class UiTestSupport {
+public final class UiTestSupport {
 
     private UiTestSupport() {
     }
 
     /** Skips unless a desktop session or an Xvfb launcher is available. */
-    static void assumeGraphicsStack() {
+    public static void assumeGraphicsStack() {
         Assumptions.assumeTrue(hasDisplay() || xvfbRunAvailable(), () ->
                 "Skipping layout assertion: no DISPLAY/WAYLAND_DISPLAY and no xvfb-run on PATH. "
                         + "Install xvfb or run the suite under xvfb-run -a.");

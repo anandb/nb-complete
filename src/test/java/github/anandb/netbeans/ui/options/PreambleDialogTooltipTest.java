@@ -1,10 +1,12 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.options;
 
 import org.junit.jupiter.api.Test;
 import org.openide.util.NbBundle;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import github.anandb.netbeans.ui.UIBundle;
+import github.anandb.netbeans.ui.TestUiUtils;
 
 /**
  * The copy-button tooltip carries its structure in the bundle text: one paragraph per

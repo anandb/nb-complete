@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.options;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -22,6 +22,7 @@ import org.openide.util.NbPreferences;
 
 import github.anandb.netbeans.support.HarnessSelection;
 import github.anandb.netbeans.support.PreferenceKeys;
+import github.anandb.netbeans.ui.UIBundle;
 
 /**
  * Guards the harness selector's prepopulation and store rules: a stored id the path

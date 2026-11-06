@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.options;
 
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
@@ -32,6 +32,7 @@ import javax.swing.UIManager;
 import org.openide.util.NbBundle;
 
 import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.ui.UIBundle;
 
 /**
  * Modal dialog for editing the session preamble text.
