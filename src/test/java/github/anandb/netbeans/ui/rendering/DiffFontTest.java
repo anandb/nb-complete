@@ -9,12 +9,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The diff font is derived from the editor font rather than set by the user, so the derivation is
- * what has to stay true: a couple of points smaller, and never below the readability floor.
+ * what has to stay true: one point smaller (floored at 9 pt), and only the size changes.
  */
 class DiffFontTest {
 
     @Test
-    void diffFontRunsTwoPointsBelowTheEditorFont() {
+    void diffFontRunsOnePointBelowTheEditorFont() {
         Font base = IconResourceManager.getMonospaceFont();
         Font diff = IconResourceManager.getDiffMonospaceFont();
 

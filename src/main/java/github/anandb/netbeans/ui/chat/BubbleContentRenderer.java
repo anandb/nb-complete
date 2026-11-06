@@ -338,8 +338,6 @@ class BubbleContentRenderer {
         }
     }
 
-
-
     private int addTextAndTableSegments(String text, ColorTheme theme, int compIdx, boolean incremental) {
         TableDetector.TableResult result = TableDetector.detectTables(text, incremental);
         int currentIdx = compIdx;

@@ -300,7 +300,14 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 NbBundle.getMessage(UIBundle.class, "TT_SupportProject"),
                 e -> SupportLink.confirmAndOpen((url, key) -> setStatus(key, url)));
         JPanel rightPanel = layoutBuilder.getRightStatusPanel();
-        rightPanel.add(supportBtn, rightPanel.getComponentZOrder(attachmentUiHandler.getButton()));
+        int attachmentIndex = rightPanel.getComponentZOrder(attachmentUiHandler.getButton());
+        // -1 means the attachment button is not a child; append rather than hand the sentinel
+        // to add(), whose -1 is documented as "append" but reads like an illegal index.
+        if (attachmentIndex >= 0) {
+            rightPanel.add(supportBtn, attachmentIndex);
+        } else {
+            rightPanel.add(supportBtn);
+        }
         if (pc != null) {
             pc.setHarnessListener(caps -> SwingUtilities.invokeLater(
                     () -> applyHarnessCapabilities(caps)));
