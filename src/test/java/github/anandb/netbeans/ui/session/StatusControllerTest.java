@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.session;
 
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import github.anandb.netbeans.ui.ContextUsageMeter;
 import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
 
 /**

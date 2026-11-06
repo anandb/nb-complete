@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.session;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -47,8 +47,6 @@ import github.anandb.netbeans.contract.ProcessControl;
 import org.openide.util.Lookup;
 import org.openide.util.RequestProcessor;
 
-import github.anandb.netbeans.ui.platform.PlatformBridge;
-import github.anandb.netbeans.ui.platform.SessionService;
 
 import java.awt.Rectangle;
 import java.awt.geom.Rectangle2D;
@@ -56,7 +54,13 @@ import java.util.Locale;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComponent;
 import javax.swing.JPopupMenu;
+import github.anandb.netbeans.ui.UIUtils;
+import github.anandb.netbeans.ui.UIBundle;
+import github.anandb.netbeans.ui.ThemeManager;
+import github.anandb.netbeans.ui.MiniAssistantDialog;
 import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.platform.SessionService;
 
 // DSL-LEAF: not a view-pure form — builds the agent/model/thinking combo panel
 // (GridBagLayout). Migration target: OptionsFormSpec + ConfigComboSpec; the
@@ -328,18 +332,18 @@ public class ConfigPanelController {
         });
     }
 
-    JComboBox<ConfigItem> getModelCombo() { return modelCombo; }
+    public JComboBox<ConfigItem> getModelCombo() { return modelCombo; }
     public JButton getCopyModelBtn() { return copyModelBtn; }
 
-    JComboBox<ConfigItem> getModeCombo() { return modeCombo; }
+    public JComboBox<ConfigItem> getModeCombo() { return modeCombo; }
 
     /** Test seam: the mode combo's label (see {@link #syncModeLabel()}). */
     JLabel getModeLabel() { return modeLabel; }
 
-    JComboBox<ConfigItem> getThinkingCombo() { return thinkingCombo; }
+    public JComboBox<ConfigItem> getThinkingCombo() { return thinkingCombo; }
 
     /** Prevents SSE/RPC-triggered combo repopulation while user picks model/level. */
-    void setConfigConfirmActive(boolean active) { this.configConfirmActive = active; }
+    public void setConfigConfirmActive(boolean active) { this.configConfirmActive = active; }
 
     /** Returns the server config id for the thinking/effort option ("effort" on OpenCode's ACP). */
     private String thinkingConfigId() {

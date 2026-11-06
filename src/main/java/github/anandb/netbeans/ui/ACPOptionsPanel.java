@@ -64,8 +64,8 @@ import github.anandb.netbeans.support.Logger;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import github.anandb.netbeans.support.PreferenceKeys;
-import github.anandb.netbeans.ui.platform.PlatformBridge;
 import org.openide.awt.NotificationDisplayer;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.SessionService;
 
 // DSL-LEAF: keep imperative, wrap via UI.of(...) — NetBeans Options panel

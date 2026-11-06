@@ -34,12 +34,15 @@ import github.anandb.netbeans.support.GlobalOpencodeConfig;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.ProjectPaths;
 import github.anandb.netbeans.support.TimingConstants;
-import github.anandb.netbeans.ui.platform.PlatformBridge;
-import github.anandb.netbeans.ui.platform.ProcessService;
-import github.anandb.netbeans.ui.platform.ProjectContext;
-import github.anandb.netbeans.ui.platform.SessionService;
 import github.anandb.netbeans.ui.chat.ChatThreadPanel;
 import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
+import github.anandb.netbeans.ui.session.SessionLifecycleHandler;
+import github.anandb.netbeans.ui.session.StatusController;
+import github.anandb.netbeans.ui.session.ConfigPanelController;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.platform.SessionService;
+import github.anandb.netbeans.ui.platform.ProjectContext;
+import github.anandb.netbeans.ui.platform.ProcessService;
 
 /**
  * Manages the component lifecycle: open, activate, deactivate, close, and remove notify.

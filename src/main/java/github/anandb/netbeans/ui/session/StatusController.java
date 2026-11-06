@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.session;
 
 import github.anandb.netbeans.support.Logger;
 import java.awt.CardLayout;
@@ -10,6 +10,8 @@ import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import org.openide.util.NbBundle;
+import github.anandb.netbeans.ui.ContextUsageMeter;
+import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
 
 /**

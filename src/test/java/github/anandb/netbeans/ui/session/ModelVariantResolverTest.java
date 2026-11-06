@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.session;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -9,14 +9,14 @@ import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.model.ModelRecords.ConfigItem;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionConfigSelectOption;
-import github.anandb.netbeans.ui.platform.PlatformBridge;
-import github.anandb.netbeans.ui.platform.SessionService;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.platform.SessionService;
 
 /**
  * The model dropdown is built from the parsed variant map, so a model id must only

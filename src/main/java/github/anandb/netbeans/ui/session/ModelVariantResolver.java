@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.session;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

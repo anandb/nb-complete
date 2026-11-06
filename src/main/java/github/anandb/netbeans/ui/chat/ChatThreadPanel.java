@@ -65,19 +65,19 @@ import org.openide.util.Lookup;
 
 import static org.apache.commons.lang3.StringUtils.defaultString;
 import static org.apache.commons.lang3.StringUtils.isBlank;
-import github.anandb.netbeans.ui.ColorTheme;
-import github.anandb.netbeans.ui.ConversationExporter;
-import github.anandb.netbeans.ui.GlobalConfigBubble;
-import github.anandb.netbeans.ui.HtmlConversationExporter;
-import github.anandb.netbeans.ui.OnboardingBubble;
-import github.anandb.netbeans.ui.PermissionBubble;
-import github.anandb.netbeans.ui.RoundedPanel;
-import github.anandb.netbeans.ui.ScrollablePanel;
-import github.anandb.netbeans.ui.StartupInfoBubble;
-import github.anandb.netbeans.ui.ThemeManager;
-import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.UIUtils;
+import github.anandb.netbeans.ui.PermissionBubble;
+import github.anandb.netbeans.ui.ColorTheme;
+import github.anandb.netbeans.ui.StartupInfoBubble;
+import github.anandb.netbeans.ui.UIBundle;
+import github.anandb.netbeans.ui.ConversationExporter;
+import github.anandb.netbeans.ui.ThemeManager;
+import github.anandb.netbeans.ui.HtmlConversationExporter;
+import github.anandb.netbeans.ui.ScrollablePanel;
+import github.anandb.netbeans.ui.RoundedPanel;
 import github.anandb.netbeans.ui.WelcomeScreen;
+import github.anandb.netbeans.ui.OnboardingBubble;
+import github.anandb.netbeans.ui.session.GlobalConfigBubble;
 
 // DSL-CONTROLLER: not a view — flushTimer/messageQueue EDT bridge + trimMessages/cachedMessages.
 public class ChatThreadPanel extends JPanel {

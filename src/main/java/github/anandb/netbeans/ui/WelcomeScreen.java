@@ -29,9 +29,9 @@ import org.openide.util.NbBundle;
 
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.support.Logger;
+import org.openide.util.Lookup;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.SessionService;
-import org.openide.util.Lookup;
 
 // DSL-LEAF: not a controller — static factory that builds the welcome/session
 // list view. The DSL migration ports build to WelcomeSpec; the

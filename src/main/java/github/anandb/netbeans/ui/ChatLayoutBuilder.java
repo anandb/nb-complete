@@ -51,7 +51,6 @@ import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.ProjectPaths;
 import github.anandb.netbeans.support.UserGuideOpener;
-import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.contract.UpdateCheckerControl;
@@ -62,14 +61,16 @@ import github.anandb.netbeans.support.BrowserUtils;
 import javax.swing.JComponent;
 import javax.swing.Timer;
 import org.netbeans.api.project.Project;
-import github.anandb.netbeans.ui.chat.ChatThreadPanel;
 import github.anandb.netbeans.ui.chat.MessageFilterManager;
+import github.anandb.netbeans.ui.chat.ChatThreadPanel;
 import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
+import github.anandb.netbeans.ui.session.ConfigPanelController;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 // DSL-CONTROLLER: not a view — newSessionDebounceTimer (300ms) lives here per
 // AGENTS.md. Construction body is the Phase 2 seam target (ChatLayoutSpec);
 // the debounce timer stays imperative.
-final class ChatLayoutBuilder {
+public final class ChatLayoutBuilder {
 
     private final AssistantTopComponent topComponent;
     private final ChatThreadPanel chatPanel;
@@ -975,7 +976,7 @@ final class ChatLayoutBuilder {
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).addPreferenceChangeListener(miniAssistantPrefListener);
     }
 
-    static boolean isShowingHidden() {
+    public static boolean isShowingHidden() {
         return PluginSettings.isShowHiddenSessions();
     }
 

@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.session;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -24,9 +24,6 @@ import org.openide.util.Lookup;
 import org.openide.util.NbPreferences;
 import org.openide.util.NbBundle;
 
-import github.anandb.netbeans.ui.platform.PlatformBridge;
-import github.anandb.netbeans.ui.platform.ProcessService;
-import github.anandb.netbeans.ui.platform.SessionService;
 import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.contract.RpcFailure;
 import github.anandb.netbeans.contract.SessionQuery;
@@ -38,10 +35,15 @@ import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.SteerEchoes;
 import github.anandb.netbeans.support.VcsUtils;
 import org.openide.util.RequestProcessor;
+import github.anandb.netbeans.ui.EditorContextCapture;
+import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.chat.ChatThreadPanel;
-import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
 import github.anandb.netbeans.ui.composer.AttachmentManager;
 import github.anandb.netbeans.ui.composer.MessageHistory;
+import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.platform.SessionService;
+import github.anandb.netbeans.ui.platform.ProcessService;
 
 /**
  * Handles sending user messages and stopping message processing.

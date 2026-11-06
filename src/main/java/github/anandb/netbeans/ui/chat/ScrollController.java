@@ -25,8 +25,8 @@ import javax.swing.SwingUtilities;
 
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.NbBundle;
-import github.anandb.netbeans.ui.ThemeManager;
 import github.anandb.netbeans.ui.UIBundle;
+import github.anandb.netbeans.ui.ThemeManager;
 
 public class ScrollController implements KeyEventDispatcher {
     private static final Logger LOG = Logger.from(ScrollController.class);

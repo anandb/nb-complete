@@ -24,7 +24,7 @@ import org.openide.util.NbBundle;
  * thinking animation); this meter is persistent state and never written through
  * {@code StatusController.show()}.
  */
-final class ContextUsageMeter extends JComponent {
+public final class ContextUsageMeter extends JComponent {
 
     private static final int WIDTH = 72;
     private static final int BAR_HEIGHT = 8;
@@ -52,7 +52,7 @@ final class ContextUsageMeter extends JComponent {
         return getPreferredSize();
     }
 
-    ContextUsageMeter() {
+    public ContextUsageMeter() {
         setOpaque(false);
         setName("contextUsageMeter");
         // getAccessibleContext() is null until the component is shown; set the
@@ -78,7 +78,7 @@ final class ContextUsageMeter extends JComponent {
     /** Sets used/size and the tooltip. Unknown size (≤ 0) resets to an empty
      *  fill with an "unavailable" tooltip, so a session switch never shows
      *  stale data. Fraction is clamped to [0, 1]. */
-    void setUsage(long used, long size) {
+    public void setUsage(long used, long size) {
         if (size <= 0) {
             fraction = UNKNOWN_FRACTION;
             setToolTipText(NbBundle.getMessage(UIBundle.class,
@@ -96,13 +96,13 @@ final class ContextUsageMeter extends JComponent {
         repaint();
     }
 
-    void clear() {
+    public void clear() {
         fraction = UNKNOWN_FRACTION;
         setToolTipText(null);
         repaint();
     }
 
-    double getFraction() {
+    public double getFraction() {
         return fraction;
     }
 

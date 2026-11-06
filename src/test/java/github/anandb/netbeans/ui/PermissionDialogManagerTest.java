@@ -3,7 +3,6 @@ package github.anandb.netbeans.ui;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import github.anandb.netbeans.contract.SessionControl;
-import github.anandb.netbeans.ui.platform.SessionService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +32,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import github.anandb.netbeans.ui.chat.ChatThreadPanel;
+import github.anandb.netbeans.ui.platform.SessionService;
 
 class PermissionDialogManagerTest {
 

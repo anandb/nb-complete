@@ -12,8 +12,8 @@ import javax.swing.JPanel;
 import javax.swing.JTextArea;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
-import github.anandb.netbeans.ui.ColorTheme;
 import github.anandb.netbeans.ui.MarkdownStyledRenderer;
+import github.anandb.netbeans.ui.ColorTheme;
 import github.anandb.netbeans.ui.ThemeManager;
 
 /**

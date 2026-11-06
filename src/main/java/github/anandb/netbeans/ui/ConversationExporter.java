@@ -28,7 +28,6 @@ import org.openide.util.NbBundle;
 import org.openide.util.RequestProcessor;
 import org.openide.NotifyDescriptor;
 import org.openide.DialogDisplayer;
-import github.anandb.netbeans.ui.chat.ChatThreadPanel;
 import github.anandb.netbeans.ui.chat.CollapsibleToolPane;
 import github.anandb.netbeans.ui.chat.MessageBubble;
 

@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.session;
 
 import javax.swing.JComboBox;
 import javax.swing.SwingUtilities;
@@ -6,10 +6,10 @@ import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.support.Logger;
-
+import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.SessionService;
-import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
+
 
 /**
  * Handles session dropdown popup behavior: tracking session selection changes

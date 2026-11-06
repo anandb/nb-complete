@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.session;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import github.anandb.netbeans.contract.ProcessControl;
@@ -10,8 +10,6 @@ import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.support.MapperSupplier;
-import github.anandb.netbeans.ui.platform.ProcessService;
-import github.anandb.netbeans.ui.platform.SessionService;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
@@ -36,9 +34,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import github.anandb.netbeans.ui.chat.ChatThreadPanel;
-import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
 import github.anandb.netbeans.ui.composer.AttachmentManager;
 import github.anandb.netbeans.ui.composer.MessageHistory;
+import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
+import github.anandb.netbeans.ui.platform.SessionService;
+import github.anandb.netbeans.ui.platform.ProcessService;
+import github.anandb.netbeans.ui.TestUiUtils;
 
 /**
  * The three mid-turn routes and what a failed send does to the turn.

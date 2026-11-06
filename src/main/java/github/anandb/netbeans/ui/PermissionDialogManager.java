@@ -19,9 +19,9 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PermissionAutoAllow;
 import github.anandb.netbeans.support.ToolCallDiffParser.FileChange;
 import github.anandb.netbeans.support.ToolContextExtractor;
+import github.anandb.netbeans.ui.chat.ChatThreadPanel;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.SessionService;
-import github.anandb.netbeans.ui.chat.ChatThreadPanel;
 
 // DSL-CONTROLLER: orchestrates permission request in the header panel + adds result to chat.
 final class PermissionDialogManager {

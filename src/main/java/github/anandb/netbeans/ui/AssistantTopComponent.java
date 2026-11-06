@@ -54,9 +54,6 @@ import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.ProjectPaths;
 
-import github.anandb.netbeans.ui.platform.PlatformBridge;
-import github.anandb.netbeans.ui.platform.ProjectContext;
-import github.anandb.netbeans.ui.platform.SessionService;
 import java.awt.Frame;
 import java.awt.Window;
 import java.awt.Rectangle;
@@ -71,12 +68,21 @@ import org.netbeans.api.project.Project;
 import java.util.prefs.Preferences;
 import github.anandb.netbeans.ui.chat.ChatThreadPanel;
 import github.anandb.netbeans.ui.chat.PlanPanel;
-import github.anandb.netbeans.ui.composer.AttachmentUiHandler;
-import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
-import github.anandb.netbeans.ui.composer.AttachmentManager;
-import github.anandb.netbeans.ui.composer.InputHandler;
 import github.anandb.netbeans.ui.composer.AutocompleteManager;
+import github.anandb.netbeans.ui.composer.AttachmentManager;
+import github.anandb.netbeans.ui.composer.AttachmentUiHandler;
+import github.anandb.netbeans.ui.composer.InputHandler;
 import github.anandb.netbeans.ui.composer.MessageHistory;
+import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
+import github.anandb.netbeans.ui.session.SessionLifecycleHandler;
+import github.anandb.netbeans.ui.session.MessageSender;
+import github.anandb.netbeans.ui.session.StatusController;
+import github.anandb.netbeans.ui.session.ConfigPanelController;
+import github.anandb.netbeans.ui.session.SessionDropdownHandler;
+import github.anandb.netbeans.ui.session.MessageQueueManager;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.platform.SessionService;
+import github.anandb.netbeans.ui.platform.ProjectContext;
 
 
 @ConvertAsProperties(
@@ -493,7 +499,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
     }
 
-    void renameCurrentSession() {
+    public void renameCurrentSession() {
         String currentId = sessionService.get().getCurrentSessionId();
         if (currentId == null) {
             return;
@@ -682,7 +688,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         componentLifecycleHandler.showProjectPickerPopup(parent);
     }
 
-    void createNewSession() {
+    public void createNewSession() {
         Project[] projects = projectContext.getAllOpenProjects();
         if (projects == null || projects.length == 0) {
             return;
@@ -701,7 +707,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
     }
 
-    void stopMessage() {
+    public void stopMessage() {
         if (permissionDialogManager != null) {
             permissionDialogManager.rejectAllRequests();
         }
@@ -800,7 +806,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
     }
 
-    void reloadCurrentSession() {
+    public void reloadCurrentSession() {
         String currentId = sessionService.get().getCurrentSessionId();
         if (currentId != null) {
             // A toolbar reload needs the full transcript, so it must replay via
@@ -1144,7 +1150,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         repaint();
     }
 
-    void promptRestartServer() {
+    public void promptRestartServer() {
         componentLifecycleHandler.promptRestartServer(null);
     }
 

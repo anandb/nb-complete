@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.session;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import github.anandb.netbeans.contract.ProcessControl;
@@ -7,8 +7,6 @@ import github.anandb.netbeans.contract.SlashCommandInterceptor;
 import github.anandb.netbeans.model.AttachedFile;
 import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.model.ProcessedMessage;
-import github.anandb.netbeans.ui.platform.ProcessService;
-import github.anandb.netbeans.ui.platform.SessionService;
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -29,9 +27,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import github.anandb.netbeans.ui.chat.ChatThreadPanel;
-import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
 import github.anandb.netbeans.ui.composer.AttachmentManager;
 import github.anandb.netbeans.ui.composer.MessageHistory;
+import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
+import github.anandb.netbeans.ui.platform.SessionService;
+import github.anandb.netbeans.ui.platform.ProcessService;
+import github.anandb.netbeans.ui.TestUiUtils;
 
 /**
  * The permission guard sits below the slash interception, so local commands keep working
@@ -276,7 +277,7 @@ class MessageSenderPermissionGuardTest {
     /** Invokes the failure handler with a payload carrying {@code attachedFiles}. */
     private void callOnPromptFailed(int gen, boolean steeringSend, String text,
             List<AttachedFile> attachedFiles) throws Exception {
-        Class<?> payloadType = Class.forName("github.anandb.netbeans.ui.MessageSender$PromptPayload");
+        Class<?> payloadType = Class.forName("github.anandb.netbeans.ui.session.MessageSender$PromptPayload");
         var ctor = payloadType.getDeclaredConstructor(List.class, String.class, List.class);
         ctor.setAccessible(true);
         Object payload = ctor.newInstance(List.of(), "echo-1", attachedFiles);

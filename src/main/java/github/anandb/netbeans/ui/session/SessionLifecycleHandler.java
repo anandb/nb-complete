@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.session;
 
 import java.util.HashMap;
 import java.util.List;
@@ -30,15 +30,19 @@ import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.model.TurnEndDecision;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.ProjectPaths;
-import github.anandb.netbeans.ui.platform.PlatformBridge;
-import github.anandb.netbeans.ui.platform.ProcessService;
-import github.anandb.netbeans.ui.platform.ProjectContext;
-import github.anandb.netbeans.ui.platform.SessionService;
 import org.netbeans.api.project.Project;
 import org.openide.util.NbBundle;
+import github.anandb.netbeans.ui.ChatLayoutBuilder;
+import github.anandb.netbeans.ui.UIBundle;
+import github.anandb.netbeans.ui.ThemeManager;
+import github.anandb.netbeans.ui.MiniAssistantDialog;
 import github.anandb.netbeans.ui.chat.ChatThreadPanel;
 import github.anandb.netbeans.ui.chat.PlanPanel;
 import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.platform.SessionService;
+import github.anandb.netbeans.ui.platform.ProjectContext;
+import github.anandb.netbeans.ui.platform.ProcessService;
 
 /**
  * Handles all SessionListener callbacks, updating the chat panel, session dropdown,
@@ -143,11 +147,11 @@ public class SessionLifecycleHandler implements SessionListener {
         this.pendingUiCleanup = pendingUiCleanup;
     }
 
-    boolean isOptionsPanelCollapsed() {
+    public boolean isOptionsPanelCollapsed() {
         return optionsPanelCollapsed;
     }
 
-    void setOptionsPanelCollapsed(boolean collapsed) {
+    public void setOptionsPanelCollapsed(boolean collapsed) {
         optionsPanelCollapsed = collapsed;
     }
 

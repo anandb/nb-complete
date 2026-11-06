@@ -28,9 +28,9 @@ import github.anandb.netbeans.contract.SlashCommandInterceptor;
 import github.anandb.netbeans.model.ModelRecords.CommandInfo;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.ui.ThemeManager;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.ProcessService;
-import github.anandb.netbeans.ui.ThemeManager;
 
 // DSL-CONTROLLER: not a view — autocomplete popup state (filter, navigate,
 // enter-to-send). The popup JPopupMenu is a leaf the DSL wraps; the keyboard

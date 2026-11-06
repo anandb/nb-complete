@@ -64,8 +64,8 @@ import java.util.ArrayList;
 import java.util.List;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.UsageStatsFormat;
-import github.anandb.netbeans.ui.platform.PlatformBridge;
 import static github.anandb.netbeans.ui.UIUtils.MONO_STACK;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 /**
  * Token and cost panel. Renders the OVERVIEW and COST &amp; TOKENS blocks from

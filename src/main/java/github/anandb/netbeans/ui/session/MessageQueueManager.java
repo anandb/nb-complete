@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.session;
 
 import java.awt.AlphaComposite;
 import java.awt.Color;
@@ -25,6 +25,9 @@ import javax.swing.Timer;
 import org.openide.util.NbBundle;
 
 import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.ui.UIUtils;
+import github.anandb.netbeans.ui.UIBundle;
+import github.anandb.netbeans.ui.ThemeManager;
 
 /**
  * Manages a queue of user messages posted while the bot is processing.
@@ -53,7 +56,7 @@ public final class MessageQueueManager {
      *  button stays hidden. See {@code AssistantTopComponent.applyHarnessCapabilities}. */
     private volatile boolean enabled = true;
 
-    MessageQueueManager() {
+    public MessageQueueManager() {
         int iconSize = Math.max(PluginSettings.getToolbarIconSize(), 32);
         this.iconSize = iconSize;
         baseIcon = ThemeManager.getIcon("queue.svg", iconSize);
@@ -90,19 +93,19 @@ public final class MessageQueueManager {
     }
 
     /** Returns the toolbar button to be added to the layout. */
-    JButton getButton() {
+    public JButton getButton() {
         return queueBtn;
     }
 
     /** Sets the callback invoked when "Send Now" is chosen from the context menu. */
-    void setSendNowCallback(Runnable callback) {
+    public void setSendNowCallback(Runnable callback) {
         this.sendNowCallback = callback;
     }
 
     /** Enables or disables queueing. When disabled, {@link #enqueue} is a no-op
      *  and the toolbar button is forced hidden (queueing is only used by the
      *  goose agent). */
-    void setEnabled(boolean enabled) {
+    public void setEnabled(boolean enabled) {
         this.enabled = enabled;
         if (!enabled) {
             cancelAll();
@@ -147,7 +150,7 @@ public final class MessageQueueManager {
      *
      * @return combined text, or {@code null} if the queue was empty
      */
-    String flushAll() {
+    public String flushAll() {
         if (queuedMessages.isEmpty()) {
             return null;
         }

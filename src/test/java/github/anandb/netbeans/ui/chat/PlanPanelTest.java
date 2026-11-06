@@ -18,9 +18,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import javax.swing.JScrollPane;
+import github.anandb.netbeans.ui.TestUiUtils;
 import github.anandb.netbeans.ui.ColorTheme;
 import github.anandb.netbeans.ui.ThemeManager;
-import github.anandb.netbeans.ui.TestUiUtils;
 
 class PlanPanelTest {
 
