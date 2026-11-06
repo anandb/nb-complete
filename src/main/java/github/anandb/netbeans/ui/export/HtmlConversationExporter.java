@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.export;
 
 import java.awt.Component;
 import java.io.File;
@@ -30,6 +30,8 @@ import github.anandb.netbeans.ui.chat.MessageBubble;
 import github.anandb.netbeans.ui.chat.CollapsibleToolPane;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
+import github.anandb.netbeans.ui.UIUtils;
+import github.anandb.netbeans.ui.UIBundle;
 
 /**
  * Stateless utility for exporting conversation history to self-contained
