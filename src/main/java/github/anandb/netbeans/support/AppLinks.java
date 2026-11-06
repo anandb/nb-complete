@@ -16,8 +16,16 @@ public final class AppLinks {
     private static final String DEFAULT_CHANGELOG_URL =
             "https://github.com/anandb/nb-complete/blob/main/CHANGELOG.md";
 
+    /** Funding link — shown in Help and the empty-state screen, never as a popup. */
+    private static final String DEFAULT_SUPPORT_URL = "https://buymeacoffee.com/anandb";
+
+    /** Issue tracker behind Help ▸ Report an Issue. */
+    private static final String DEFAULT_ISSUES_URL = "https://github.com/anandb/nb-complete/issues/";
+
     private static final String NBM_BASE_PROP = "beanbot.nbm.base";
     private static final String CHANGELOG_URL_PROP = "beanbot.changelog.url";
+    private static final String SUPPORT_URL_PROP = "beanbot.support.url";
+    private static final String ISSUES_URL_PROP = "beanbot.issues.url";
 
     private AppLinks() {}
 
@@ -47,6 +55,19 @@ public final class AppLinks {
 
     private static String trimSlash(String base) {
         return base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
+    }
+
+    /**
+     * @return the project's funding link, overridable with {@code -Dbeanbot.support.url} so a fork
+     *         can point at its own page.
+     */
+    public static String supportUrl() {
+        return System.getProperty(SUPPORT_URL_PROP, DEFAULT_SUPPORT_URL);
+    }
+
+    /** @return the issue tracker, overridable with {@code -Dbeanbot.issues.url}. */
+    public static String issuesUrl() {
+        return System.getProperty(ISSUES_URL_PROP, DEFAULT_ISSUES_URL);
     }
 
     /** @return the custom user-guide URL, or {@code null} when none is configured. */

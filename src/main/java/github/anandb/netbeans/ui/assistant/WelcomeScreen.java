@@ -25,9 +25,12 @@ import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.apache.commons.lang3.StringUtils.left;
 
+import org.openide.awt.StatusDisplayer;
 import org.openide.util.NbBundle;
 
 import github.anandb.netbeans.model.Session;
+import github.anandb.netbeans.support.AppLinks;
+import github.anandb.netbeans.support.BrowserUtils;
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.Lookup;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
@@ -107,7 +110,35 @@ public final class WelcomeScreen {
             }
         }
 
+        messagesContainer.add(Box.createVerticalStrut(16));
+        messagesContainer.add(createSupportLine());
+
         messagesContainer.revalidate();
+    }
+
+    /**
+     * One muted line at the end of the empty state: the funding link, with the same weight and
+     * colour as the surrounding subtext. Present on every empty state on purpose — it is
+     * information in a panel that is otherwise empty, not an interruption, and it must never grow
+     * into a card, a badge or a popup.
+     */
+    private static JLabel createSupportLine() {
+        ColorTheme theme = ThemeManager.getCurrentTheme();
+        JLabel support = new JLabel(NbBundle.getMessage(UIBundle.class, "LBL_WelcomeSupport"));
+        support.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
+        support.setForeground(theme.mutedForeground());
+        support.setBorder(BorderFactory.createEmptyBorder(0, 12, 16, 12));
+        support.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        support.setToolTipText(NbBundle.getMessage(UIBundle.class, "HINT_WelcomeSupport"));
+        support.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                BrowserUtils.openOrCopyUrl(AppLinks.supportUrl(), "STATUS_SupportUrlCopied",
+                        (url, key) -> StatusDisplayer.getDefault().setStatusText(
+                                NbBundle.getMessage(UIBundle.class, key, url)));
+            }
+        });
+        return support;
     }
 
     private static JButton createSelectionButton(String text, String subtext) {

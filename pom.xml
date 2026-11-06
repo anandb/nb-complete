@@ -7,7 +7,7 @@
     <packaging>nbm</packaging>
 
     <name>Coding Assistant</name>
-    <description>An AI pair programmer that lives inside your NetBeans editor — ask, explain, generate, and refactor code without leaving the IDE.</description>
+    <description>An AI pair programmer that lives inside your NetBeans editor — ask, explain, generate, and refactor code without leaving the IDE. Free and open source; you can support its development at https://buymeacoffee.com/anandb</description>
     <url>https://github.com/anandb/nb-complete</url>
 
     <licenses>
