@@ -898,6 +898,7 @@ public class MiniAssistantDialog extends JDialog {
             saveBounds();
         }
         stopElapsedTimer();
+        stopTokenPolling();
         if (keyDispatcher != null) {
             KeyboardFocusManager.getCurrentKeyboardFocusManager()
                     .removeKeyEventDispatcher(keyDispatcher);

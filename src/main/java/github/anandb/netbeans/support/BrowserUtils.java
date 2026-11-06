@@ -9,24 +9,35 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.function.BiConsumer;
 
+import javax.swing.SwingUtilities;
+
+import org.openide.util.RequestProcessor;
+
 /**
  * Opens a URL in the browser, or copies to clipboard as fallback.
- * Pure utility with no Swing or application-layer dependencies.
+ * All I/O runs on a background thread; fallback callbacks are delivered on the EDT.
  */
 public final class BrowserUtils {
     private static final Logger LOG = Logger.from(BrowserUtils.class);
 
+    /** Serialises browser/clipboard work so a burst of clicks cannot launch several browsers. */
+    private static final RequestProcessor BROWSER_IO = new RequestProcessor("beanbot-browser-io", 1);
+
     private BrowserUtils() {}
 
     /**
-     * Attempts to open the URL in the system browser.
-     * Falls back to copying the URL to the clipboard.
+     * Attempts to open the URL in the system browser without blocking the caller. On failure the
+     * URL is copied to the clipboard instead.
      *
      * @param url         the URL to open
-     * @param onFallback  callback invoked on fallback with (url, statusKey). May be null.
+     * @param onFallback  callback invoked on the EDT with (url, statusKey) on fallback. May be null.
      * @param statusKey   optional status message key for the fallback path
      */
     public static void openOrCopyUrl(String url, String statusKey, BiConsumer<String, String> onFallback) {
+        BROWSER_IO.post(() -> openOrCopyUrlOnWorker(url, statusKey, onFallback));
+    }
+
+    private static void openOrCopyUrlOnWorker(String url, String statusKey, BiConsumer<String, String> onFallback) {
         if (Desktop.isDesktopSupported()
                 && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
             try {
@@ -42,7 +53,7 @@ public final class BrowserUtils {
             Toolkit.getDefaultToolkit().getSystemClipboard()
                     .setContents(new StringSelection(url), null);
             if (onFallback != null) {
-                onFallback.accept(url, statusKey);
+                SwingUtilities.invokeLater(() -> onFallback.accept(url, statusKey));
             }
         } catch (Exception ex) {
             LOG.warn("Clipboard access failed: {0}", ExceptionUtils.getMessage(ex));

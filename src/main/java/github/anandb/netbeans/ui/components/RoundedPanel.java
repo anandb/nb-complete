@@ -40,9 +40,9 @@ public class RoundedPanel extends JPanel {
     private boolean showBorder = true;
     private boolean dropShadow; // soft drop shadow drawn behind the rounded fill
     private final int shadowOffset = 2; // shadow offset (px) down/right of the fill
-    /** Shadow pass alphas, darkest first — precomputed so painting allocates no Colors. */
+    /** Shadow pass alphas, outermost first — precomputed so painting allocates no Colors. */
     private static final Color[] SHADOW_PASS_COLORS = {
-        new Color(0, 0, 0, 60), new Color(0, 0, 0, 40), new Color(0, 0, 0, 20)
+        new Color(0, 0, 0, 20), new Color(0, 0, 0, 40), new Color(0, 0, 0, 60)
     };
     private RoundRectangle2D.Float cachedShape;
     private RoundRectangle2D.Float cachedBorderShape;

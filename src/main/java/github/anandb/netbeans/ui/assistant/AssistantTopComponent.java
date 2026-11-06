@@ -999,6 +999,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     @Override
     public void removeNotify() {
         stopAttentionAnimation();
+        queueManager.stopAnimations();
         if (turnEndFlushTimer != null) {
             turnEndFlushTimer.stop();
         }

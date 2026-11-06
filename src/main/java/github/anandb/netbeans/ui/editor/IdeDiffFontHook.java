@@ -6,7 +6,9 @@ import java.awt.Font;
 import java.awt.event.ContainerAdapter;
 import java.awt.event.ContainerEvent;
 import java.awt.event.HierarchyEvent;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
 
@@ -54,6 +56,8 @@ public final class IdeDiffFontHook implements Runnable {
     private static final Set<Container> OBSERVED = Collections.newSetFromMap(new WeakHashMap<>());
     /** Panes already carrying the font listener. */
     private static final Set<JTextComponent> WATCHED = Collections.newSetFromMap(new WeakHashMap<>());
+    /** Windows scanned without a diff view, remembered with their child count at that scan. */
+    private static final Map<TopComponent, Integer> SCANNED_WITHOUT_DIFF = new WeakHashMap<>();
 
     @Override
     public void run() {
@@ -63,11 +67,18 @@ public final class IdeDiffFontHook implements Runnable {
         TopComponent.getRegistry().addPropertyChangeListener(evt -> {
             String property = evt.getPropertyName();
             if (TopComponent.Registry.PROP_OPENED.equals(property)) {
-                // The new value is the freshly opened window set; scanning only that keeps the
-                // startup burst of opens linear instead of re-walking every window each time.
-                if (evt.getNewValue() instanceof TopComponent[] opened) {
-                    for (TopComponent tc : opened) {
+                // Apply only to the freshly opened windows. NetBeans delivers an array; accept a
+                // collection too, so a Set-valued event does not degrade to scanning every window.
+                Object opened = evt.getNewValue();
+                if (opened instanceof TopComponent[] windows) {
+                    for (TopComponent tc : windows) {
                         applyTo(tc);
+                    }
+                } else if (opened instanceof Collection<?> windows) {
+                    for (Object window : windows) {
+                        if (window instanceof TopComponent tc) {
+                            applyTo(tc);
+                        }
                     }
                 } else {
                     for (TopComponent tc : TopComponent.getRegistry().getOpened()) {
@@ -87,27 +98,49 @@ public final class IdeDiffFontHook implements Runnable {
     }
 
     private static void applyTo(TopComponent tc) {
-        if (tc == null || !isDiffWindow(tc)) {
+        if (tc == null || WIRED.contains(tc)) {
+            // The first wiring installed listeners on the whole tree; the ContainerListener
+            // styles components added later (including per-file pane swaps), so an activation
+            // must not re-walk a window that is already watched.
             return;
         }
-        if (WIRED.add(tc)) {
-            tc.addHierarchyListener(event -> {
-                if ((event.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0 && tc.isShowing()) {
-                    SwingUtilities.invokeLater(() -> styleWindow(tc));
-                }
-            });
-            LOG.fine("Diff font hook watching window: {0}", tc.getClass().getName());
+        if (!isDiffWindow(tc) || !WIRED.add(tc)) {
+            return;
         }
+        tc.addHierarchyListener(event -> {
+            if ((event.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0 && tc.isShowing()) {
+                SwingUtilities.invokeLater(() -> styleWindow(tc));
+            }
+        });
+        LOG.fine("Diff font hook watching window: {0}", tc.getClass().getName());
         SwingUtilities.invokeLater(() -> styleWindow(tc));
     }
 
     /**
-     * Matched by class name, not by contents: on the first open the window is still empty, and the
-     * Git module's Show Changes / Diff to Head window is not a diff-module class at all.
+     * Matched by class name first; only a window whose class name does not identify it as a diff
+     * view but which might contain one is walked. A negative walk is remembered together with the
+     * window's child count, so an unchanged non-diff window is not walked again on every
+     * activation; a populated tree invalidates the answer.
      */
     private static boolean isDiffWindow(TopComponent tc) {
         String name = tc.getClass().getName();
-        return name.startsWith(DIFF_MODULE_PREFIX) || name.contains("Diff") || containsDiffView(tc);
+        if (name.startsWith(DIFF_MODULE_PREFIX) || name.contains("Diff")) {
+            return true;
+        }
+        int children = tc.getComponentCount();
+        Integer scannedAt = SCANNED_WITHOUT_DIFF.get(tc);
+        if (scannedAt != null && scannedAt == children) {
+            return false;
+        }
+        if (containsDiffView(tc)) {
+            SCANNED_WITHOUT_DIFF.remove(tc);
+            return true;
+        }
+        // An empty window is cheap to re-check and may be populated after this event.
+        if (children > 0) {
+            SCANNED_WITHOUT_DIFF.put(tc, children);
+        }
+        return false;
     }
 
     /**

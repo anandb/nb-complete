@@ -183,6 +183,11 @@ public final class MessageQueueManager {
         });
     }
 
+    /** Stops every repeating animation timer; called when the owning panel is removed. */
+    public void stopAnimations() {
+        runOnEdt(this::stopWobble);
+    }
+
     /** Marshals {@code r} onto the EDT — queue entry points may be called from any thread. */
     private static void runOnEdt(Runnable r) {
         if (SwingUtilities.isEventDispatchThread()) {
