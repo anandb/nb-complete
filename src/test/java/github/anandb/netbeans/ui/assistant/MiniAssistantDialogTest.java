@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.assistant;
 
 import github.anandb.netbeans.support.PreferenceKeys;
 import org.junit.jupiter.api.Test;

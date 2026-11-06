@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.assistant;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.awt.Component;
@@ -43,6 +43,7 @@ import github.anandb.netbeans.ui.platform.ProjectContext;
 import github.anandb.netbeans.ui.platform.ProcessService;
 import github.anandb.netbeans.ui.platform.SessionService;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.UIBundle;
 
 /**
  * Manages the component lifecycle: open, activate, deactivate, close, and remove notify.

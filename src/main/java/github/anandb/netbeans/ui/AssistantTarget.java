@@ -3,6 +3,8 @@ package github.anandb.netbeans.ui;
 import java.awt.EventQueue;
 
 import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.ui.assistant.AssistantTopComponent;
+import github.anandb.netbeans.ui.assistant.MiniAssistantDialog;
 
 /**
  * Routes "Send to Assistant" / "Ask Assistant" actions to either the Mini

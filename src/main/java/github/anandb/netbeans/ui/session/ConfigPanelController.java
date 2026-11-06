@@ -54,13 +54,13 @@ import java.util.Locale;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComponent;
 import javax.swing.JPopupMenu;
-import github.anandb.netbeans.ui.MiniAssistantDialog;
 import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.UIUtils;
 import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.platform.SessionService;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.assistant.MiniAssistantDialog;
 
 // DSL-LEAF: not a view-pure form — builds the agent/model/thinking combo panel
 // (GridBagLayout). Migration target: OptionsFormSpec + ConfigComboSpec; the

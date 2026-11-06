@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.assistant;
 
 import java.awt.Component;
 import java.awt.KeyEventDispatcher;

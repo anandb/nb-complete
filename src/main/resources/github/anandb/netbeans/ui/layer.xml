@@ -26,20 +26,20 @@
         <folder name="Assistant">
             <file name="github-anandb-netbeans-ui-AllowPermissionAction.instance">
                 <attr name="instanceCreate" methodvalue="org.openide.awt.Actions.alwaysEnabled"/>
-                <attr name="delegate" newvalue="github.anandb.netbeans.ui.AllowPermissionAction"/>
+                <attr name="delegate" newvalue="github.anandb.netbeans.ui.permission.AllowPermissionAction"/>
                 <attr name="displayName" bundlevalue="github.anandb.netbeans.ui.Bundle#CTL_AllowPermissionAction"/>
             </file>
         </folder>
         <folder name="Window">
             <file name="github-anandb-netbeans-ui-ToggleAssistantAction.instance">
                 <attr name="instanceCreate" methodvalue="org.openide.awt.Actions.alwaysEnabled"/>
-                <attr name="delegate" newvalue="github.anandb.netbeans.ui.ToggleAssistantAction"/>
+                <attr name="delegate" newvalue="github.anandb.netbeans.ui.assistant.ToggleAssistantAction"/>
                 <attr name="displayName" bundlevalue="github.anandb.netbeans.ui.Bundle#CTL_ToggleAssistantAction"/>
                 <attr name="iconBase" stringvalue="github/anandb/netbeans/ui/icons/logo_window.svg"/>
             </file>
             <file name="github-anandb-netbeans-ui-ToggleMiniAssistantAction.instance">
                 <attr name="instanceCreate" methodvalue="org.openide.awt.Actions.alwaysEnabled"/>
-                <attr name="delegate" newvalue="github.anandb.netbeans.ui.ToggleMiniAssistantAction"/>
+                <attr name="delegate" newvalue="github.anandb.netbeans.ui.assistant.ToggleMiniAssistantAction"/>
                 <attr name="displayName" bundlevalue="github.anandb.netbeans.ui.Bundle#CTL_ToggleMiniAssistantAction"/>
             </file>
         </folder>

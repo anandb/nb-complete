@@ -55,7 +55,7 @@ public final class PulsingToggleButton extends JToggleButton {
     }
 
     /** Starts the pulse from full opacity. Safe to call repeatedly; restarts the beat. */
-    void pulse() {
+    public void pulse() {
         pulseTimer.stop();
         frame = 0;
         setAlpha(1f);
@@ -63,7 +63,7 @@ public final class PulsingToggleButton extends JToggleButton {
     }
 
     /** Cancels a running pulse and restores full opacity. */
-    void stopPulse() {
+    public void stopPulse() {
         pulseTimer.stop();
         frame = 0;
         setAlpha(1f);

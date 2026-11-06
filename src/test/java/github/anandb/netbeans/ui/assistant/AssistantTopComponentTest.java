@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.assistant;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

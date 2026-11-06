@@ -15,11 +15,11 @@ public final class WobblePanel extends JPanel {
 
     private final WobbleAnimator animator = new WobbleAnimator(this);
 
-    void scheduleWobble() {
+    public void scheduleWobble() {
         animator.scheduleStart();
     }
 
-    void stopWobble() {
+    public void stopWobble() {
         animator.stop();
     }
 

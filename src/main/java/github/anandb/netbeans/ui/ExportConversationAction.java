@@ -4,6 +4,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import org.openide.awt.ActionID;
 import org.openide.awt.ActionRegistration;
+import github.anandb.netbeans.ui.assistant.AssistantTopComponent;
 
 @ActionID(category = "Assistant", id = "github.anandb.netbeans.ui.ExportConversationAction")
 @ActionRegistration(displayName = "#CTL_ExportConversationAction")

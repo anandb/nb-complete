@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.assistant;
 
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
@@ -69,6 +69,11 @@ import github.anandb.netbeans.ui.permission.PermissionRequestPanel;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.rendering.RaisedIcon;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.UIBundle;
+import github.anandb.netbeans.ui.ContextUsageMeter;
+import github.anandb.netbeans.ui.UIUtils;
+import github.anandb.netbeans.ui.PulsingToggleButton;
+import github.anandb.netbeans.ui.KeyboardShortcutsDialog;
 
 // DSL-CONTROLLER: not a view — newSessionDebounceTimer (300ms) lives here per
 // AGENTS.md. Construction body is the Phase 2 seam target (ChatLayoutSpec);

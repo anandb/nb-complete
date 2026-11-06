@@ -13,7 +13,7 @@ import javax.swing.Timer;
 
 import github.anandb.netbeans.support.ToolDataExtractor;
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.ui.AssistantTopComponent;
+import github.anandb.netbeans.ui.assistant.AssistantTopComponent;
 
 // DSL-CONTROLLER: not a view — copyRevertTimer handles the click-to-copy → revert-icon
 // animation on assistant bubbles. Stays imperative; DSL wraps the leaf it drives.

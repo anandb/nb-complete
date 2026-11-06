@@ -28,8 +28,8 @@ import org.openide.util.NbBundle;
 import org.openide.util.RequestProcessor;
 import org.openide.NotifyDescriptor;
 import org.openide.DialogDisplayer;
-import github.anandb.netbeans.ui.chat.MessageBubble;
 import github.anandb.netbeans.ui.chat.CollapsibleToolPane;
+import github.anandb.netbeans.ui.chat.MessageBubble;
 
 /**
  * Stateless utility for exporting conversation history to Markdown files.
@@ -164,7 +164,7 @@ public final class ConversationExporter {
 
     /** Notified on the EDT once the export file was written. */
     @FunctionalInterface
-    interface ExportListener {
+    public interface ExportListener {
         void exported(File file);
     }
 
@@ -176,7 +176,7 @@ public final class ConversationExporter {
      * @param defaultName suggested file name (e.g. "session.md")
      * @param listener    notified on the EDT once the file was written, may be null
      */
-    static void export(Component parent, String markdown, String defaultName, ExportListener listener) {
+    public static void export(Component parent, String markdown, String defaultName, ExportListener listener) {
         export(parent, markdown, defaultName, true, listener);
     }
 
@@ -242,7 +242,7 @@ public final class ConversationExporter {
      * @param title session title, may be null
      * @return sanitized file name ending in ".md"
      */
-    static String defaultFileName(String title) {
+    public static String defaultFileName(String title) {
         if (title != null && !title.startsWith("New Session")) {
             return TitleSanitizePattern.sanitize(title) + ".md";
         }

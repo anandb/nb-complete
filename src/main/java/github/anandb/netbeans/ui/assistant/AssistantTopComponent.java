@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.assistant;
 
 import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang3.StringUtils.isBlank;
@@ -87,6 +87,11 @@ import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.platform.ProjectContext;
 import github.anandb.netbeans.ui.platform.SessionService;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.UIBundle;
+import github.anandb.netbeans.ui.ConversationExporter;
+import github.anandb.netbeans.ui.TokenUsageDialog;
+import github.anandb.netbeans.ui.HtmlConversationExporter;
+import github.anandb.netbeans.ui.UIUtils;
 
 
 @ConvertAsProperties(
@@ -753,7 +758,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
     }
 
-    void toggleOptions() {
+    public void toggleOptions() {
         if (sessionLifecycleHandler != null) {
             boolean collapsed = !sessionLifecycleHandler.isOptionsPanelCollapsed();
             setOptionsPanelVisible(!collapsed);
@@ -803,7 +808,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         repaint();
     }
 
-    void toggleAllBlocks() {
+    public void toggleAllBlocks() {
         if (chatPanel != null) {
             boolean expanded = !chatPanel.isAllBlocksExpanded();
             chatPanel.toggleAllBlocks(expanded);
@@ -819,7 +824,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
     }
 
-    void exportConversation() {
+    public void exportConversation() {
         exportConversationAs("md");
     }
 

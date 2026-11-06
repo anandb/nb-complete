@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.assistant;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -34,6 +34,7 @@ import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.platform.SessionService;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.UIBundle;
 
 // DSL-LEAF: not a controller — static factory that builds the welcome/session
 // list view. The DSL migration ports build to WelcomeSpec; the

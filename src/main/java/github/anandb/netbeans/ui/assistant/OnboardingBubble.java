@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.assistant;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -41,6 +41,8 @@ import github.anandb.netbeans.support.BrowserUtils;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.rendering.IconResourceManager;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
+import github.anandb.netbeans.ui.UIBundle;
+import github.anandb.netbeans.ui.UIUtils;
 
 /**
  * Onboarding bubble shown when no harness is configured. Lists every catalog

@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.assistant;
 
 import java.awt.Graphics;
 import java.awt.Graphics2D;

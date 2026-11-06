@@ -26,8 +26,8 @@ import github.anandb.netbeans.pattern.TitleSanitizePattern;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
 import static org.apache.commons.lang3.StringUtils.isBlank;
-import github.anandb.netbeans.ui.chat.MessageBubble;
 import github.anandb.netbeans.ui.chat.CollapsibleToolPane;
+import github.anandb.netbeans.ui.chat.MessageBubble;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 
@@ -445,7 +445,7 @@ public final class HtmlConversationExporter {
      * Show a Save dialog, write the HTML to the chosen file, and open it
      * in the IDE editor.
      */
-    static void export(Component parent, String html, String defaultName,
+    public static void export(Component parent, String html, String defaultName,
                        ConversationExporter.ExportListener listener) {
         ConversationExporter.export(parent, html, defaultName, false, listener);
     }
@@ -456,7 +456,7 @@ public final class HtmlConversationExporter {
      * @param title session title, may be null
      * @return sanitized file name ending in ".html"
      */
-    static String defaultFileName(String title) {
+    public static String defaultFileName(String title) {
         if (title != null && !title.startsWith("New Session")) {
             return TitleSanitizePattern.sanitize(title) + ".html";
         }

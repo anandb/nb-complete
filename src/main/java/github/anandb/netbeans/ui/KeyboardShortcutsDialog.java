@@ -47,7 +47,7 @@ import github.anandb.netbeans.ui.rendering.ColorTheme;
  */
 // DSL-LEAF: keep imperative, wrap via UI.of(...) — JDialog modal form. Low-risk DSL pilot candidate
 // (self-contained; no streaming/timer bridge). Migration target: DialogSpec family.
-final class KeyboardShortcutsDialog extends JDialog {
+public final class KeyboardShortcutsDialog extends JDialog {
 
     private static final long serialVersionUID = 1L;
     private static KeyboardShortcutsDialog currentInstance;
@@ -77,7 +77,7 @@ final class KeyboardShortcutsDialog extends JDialog {
         });
     }
 
-    static void show(Component parent) {
+    public static void show(Component parent) {
         if (currentInstance != null && currentInstance.isVisible()) {
             currentInstance.dispose();
             return;
