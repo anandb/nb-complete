@@ -25,9 +25,9 @@ import javax.swing.Timer;
 import org.openide.util.NbBundle;
 
 import github.anandb.netbeans.support.PluginSettings;
-import github.anandb.netbeans.ui.UIUtils;
 import github.anandb.netbeans.ui.UIBundle;
-import github.anandb.netbeans.ui.ThemeManager;
+import github.anandb.netbeans.ui.UIUtils;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
 
 /**
  * Manages a queue of user messages posted while the bot is processing.

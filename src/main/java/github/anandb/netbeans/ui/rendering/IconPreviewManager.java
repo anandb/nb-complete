@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.rendering;
 
 import java.awt.Dimension;
 import java.awt.event.ComponentAdapter;
@@ -23,6 +23,8 @@ import org.openide.util.RequestProcessor;
 
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import github.anandb.netbeans.ui.UIBundle;
+import github.anandb.netbeans.ui.UIUtils;
 
 /**
  * Manages icon preview display, browse, and clear for user icon selection.
@@ -30,7 +32,7 @@ import java.awt.event.MouseEvent;
 // DSL-LEAF: not a controller — keeps the user-icon preview label in sync with
 // the icon path text field via a DocumentListener. Migration target:
 // IconPreviewSpec; the SvgIconLoader call stays imperative.
-final class IconPreviewManager {
+public final class IconPreviewManager {
 
     private static final Logger LOG = Logger.from(IconPreviewManager.class);
 
@@ -44,7 +46,7 @@ final class IconPreviewManager {
     /** Original decoded image, kept for re-scaling when the label resizes. */
     private BufferedImage originalImage;
 
-    IconPreviewManager(JLabel previewLabel, JTextField pathField, int previewSize,
+    public IconPreviewManager(JLabel previewLabel, JTextField pathField, int previewSize,
             Runnable onChangeCallback) {
         this.previewLabel = previewLabel;
         this.pathField = pathField;
@@ -92,7 +94,7 @@ final class IconPreviewManager {
         });
     }
 
-    void updatePreview(String path) {
+    public void updatePreview(String path) {
         if (path == null || path.isEmpty()) {
             originalImage = null;
             previewLabel.setIcon(null);

@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.rendering;
 
 import java.awt.Color;
 import java.io.IOException;
@@ -12,6 +12,7 @@ import github.anandb.netbeans.model.ColorKey;
 import github.anandb.netbeans.model.ColorRegistry;
 import github.anandb.netbeans.support.MapperSupplier;
 import org.openide.util.NbBundle;
+import github.anandb.netbeans.ui.UIBundle;
 
 /**
  * Centralized color definitions for the ACP NetBeans plugin.

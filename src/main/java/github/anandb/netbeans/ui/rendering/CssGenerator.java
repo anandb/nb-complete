@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.rendering;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -11,6 +11,8 @@ import java.util.concurrent.TimeUnit;
 import github.anandb.netbeans.model.ColorKey;
 import github.anandb.netbeans.model.ColorRegistry;
 import org.openide.util.NbBundle;
+import github.anandb.netbeans.ui.UIBundle;
+import github.anandb.netbeans.ui.UIUtils;
 
 /**
  * Generates &amp; caches the CSS injected into chat HTML bubbles.

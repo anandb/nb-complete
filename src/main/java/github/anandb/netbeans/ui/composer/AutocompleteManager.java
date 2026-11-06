@@ -28,7 +28,7 @@ import github.anandb.netbeans.contract.SlashCommandInterceptor;
 import github.anandb.netbeans.model.ModelRecords.CommandInfo;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.ui.ThemeManager;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.platform.ProcessService;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 

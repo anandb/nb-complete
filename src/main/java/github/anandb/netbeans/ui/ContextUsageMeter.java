@@ -11,6 +11,8 @@ import java.util.Locale;
 import javax.swing.JComponent;
 
 import org.openide.util.NbBundle;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
+import github.anandb.netbeans.ui.rendering.ColorTheme;
 
 /**
  * Compact, always-visible meter in the bottom status row showing how much of the

@@ -8,7 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import github.anandb.netbeans.pattern.ToolPrefixPattern;
 import github.anandb.netbeans.ui.UIBundle;
-import github.anandb.netbeans.ui.ThemeManager;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
 
 /**
  * Resolves header icons and formatted titles for collapsible panes.

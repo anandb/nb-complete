@@ -37,6 +37,8 @@ import javax.swing.table.TableColumnModel;
 
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.support.ShortcutUtils;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
+import github.anandb.netbeans.ui.rendering.ColorTheme;
 
 /**
  * Modal dialog listing all keyboard shortcuts supported by the plugin.

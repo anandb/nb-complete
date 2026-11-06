@@ -1,7 +1,8 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.rendering;
 
 import java.util.ArrayList;
 import java.util.List;
+import github.anandb.netbeans.ui.UIUtils;
 
 public final class TableDetector {
 

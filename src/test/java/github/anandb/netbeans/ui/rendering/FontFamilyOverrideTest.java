@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.rendering;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -6,6 +6,7 @@ import java.awt.Font;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import github.anandb.netbeans.ui.UIUtils;
 
 /**
  * {@code -J-Dbeanbot.font.family} / {@code beanbot.mono.font.family} must reach the Swing chat

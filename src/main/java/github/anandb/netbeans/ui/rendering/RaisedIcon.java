@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.rendering;
 
 import java.awt.Component;
 import java.awt.Graphics;
@@ -13,12 +13,12 @@ import javax.swing.Icon;
  * Raising the paint position without changing the icon size or the button metrics keeps the
  * row's geometry intact.
  */
-final class RaisedIcon implements Icon {
+public final class RaisedIcon implements Icon {
 
     private final Icon delegate;
     private final int rise;
 
-    RaisedIcon(Icon delegate, int rise) {
+    public RaisedIcon(Icon delegate, int rise) {
         this.delegate = delegate;
         this.rise = rise;
     }

@@ -73,8 +73,11 @@ import github.anandb.netbeans.ui.chat.MessageBubble;
 import github.anandb.netbeans.ui.chat.BubbleThemeApplier;
 import github.anandb.netbeans.ui.composer.AutocompleteManager;
 import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
-import github.anandb.netbeans.ui.permission.PermissionRequestPanel;
 import github.anandb.netbeans.ui.permission.PermissionOption;
+import github.anandb.netbeans.ui.permission.PermissionRequestPanel;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
+import github.anandb.netbeans.ui.rendering.IconResourceManager;
+import github.anandb.netbeans.ui.rendering.ColorTheme;
 
 public class MiniAssistantDialog extends JDialog {
 

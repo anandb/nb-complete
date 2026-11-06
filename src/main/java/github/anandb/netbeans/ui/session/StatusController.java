@@ -10,8 +10,8 @@ import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import org.openide.util.NbBundle;
-import github.anandb.netbeans.ui.ContextUsageMeter;
 import github.anandb.netbeans.ui.UIBundle;
+import github.anandb.netbeans.ui.ContextUsageMeter;
 import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
 
 /**

@@ -42,6 +42,9 @@ import github.anandb.netbeans.support.PreferenceKeys;
 import org.openide.util.ImageUtilities;
 import org.openide.util.NbPreferences;
 import org.openide.util.RequestProcessor;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
+import github.anandb.netbeans.ui.rendering.RaisedIcon;
+import github.anandb.netbeans.ui.rendering.ColorTheme;
 
 // DSL-LEAF: factories are the swingtree replacement seam — createToolbarButton /
 // createTextButton / createPanel / styleToolbarButton become UI.button(...) /
@@ -410,7 +413,7 @@ public class UIUtils {
      * aggressive bilinear downscale (the previous behavior) when shrinking a large
      * photo down to a small avatar.
      */
-    static BufferedImage scaleSmooth(BufferedImage src,
+    public static BufferedImage scaleSmooth(BufferedImage src,
             int targetW, int targetH) {
         int w = src.getWidth();
         int h = src.getHeight();

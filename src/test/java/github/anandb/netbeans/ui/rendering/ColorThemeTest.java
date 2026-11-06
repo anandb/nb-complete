@@ -1,9 +1,10 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.rendering;
 
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import github.anandb.netbeans.ui.TestUiUtils;
 
 class ColorThemeTest {
 

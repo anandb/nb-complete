@@ -25,7 +25,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import github.anandb.netbeans.ui.UIBundle;
-import github.anandb.netbeans.ui.ThemeManager;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.platform.ProcessService;
 import github.anandb.netbeans.ui.platform.SessionService;
 import github.anandb.netbeans.ui.platform.PlatformBridge;

@@ -61,11 +61,13 @@ import github.anandb.netbeans.support.BrowserUtils;
 import javax.swing.JComponent;
 import javax.swing.Timer;
 import org.netbeans.api.project.Project;
-import github.anandb.netbeans.ui.chat.ChatThreadPanel;
 import github.anandb.netbeans.ui.chat.MessageFilterManager;
+import github.anandb.netbeans.ui.chat.ChatThreadPanel;
 import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
 import github.anandb.netbeans.ui.session.ConfigPanelController;
 import github.anandb.netbeans.ui.permission.PermissionRequestPanel;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
+import github.anandb.netbeans.ui.rendering.RaisedIcon;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 // DSL-CONTROLLER: not a view — newSessionDebounceTimer (300ms) lives here per

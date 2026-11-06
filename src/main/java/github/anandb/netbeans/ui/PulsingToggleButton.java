@@ -12,6 +12,7 @@ import java.awt.event.MouseEvent;
 import javax.swing.Icon;
 import javax.swing.JToggleButton;
 import javax.swing.Timer;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
 
 /**
  * A latching toolbar button that can draw attention to a state change with a short

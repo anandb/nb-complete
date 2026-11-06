@@ -31,9 +31,9 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import github.anandb.netbeans.ui.TestUiUtils;
 import github.anandb.netbeans.ui.chat.ChatThreadPanel;
 import github.anandb.netbeans.ui.platform.SessionService;
-import github.anandb.netbeans.ui.TestUiUtils;
 
 class PermissionDialogManagerTest {
 

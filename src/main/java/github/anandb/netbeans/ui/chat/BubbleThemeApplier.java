@@ -11,11 +11,11 @@ import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
 import org.openide.util.NbBundle;
-import github.anandb.netbeans.ui.ColorTheme;
-import github.anandb.netbeans.ui.UIUtils;
-import github.anandb.netbeans.ui.RoundedPanel;
 import github.anandb.netbeans.ui.UIBundle;
-import github.anandb.netbeans.ui.ThemeManager;
+import github.anandb.netbeans.ui.RoundedPanel;
+import github.anandb.netbeans.ui.UIUtils;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
+import github.anandb.netbeans.ui.rendering.ColorTheme;
 
 /**
  * Package-private helper that extracts theme/appearance logic from {@link MessageBubble}.

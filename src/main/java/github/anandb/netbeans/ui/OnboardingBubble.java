@@ -38,6 +38,9 @@ import org.openide.util.NbBundle;
 import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.BrowserUtils;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
+import github.anandb.netbeans.ui.rendering.IconResourceManager;
+import github.anandb.netbeans.ui.rendering.ColorTheme;
 
 /**
  * Onboarding bubble shown when no harness is configured. Lists every catalog

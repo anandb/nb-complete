@@ -13,6 +13,7 @@ import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.Timer;
 import github.anandb.netbeans.support.TimingConstants;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
 
 /**
  * Flashes a help button on startup for discoverability.

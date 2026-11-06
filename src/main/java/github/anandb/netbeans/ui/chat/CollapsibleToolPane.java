@@ -10,8 +10,8 @@ import javax.swing.BoxLayout;
 import javax.swing.Icon;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
-import github.anandb.netbeans.ui.ColorTheme;
-import github.anandb.netbeans.ui.ThemeManager;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
+import github.anandb.netbeans.ui.rendering.ColorTheme;
 
 // DSL-LEAF: keep imperative, wrap via UI.of(...) — extends BaseCollapsiblePane;
 // tool-call sub-pane (input params + status row). Migration target: ToolPaneSpec.

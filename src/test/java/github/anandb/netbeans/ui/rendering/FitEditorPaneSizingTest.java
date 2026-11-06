@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.rendering;
 
 import java.awt.BorderLayout;
 import javax.swing.JPanel;
@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import github.anandb.netbeans.ui.TestUiUtils;
 
 /**
  * A bubble must follow the width of its container. A monitor-derived width cap used to be

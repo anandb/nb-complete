@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.rendering;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -10,6 +10,7 @@ import javax.swing.text.StyledDocument;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import org.junit.jupiter.api.Assertions;
+import github.anandb.netbeans.ui.TestUiUtils;
 
 class MarkdownStyledRendererTest {
 

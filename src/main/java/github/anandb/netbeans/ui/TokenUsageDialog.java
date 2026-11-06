@@ -65,6 +65,9 @@ import java.util.List;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.UsageStatsFormat;
 import static github.anandb.netbeans.ui.UIUtils.MONO_STACK;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
+import github.anandb.netbeans.ui.rendering.FitEditorPane;
+import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 /**

@@ -33,7 +33,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import github.anandb.netbeans.ui.UIBundle;
-import github.anandb.netbeans.ui.ThemeManager;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
 
 /**
  * Non-modal dialog for searching message history with type-as-you-search filtering.

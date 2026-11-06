@@ -66,6 +66,9 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 import github.anandb.netbeans.support.PreferenceKeys;
 import org.openide.awt.NotificationDisplayer;
 import github.anandb.netbeans.ui.permission.ContextActionsDialog;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
+import github.anandb.netbeans.ui.rendering.IconPreviewManager;
+import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.platform.SessionService;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 

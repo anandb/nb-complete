@@ -22,9 +22,9 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.TimingConstants;
 
 import static github.anandb.netbeans.support.TimingConstants.STREAM_DRIP_MAX_CHARS;
-import github.anandb.netbeans.ui.ColorTheme;
 import github.anandb.netbeans.ui.UIBundle;
-import github.anandb.netbeans.ui.ThemeManager;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
+import github.anandb.netbeans.ui.rendering.ColorTheme;
 
 // DSL-CONTROLLER: not a view — deferredFinalizeTimer + streaming-text accumulation state. Stays imperative; the bubble shell it drives is a DSL-LEAF.
 class BubbleStreamer {

@@ -30,12 +30,12 @@ import github.anandb.netbeans.support.ToolDataExtractor;
 import org.openide.util.NbBundle;
 
 import static org.apache.commons.lang3.StringUtils.length;
-import github.anandb.netbeans.ui.ColorTheme;
 import github.anandb.netbeans.ui.AccordionGroup;
-import github.anandb.netbeans.ui.UIUtils;
-import github.anandb.netbeans.ui.RoundedPanel;
 import github.anandb.netbeans.ui.UIBundle;
-import github.anandb.netbeans.ui.ThemeManager;
+import github.anandb.netbeans.ui.RoundedPanel;
+import github.anandb.netbeans.ui.UIUtils;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
+import github.anandb.netbeans.ui.rendering.ColorTheme;
 
 
 // DSL-LEAF: keep imperative, wrap via UI.of(...) — Scrollable impl + heavy

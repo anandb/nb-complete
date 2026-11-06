@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.rendering;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.awt.Color;
@@ -22,6 +22,7 @@ import javax.swing.text.View;
 
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.ui.UIBundle;
 
 // DSL-LEAF: keep imperative, wrap via UI.of(...) — HTML Document reuse via
 // doc.remove()+kit.read(); non-declarative layout-tree-avoidance logic.

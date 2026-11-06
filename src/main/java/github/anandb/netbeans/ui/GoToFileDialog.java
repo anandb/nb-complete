@@ -52,6 +52,8 @@ import org.openide.util.NbBundle;
 
 import org.openide.util.Lookup;
 import github.anandb.netbeans.contract.FileCacheQuery;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
+import github.anandb.netbeans.ui.rendering.ColorTheme;
 
 /**
  * Modal "Go To File" dialog. Case-insensitive prefix/camel-case search

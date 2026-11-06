@@ -9,6 +9,8 @@ import javax.swing.JButton;
 
 import java.awt.Color;
 import java.awt.RenderingHints;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
+import github.anandb.netbeans.ui.rendering.ColorTheme;
 
 /**
  * A JButton subclass that supports drawing offsets (xOffset, yOffset) to enable
