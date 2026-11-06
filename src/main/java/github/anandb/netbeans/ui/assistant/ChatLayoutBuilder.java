@@ -502,16 +502,9 @@ public final class ChatLayoutBuilder {
                 }));
             helpPopup.add(chooseAgentItem);
 
+            // The funding link lives on the composer toolbar (bmc icon), not here: a menu row is
+            // too easy to miss and a second entry would only split the same click.
             helpPopup.addSeparator();
-            JMenuItem supportItem = new JMenuItem(NbBundle.getMessage(
-                    UIBundle.class, "LBL_HelpSupportProject"));
-            // Deliberately plain: default weight, size and colour, LAF icon column size. A menu
-            // row that shouts costs the tool credibility; the mark alone distinguishes it.
-            supportItem.setIcon(ThemeManager.getIcon("bmc.svg", 16));
-            supportItem.addActionListener(ev -> BrowserUtils.openOrCopyUrl(AppLinks.supportUrl(),
-                    "STATUS_SupportUrlCopied", (url, key) -> topComponent.setStatus(key, url)));
-            helpPopup.add(supportItem);
-
             JMenuItem reportIssueItem = new JMenuItem(NbBundle.getMessage(
                     UIBundle.class, "CTL_ReportIssue"));
             reportIssueItem.addActionListener(ev -> BrowserUtils.openOrCopyUrl(AppLinks.issuesUrl(),

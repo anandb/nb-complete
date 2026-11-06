@@ -29,8 +29,6 @@ import org.openide.awt.StatusDisplayer;
 import org.openide.util.NbBundle;
 
 import github.anandb.netbeans.model.Session;
-import github.anandb.netbeans.support.AppLinks;
-import github.anandb.netbeans.support.BrowserUtils;
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.Lookup;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
@@ -133,9 +131,8 @@ public final class WelcomeScreen {
         support.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                BrowserUtils.openOrCopyUrl(AppLinks.supportUrl(), "STATUS_SupportUrlCopied",
-                        (url, key) -> StatusDisplayer.getDefault().setStatusText(
-                                NbBundle.getMessage(UIBundle.class, key, url)));
+                SupportLink.confirmAndOpen((url, key) -> StatusDisplayer.getDefault().setStatusText(
+                        NbBundle.getMessage(UIBundle.class, key, url)));
             }
         });
         return support;

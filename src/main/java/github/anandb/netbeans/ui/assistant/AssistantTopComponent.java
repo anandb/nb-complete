@@ -293,6 +293,14 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             }
         });
         layoutBuilder.getRightStatusPanel().add(tokenUsageBtn, 2);
+
+        // Funding link: the toolbar is where users actually look, so the bmc mark takes the slot
+        // left of the attachment button rather than hiding behind Help.
+        JButton supportBtn = UIUtils.createToolbarButton("bmc.svg", iconSize,
+                NbBundle.getMessage(UIBundle.class, "TT_SupportProject"),
+                e -> SupportLink.confirmAndOpen((url, key) -> setStatus(key, url)));
+        JPanel rightPanel = layoutBuilder.getRightStatusPanel();
+        rightPanel.add(supportBtn, rightPanel.getComponentZOrder(attachmentUiHandler.getButton()));
         if (pc != null) {
             pc.setHarnessListener(caps -> SwingUtilities.invokeLater(
                     () -> applyHarnessCapabilities(caps)));
