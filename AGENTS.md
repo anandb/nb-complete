@@ -134,8 +134,8 @@
   `HtmlConversationExporter` → `"export-style.css.template"`) looks in its **own** package;
   move the resource with it or it fails at runtime with "… not found", which no import rewrite
   can catch. Also update hand-written `layer.xml` `delegate`/`newvalue` class strings and any
-  `Class.forName`/`getResource` FQN string: `LayerReferencesTest` guards the layer, the rest is
-  on you.
+  `Class.forName`/`getResource` FQN string: `LayerReferencesTest` guards the layer's class names
+  and bundle keys, including the entries the annotation processor generates, but the rest is on you.
 - **NbPreferences caching**: If a preference is read in a hot path, cache it in a `static volatile`
   field and register a `PreferenceChangeListener` to update on change. Do NOT call
   `NbPreferences.forModule().getBoolean()` on every invocation. Every cached setting must be read
