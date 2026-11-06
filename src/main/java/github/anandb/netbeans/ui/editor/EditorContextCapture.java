@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.editor;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 

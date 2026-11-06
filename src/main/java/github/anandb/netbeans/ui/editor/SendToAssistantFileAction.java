@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.editor;
 
 import javax.swing.SwingUtilities;
 import org.openide.awt.ActionID;
@@ -10,6 +10,7 @@ import org.openide.util.HelpCtx;
 import org.openide.util.NbBundle;
 import org.openide.util.actions.NodeAction;
 import org.openide.nodes.Node;
+import github.anandb.netbeans.ui.UIBundle;
 
 /**
  * Projects / Files window action: sends the selected file's path to the

@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.editor;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -54,6 +54,7 @@ import org.openide.util.Lookup;
 import github.anandb.netbeans.contract.FileCacheQuery;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
+import github.anandb.netbeans.ui.UIBundle;
 
 /**
  * Modal "Go To File" dialog. Case-insensitive prefix/camel-case search

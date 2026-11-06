@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.editor;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.awt.event.ActionEvent;
@@ -24,6 +24,7 @@ import javax.swing.AbstractAction;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.ui.UIBundle;
 
 /**
  * Searches the web for the selected text in the editor.

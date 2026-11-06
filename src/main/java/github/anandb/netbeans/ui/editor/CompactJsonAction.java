@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.editor;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -20,6 +20,7 @@ import javax.swing.AbstractAction;
 import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.PluginSettings;
 import org.openide.awt.StatusDisplayer;
+import github.anandb.netbeans.ui.UIBundle;
 
 @ActionID(category = "Edit", id = "github.anandb.netbeans.ui.CompactJsonAction")
 @ActionRegistration(displayName = "#CTL_CompactJsonAction", lazy = false)

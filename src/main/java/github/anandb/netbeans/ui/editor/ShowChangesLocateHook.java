@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.editor;
 
 import org.openide.explorer.ExplorerManager;
 import org.openide.modules.OnStart;
@@ -21,6 +21,7 @@ import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.JTable;
 import javax.swing.SwingUtilities;
+import github.anandb.netbeans.ui.UIBundle;
 
 /**
  * Adds a "Locate in System" item to the right-click (context) menu of the IDE's

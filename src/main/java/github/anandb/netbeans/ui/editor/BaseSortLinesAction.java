@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.editor;
 
 import java.awt.event.ActionEvent;
 import java.util.Arrays;

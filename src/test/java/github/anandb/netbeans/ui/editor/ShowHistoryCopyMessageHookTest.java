@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.editor;
 
 import org.junit.jupiter.api.Test;
 import org.openide.util.NbBundle;
@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import github.anandb.netbeans.ui.UIBundle;
 
 /**
  * Message recovery and popup injection for the Show History "Copy Message"

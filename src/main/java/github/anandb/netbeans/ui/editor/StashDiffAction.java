@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.editor;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.awt.BorderLayout;
@@ -89,6 +89,7 @@ import org.openide.util.NbPreferences;
 import github.anandb.netbeans.ui.rendering.IconResourceManager;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.components.UIUtils;
+import github.anandb.netbeans.ui.UIBundle;
 
 /**
  * Shows a side-by-side diff of a selected stash.

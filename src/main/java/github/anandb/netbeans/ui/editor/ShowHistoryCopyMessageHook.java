@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.editor;
 
 import org.openide.modules.OnStart;
 import org.openide.util.NbBundle;
@@ -19,6 +19,7 @@ import javax.swing.JList;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.SwingUtilities;
+import github.anandb.netbeans.ui.UIBundle;
 
 /**
  * Adds a "Copy Message" item to the right-click menu of the commit rows in the

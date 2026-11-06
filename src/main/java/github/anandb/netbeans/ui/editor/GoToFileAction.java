@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.editor;
 
 import java.awt.KeyboardFocusManager;
 import java.awt.Window;
@@ -9,6 +9,7 @@ import org.openide.awt.ActionID;
 import org.openide.util.NbBundle;
 
 import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.ui.UIBundle;
 
 /**
  * Opens the "Jump to file" dialog. Registered in layer.xml with Ctrl+N

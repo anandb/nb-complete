@@ -5,21 +5,21 @@
         <folder name="Navigate">
             <file name="github-anandb-netbeans-ui-GoToFileAction.instance">
                 <attr name="instanceCreate" methodvalue="org.openide.awt.Actions.alwaysEnabled"/>
-                <attr name="delegate" newvalue="github.anandb.netbeans.ui.GoToFileAction"/>
+                <attr name="delegate" newvalue="github.anandb.netbeans.ui.editor.GoToFileAction"/>
                 <attr name="displayName" bundlevalue="github.anandb.netbeans.ui.Bundle#CTL_GoToFileAction"/>
                 <attr name="iconBase" stringvalue="github/anandb/netbeans/ui/icons/file.svg"/>
             </file>
         </folder>
         <folder name="Tools">
             <file name="github-anandb-netbeans-ui-StashDiffAction.instance">
-                <attr name="instanceCreate" newvalue="github.anandb.netbeans.ui.StashDiffAction"/>
+                <attr name="instanceCreate" newvalue="github.anandb.netbeans.ui.editor.StashDiffAction"/>
                 <attr name="displayName" bundlevalue="github.anandb.netbeans.ui.Bundle#CTL_StashDiffAction"/>
                 <attr name="shortDescription" bundlevalue="github.anandb.netbeans.ui.Bundle#CTL_StashDiffAction_Tip"/>
                 <attr name="iconBase" stringvalue="github/anandb/netbeans/ui/icons/stash.png"/>
             </file>
             <file name="github-anandb-netbeans-ui-SearchWebAction.instance">
                 <attr name="instanceCreate" methodvalue="org.openide.awt.Actions.alwaysEnabled"/>
-                <attr name="delegate" newvalue="github.anandb.netbeans.ui.SearchWebAction"/>
+                <attr name="delegate" newvalue="github.anandb.netbeans.ui.editor.SearchWebAction"/>
                 <attr name="displayName" bundlevalue="github.anandb.netbeans.ui.Bundle#CTL_SearchWebAction"/>
             </file>
         </folder>
