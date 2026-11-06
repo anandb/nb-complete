@@ -48,6 +48,11 @@ public class RoundedPanel extends JPanel {
     private RoundRectangle2D.Float cachedBorderShape;
     /** Reused by the shadow passes: painting must not allocate a shape per pass per repaint. */
     private final RoundRectangle2D.Float shadowShape = new RoundRectangle2D.Float();
+    /** Left accent fill, clipped to the rounded shape; rebuilt only when the shape changes. */
+    private Area cachedAccentArea;
+    private RoundRectangle2D.Float cachedAccentFor;
+    private final RoundRectangle2D.Float accentRect = new RoundRectangle2D.Float();
+    private static final int ACCENT_WIDTH = 4;
     private int cachedWidth = -1;
     private int cachedHeight = -1;
     /** Cached theme-derived border color; invalidated when theme changes. */
@@ -97,8 +102,39 @@ public class RoundedPanel extends JPanel {
     private void invalidateShape() {
         cachedShape = null;
         cachedBorderShape = null;
+        cachedAccentArea = null;
+        cachedAccentFor = null;
         cachedWidth = -1;
         cachedHeight = -1;
+    }
+
+    /** Border stroke, rebuilt only when the width differs. */
+    private BasicStroke cachedStroke;
+    private float cachedStrokeWidth = -1f;
+
+    private BasicStroke strokeFor(float width) {
+        if (cachedStroke == null || cachedStrokeWidth != width) {
+            cachedStroke = new BasicStroke(width);
+            cachedStrokeWidth = width;
+        }
+        return cachedStroke;
+    }
+
+    /**
+     * Accent fill clipped to the rounded shape, built once per geometry. Keyed on the identity of
+     * the cached full shape, which {@link #invalidateShape()} replaces whenever the size or radius
+     * changes — so a repaint after the first allocates nothing and does no intersection work.
+     */
+    private Area getAccentArea(RoundRectangle2D.Float full) {
+        if (cachedAccentArea != null && cachedAccentFor == full) {
+            return cachedAccentArea;
+        }
+        accentRect.setRoundRect(full.x, full.y, ACCENT_WIDTH, full.height, radius, radius);
+        Area area = new Area(accentRect);
+        area.intersect(new Area(full));
+        cachedAccentArea = area;
+        cachedAccentFor = full;
+        return area;
     }
 
     private void invalidateResolvedBorder() {
@@ -201,25 +237,19 @@ public class RoundedPanel extends JPanel {
             Graphics2D g2 = (Graphics2D) g.create();
             try {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.clip(getShape());
+                RoundRectangle2D.Float full = getShape();
+                g2.clip(full);
                 super.paintChildren(g2);
                 if (leftAccent != null && leftAccent.getAlpha() > 0) {
-                    // Paint a 4px rounded accent on the left side.
+                    // 4px rounded accent on the left side, clipped to the rounded shape so it
+                    // cannot bleed outside it.
                     g2.setColor(leftAccent);
-                    int accentWidth = 4;
-                    RoundRectangle2D.Float full = getShape();
-                    RoundRectangle2D.Float accentShape = new RoundRectangle2D.Float(
-                            full.x, full.y, accentWidth, full.height,
-                            radius, radius);
-                    // Clip accent to the rounded shape so it doesn't bleed outside.
-                    Area accentArea = new Area(accentShape);
-                    accentArea.intersect(new Area(full));
-                    g2.fill(accentArea);
+                    g2.fill(getAccentArea(full));
                 }
                 if (drawBorder) {
                     g2.setColor(resolvedBorder);
                     float sw = borderColor != null ? borderStrokeWidth : 1f;
-                    g2.setStroke(new BasicStroke(sw));
+                    g2.setStroke(strokeFor(sw));
                     g2.draw(getBorderShape(ins, w, h));
                 }
             } finally {
