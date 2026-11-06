@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
@@ -1351,6 +1352,12 @@ public class ChatThreadPanel extends JPanel {
         final Runnable[] chunk = new Runnable[1];
         chunk[0] = () -> {
             int end = Math.min(offset[0] + LOAD_RENDER_BATCH_SIZE, toRender.size());
+            // Start parsing the next batch's markdown on a worker now, so it runs while this
+            // batch is drawn; the chunk chain below then waits only for what is left of it.
+            int warmEnd = Math.min(end + LOAD_RENDER_BATCH_SIZE, toRender.size());
+            CompletableFuture<Void> warmed = end < toRender.size()
+                    ? BubbleContentRenderer.warmAsync(warmableTexts(toRender, end, warmEnd))
+                    : CompletableFuture.completedFuture(null);
             for (; offset[0] < end; offset[0]++) {
                 ProcessedMessage pm = toRender.get(offset[0]);
                 if (pm.isIgnorable()) continue;
@@ -1378,7 +1385,9 @@ public class ChatThreadPanel extends JPanel {
                 }
             }
             if (offset[0] < toRender.size()) {
-                SwingUtilities.invokeLater(chunk[0]);
+                // Resume once the next batch's markdown is parsed — a cold parse of a long
+                // message is the most expensive part of the load render.
+                warmed.whenComplete((r, ex) -> SwingUtilities.invokeLater(chunk[0]));
             } else {
                 isBatchMode = false;
                 trimMessages();
@@ -1407,6 +1416,30 @@ public class ChatThreadPanel extends JPanel {
             }
         };
         chunk[0].run();
+    }
+
+    /**
+     * Texts of the messages the next render batch will draw whose markdown the EDT would parse.
+     * User bubbles render into a plain text area and tool/thought bubbles append their text, so
+     * only errors, info and assistant bubbles actually go through the markdown renderer.
+     */
+    private static List<String> warmableTexts(List<ProcessedMessage> toRender, int from, int to) {
+        List<String> texts = new ArrayList<>(Math.max(0, to - from));
+        for (int i = from; i < to; i++) {
+            ProcessedMessage pm = toRender.get(i);
+            if (pm.isIgnorable()) {
+                continue;
+            }
+            String role = pm.messageType().roleName();
+            if ("user".equals(role) || "tool".equals(role) || "thought".equals(role)) {
+                continue;
+            }
+            String text = pm.text();
+            if (text != null && !text.isEmpty()) {
+                texts.add(text);
+            }
+        }
+        return texts;
     }
 
     public void setMessages(List<Message> messages) {

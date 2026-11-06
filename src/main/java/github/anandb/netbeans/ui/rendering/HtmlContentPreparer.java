@@ -149,6 +149,15 @@ public final class HtmlContentPreparer {
     }
 
     /**
+     * Returns the markdown→HTML body for {@code markdown}, parsing on a cache miss. Pure CPU and
+     * free of Swing state, so callers may run it off the EDT (see
+     * {@code BubbleContentRenderer.warmAsync}).
+     */
+    public static String htmlFor(String markdown) {
+        return computeOrGetCachedHtml(markdown);
+    }
+
+    /**
      * Returns cached HTML for markdown input, or parses + caches on miss.
      * The cache is bounded to 256 entries.  Text longer than 32 KB is not
      * cached (avoid holding large strings for rare long messages).

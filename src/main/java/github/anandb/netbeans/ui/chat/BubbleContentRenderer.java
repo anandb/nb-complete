@@ -4,14 +4,19 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.border.EmptyBorder;
 
+import org.openide.util.RequestProcessor;
+
 import github.anandb.netbeans.pattern.CodeFencePattern;
+import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
@@ -27,6 +32,8 @@ import github.anandb.netbeans.ui.components.RoundedPanel;
 // Migration target: BubbleContentSpec; the per-MessageType render dispatch
 // stays imperative until the DSL can express it declaratively.
 class BubbleContentRenderer {
+
+    private static final Logger LOG = Logger.from(BubbleContentRenderer.class);
 
     private final JPanel segments;
     private final StringBuilder text;
@@ -283,6 +290,55 @@ class BubbleContentRenderer {
             segments.add(pane);
         }
     }
+    /** Single-threaded worker that parses markdown ahead of the EDT render. */
+    private static final RequestProcessor WARM_RP = new RequestProcessor("beanbot-markdown-warm", 1, true);
+
+    /**
+     * Parses the markdown of {@code texts} into the HTML cache on a worker, so the EDT render that
+     * follows only has to insert the result. Warms exactly the segments {@link #updateContent} will
+     * ask for: the code fences are split off first, then each text run is table-detected. A warm
+     * failure is harmless — the EDT render simply parses on a cache miss.
+     */
+    static CompletableFuture<Void> warmAsync(Collection<String> texts) {
+        if (texts == null || texts.isEmpty()) {
+            return CompletableFuture.completedFuture(null);
+        }
+        List<String> copy = new ArrayList<>(texts);
+        return CompletableFuture.runAsync(() -> copy.forEach(BubbleContentRenderer::warm), WARM_RP);
+    }
+
+    private static void warm(String text) {
+        if (text == null || text.isEmpty()) {
+            return;
+        }
+        try {
+            Matcher matcher = CodeFencePattern.matcher(text);
+            int lastEnd = 0;
+            while (matcher.find()) {
+                if (matcher.start() > lastEnd) {
+                    warmSegments(text.substring(lastEnd, matcher.start()));
+                }
+                lastEnd = matcher.end();
+            }
+            if (lastEnd < text.length()) {
+                warmSegments(text.substring(lastEnd));
+            }
+        } catch (RuntimeException ex) {
+            LOG.warn("Markdown warm-up failed; the render will parse on the EDT", ex);
+        }
+    }
+
+    private static void warmSegments(String text) {
+        for (TableDetector.Segment seg : TableDetector.detectTables(text, false).segments()) {
+            String markdown = seg instanceof TableDetector.TextSegment ts ? ts.text()
+                    : ((TableDetector.TableSegment) seg).markdown();
+            if (markdown != null && !markdown.isEmpty()) {
+                HtmlContentPreparer.htmlFor(markdown);
+            }
+        }
+    }
+
+
 
     private int addTextAndTableSegments(String text, ColorTheme theme, int compIdx, boolean incremental) {
         TableDetector.TableResult result = TableDetector.detectTables(text, incremental);
