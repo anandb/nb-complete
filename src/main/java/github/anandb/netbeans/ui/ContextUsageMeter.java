@@ -20,9 +20,11 @@ import github.anandb.netbeans.ui.rendering.ColorTheme;
  * preferred size, so it never triggers or participates in layout invalidation.
  *
  * <p>Fills green below 70% context, amber up to 90%, red beyond. Lives entirely
- * on the EDT (its only callers, {@link SessionLifecycleHandler} via
- * {@link StatusController#setContextUsage}, already marshal there). Deliberately
- * independent of {@link #statusLabel}: the label is ephemeral (status text,
+ * on the EDT (its only callers,
+ * {@link github.anandb.netbeans.ui.session.SessionLifecycleHandler} via
+ * {@link github.anandb.netbeans.ui.session.StatusController#setContextUsage(long,long)},
+ * already marshal there). Deliberately
+ * independent of the status label: the label is ephemeral (status text,
  * thinking animation); this meter is persistent state and never written through
  * {@code StatusController.show()}.
  */

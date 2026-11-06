@@ -71,9 +71,10 @@ public class OnboardingBubble extends JPanel {
     private final JPanel buttonsPanel;
 
     /**
+     * Dismissable onboarding view.
+     *
      * @param found harness binaries detected on this system (may be empty)
      * @param selectionCallback invoked when the user picks a found harness
-     * @param restartCallback invoked by the Restart button
      */
     public OnboardingBubble(java.util.List<BinaryResolver.FoundBinary> found,
             SelectionCallback selectionCallback) {

@@ -33,7 +33,8 @@ import github.anandb.netbeans.ui.chat.CollapsibleToolPane;
 
 /**
  * Stateless utility for exporting conversation history to Markdown files.
- * Extracted from {@link AssistantTopComponent} and {@link ChatThreadPanel}
+ * Extracted from {@link AssistantTopComponent} and
+ * {@link github.anandb.netbeans.ui.chat.ChatThreadPanel}
  * to keep export logic in one place.
  */
 public final class ConversationExporter {
