@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.stats;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
@@ -69,6 +69,7 @@ import github.anandb.netbeans.ui.rendering.FitEditorPane;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.UIBundle;
 
 /**
  * Token and cost panel. Renders the OVERVIEW and COST &amp; TOKENS blocks from

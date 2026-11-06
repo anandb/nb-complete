@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.stats;
 
 import java.awt.Color;
 import java.awt.Dimension;
@@ -13,6 +13,7 @@ import javax.swing.JComponent;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
+import github.anandb.netbeans.ui.UIBundle;
 
 /**
  * Compact, always-visible meter in the bottom status row showing how much of the

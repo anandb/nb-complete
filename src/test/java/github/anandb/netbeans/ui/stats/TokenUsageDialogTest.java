@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.stats;
 
 import github.anandb.netbeans.model.ContextReport;
 import github.anandb.netbeans.model.UsageRecords.GroupTotals;
@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
+import github.anandb.netbeans.ui.TestUiUtils;
 
 class TokenUsageDialogTest {
 

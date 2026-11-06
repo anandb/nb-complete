@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.stats;
 
 import javax.swing.SwingUtilities;
 
@@ -7,6 +7,7 @@ import org.openide.util.NbBundle;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import github.anandb.netbeans.ui.UIBundle;
 
 /**
  * Headless tests for the context-window usage meter: fill math, thresholds,
