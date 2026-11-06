@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.components;
 
 import java.util.ArrayList;
 import java.util.List;

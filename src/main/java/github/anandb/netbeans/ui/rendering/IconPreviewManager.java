@@ -23,8 +23,8 @@ import org.openide.util.RequestProcessor;
 
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import github.anandb.netbeans.ui.UIUtils;
 import github.anandb.netbeans.ui.UIBundle;
+import github.anandb.netbeans.ui.components.UIUtils;
 
 /**
  * Manages icon preview display, browse, and clear for user icon selection.

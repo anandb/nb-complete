@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.components;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.InputEvent;

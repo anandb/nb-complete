@@ -16,7 +16,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 
 import org.openide.util.ImageUtilities;
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.ui.UIUtils;
+import github.anandb.netbeans.ui.components.UIUtils;
 
 /**
  * Manages icon caching, font resolution, and dark mode detection.

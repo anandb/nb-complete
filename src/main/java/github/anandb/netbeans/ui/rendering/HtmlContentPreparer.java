@@ -8,7 +8,7 @@ import com.vladsch.flexmark.util.data.MutableDataSet;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.TextScanner;
-import static github.anandb.netbeans.ui.UIUtils.MONO_STACK;
+import static github.anandb.netbeans.ui.components.UIUtils.MONO_STACK;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;

@@ -88,6 +88,7 @@ import github.anandb.netbeans.support.PreferenceKeys;
 import org.openide.util.NbPreferences;
 import github.anandb.netbeans.ui.rendering.IconResourceManager;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
+import github.anandb.netbeans.ui.components.UIUtils;
 
 /**
  * Shows a side-by-side diff of a selected stash.

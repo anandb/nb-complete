@@ -29,6 +29,7 @@ import org.openide.modules.OnStart;
 import org.openide.util.NbBundle;
 import org.openide.util.NbPreferences;
 import org.openide.windows.TopComponent;
+import github.anandb.netbeans.ui.components.UIUtils;
 
 /** Adds a live, optional Copy All button to NetBeans' Action Items toolbar. */
 @OnStart

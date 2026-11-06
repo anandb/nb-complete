@@ -1,4 +1,4 @@
-package github.anandb.netbeans.ui;
+package github.anandb.netbeans.ui.components;
 
 import javax.swing.JLabel;
 import java.awt.FontMetrics;

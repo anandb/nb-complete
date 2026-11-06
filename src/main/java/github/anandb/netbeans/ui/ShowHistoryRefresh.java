@@ -19,6 +19,7 @@ import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
+import github.anandb.netbeans.ui.components.UIUtils;
 
 /**
  * Adds a refresh button to the IDE's git and Mercurial "Show History" windows,

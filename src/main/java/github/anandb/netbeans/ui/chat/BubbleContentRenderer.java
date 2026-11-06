@@ -15,13 +15,13 @@ import github.anandb.netbeans.pattern.CodeFencePattern;
 import github.anandb.netbeans.support.PluginSettings;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
-import github.anandb.netbeans.ui.RoundedPanel;
-import github.anandb.netbeans.ui.UIUtils;
 import github.anandb.netbeans.ui.rendering.TableDetector;
 import github.anandb.netbeans.ui.rendering.FitEditorPane;
 import github.anandb.netbeans.ui.rendering.HtmlContentPreparer;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
+import github.anandb.netbeans.ui.components.UIUtils;
+import github.anandb.netbeans.ui.components.RoundedPanel;
 
 // DSL-LEAF: not a controller — renders bubble content (segment → component).
 // Migration target: BubbleContentSpec; the per-MessageType render dispatch

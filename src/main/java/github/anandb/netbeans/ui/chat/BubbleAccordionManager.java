@@ -2,7 +2,7 @@ package github.anandb.netbeans.ui.chat;
 
 import java.awt.Component;
 import javax.swing.JPanel;
-import github.anandb.netbeans.ui.AccordionGroup;
+import github.anandb.netbeans.ui.components.AccordionGroup;
 
 // DSL-LEAF: not a controller — manages accordion grouping of activity/tool
 // sub-panes inside a bubble. Migration target: BubbleAccordionSpec; group

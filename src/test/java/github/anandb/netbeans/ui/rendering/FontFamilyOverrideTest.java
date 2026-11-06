@@ -6,7 +6,7 @@ import java.awt.Font;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import github.anandb.netbeans.ui.UIUtils;
+import github.anandb.netbeans.ui.components.UIUtils;
 
 /**
  * {@code -J-Dbeanbot.font.family} / {@code beanbot.mono.font.family} must reach the Swing chat

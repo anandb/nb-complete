@@ -21,7 +21,7 @@ import github.anandb.netbeans.pattern.ExtensionsBlockPattern;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.UIBundle;
-import github.anandb.netbeans.ui.UIUtils;
+import github.anandb.netbeans.ui.components.UIUtils;
 
 /**
  * Compact info bubble displayed when a session starts. Shows version,

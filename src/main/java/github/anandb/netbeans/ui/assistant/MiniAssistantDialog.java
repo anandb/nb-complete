@@ -78,11 +78,11 @@ import github.anandb.netbeans.ui.permission.PermissionRequestPanel;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.rendering.IconResourceManager;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
-import github.anandb.netbeans.ui.ButtonMnemonics;
 import github.anandb.netbeans.ui.UIBundle;
-import github.anandb.netbeans.ui.RoundedPanel;
-import github.anandb.netbeans.ui.WobblePanel;
-import github.anandb.netbeans.ui.ButtonRowLayout;
+import github.anandb.netbeans.ui.components.WobblePanel;
+import github.anandb.netbeans.ui.components.ButtonRowLayout;
+import github.anandb.netbeans.ui.components.RoundedPanel;
+import github.anandb.netbeans.ui.components.ButtonMnemonics;
 
 public class MiniAssistantDialog extends JDialog {
 

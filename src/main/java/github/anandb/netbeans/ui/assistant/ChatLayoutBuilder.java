@@ -70,10 +70,10 @@ import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.rendering.RaisedIcon;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.UIBundle;
-import github.anandb.netbeans.ui.UIUtils;
-import github.anandb.netbeans.ui.PulsingToggleButton;
 import github.anandb.netbeans.ui.options.KeyboardShortcutsDialog;
 import github.anandb.netbeans.ui.stats.ContextUsageMeter;
+import github.anandb.netbeans.ui.components.PulsingToggleButton;
+import github.anandb.netbeans.ui.components.UIUtils;
 
 // DSL-CONTROLLER: not a view — newSessionDebounceTimer (300ms) lives here per
 // AGENTS.md. Construction body is the Phase 2 seam target (ChatLayoutSpec);

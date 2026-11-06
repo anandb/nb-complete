@@ -88,10 +88,10 @@ import github.anandb.netbeans.ui.platform.ProjectContext;
 import github.anandb.netbeans.ui.platform.SessionService;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.UIBundle;
-import github.anandb.netbeans.ui.UIUtils;
 import github.anandb.netbeans.ui.export.HtmlConversationExporter;
 import github.anandb.netbeans.ui.export.ConversationExporter;
 import github.anandb.netbeans.ui.stats.TokenUsageDialog;
+import github.anandb.netbeans.ui.components.UIUtils;
 
 
 @ConvertAsProperties(

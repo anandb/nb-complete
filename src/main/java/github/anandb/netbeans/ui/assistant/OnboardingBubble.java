@@ -42,7 +42,7 @@ import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.rendering.IconResourceManager;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.UIBundle;
-import github.anandb.netbeans.ui.UIUtils;
+import github.anandb.netbeans.ui.components.UIUtils;
 
 /**
  * Onboarding bubble shown when no harness is configured. Lists every catalog
