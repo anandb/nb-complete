@@ -315,8 +315,19 @@ public class ComponentLifecycleHandler {
         Timer startupLoadTimer = new Timer(TimingConstants.SESSION_LOAD_STARTUP_GRACE_MS, e -> {
             // Always call session/list first to sync the dropdown with the server,
             // then load the most recent session. This avoids stale cached sessions
-            // when the server list has changed.
+            // when the server list has changed. Hermes does not push a sessions
+            // list, so this explicit pull is the only way the dropdown populates.
             sessionService.get().refreshSessions();
+            // Defensive retry: the first pull can race ahead of project open /
+            // listener registration and come back empty. Re-pull once if no
+            // session ended up loaded, so a transiently empty dropdown recovers.
+            Timer retryTimer = new Timer(TimingConstants.SESSION_LOAD_STARTUP_GRACE_MS, ev -> {
+                if (sessionService.get().getCurrentSessionId() == null) {
+                    sessionService.get().refreshSessions();
+                }
+            });
+            retryTimer.setRepeats(false);
+            retryTimer.start();
         });
         // Swing Timer repeats by default; make it one-shot so the startup load
         // fires exactly once instead of reloading the conversation every 5s.

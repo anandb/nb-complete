@@ -14,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -83,6 +84,33 @@ class SessionRpcClientTest {
 
         client.loadSessionFromServer("sid", "/cwd");
         verify(processManager).sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES));
+    }
+
+    @Test
+    void loadSessionReadOnlyAttachSendsEmptyMcpServers() {
+        when(processManager.getCapabilities()).thenReturn(HarnessCatalog.UNKNOWN);
+        when(processManager.getToolExecutor()).thenReturn(new ToolExecutor() {
+            @Override public void start() {}
+            @Override public void stop() {}
+            @Override public CompletableFuture<Void> waitForReady() { return CompletableFuture.completedFuture(null); }
+            @Override public List<Map<String, Object>> getServerConfig() {
+                return List.of(Map.of("name", "nb", "url", "http://127.0.0.1:1/mcp"));
+            }
+            @Override public void checkServerSupport(Harness caps) {}
+            @Override public void setMcpAuthRequired(boolean required) {}
+            @Override public void disable() {}
+            @Override public boolean isDisabled() { return false; }
+        });
+        when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
+
+        client.loadSessionFromServer("sid", "/cwd", false);
+
+        ArgumentCaptor<Object> params = ArgumentCaptor.forClass(Object.class);
+        verify(processManager).sendRequest(eq("session/load"), params.capture(), eq(2L), eq(TimeUnit.MINUTES));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> sent = (Map<String, Object>) params.getValue();
+        assertEquals(List.of(), sent.get("mcpServers"));
     }
 
     private ToolExecutor createMockToolExecutor() {

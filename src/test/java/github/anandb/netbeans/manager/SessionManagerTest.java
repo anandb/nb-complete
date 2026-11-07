@@ -1926,6 +1926,34 @@ class SessionManagerTest {
     }
 
     @Test
+    void sessionLoadFallsBackToReadOnlyAttachWhenLostTurnBlocksEditorMcp() throws Exception {
+        // Hermes 0.23's gateway refuses the editor-MCP mutation of a session/load while the
+        // session holds a turn lost when the gateway restarted (-32603, details
+        // unknown_execution). A read-only attach (empty mcpServers) still loads the history.
+        sessionManager.setHarnessStartupPendingForTest(true);
+        sessionManager.setStartupRetryDelaysForTest(new long[]{1});
+        when(toolExecutor.getServerConfig()).thenReturn(
+                List.of(Map.of("name", "nb", "url", "http://127.0.0.1:1/mcp")));
+        JsonNode lostTurn = mapper.createObjectNode().put("details", "unknown_execution");
+        ArgumentCaptor<Object> params = ArgumentCaptor.forClass(Object.class);
+        when(processManager.sendRequest(eq("session/load"), params.capture(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(CompletableFuture.failedFuture(
+                        new AcpRpcException(AcpRpcException.INTERNAL_ERROR, "Internal error", lostTurn)))
+                .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
+
+        sessionManager.loadSessionFromServer("sid", "/x").get(5, TimeUnit.SECONDS);
+
+        // Two attempts only: the lost turn is never startup-retried, the read-only attach is.
+        verify(processManager, times(2)).sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> first = (Map<String, Object>) params.getAllValues().get(0);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> retry = (Map<String, Object>) params.getAllValues().get(1);
+        assertEquals(1, ((List<?>) first.get("mcpServers")).size());
+        assertEquals(List.of(), retry.get("mcpServers"));
+    }
+
+    @Test
     void rootMessageSurfacesHarnessErrorDetails() {
         JsonNode data = mapper.createObjectNode().put("details", "Could not restore model provider/model");
         AcpRpcException rpc = new AcpRpcException(AcpRpcException.INTERNAL_ERROR, "Internal error", data);

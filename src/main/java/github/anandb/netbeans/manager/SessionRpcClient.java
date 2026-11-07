@@ -94,10 +94,20 @@ final class SessionRpcClient {
 
     /** Standard {@code session/resume}; the caller gates on the advertised capability. */
     CompletableFuture<JsonNode> resumeSession(String sessionId, String cwd) {
+        return resumeSession(sessionId, cwd, true);
+    }
+
+    /**
+     * @param editorMcp false attaches read-only: an empty {@code mcpServers} list keeps the
+     *                  servers the session already has instead of applying an MCP policy
+     *                  mutation (Hermes' gateway refuses that mutation while a lost turn
+     *                  blocks the session).
+     */
+    CompletableFuture<JsonNode> resumeSession(String sessionId, String cwd, boolean editorMcp) {
         Map<String, Object> params = new HashMap<>();
         params.put("sessionId", sessionId);
         params.put("cwd", cwd);
-        params.put("mcpServers", caps().sendsMcpServerConfig()
+        params.put("mcpServers", editorMcp && caps().sendsMcpServerConfig()
                 ? processManager.getToolExecutor().getServerConfig() : List.of());
         return processManager.sendRequest("session/resume", params, 2, TimeUnit.MINUTES);
     }
@@ -111,12 +121,22 @@ final class SessionRpcClient {
     }
 
     CompletableFuture<JsonNode> loadSessionFromServer(String sessionId, String cwd) {
+        return loadSessionFromServer(sessionId, cwd, true);
+    }
+
+    /**
+     * @param editorMcp false attaches read-only: an empty {@code mcpServers} list keeps the
+     *                  servers the session already has instead of applying an MCP policy
+     *                  mutation (Hermes' gateway refuses that mutation while a lost turn
+     *                  blocks the session).
+     */
+    CompletableFuture<JsonNode> loadSessionFromServer(String sessionId, String cwd, boolean editorMcp) {
         Map<String, Object> params = new HashMap<>();
         params.put("sessionId", sessionId);
         if (cwd != null) {
             params.put("cwd", cwd);
         }
-        if (caps().sendsMcpServerConfig()) {
+        if (editorMcp && caps().sendsMcpServerConfig()) {
             params.put("mcpServers", processManager.getToolExecutor().getServerConfig());
         } else {
             params.put("mcpServers", List.of());

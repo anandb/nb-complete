@@ -946,9 +946,24 @@ public class SessionManager implements SessionQuery, SessionControl,
         final long start = System.nanoTime();
         final boolean resume = !forceLoad && shouldResumeExisting(sessionId, targetCwd);
         final String operation = resume ? "session/resume" : "session/load";
-        return withMcpFallback(operation,
+        CompletableFuture<List<SessionConfigOption>> attempt = withMcpFallback(operation,
                 () -> withStartupRetry(operation,
-                        () -> sendLoadSessionRequest(sessionId, targetCwd, start, forceLoad), 0), start)
+                        () -> sendLoadSessionRequest(sessionId, targetCwd, start, forceLoad, false), 0), start);
+        return attempt.handle((res, ex) -> {
+                    if (ex != null && isLostTurn(ex)) {
+                        // Hermes' gateway refuses the editor-MCP mutation of an attach while the
+                        // session holds a turn lost when the gateway restarted, so it answers
+                        // -32603 with data.details=unknown_execution. Re-attaching without editor
+                        // MCP servers keeps the session's existing servers and loads the history;
+                        // the harness then streams its own `/discard <id>` recovery notice.
+                        LOG.info("{0}: lost turn blocks the attach for {1}, retrying without editor MCP servers",
+                                operation, sessionId);
+                        return sendLoadSessionRequest(sessionId, targetCwd, start, forceLoad, true);
+                    }
+                    return ex == null ? CompletableFuture.completedFuture(res)
+                            : CompletableFuture.<List<SessionConfigOption>>failedFuture(ex);
+                })
+                .thenCompose(f -> f)
                 .handle((res, ex) -> {
                     if (ex == null) {
                         return res;
@@ -992,7 +1007,7 @@ public class SessionManager implements SessionQuery, SessionControl,
     }
 
     private CompletableFuture<List<SessionConfigOption>> sendLoadSessionRequest(
-            String sessionId, String cwd, long start, boolean forceLoad) {
+            String sessionId, String cwd, long start, boolean forceLoad, boolean readOnlyRetry) {
         boolean resumeExisting = !forceLoad && shouldResumeExisting(sessionId, cwd);
         return processManager.whenReady()
                 .thenCompose(v -> processManager.getToolExecutor().waitForReady())
@@ -1002,13 +1017,14 @@ public class SessionManager implements SessionQuery, SessionControl,
                 // follows (omp: "ACP session load was cancelled"), so the switch
                 // path goes straight to session/load.
                 // A resume reattaches the live session in place, so it must not
-                // cancel/close the session it is resuming.
-                .thenCompose(v -> !resumeExisting && shouldCloseBeforeLoad(sessionId)
+                // cancel/close the session it is resuming. The read-only retry
+                // re-attaches a session the first attempt already handled.
+                .thenCompose(v -> !resumeExisting && !readOnlyRetry && shouldCloseBeforeLoad(sessionId)
                         ? rpcClient.closeBeforeLoad(sessionId)
                         : CompletableFuture.completedFuture(null))
                 .thenCompose(v -> resumeExisting
-                        ? rpcClient.resumeSession(sessionId, cwd)
-                        : rpcClient.loadSessionFromServer(sessionId, cwd))
+                        ? rpcClient.resumeSession(sessionId, cwd, !readOnlyRetry)
+                        : rpcClient.loadSessionFromServer(sessionId, cwd, !readOnlyRetry))
                 .thenApply(res -> {
                     long durationMs = (System.nanoTime() - start) / 1_000_000;
                     // Record only on success: this thenApply is skipped on error.
@@ -1136,7 +1152,7 @@ public class SessionManager implements SessionQuery, SessionControl,
                         return CompletableFuture.completedFuture(local);
                     }
                     List<String> openProjectDirs = openProjectDirectories();
-                    LOG.fine("refreshSessions: starting refresh for {0} unique projects", openProjectDirs.size());
+                    LOG.info("refreshSessions: starting refresh for {0} unique projects", openProjectDirs.size());
                     if (openProjectDirs.isEmpty()) {
                         return CompletableFuture.completedFuture(new ArrayList<Session>());
                     }
@@ -1148,6 +1164,7 @@ public class SessionManager implements SessionQuery, SessionControl,
                         Long.compare(parseTimestamp(s2.updatedAt()), parseTimestamp(s1.updatedAt()))
                     );
 
+                    LOG.info("refreshSessions: got {0} sessions", filteredSessions.size());
                     cacheManager.setCachedSessions(filteredSessions, agentName(), false);
                     notifySessionListUpdated(filteredSessions);
                 })
@@ -1929,6 +1946,11 @@ public class SessionManager implements SessionQuery, SessionControl,
                 if (isUnrestorableModel(rpc)) {
                     return false;
                 }
+                // A lost turn is settled or discarded by the user, never by waiting:
+                // the read-only attach is the recovery this retry would otherwise delay.
+                if (isLostTurn(rpc)) {
+                    return false;
+                }
                 return rpc.code() == AcpRpcException.INTERNAL_ERROR;
             }
             if (cause instanceof IOException) {
@@ -1943,6 +1965,16 @@ public class SessionManager implements SessionQuery, SessionControl,
     private static boolean isUnrestorableModel(RpcFailure failure) {
         String details = failure.dataField("details");
         return details != null && details.startsWith("Could not restore model");
+    }
+
+    /**
+     * True when Hermes' gateway answered {@code -32603 with data.details=unknown_execution}:
+     * the session holds a turn lost when the gateway restarted, so every session mutation
+     * (including the editor-MCP binding of an attach) is refused until it is discarded.
+     */
+    private static boolean isLostTurn(Throwable ex) {
+        RpcFailure failure = RpcFailure.find(ex);
+        return failure != null && "unknown_execution".equals(failure.dataField("details"));
     }
 
     /**
