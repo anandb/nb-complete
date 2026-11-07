@@ -135,6 +135,73 @@ class MessageSenderTurnRoutesTest {
     }
 
     @Test
+    void aHermesHarnessSteersThroughTheSlashCommand() throws Exception {
+        session(false);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.HERMES);
+        input.append("hello");
+
+        sender.sendMessage();
+
+        verify(proc).sendMessage(SESSION, "/steer hello", null, java.util.List.of());
+        verify(proc, never()).steerMessage(anyString(), anyString(), any());
+        verify(queue, never()).enqueue(anyString());
+    }
+
+    @Test
+    void anExplicitSteerCommandIsNotPrefixedTwice() throws Exception {
+        session(false);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.HERMES);
+        input.append("/steer keep it focused");
+
+        sender.sendMessage();
+
+        verify(proc).sendMessage(SESSION, "/steer keep it focused", null, java.util.List.of());
+    }
+
+    @Test
+    void aSlashSteerWithAttachmentsFallsBackToQueueing() throws Exception {
+        session(false);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.HERMES);
+        input.append("hello");
+        attachments.add(attachment("a.txt"));
+
+        sender.sendMessage();
+
+        verify(queue).enqueue("hello");
+        verify(proc, never()).sendMessage(anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    void anotherSlashCommandIsNotConvertedIntoASteer() throws Exception {
+        session(false);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.HERMES);
+        input.append("/queue next");
+
+        sender.sendMessage();
+
+        verify(queue).enqueue("/queue next");
+        verify(proc, never()).sendMessage(anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    void aFailedSlashSteerRestoresTheTextAndKeepsTheTurnAlive() throws Exception {
+        session(false);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.HERMES);
+        when(proc.sendMessage(anyString(), anyString(), any(), any()))
+                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("boom")));
+        input.append("hello");
+
+        sender.sendMessage();
+        drainEdt();
+
+        assertEquals("hello", input.toString(), "the text goes back so it can be resent");
+        verify(chatPanel, never()).stopStreaming();
+        verify(statusController, never()).disarmRunWatchdog();
+        assertEquals(false, messageDone.get(), "the running turn is not done because of the steer");
+        assertEquals(false, turnEndedCallbackRan.get());
+    }
+
+    @Test
     void aQueueingHarnessWithoutARunIdQueuesInsteadOfSteering() throws Exception {
         session(false);
         when(proc.getCapabilities()).thenReturn(HarnessCatalog.GOOSE);

@@ -166,6 +166,14 @@ class HarnessCatalogTest {
     }
 
     @Test
+    void onlyHermesSteersThroughASlashCommand() {
+        assertTrue(HarnessCatalog.HERMES.supportsSlashSteer());
+        assertFalse(HarnessCatalog.GOOSE.supportsSlashSteer());
+        assertFalse(HarnessCatalog.OPENCODE.supportsSlashSteer());
+        assertFalse(HarnessCatalog.UNKNOWN.supportsSlashSteer());
+    }
+
+    @Test
     void onlyGooseRenamesSessionsOnTheServer() {
         // ACP has no rename; goose implements _goose/unstable/session/rename.
         assertTrue(HarnessCatalog.GOOSE.supportsSessionRename());

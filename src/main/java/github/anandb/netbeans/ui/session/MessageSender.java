@@ -595,14 +595,26 @@ public class MessageSender {
 
 
     /**
-     * Adds the text to the running turn through the harness's steering extension.
-     * Returns false when the harness cannot steer right now, leaving the caller to
-     * queue or to start a new prompt.
+     * Adds the text to the running turn. Returns false when the harness cannot
+     * steer right now, leaving the caller to queue or to start a new prompt.
+     * Two mechanisms exist: a dedicated extension (goose) and a slash command
+     * the harness interprets as guidance (Hermes {@code /steer}).
      */
     private boolean trySteer(String text, ProcessControl proc) {
-        if (proc == null || !proc.getCapabilities().supportsSessionSteer()) {
+        if (proc == null) {
             return false;
         }
+        if (proc.getCapabilities().supportsSessionSteer()) {
+            return tryExtensionSteer(text, proc);
+        }
+        if (proc.getCapabilities().supportsSlashSteer()) {
+            return trySlashSteer(text, proc);
+        }
+        return false;
+    }
+
+    /** Steers through the harness's own extension (goose `_goose/unstable/session/steer`). */
+    private boolean tryExtensionSteer(String text, ProcessControl proc) {
         List<AttachedFile> attachedFiles = attachmentManager.getAttachments();
         if ((text == null || text.isEmpty()) && attachedFiles.isEmpty()) {
             return false;
@@ -642,15 +654,60 @@ public class MessageSender {
                         statusController.setStatus("STATUS_Error",
                                 ExceptionUtils.getMessage(ex) != null
                                         ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName());
-                        if (inputArea.getText().isEmpty()) {
-                            inputArea.setText(echoText);
-                        }
+                        restoreComposerText(echoText);
                         // The echo bubble was never delivered: drop it so resending does not
                         // draw a second identical bubble (user bubbles never merge).
                         chatPanel.removeMessageBubble(echoMessageId);
                         // The steer never landed, so the attachments go back in the composer
                         // with the text.
                         restoreAttachments(attachedFiles);
+                        inputFocusRequester.run();
+                    });
+                    return null;
+                });
+        return true;
+    }
+
+    /**
+     * Steers through Hermes' {@code /steer} slash command. The harness answers the
+     * steer prompt with an immediate {@code end_turn} while the original turn keeps
+     * running, so this route deliberately does not touch the send generation or the
+     * turn-end handlers — the original prompt's completion still ends the turn.
+     */
+    private boolean trySlashSteer(String text, ProcessControl proc) {
+        String trimmed = text == null ? "" : text.trim();
+        if (trimmed.isEmpty() || !attachmentManager.getAttachments().isEmpty()) {
+            return false; // attachments cannot travel through a text-only slash command
+        }
+        if (trimmed.startsWith("/") && !trimmed.equals("/steer") && !trimmed.startsWith("/steer ")) {
+            return false; // leave /queue, /compact, ... to their normal routing
+        }
+        String sessionId = sessionService.get().getCurrentSessionId();
+        if (sessionId == null) {
+            return false;
+        }
+        String steerCommand = trimmed.startsWith("/steer") ? text : "/steer " + text;
+        inputArea.setText("");
+        final String echoText = text;
+        final String echoMessageId = UUID.randomUUID().toString();
+        if (localEchoEnabled) {
+            chatPanel.addMessage(new ProcessedMessage.Builder()
+                    .messageType(MessageType.user_message_chunk)
+                    .text(echoText)
+                    .rawText(echoText)
+                    .messageId(echoMessageId)
+                    .build());
+        }
+        proc.sendMessage(sessionId, steerCommand, null, List.of())
+                .exceptionally(ex -> {
+                    SwingUtilities.invokeLater(() -> {
+                        statusController.setStatus("STATUS_Error",
+                                ExceptionUtils.getMessage(ex) != null
+                                        ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName());
+                        restoreComposerText(echoText);
+                        // The steer never landed: drop the echo so a resend does not
+                        // draw a second identical bubble.
+                        chatPanel.removeMessageBubble(echoMessageId);
                         inputFocusRequester.run();
                     });
                     return null;

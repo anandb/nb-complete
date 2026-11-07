@@ -129,6 +129,15 @@ public record Harness(
         return "goose".equals(id);
     }
 
+    /**
+     * True when the harness steers a running turn through a slash command instead
+     * of a protocol extension. Hermes exposes {@code /steer <guidance>}; the prompt
+     * returns {@code end_turn} immediately while the original turn keeps running.
+     */
+    public boolean supportsSlashSteer() {
+        return "hermes".equals(id);
+    }
+
     /** True when the harness retitles a session server-side
      *  ({@code _goose/unstable/session/rename}); ACP itself has no rename. */
     public boolean supportsSessionRename() {
