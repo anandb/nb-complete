@@ -1,0 +1,49 @@
+:: Hermes Sessions That Won't Load {"position":"1800,1320","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Hermes Sessions That Won't Load</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+When you pick a Hermes session from the dropdown, it may fail to open and the log shows:
+
+<pre><code>-32603 Internal error
+data: {"details":"unknown&#95;execution"}</code></pre>
+
+Sending a message afterwards fails with <code>not&#95;found</code>. The session is still listed, so nothing was deleted.
+
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Why it happens</div>
+
+Hermes runs sessions through a background gateway. If the gateway restarts while a turn is in flight, Hermes marks that turn as lost and **pauses every change to the session** — model, mode, MCP servers and new prompts — until you acknowledge it. That pause is what reports <code>unknown&#95;execution</code>. It is a Hermes-side condition, not a BeanBot or data-storage problem: the transcript is intact.
+
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">What BeanBot does</div>
+
+BeanBot recognises the pause and reopens the session **read-only**, so the history loads instead of the session failing outright. MCP tools keep working: the session's existing server binding is preserved.
+
+Hermes then posts a notice in the chat (when you open the session) naming the exact recovery command, for example:
+
+<pre><code>/discard d45b5a4c03a34ade9d78f6d3813d7cff</code></pre>
+
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">How to recover</div>
+
+1. Open the session and read the Hermes notice — it contains the admission id.
+
+2. Send the <code>/discard &lt;id&gt;</code> command in that same chat. The command is handled by Hermes locally; it acknowledges the lost turn and lets the session run again. It does **not** replay the turn, so check your working tree, diffs or build output before resuming.
+
+3. If you prefer a terminal, run the alternative named in the notice:
+
+<pre><code>hermes sessions discard &lt;session-id&gt;</code></pre>
+
+The session id is the one shown in the Session dropdown. After the discard succeeds, a prompt runs normally and the next session open or server restart rebinds MCP servers with the editor configuration.
+
+<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Notes</div>
+
+- The pause only affects the one session that lost a turn; other Hermes sessions open normally.
+- Read-only open keeps the session's servers. It does not remove the <code>nb</code> tools or change your model.
+- Do not resend the lost prompt blindly — Hermes may already have accepted its input before the restart. Discard first, then resend.
+
+> [[Hermes Agent]]
+> [[Reloading a Session]]
+> [[Message History]]
+> [[Starting a Session]]

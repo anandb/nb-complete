@@ -42,6 +42,7 @@ This is a complete list of topics in this guide, use it to directly jump to that
 > [[Global Configuration Setup]]
 > [[Goose Agent]]
 > [[Hermes Agent]]
+> [[Hermes Sessions That Won't Load]]
 > [[IDE Enhancements]]
 > [[Input Area Keys]]
 > [[Inspector Context Menu]]

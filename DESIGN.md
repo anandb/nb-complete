@@ -175,6 +175,7 @@ The plugin embeds a **Model Context Protocol (MCP) server** so the AI subprocess
 - End of turn is signalled by `responding_finished` / `end_turn` or the RPC `stopReason`; `available_commands_update` is *not* a turn end.
 - `HarnessCatalog.forAgentVersion(harness, version)` derives **OpenCode v2** (`requiresMessageQueue=true`, no mid-turn steering) from the reported agent version while keeping the shared v1 id.
 - **goose** rejects a second `session/prompt` while a run is active. `HarnessCatalog.GOOSE` therefore queues by default, and `ProcessManager.steerMessage()` uses `_goose/unstable/session/steer` with an `expectedRunId` from `manager/ActiveRunTracker`; a stale id is retried once from `error.data.actualRunId`. `support/SteerEchoes` suppresses the duplicate user echo.
+- **Hermes** has no steering extension: mid-turn text is posted immediately as its `/steer <guidance>` slash command. Hermes answers that prompt within ~20 ms with `stopReason:"end_turn"` **as the steer prompt's JSON-RPC result** (wire-verified in the ACP logs; it sends no turn-end `session/update` while a run is active), so `MessageSender.trySlashSteer` neither bumps the send generation nor wires completion handlers — the ignored result is what keeps the original turn alive, and the original prompt's completion still ends the turn. Attachments and non-steer slash commands fall back to the normal queue.
 - A failed mid-turn send must not end the turn UI: Stop stays enabled and the turn-end claim is handed back to the original prompt.
 
 ---

@@ -26,6 +26,7 @@ Requires Python 3.10+.
 
 The executable you configure in BeanBot is <code>hermes</code>. When the session starts, Hermes reports its available models and modes as structured fields — the plugin uses these to populate the Model and Mode dropdowns automatically.
 
+> [[Hermes Sessions That Won't Load]]
 > [[Post Install]]
 > [[Starting a Session]]
 > [[MCP Tools]]

@@ -499,6 +499,40 @@ Resolved — kept as regression guards:
 - ACP v2 `session/inject` is the eventual standard replacement; keep the goose call
   behind `supportsSessionSteer()` so it can be swapped without touching the UI.
 
+### Hermes Slash Steering (`/steer <guidance>`)
+
+- Hermes has no steering extension: `Harness.supportsSlashSteer()` (id `hermes` only) routes a
+  mid-turn send through `MessageSender.trySlashSteer`, which posts `/steer <guidance>` as a plain
+  `session/prompt`. That send MUST NOT bump `sendGeneration` or the permission epoch and MUST NOT
+  wire completion handlers onto its future.
+- Wire-verified (ACP logs): Hermes answers the steer prompt within ~20 ms with
+  `{"id":N,"result":{"stopReason":"end_turn"}}` — an RPC **result**, not a `session/update`
+  notification — and it emits no turn-end `session/update` while a run is active. The
+  unhandled result is exactly why the original turn's UI survives; do NOT "harden" the route
+  by wiring turn-end suppression onto `SessionLifecycleHandler`'s `end_turn` branch for it.
+- Attachments and non-`/steer` slash commands fall back to the normal queue.
+
+### Hermes Lost-Turn Attach (`unknown_execution`)
+
+- Hermes 0.23's gateway marks a turn lost when the gateway restarted as a pending admission
+  with `status=unknown` in `state.db` (`session_admissions`), and refuses every session
+  **mutation** for that session until it is discarded. `session/load` with `mcpServers`
+  resumes through an editor-MCP policy mutation, so it answers
+  `-32603 Internal error` with `error.data.details = "unknown_execution"` while a plain
+  attach (`mcpServers: []`) loads the transcript normally. **MCP on load is supported** —
+  the refusal is the lost-turn gate, not a missing capability.
+- `SessionManager.loadSessionFromServer` treats `unknown_execution` as a definitive answer:
+  `isStartupRetryable` must NOT retry it (waiting never settles it), and the load retries
+  **once read-only** (`SessionRpcClient.loadSessionFromServer(..., editorMcp=false)`, empty
+  list) so the history loads. The read-only retry skips `closeBeforeLoad` — the first attempt
+  already handled cancel/close. Do NOT drop the retry: without it the session cannot open at
+  all and every later `session/prompt` answers `not_found`.
+- Recovery is the harness's own notice, streamed into the attach: it names
+  ``/discard <admission_id>`` (or `hermes sessions discard <session_id>` in a terminal).
+  Send the command through `session/prompt` after the read-only attach — the adapter allows
+  a text-only `/discard` past the pending turn. The gateway keeps the session's previously
+  bound MCP servers, so the read-only attach does not strip the `nb` tools.
+
 ### goose Custom Notifications (`_goose/unstable/session/update`)
 
 - goose sends its richer per-session channel **only** when the client opts in with
