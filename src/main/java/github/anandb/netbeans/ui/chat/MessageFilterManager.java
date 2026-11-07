@@ -2,11 +2,11 @@ package github.anandb.netbeans.ui.chat;
 
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
-import java.util.prefs.Preferences;
 
-import org.openide.util.NbPreferences;
 
 import github.anandb.netbeans.support.PreferenceKeys;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.platform.PrefStore;
 
 /**
  * Manages message type visibility filters via NbPreferences.
@@ -34,14 +34,14 @@ public final class MessageFilterManager {
     private static final PreferenceChangeListener listener = MessageFilterManager::onPreferenceChanged;
 
     static {
-        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        PrefStore prefs = PlatformBridge.prefStoreSafe();
         // Seed initial values
         combineToolThought = prefs.getBoolean(PreferenceKeys.COMBINE_TOOL_THOUGHT, true);
         filterTool        = prefs.getBoolean(PREF_PREFIX + "tool", false);
         filterThought     = prefs.getBoolean(PREF_PREFIX + "thought", false);
         filterAssistant   = prefs.getBoolean(PREF_PREFIX + "assistant", false);
         filterUser        = prefs.getBoolean(PREF_PREFIX + "user", false);
-        prefs.addPreferenceChangeListener(listener);
+        prefs.addChangeListener(listener);
     }
 
     private MessageFilterManager() {}
@@ -76,11 +76,11 @@ public final class MessageFilterManager {
         if (type == null) return;
         // "activity" toggles both tool and thought together
         if ("activity".equals(type)) {
-            NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PREF_PREFIX + "tool", hidden);
-            NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PREF_PREFIX + "thought", hidden);
+            PlatformBridge.prefStoreSafe().putBoolean(PREF_PREFIX + "tool", hidden);
+            PlatformBridge.prefStoreSafe().putBoolean(PREF_PREFIX + "thought", hidden);
             return;
         }
-        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PREF_PREFIX + type, hidden);
+        PlatformBridge.prefStoreSafe().putBoolean(PREF_PREFIX + type, hidden);
     }
 
     /** Refreshes cached values when any preference changes. */

@@ -16,7 +16,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
-import java.util.prefs.Preferences;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JButton;
@@ -27,9 +26,10 @@ import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
 import org.openide.modules.OnStart;
 import org.openide.util.NbBundle;
-import org.openide.util.NbPreferences;
 import org.openide.windows.TopComponent;
 import github.anandb.netbeans.ui.components.UIUtils;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.platform.PrefStore;
 
 /** Adds a live, optional Copy All button to NetBeans' Action Items toolbar. */
 @OnStart
@@ -52,8 +52,8 @@ public class ActionItemsCopyButton implements Runnable, PropertyChangeListener, 
         registered = true;
         enabled = PluginSettings.isCopyAllItemsEnabled();
         TopComponent.getRegistry().addPropertyChangeListener(this);
-        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
-        prefs.addPreferenceChangeListener(this);
+        PrefStore prefs = PlatformBridge.prefStoreSafe();
+        prefs.addChangeListener(this);
         SwingUtilities.invokeLater(this::syncOpenWindows);
     }
 
@@ -67,7 +67,7 @@ public class ActionItemsCopyButton implements Runnable, PropertyChangeListener, 
     @Override
     public void preferenceChange(PreferenceChangeEvent evt) {
         if (PreferenceKeys.ACTIONS_COPY_ALL_ITEMS.equals(evt.getKey())) {
-            enabled = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+            enabled = PlatformBridge.prefStoreSafe()
                     .getBoolean(PreferenceKeys.ACTIONS_COPY_ALL_ITEMS, true);
             SwingUtilities.invokeLater(this::syncOpenWindows);
         }

@@ -44,7 +44,6 @@ import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
 import javax.swing.text.View;
 
-import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 import org.openide.util.RequestProcessor;
 import org.netbeans.api.project.Project;
@@ -232,11 +231,11 @@ public class TokenUsageDialog extends JDialog {
 
     /** Returns true when there is at least one open project and an active session. */
     private static boolean isCurrentProjectAvailable() {
-        PlatformBridge bridge = Lookup.getDefault().lookup(PlatformBridge.class);
+        PlatformBridge bridge = PlatformBridge.get();
         if (bridge == null) return false;
         Project[] projects = bridge.projectContext().getAllOpenProjects();
         if (projects == null || projects.length == 0) return false;
-        SessionQuery sq = Lookup.getDefault().lookup(SessionQuery.class);
+        SessionQuery sq = PlatformBridge.serviceSafe(SessionQuery.class);
         return sq != null && sq.getCurrentSessionId() != null;
     }
 
@@ -248,8 +247,8 @@ public class TokenUsageDialog extends JDialog {
      * Runs on the stats worker: the call is an RPC to the harness, never on the EDT.
      */
     private static ContextReport readContextReport() {
-        ContextReportQuery query = Lookup.getDefault().lookup(ContextReportQuery.class);
-        SessionQuery sessions = Lookup.getDefault().lookup(SessionQuery.class);
+        ContextReportQuery query = PlatformBridge.serviceSafe(ContextReportQuery.class);
+        SessionQuery sessions = PlatformBridge.serviceSafe(SessionQuery.class);
         if (query == null || sessions == null || !query.canReportContext()) {
             return null;
         }
@@ -283,12 +282,12 @@ public class TokenUsageDialog extends JDialog {
             try {
                 String projectDir = null;
                 if (currentProject) {
-                    SessionQuery sq = Lookup.getDefault().lookup(SessionQuery.class);
+                    SessionQuery sq = PlatformBridge.serviceSafe(SessionQuery.class);
                     if (sq != null) {
                         projectDir = sq.getCurrentSessionDirectory();
                     }
                 }
-                UsageStatsStore store = Lookup.getDefault().lookup(UsageStatsStore.class);
+                UsageStatsStore store = PlatformBridge.serviceSafe(UsageStatsStore.class);
                 if (store != null) {
                     // Opening or refreshing this panel is the explicit user action
                     // that may spend the store's one retry: startup may have found

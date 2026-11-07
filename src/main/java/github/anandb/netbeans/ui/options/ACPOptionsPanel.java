@@ -22,7 +22,6 @@ import org.netbeans.api.editor.mimelookup.MimeLookup;
 import org.netbeans.api.editor.mimelookup.MimePath;
 import org.netbeans.api.editor.settings.SimpleValueNames;
 import org.openide.util.NbBundle;
-import org.openide.util.NbPreferences;
 import org.openide.util.RequestProcessor;
 
 import java.awt.Component;
@@ -727,7 +726,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
 
     public void load() {
         userEditedPath = false;
-        String savedPath = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get(PreferenceKeys.ACP_EXECUTABLE_PATH, null);
+        String savedPath = PlatformBridge.prefStoreSafe().get(PreferenceKeys.ACP_EXECUTABLE_PATH, null);
 
         // Discover known binaries on PATH. Native probing only stats the filesystem; the
         // WSL probe spawns wsl.exe per name (up to 2 s each) and so runs off the EDT —
@@ -773,12 +772,12 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
             pathCombo.getEditor().setItem("");
         }
 
-        argsField.setText(NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get(PreferenceKeys.PROCESS_ARGUMENTS, "acp"));
+        argsField.setText(PlatformBridge.prefStoreSafe().get(PreferenceKeys.PROCESS_ARGUMENTS, "acp"));
 
         // Stored id wins when the path cannot explain it (custom binary or container
         // launcher); otherwise the state is Auto-detect with the path as the source.
         HarnessSelection.Selection storedChoice = HarnessSelection.resolve(
-                NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).get(PreferenceKeys.ACP_HARNESS_ID, null),
+                PlatformBridge.prefStoreSafe().get(PreferenceKeys.ACP_HARNESS_ID, null),
                 BinaryResolver.binaryNameFromPath(getExecutablePath()));
         if (storedChoice.auto()) {
             harnessCombo.setSelectedIndex(0);
@@ -1271,15 +1270,15 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
 
     public void store() {
         String pathToSave = getExecutablePath();
-        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(PreferenceKeys.ACP_EXECUTABLE_PATH, pathToSave);
-        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(PreferenceKeys.PROCESS_ARGUMENTS, argsField.getText());
+        PlatformBridge.prefStoreSafe().put(PreferenceKeys.ACP_EXECUTABLE_PATH, pathToSave);
+        PlatformBridge.prefStoreSafe().put(PreferenceKeys.PROCESS_ARGUMENTS, argsField.getText());
         // Persist the chosen harness, not just the one the file name implies: a custom
         // binary or a container launcher (docker/podman) cannot reveal the harness.
         String binName = BinaryResolver.binaryNameFromPath(pathToSave);
         HarnessSelection.Selection choice = (HarnessSelection.Selection) harnessCombo.getSelectedItem();
-        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(
+        PlatformBridge.prefStoreSafe().put(
                 PreferenceKeys.ACP_HARNESS_ID, HarnessSelection.harnessId(choice, binName));
-        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(
+        PlatformBridge.prefStoreSafe().put(
                 PreferenceKeys.ACP_HARNESS_DISPLAY_NAME, HarnessSelection.displayName(choice, binName));
         if (PluginSettings.isPreambleTooLong(preambleText)) {
             // One preference value is capped at 8192 chars. Keep the previously

@@ -49,6 +49,9 @@ class ModelVariantResolverTest {
         try (MockedStatic<PlatformBridge> bridge = Mockito.mockStatic(PlatformBridge.class)) {
             bridge.when(PlatformBridge::sessionServiceSafe)
                     .thenReturn((SessionService) () -> mock(SessionControl.class));
+            bridge.when(PlatformBridge::prefStoreSafe).thenCallRealMethod();
+            bridge.when(PlatformBridge::sessionControl).thenCallRealMethod();
+            bridge.when(PlatformBridge::processControl).thenCallRealMethod();
             ModelVariantResolver resolver = new ModelVariantResolver();
             resolver.parseModelVariants(opt, tokens);
             return resolver.getModelVariants();

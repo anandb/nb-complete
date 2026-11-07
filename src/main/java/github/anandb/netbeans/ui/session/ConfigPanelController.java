@@ -44,7 +44,6 @@ import github.anandb.netbeans.support.Logger;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.contract.ModelListControl;
 import github.anandb.netbeans.contract.ProcessControl;
-import org.openide.util.Lookup;
 import org.openide.util.RequestProcessor;
 
 
@@ -76,7 +75,7 @@ public class ConfigPanelController {
     private final SessionService sessionService = PlatformBridge.sessionServiceSafe();
 
     /** Per-harness model list cache; null when the service is not registered. */
-    private final ModelListControl modelListControl = Lookup.getDefault().lookup(ModelListControl.class);
+    private final ModelListControl modelListControl = PlatformBridge.serviceSafe(ModelListControl.class);
 
     private final JPanel configPanel;
     private final JComboBox<ConfigItem> modeCombo;
@@ -354,7 +353,7 @@ public class ConfigPanelController {
      *  Null-safe: with no platform bridge registered, `processServiceSafe()` hands back a dummy whose
      *  `getCapabilities()` is null (see PlatformBridge.createDummy). */
     private boolean agentSupportsSessionSetMode() {
-        HarnessCatalog.Harness caps = PlatformBridge.processServiceSafe().get().getCapabilities();
+        HarnessCatalog.Harness caps = PlatformBridge.processControl().getCapabilities();
         return caps != null && caps.supportsSessionSetMode();
     }
 
@@ -383,7 +382,7 @@ public class ConfigPanelController {
 
     /** True when model switching must use the dedicated ACP session/set_model RPC (Hermes-style agents). */
     private boolean agentSupportsSessionSetModel() {
-        return PlatformBridge.processServiceSafe().get().getCapabilities().supportsSessionSetModel();
+        return PlatformBridge.processControl().getCapabilities().supportsSessionSetModel();
     }
 
     public void updateConfigControls(List<SessionConfigOption> options) {
@@ -564,7 +563,7 @@ public class ConfigPanelController {
                 if (!thinkingDeclared) {
                     refreshThinkingComboForOptions(options);
                 }
-                ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
+                ProcessControl pc = PlatformBridge.processControl();
                 boolean modelSelectable = pc != null && pc.getCapabilities().supportsModelSelection();
                 this.modelEnabled = modelSelectable;
                 if (!modelSelectable && pc != null) {
@@ -696,7 +695,7 @@ public class ConfigPanelController {
 
     /** Current harness id, or {@code null} while it is unresolved or unknown. */
     private static String currentHarnessId() {
-        ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
+        ProcessControl pc = PlatformBridge.processControl();
         if (pc == null) {
             return null;
         }

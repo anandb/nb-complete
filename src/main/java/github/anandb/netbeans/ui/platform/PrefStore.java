@@ -1,5 +1,7 @@
 package github.anandb.netbeans.ui.platform;
 
+import java.util.prefs.PreferenceChangeListener;
+
 /**
  * Access seam for {@code NbPreferences.forModule(...)} keyed by the module
  * anchor ({@link github.anandb.netbeans.support.PreferenceKeys#MODULE_ANCHOR}).
@@ -20,4 +22,10 @@ public interface PrefStore {
     void putInt(String key, int v);
     String get(String key, String def);
     void put(String key, String v);
+
+    /** Register a listener for preference changes on this node. */
+    void addChangeListener(PreferenceChangeListener listener);
+
+    /** Remove a previously registered preference listener. */
+    void removeChangeListener(PreferenceChangeListener listener);
 }

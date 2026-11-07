@@ -39,9 +39,7 @@ import java.util.prefs.PreferenceChangeListener;
 import org.openide.DialogDisplayer;
 import org.openide.NotifyDescriptor;
 import org.openide.util.ImageUtilities;
-import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
-import org.openide.util.NbPreferences;
 
 import github.anandb.netbeans.support.AgentUtils;
 import github.anandb.netbeans.support.AppLinks;
@@ -52,7 +50,6 @@ import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.ProjectPaths;
 import github.anandb.netbeans.support.UserGuideOpener;
 
-import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.contract.UpdateCheckerControl;
 import github.anandb.netbeans.contract.UpdateCheckerControl.UpdateCheckResult;
 import github.anandb.netbeans.model.HarnessCatalog;
@@ -196,15 +193,14 @@ public final class ChatLayoutBuilder {
                 Object sel = sessionDropdown.getSelectedItem();
                 if (sel instanceof SessionItem item) {
                     String sessionId = item.getSession().id();
-                    var tmpSc = Lookup.getDefault()
-                        .lookup(SessionControl.class);
+                    var tmpSc = PlatformBridge.sessionControl();
 
                     JMenuItem rename = new JMenuItem(NbBundle.getMessage(UIBundle.class, "LBL_Rename"));
                     rename.addActionListener(ev -> topComponent.renameCurrentSession());
                     add(rename);
 
                     JMenuItem fork = new JMenuItem(NbBundle.getMessage(UIBundle.class, "LBL_ForkSession"));
-                    var forkSc = Lookup.getDefault().lookup(SessionControl.class);
+                    var forkSc = PlatformBridge.sessionControl();
                     fork.setEnabled(forkSc != null && forkSc.canForkSession());
                     fork.addActionListener(ev -> topComponent.forkSession(sessionId));
                     add(fork);
@@ -215,8 +211,7 @@ public final class ChatLayoutBuilder {
                                 hidden ? "LBL_Unarchive" : "LBL_Archive");
                         JMenuItem archive = new JMenuItem(archiveText);
                         archive.addActionListener(ev -> {
-                            var archSc = Lookup.getDefault().lookup(
-                                SessionControl.class);
+                            var archSc = PlatformBridge.sessionControl();
                             if (archSc == null) {
                                 topComponent.setStatus("STATUS_ServiceUnavailable");
                                 return;
@@ -285,7 +280,7 @@ public final class ChatLayoutBuilder {
             });
             timer.setRepeats(false);
             timer.start();
-            var sc = Lookup.getDefault().lookup(SessionControl.class);
+            var sc = PlatformBridge.sessionControl();
             if (sc == null) {
                 btn.setEnabled(true);
                 topComponent.setStatus("STATUS_ServiceUnavailable");
@@ -316,7 +311,7 @@ public final class ChatLayoutBuilder {
             shbRef[0].setToolTipText(showing
                 ? NbBundle.getMessage(UIBundle.class, "HINT_HideArchivedSessions")
                 : NbBundle.getMessage(UIBundle.class, "HINT_ShowArchivedSessions"));
-            var sc = Lookup.getDefault().lookup(SessionControl.class);
+            var sc = PlatformBridge.sessionControl();
             if (sc != null) {
                 sc.refreshSessionList();
             } else {
@@ -454,7 +449,7 @@ public final class ChatLayoutBuilder {
         helpBtn.setContentAreaFilled(false);
         helpBtn.setBorderPainted(false);
         helpBtn.addActionListener(e -> {
-            NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+            PlatformBridge.prefStoreSafe()
                     .put(PreferenceKeys.HELP_FLASH_PENDING, "false");
             JPopupMenu helpPopup = new JPopupMenu();
 
@@ -466,7 +461,7 @@ public final class ChatLayoutBuilder {
             JMenuItem checkUpdatesItem = new JMenuItem(NbBundle.getMessage(
                     UIBundle.class, "LBL_HelpCheckUpdates"));
             checkUpdatesItem.addActionListener(ev -> {
-                UpdateCheckerControl updateChecker = Lookup.getDefault().lookup(UpdateCheckerControl.class);
+                UpdateCheckerControl updateChecker = PlatformBridge.serviceSafe(UpdateCheckerControl.class);
                 if (updateChecker == null) {
                     topComponent.setStatus("STATUS_UpdateCheckerUnavailable");
                 } else {
@@ -538,7 +533,7 @@ public final class ChatLayoutBuilder {
         cwdRow.add(rightButtons, BorderLayout.EAST);
 
         // Flash the help button until the user clicks on it
-        String flashPending = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+        String flashPending = PlatformBridge.prefStoreSafe()
                 .get(PreferenceKeys.HELP_FLASH_PENDING, "false");
         if ("true".equals(flashPending)) {
             HelpButtonFlash.flash(helpBtn);
@@ -764,11 +759,11 @@ public final class ChatLayoutBuilder {
             JButton btn = (JButton) entry[0];
             String key = (String) entry[1];
             String label = (String) entry[2];
-            boolean visible = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+            boolean visible = PlatformBridge.prefStoreSafe()
                     .getBoolean(key, isDefaultVisible(key));
             JCheckBoxMenuItem item = new JCheckBoxMenuItem(label, visible);
             item.addActionListener(e -> {
-                NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                PlatformBridge.prefStoreSafe()
                         .putBoolean(key, item.isSelected());
                 btn.setVisible(item.isSelected());
             });
@@ -789,7 +784,7 @@ public final class ChatLayoutBuilder {
             {restartServerBtn, PreferenceKeys.TOOLBAR_RESTART},
         };
         for (Object[] pair : btns) {
-            boolean visible = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).getBoolean(
+            boolean visible = PlatformBridge.prefStoreSafe().getBoolean(
                 (String) pair[1], isDefaultVisible((String) pair[1])
             );
             ((Component) pair[0]).setVisible(visible);
@@ -804,15 +799,14 @@ public final class ChatLayoutBuilder {
     JButton getHideBtn() { return hideBtn; }
 
     private void fireNewSession() {
-        var bridge = Lookup.getDefault().lookup(PlatformBridge.class);
+        var bridge = PlatformBridge.get();
         if (bridge == null) return;
         Project[] projects = bridge.projectContext().getAllOpenProjects();
         if (projects == null || projects.length == 0) {
             return;
         }
         if (projects.length == 1) {
-            var sc = Lookup.getDefault()
-                .lookup(SessionControl.class);
+            var sc = PlatformBridge.sessionControl();
             if (sc != null) {
                 sc.createNewSession(ProjectPaths.nativePath(projects[0]));
             }
@@ -968,8 +962,7 @@ public final class ChatLayoutBuilder {
     void cleanup() {
         newSessionDebounceTimer.stop();
         if (miniAssistantPrefListener != null) {
-            NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                    .removePreferenceChangeListener(miniAssistantPrefListener);
+            PlatformBridge.prefStoreSafe().removeChangeListener(miniAssistantPrefListener);
             miniAssistantPrefListener = null;
         }
     }
@@ -990,7 +983,7 @@ public final class ChatLayoutBuilder {
                 SwingUtilities.invokeLater(() -> launchMiniAssistantBtn.setVisible(enabled));
             }
         };
-        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).addPreferenceChangeListener(miniAssistantPrefListener);
+        PlatformBridge.prefStoreSafe().addChangeListener(miniAssistantPrefListener);
     }
 
     public static boolean isShowingHidden() {
@@ -1003,7 +996,7 @@ public final class ChatLayoutBuilder {
      * is true when a session (the active one) stays visible.
      */
     private void archiveSessions(List<String> sessionIds, boolean keepMiniAssistantOpen) {
-        var archSc = Lookup.getDefault().lookup(SessionControl.class);
+        var archSc = PlatformBridge.sessionControl();
         if (archSc == null) {
             topComponent.setStatus("STATUS_ServiceUnavailable");
             return;

@@ -75,6 +75,11 @@ class ConfigPanelControllerModeLabelTest {
                     .thenReturn((ProcessService) () -> processControl);
             platformBridgeMock.when(PlatformBridge::sessionServiceSafe)
                     .thenReturn((SessionService) () -> mock(SessionControl.class));
+            // Static mock returns null for unstubbed statics; keep the real
+            // fallback so UIUtils' static initializer still gets a PrefStore.
+            platformBridgeMock.when(PlatformBridge::prefStoreSafe).thenCallRealMethod();
+            platformBridgeMock.when(PlatformBridge::sessionControl).thenCallRealMethod();
+            platformBridgeMock.when(PlatformBridge::processControl).thenCallRealMethod();
             themeManagerMock.when(() -> ThemeManager.getIcon(anyString(), anyInt())).thenReturn(null);
             pluginSettingsMock.when(PluginSettings::getToolbarIconSize).thenReturn(16);
 

@@ -17,7 +17,6 @@ import github.anandb.netbeans.contract.PinnedMessageControl;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.contract.ProcessControl;
-import org.openide.util.Lookup;
 import github.anandb.netbeans.contract.UpdateDispatcher;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
@@ -242,7 +241,7 @@ public class SessionLifecycleHandler implements SessionListener {
             statusController.touchRunActivity();
         }
 
-        Lookup.getDefault().lookup(UpdateDispatcher.class).handle(update, new UIHandler() {
+        PlatformBridge.serviceSafe(UpdateDispatcher.class).handle(update, new UIHandler() {
             @Override
             public void displayMessage(ProcessedMessage msg) {
                 String msgSessionId = update.params() != null ? update.params().sessionId() : null;
@@ -611,8 +610,7 @@ public class SessionLifecycleHandler implements SessionListener {
             planPanel.clear();
             chatPanel.setSessionId(sessionId);
             // Prime the pinned-message cache before any bubbles are created.
-            PinnedMessageControl pinStore = Lookup.getDefault()
-                    .lookup(PinnedMessageControl.class);
+            PinnedMessageControl pinStore = PlatformBridge.serviceSafe(PinnedMessageControl.class);
             if (pinStore != null && sessionId != null) {
                 pinStore.loadSession(sessionId);
             }
@@ -711,8 +709,7 @@ public class SessionLifecycleHandler implements SessionListener {
         SwingUtilities.invokeLater(() -> {
             chatPanel.setSessionId(sessionId);
             // Prime the pinned-message cache so bubble constructors see stored pins.
-            PinnedMessageControl pinStore = Lookup.getDefault()
-                    .lookup(PinnedMessageControl.class);
+            PinnedMessageControl pinStore = PlatformBridge.serviceSafe(PinnedMessageControl.class);
             if (pinStore != null) {
                 pinStore.loadSession(sessionId);
             }

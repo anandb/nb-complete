@@ -32,7 +32,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletableFuture;
-import java.util.prefs.Preferences;
 
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -55,14 +54,11 @@ import org.apache.commons.lang3.StringUtils;
 
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
-import org.openide.util.NbPreferences;
 import org.openide.util.Utilities;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.openide.windows.Mode;
 import org.openide.windows.WindowManager;
 
-import github.anandb.netbeans.contract.ProcessControl;
-import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.support.PreferenceKeys;
@@ -83,6 +79,8 @@ import github.anandb.netbeans.ui.components.WobblePanel;
 import github.anandb.netbeans.ui.components.ButtonRowLayout;
 import github.anandb.netbeans.ui.components.RoundedPanel;
 import github.anandb.netbeans.ui.components.ButtonMnemonics;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.ui.platform.PrefStore;
 
 public class MiniAssistantDialog extends JDialog {
 
@@ -405,7 +403,7 @@ public class MiniAssistantDialog extends JDialog {
     }
 
     void sendMessage() {
-        String sessionId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
+        String sessionId = PlatformBridge.sessionControl().getCurrentSessionId();
         if (sessionId == null) {
             return;
         }
@@ -433,8 +431,7 @@ public class MiniAssistantDialog extends JDialog {
             return;
         }
 
-        var pc = Lookup.getDefault()
-                .lookup(ProcessControl.class);
+        var pc = PlatformBridge.processControl();
         var interceptor = pc != null ? pc.getSlashCommandInterceptor() : null;
         if (interceptor != null && trimmed.startsWith("/")) {
             String cmd = spaceIdx > 0 ? trimmed.substring(0, spaceIdx) : trimmed;
@@ -681,8 +678,7 @@ public class MiniAssistantDialog extends JDialog {
     public void onProcessingChanged(boolean processing) {
         SwingUtilities.invokeLater(() -> {
             this.isProcessing = processing;
-            String sessionId = Lookup.getDefault()
-                    .lookup(SessionControl.class).getCurrentSessionId();
+            String sessionId = PlatformBridge.sessionControl().getCurrentSessionId();
             if (processing) {
                 maxTokenCountThisTurn = 0;
                 displayedMessageId = null;
@@ -794,7 +790,7 @@ public class MiniAssistantDialog extends JDialog {
     }
 
     private void updateResponsePane() {
-        String sessionId = Lookup.getDefault().lookup(SessionControl.class).getCurrentSessionId();
+        String sessionId = PlatformBridge.sessionControl().getCurrentSessionId();
 
         List<MessageBubble> bubbles = getAssistantBubbles();
         if (!bubbles.isEmpty()) {
@@ -824,7 +820,7 @@ public class MiniAssistantDialog extends JDialog {
     }
 
     private void restoreBounds() {
-        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        PrefStore prefs = PlatformBridge.prefStoreSafe();
         int w = prefs.getInt(PreferenceKeys.MINI_ASSISTANT_WIDTH, 500);
         int h = prefs.getInt(PreferenceKeys.MINI_ASSISTANT_HEIGHT, 300);
         int x = prefs.getInt(PreferenceKeys.MINI_ASSISTANT_X, Integer.MIN_VALUE);
@@ -855,7 +851,7 @@ public class MiniAssistantDialog extends JDialog {
     }
 
     private void restoreDividerLocation() {
-        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        PrefStore prefs = PlatformBridge.prefStoreSafe();
         int savedInputHeight = prefs.getInt(PreferenceKeys.MINI_ASSISTANT_INPUT_HEIGHT, -1);
         if (savedInputHeight > 0 && splitPane != null && splitPane.getHeight() > 50) {
             int targetDiv = Math.max(30, splitPane.getHeight() - savedInputHeight - splitPane.getDividerSize());
@@ -867,7 +863,7 @@ public class MiniAssistantDialog extends JDialog {
         if (!isVisible()) return;
         Rectangle bounds = getBounds();
         if (bounds.width > 0 && bounds.height > 0) {
-            Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+            PrefStore prefs = PlatformBridge.prefStoreSafe();
             prefs.putInt(PreferenceKeys.MINI_ASSISTANT_X, bounds.x);
             prefs.putInt(PreferenceKeys.MINI_ASSISTANT_Y, bounds.y);
             prefs.putInt(PreferenceKeys.MINI_ASSISTANT_WIDTH, bounds.width);

@@ -21,7 +21,6 @@ import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.AttachedFile;
 import github.anandb.netbeans.support.Logger;
 import org.openide.util.Lookup;
-import org.openide.util.NbPreferences;
 import org.openide.util.NbBundle;
 
 import github.anandb.netbeans.contract.ProcessControl;
@@ -68,7 +67,7 @@ public class MessageSender {
     };
     static {
         localEchoEnabled = PluginSettings.isEchoUserInput();
-        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).addPreferenceChangeListener(PREF_LISTENER);
+        PlatformBridge.prefStoreSafe().addChangeListener(PREF_LISTENER);
     }
 
     private final SessionService sessionService;
@@ -107,7 +106,7 @@ public class MessageSender {
         this.statusController = statusController;
         this.paperclipUpdater = paperclipUpdater;
         this.inputFocusRequester = inputFocusRequester;
-        PlatformBridge bridge = Lookup.getDefault().lookup(PlatformBridge.class);
+        PlatformBridge bridge = PlatformBridge.get();
         if (bridge == null) {
             LOG.severe("PlatformBridge not found in Lookup — MessageSender services unavailable");
             this.sessionService = null;
@@ -856,11 +855,11 @@ public class MessageSender {
         if (usage == null || !usage.isObject()) {
             return;
         }
-        UsageStatsStore store = Lookup.getDefault().lookup(UsageStatsStore.class);
+        UsageStatsStore store = PlatformBridge.serviceSafe(UsageStatsStore.class);
         if (store == null) {
             return;
         }
-        SessionQuery sessions = Lookup.getDefault().lookup(SessionQuery.class);
+        SessionQuery sessions = PlatformBridge.serviceSafe(SessionQuery.class);
         Attribution attribution = new Attribution(sessionId,
                 sessions != null ? sessions.getHarnessId() : null,
                 sessions != null ? sessions.getSessionModelId(sessionId) : null,

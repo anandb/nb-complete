@@ -62,7 +62,6 @@ import github.anandb.netbeans.support.MessageIdGenerator;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.TimingConstants;
 import java.util.concurrent.ConcurrentHashMap;
-import org.openide.util.Lookup;
 
 import static org.apache.commons.lang3.StringUtils.defaultString;
 import static org.apache.commons.lang3.StringUtils.isBlank;
@@ -79,6 +78,7 @@ import github.anandb.netbeans.ui.export.HtmlConversationExporter;
 import github.anandb.netbeans.ui.components.UIUtils;
 import github.anandb.netbeans.ui.components.ScrollablePanel;
 import github.anandb.netbeans.ui.components.RoundedPanel;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 // DSL-CONTROLLER: not a view — flushTimer/messageQueue EDT bridge + trimMessages/cachedMessages.
 public class ChatThreadPanel extends JPanel {
@@ -540,7 +540,7 @@ public class ChatThreadPanel extends JPanel {
     /** Ensures {@link #currentSessionId} is populated from SessionControl if needed. */
     private String ensureCurrentSessionId() {
         if (currentSessionId == null) {
-            SessionControl sc = Lookup.getDefault().lookup(SessionControl.class);
+            SessionControl sc = PlatformBridge.sessionControl();
             currentSessionId = sc != null ? sc.getCurrentSessionId() : null;
         }
         return currentSessionId;
@@ -1193,7 +1193,7 @@ public class ChatThreadPanel extends JPanel {
             // Reload current session to bring back trimmed messages. This needs
             // the full transcript, so force session/load instead of resume.
             if (currentSessionId != null) {
-                Lookup.getDefault().lookup(SessionControl.class).reloadSession(currentSessionId);
+                PlatformBridge.sessionControl().reloadSession(currentSessionId);
             }
         } else {
             trimMessages();
@@ -1225,7 +1225,7 @@ public class ChatThreadPanel extends JPanel {
         }
         int tailStart = items.size() - max;
         PinnedMessageControl pinStore = (currentSessionId != null)
-                ? Lookup.getDefault().lookup(PinnedMessageControl.class) : null;
+                ? PlatformBridge.serviceSafe(PinnedMessageControl.class) : null;
         List<T> pinnedBefore = new ArrayList<>();
         for (int i = 0; i < tailStart; i++) {
             T item = items.get(i);
@@ -1310,7 +1310,7 @@ public class ChatThreadPanel extends JPanel {
         }
         Set<String> seen = seenMessageIdsBySession.remove(sid);
         if (seen != null && !seen.isEmpty()) {
-            PinnedMessageControl pinStore = Lookup.getDefault().lookup(PinnedMessageControl.class);
+            PinnedMessageControl pinStore = PlatformBridge.serviceSafe(PinnedMessageControl.class);
             if (pinStore != null) {
                 pinStore.retainPinned(sid, seen);
             }
@@ -1604,7 +1604,7 @@ public class ChatThreadPanel extends JPanel {
         if (ignoresMessageIdForStreamingForTest != null) {
             return ignoresMessageIdForStreamingForTest;
         }
-        ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
+        ProcessControl pc = PlatformBridge.processControl();
         HarnessCatalog.Harness caps = pc != null ? pc.getCapabilities() : null;
         return caps != null && !caps.supportsMessageIds();
     }
@@ -1618,7 +1618,7 @@ public class ChatThreadPanel extends JPanel {
     /** True when a loaded history must draw every {@code agent_message_chunk} in its
      *  own bubble instead of merging one turn's chunks (Jcode). */
     private boolean separateBubblesPerReplayChunk() {
-        ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
+        ProcessControl pc = PlatformBridge.processControl();
         HarnessCatalog.Harness caps = pc != null ? pc.getCapabilities() : null;
         return caps != null && caps.separateBubblesPerReplayChunk();
     }

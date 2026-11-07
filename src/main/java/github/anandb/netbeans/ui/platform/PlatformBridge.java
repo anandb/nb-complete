@@ -14,18 +14,17 @@ import github.anandb.netbeans.contract.SessionControl;
 
 /**
  * Aggregator for the NetBeans platform-access seams. Resolved via
- * {@code Lookup.getDefault().lookup(PlatformBridge.class)} so DSL-bound views
- * obtain all platform services from a single lookup. The default implementation
- * ({@link DefaultPlatformBridge}) wraps the existing NetBeans APIs.
+ * {@link #get()} so {@code ui/} code obtains platform services from a single
+ * seam. The default implementation ({@link DefaultPlatformBridge}) wraps the
+ * existing NetBeans APIs.
  * <p>
- * <b>Phase 4 seam (current state):</b> the interfaces are defined and a default
- * impl is registered, but existing ui/ call sites still use
- * {@code Lookup.getDefault().lookup(SessionControl.class)} /
- * {@code NbPreferences.forModule(...)} /
- * {@code NbBundle.getMessage(...)} /
- * {@code ACPProjectManager.getInstance()} directly. Migrating those call sites
- * is a follow-up PR (tracked in MIGRATION.md); it is a large mechanical change
- * with behavioral risk and is deferred.
+ * <b>Migration state:</b> {@code ui/} no longer calls
+ * {@code Lookup.getDefault().lookup(...)} or {@code NbPreferences.forModule(...)}
+ * directly. It uses {@link #sessionControl()}, {@link #processControl()},
+ * {@link #serviceSafe(Class)}, and {@link #prefStoreSafe()} instead. The few
+ * remaining direct uses are the bridge implementation itself and a contract
+ * method that accepts a {@code Lookup} context
+ * ({@code SlashCommandInterceptor.intercept}).
  */
 public interface PlatformBridge {
     SessionService sessionService();
@@ -33,6 +32,37 @@ public interface PlatformBridge {
     PrefStore prefStore();
     Bundle bundle();
     ProjectContext projectContext();
+
+    /**
+     * Resolves a contract service through the bridge. Call sites must not touch
+     * {@code Lookup} directly; this is the single seam that hides it.
+     */
+    <T> T service(Class<T> type);
+
+    /** The registered bridge, or {@code null} when the platform is not available. */
+    static PlatformBridge get() {
+        return Lookup.getDefault().lookup(PlatformBridge.class);
+    }
+
+    /**
+     * Resolves a contract service, falling back to NetBeans Lookup when no
+     * bridge is registered (headless/partial environments).
+     */
+    static <T> T serviceSafe(Class<T> type) {
+        PlatformBridge bridge = get();
+        if (bridge != null) {
+            T service = bridge.service(type);
+            if (service != null) return service;
+        }
+        // Also the fallback when a mock bridge answers null: keep Lookup behavior.
+        return Lookup.getDefault().lookup(type);
+    }
+
+    /** The preference store, falling back to the NetBeans preferences node. */
+    static PrefStore prefStoreSafe() {
+        PlatformBridge bridge = get();
+        return bridge != null ? bridge.prefStore() : NbPrefStore.INSTANCE;
+    }
 
     static SessionService sessionServiceSafe() {
         return () -> {
@@ -48,6 +78,16 @@ public interface PlatformBridge {
             if (bridge != null) return bridge.processService().get();
             return createDummy(ProcessControl.class);
         };
+    }
+
+    /** The session-control service, or a no-op stand-in when the platform is absent. */
+    static SessionControl sessionControl() {
+        return sessionServiceSafe().get();
+    }
+
+    /** The process-control service, or a no-op stand-in when the platform is absent. */
+    static ProcessControl processControl() {
+        return processServiceSafe().get();
     }
 
     static ProjectContext projectContextSafe() {

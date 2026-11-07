@@ -116,6 +116,13 @@ class SessionLifecycleHandlerTest {
                 .thenReturn((SessionService) () -> sessionControl);
         platformBridgeMock.when(PlatformBridge::projectContextSafe)
                 .thenReturn(projectContext);
+        // Unstubbed statics return null under the mock; keep the real fallbacks so
+        // the preference store and UpdateDispatcher lookup still resolve.
+        platformBridgeMock.when(PlatformBridge::prefStoreSafe).thenCallRealMethod();
+        platformBridgeMock.when(PlatformBridge::sessionControl).thenCallRealMethod();
+        platformBridgeMock.when(PlatformBridge::processControl).thenCallRealMethod();
+        platformBridgeMock.when(() -> PlatformBridge.serviceSafe(org.mockito.ArgumentMatchers.any()))
+                .thenCallRealMethod();
         themeManagerMock.when(() -> ThemeManager.getIcon(anyString(), anyInt()))
                 .thenReturn(null);
         // PlanPanel.setEntries needs a real theme under the static mock.

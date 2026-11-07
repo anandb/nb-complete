@@ -28,7 +28,6 @@ import javax.swing.Timer;
 import github.anandb.netbeans.contract.PinnedMessageControl;
 import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.support.Logger;
-import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.session.MessageQueueManager;
@@ -36,6 +35,7 @@ import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.components.UIUtils;
 import github.anandb.netbeans.ui.components.RoundedPanel;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 /**
  * Manages the action buttons (copy, pin) and queued indicator for a {@link MessageBubble}.
@@ -120,7 +120,7 @@ class BubbleActionBar {
     }
 
     private void setupCopyAndPinButtons(ColorTheme theme) {
-        final PinnedMessageControl pinStore = Lookup.getDefault().lookup(PinnedMessageControl.class);
+        final PinnedMessageControl pinStore = PlatformBridge.serviceSafe(PinnedMessageControl.class);
         this.pinned = (pinStore != null && pinStore.isPinned(sessionId, messageId));
 
         pinBtn = UIUtils.createToolbarButton("pin.svg", 32,
@@ -322,7 +322,7 @@ class BubbleActionBar {
             return sessionId;
         }
         LOG.warn("BubbleActionBar sessionId was null; falling back to Lookup. messageId={0}", messageId);
-        SessionControl sc = Lookup.getDefault().lookup(SessionControl.class);
+        SessionControl sc = PlatformBridge.sessionControl();
         return sc != null ? sc.getCurrentSessionId() : null;
     }
 
@@ -363,7 +363,7 @@ class BubbleActionBar {
             return;
         }
         if (pinBtn != null) {
-            PinnedMessageControl pinStore = Lookup.getDefault().lookup(PinnedMessageControl.class);
+            PinnedMessageControl pinStore = PlatformBridge.serviceSafe(PinnedMessageControl.class);
             String sid = resolveSessionId();
             if (pinStore != null && sid != null) {
                 this.pinned = pinStore.isPinned(sid, messageId);

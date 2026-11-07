@@ -4,7 +4,6 @@ import java.beans.PropertyChangeEvent;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
-import java.util.prefs.Preferences;
 import java.util.logging.Level;
 
 import javax.swing.SwingUtilities;
@@ -13,7 +12,6 @@ import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ui.OpenProjects;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
-import org.openide.util.NbPreferences;
 import org.openide.util.RequestProcessor;
 import org.openide.util.lookup.ServiceProvider;
 
@@ -22,7 +20,6 @@ import github.anandb.netbeans.contract.ProjectQuery;
 import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.project.ACPProjectManager;
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.SlidingTask;
 
 /**
@@ -40,7 +37,7 @@ public final class DefaultPlatformBridge implements PlatformBridge, ProjectQuery
 
     private final SessionService sessionService = new SessionServiceImpl();
     private final ProcessService processService = new ProcessServiceImpl();
-    private final PrefStore prefStore = new PrefStoreImpl();
+    private final PrefStore prefStore = NbPrefStore.INSTANCE;
     private final Bundle bundle = new BundleImpl();
     private final ProjectContext projectContext = new ProjectContextImpl();
 
@@ -49,6 +46,11 @@ public final class DefaultPlatformBridge implements PlatformBridge, ProjectQuery
     @Override public PrefStore prefStore() { return prefStore; }
     @Override public Bundle bundle() { return bundle; }
     @Override public ProjectContext projectContext() { return projectContext; }
+
+    @Override
+    public <T> T service(Class<T> type) {
+        return Lookup.getDefault().lookup(type);
+    }
 
     /** @see ProjectQuery#getAllOpenProjects() */
     @Override
@@ -88,18 +90,6 @@ public final class DefaultPlatformBridge implements PlatformBridge, ProjectQuery
             }
             return pc;
         }
-    }
-
-    private static final class PrefStoreImpl implements PrefStore {
-        private Preferences prefs() {
-            return NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
-        }
-        @Override public boolean getBoolean(String key, boolean def) { return prefs().getBoolean(key, def); }
-        @Override public void putBoolean(String key, boolean v) { prefs().putBoolean(key, v); }
-        @Override public int getInt(String key, int def) { return prefs().getInt(key, def); }
-        @Override public void putInt(String key, int v) { prefs().putInt(key, v); }
-        @Override public String get(String key, String def) { return prefs().get(key, def); }
-        @Override public void put(String key, String v) { prefs().put(key, v); }
     }
 
     private static final class BundleImpl implements Bundle {

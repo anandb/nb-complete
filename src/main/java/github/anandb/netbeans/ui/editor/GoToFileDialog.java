@@ -50,11 +50,11 @@ import org.openide.filesystems.FileObject;
 import org.openide.loaders.DataObject;
 import org.openide.util.NbBundle;
 
-import org.openide.util.Lookup;
 import github.anandb.netbeans.contract.FileCacheQuery;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.UIBundle;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 /**
  * Modal "Go To File" dialog. Case-insensitive prefix/camel-case search
@@ -86,7 +86,7 @@ public class GoToFileDialog extends JDialog {
 
     public GoToFileDialog(Window owner) {
         super(owner, NbBundle.getMessage(UIBundle.class, "LBL_GoToFile"), ModalityType.MODELESS);
-        FileCacheQuery cache = Lookup.getDefault().lookup(FileCacheQuery.class);
+        FileCacheQuery cache = PlatformBridge.serviceSafe(FileCacheQuery.class);
         this.allFiles = new ArrayList<>(cache.getAllFiles());
         this.indexingComplete = cache.isReady();
 
@@ -149,7 +149,7 @@ public class GoToFileDialog extends JDialog {
 
         // --- Listen for indexing completion to refresh results ---
         if (!indexingComplete) {
-            Lookup.getDefault().lookup(FileCacheQuery.class).onReady(() -> {
+            PlatformBridge.serviceSafe(FileCacheQuery.class).onReady(() -> {
                 if (!isDisplayable()) return;
                 indexingComplete = true;
                 allFiles = new ArrayList<>(cache.getAllFiles());

@@ -37,15 +37,14 @@ import github.anandb.netbeans.pattern.TableCellSplitPattern;
 import github.anandb.netbeans.pattern.TableSeparatorPattern;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
-import github.anandb.netbeans.support.PreferenceKeys;
 
 import org.openide.util.ImageUtilities;
-import org.openide.util.NbPreferences;
 import org.openide.util.RequestProcessor;
 import github.anandb.netbeans.ui.rendering.RaisedIcon;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.assistant.AttentionButton;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 // DSL-LEAF: factories are the swingtree replacement seam — createToolbarButton /
 // createTextButton / createPanel / styleToolbarButton become UI.button(...) /
@@ -110,7 +109,7 @@ public class UIUtils {
     private static final RequestProcessor ICON_RP = new RequestProcessor("ACP-UIIcons", 1);
 
     static {
-        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).addPreferenceChangeListener(evt -> {
+        PlatformBridge.prefStoreSafe().addChangeListener(evt -> {
             if (PluginSettings.KEY_CUSTOM_USER_ICON.equals(evt.getKey())) {
                 cachedUserIcon = null;
                 userIconPreloading.set(false);

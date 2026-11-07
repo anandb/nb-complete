@@ -85,11 +85,11 @@ import github.anandb.netbeans.support.ToolCallDiffParser.FileChange;
 import javax.swing.JScrollPane;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
-import org.openide.util.NbPreferences;
 import github.anandb.netbeans.ui.rendering.IconResourceManager;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.components.UIUtils;
 import github.anandb.netbeans.ui.UIBundle;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 /**
  * Shows a side-by-side diff of a selected stash.
@@ -142,13 +142,13 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                 super.addNotify();
                 updateState();
                 TopComponent.getRegistry().addPropertyChangeListener(this);
-                NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).addPreferenceChangeListener(prefListener);
+                PlatformBridge.prefStoreSafe().addChangeListener(prefListener);
             }
 
             @Override
             public void removeNotify() {
                 TopComponent.getRegistry().removePropertyChangeListener(this);
-                NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).removePreferenceChangeListener(prefListener);
+                PlatformBridge.prefStoreSafe().removeChangeListener(prefListener);
                 super.removeNotify();
             }
 

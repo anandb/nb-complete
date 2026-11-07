@@ -37,8 +37,6 @@ import org.openide.util.NbBundle;
 import org.openide.windows.TopComponent;
 import org.openide.windows.WindowManager;
 import org.openide.windows.Mode;
-import org.openide.util.NbPreferences;
-import org.openide.util.Lookup;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -65,7 +63,6 @@ import javax.swing.JPopupMenu;
 import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
 import org.netbeans.api.project.Project;
-import java.util.prefs.Preferences;
 import github.anandb.netbeans.ui.chat.ChatThreadPanel;
 import github.anandb.netbeans.ui.chat.PlanPanel;
 import github.anandb.netbeans.ui.composer.AttachmentUiHandler;
@@ -92,6 +89,7 @@ import github.anandb.netbeans.ui.export.HtmlConversationExporter;
 import github.anandb.netbeans.ui.export.ConversationExporter;
 import github.anandb.netbeans.ui.stats.TokenUsageDialog;
 import github.anandb.netbeans.ui.components.UIUtils;
+import github.anandb.netbeans.ui.platform.PrefStore;
 
 
 @ConvertAsProperties(
@@ -279,7 +277,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         // harness capabilities are known (see applyHarnessCapabilities).
         queueManager = new MessageQueueManager();
         layoutBuilder.getRightStatusPanel().add(queueManager.getButton(), 0);
-        ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
+        ProcessControl pc = PlatformBridge.processControl();
 
         // Add token usage button (visible only when the
         // harness supports the stats subprocess — see applyHarnessCapabilities)
@@ -346,7 +344,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     // Show a slide-in confirm bar below the session dropdown,
                     // reusing the permission-panel look and slide animation.
                     CompletableFuture<String> uiFuture = new CompletableFuture<>();
-                    ProcessControl currentPc = Lookup.getDefault().lookup(ProcessControl.class);
+                    ProcessControl currentPc = PlatformBridge.processControl();
                     boolean isGemini = currentPc != null && "gemini".equals(currentPc.getCapabilities().id());
                     String promptMsg = isGemini
                         ? NbBundle.getMessage(UIBundle.class, "MSG_SelectAgentLevel")
@@ -799,7 +797,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         configPanelController.getComponent().setVisible(visible);
         toggleOptionsBtn.setIcon(ThemeManager.getIcon(visible ? "arrow-down.svg" : "settings.svg", 25));
 
-        ProcessControl pc = Lookup.getDefault().lookup(ProcessControl.class);
+        ProcessControl pc = PlatformBridge.processControl();
         boolean modelSelectable = pc != null && pc.getCapabilities().supportsModelSelection();
         // Show the model dropdown even when selection is unsupported (e.g. OpenClaw);
         // the disabled state is managed by applyEnabledState so the tooltip is still readable.
@@ -1032,7 +1030,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
      * plugin reinstalls where NetBeans resets its own window layout.
      */
     private void restoreDockState() {
-        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        PrefStore prefs = PlatformBridge.prefStoreSafe();
         String savedMode = prefs.get(PreferenceKeys.ASSISTANT_DOCK_MODE, null);
         int savedWidth = prefs.getInt(PreferenceKeys.ASSISTANT_DOCK_WIDTH, 0);
         if (savedMode == null || savedMode.isEmpty()) {
@@ -1060,7 +1058,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     /** Persists the current dock mode name and dock width. */
     private void saveDockState() {
-        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        PrefStore prefs = PlatformBridge.prefStoreSafe();
         Mode mode = WindowManager.getDefault().findMode(this);
         if (mode != null) {
             prefs.put(PreferenceKeys.ASSISTANT_DOCK_MODE, mode.getName());
@@ -1307,8 +1305,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     NbBundle.getMessage(UIBundle.class, "MSG_GeminiDefaultModel"),
                     NotifyDescriptor.INFORMATION_MESSAGE));
         }
-        java.util.prefs.Preferences prefs =
-                NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        PrefStore prefs = PlatformBridge.prefStoreSafe();
         java.util.concurrent.CompletableFuture.runAsync(() -> {
             prefs.put("acpExecutablePath", path);
             prefs.put(PreferenceKeys.PROCESS_ARGUMENTS, harness.launchArgs());

@@ -5,12 +5,11 @@ import java.awt.KeyEventDispatcher;
 import java.awt.KeyboardFocusManager;
 import java.awt.event.KeyEvent;
 
-import org.openide.util.Lookup;
 import org.openide.util.Utilities;
 
-import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.ui.composer.AutocompleteManager;
 import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 /**
  * Global key dispatcher installed by {@link MiniAssistantDialog}. Handles bubble
@@ -84,7 +83,7 @@ final class MiniAssistantKeyDispatcher implements KeyEventDispatcher {
                 if (autocompleteManager != null && autocompleteManager.isPopupVisible()) {
                     autocompleteManager.selectCommand();
                 } else {
-                    var pc = Lookup.getDefault().lookup(ProcessControl.class);
+                    var pc = PlatformBridge.processControl();
                     var interceptor = pc != null ? pc.getSlashCommandInterceptor() : null;
                     var cb = interceptor != null ? interceptor.getCallback() : null;
                     if (cb != null) {

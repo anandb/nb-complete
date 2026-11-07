@@ -5,7 +5,7 @@ import java.util.Collections;
 import java.util.List;
 
 import github.anandb.netbeans.contract.SessionStore;
-import org.openide.util.Lookup;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 /**
  * Up/down history for the chat input.
@@ -29,12 +29,12 @@ public class MessageHistory {
 
     /** Production constructor: reads through the registered store. */
     public MessageHistory() {
-        this(Lookup.getDefault().lookup(SessionStore.class));
+        this(PlatformBridge.serviceSafe(SessionStore.class));
     }
 
     /** Constructor for unit tests: {@code false} keeps the history purely in memory. */
     public MessageHistory(boolean useStore) {
-        this(useStore ? Lookup.getDefault().lookup(SessionStore.class) : null);
+        this(useStore ? PlatformBridge.serviceSafe(SessionStore.class) : null);
     }
 
     /** Explicit store, for the tests; production resolves it from the registry. */

@@ -46,7 +46,6 @@ import github.anandb.netbeans.support.ToolCallDiffParser;
 import github.anandb.netbeans.support.ToolCallDiffParser.FileChange;
 import github.anandb.netbeans.support.ToolContextExtractor;
 import github.anandb.netbeans.support.WobbleAnimator;
-import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 import org.openide.windows.WindowManager;
 import github.anandb.netbeans.ui.UIBundle;
@@ -59,6 +58,7 @@ import github.anandb.netbeans.ui.components.ButtonRowLayout;
 import github.anandb.netbeans.ui.components.StartTruncatingLabel;
 import github.anandb.netbeans.ui.components.ButtonMnemonics;
 import github.anandb.netbeans.ui.editor.StashDiffAction;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 // DSL-LEAF: fixed permission request panel below session dropdown, slides open/closed.
 public final class PermissionRequestPanel extends JPanel {
@@ -758,7 +758,7 @@ public final class PermissionRequestPanel extends JPanel {
 
     /** Returns the current session's working directory, or null. */
     private static String getSessionDirectory() {
-        SessionQuery sq = Lookup.getDefault().lookup(SessionQuery.class);
+        SessionQuery sq = PlatformBridge.serviceSafe(SessionQuery.class);
         return sq != null ? sq.getCurrentSessionDirectory() : null;
     }
 

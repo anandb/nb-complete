@@ -30,7 +30,6 @@ import org.openide.util.NbBundle;
 
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.support.Logger;
-import org.openide.util.Lookup;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.platform.SessionService;
@@ -47,7 +46,7 @@ public final class WelcomeScreen {
     private WelcomeScreen() {}
 
     private static SessionService sessionService() {
-        var bridge = Lookup.getDefault().lookup(PlatformBridge.class);
+        var bridge = PlatformBridge.get();
         if (bridge == null) {
             LOG.severe("PlatformBridge not found in Lookup — WelcomeScreen may display stale data");
             return null;
