@@ -1,9 +1,9 @@
 package github.anandb.netbeans.contract;
 
-import github.anandb.netbeans.model.HarnessCatalog;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import github.anandb.netbeans.model.Harness;
 
 /**
  * Port for MCP tool execution capabilities.
@@ -46,7 +46,7 @@ public interface ToolExecutor {
      * Ensures the embedded MCP server is started when the agent supports it.
      * @param capabilities agent capabilities derived from the handshake
      */
-    void checkServerSupport(HarnessCatalog.Harness capabilities);
+    void checkServerSupport(Harness capabilities);
 
     /**
      * Returns the MCP server configuration to include in session prompts.

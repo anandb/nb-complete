@@ -20,7 +20,7 @@ class HarnessCatalogTest {
     void allHarnessesPresent() {
         assertEquals(15, HarnessCatalog.ALL.size());
         Set<String> ids = new HashSet<>();
-        for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
+        for (Harness h : HarnessCatalog.ALL) {
             assertTrue(ids.add(h.id()), "duplicate id: " + h.id());
         }
         assertTrue(ids.containsAll(Set.of("opencode", "codex", "goose", "pi", "cursor", "claude", "hermes",
@@ -30,7 +30,7 @@ class HarnessCatalogTest {
     @Test
     void allHarnessesExposeTheKnownIdSet() {
         Set<String> allIds = new HashSet<>(HarnessCatalog.ALL.stream()
-                .map(HarnessCatalog.Harness::id).toList());
+                .map(Harness::id).toList());
         assertEquals(Set.of("omp", "opencode", "codex", "openclaw", "pi", "goose", "cursor", "copilot",
                 "claude", "hermes", "gemini", "devin", "kilo", "cline", "jcode"),
                 allIds);
@@ -38,7 +38,7 @@ class HarnessCatalogTest {
 
     @Test
     void everyHarnessHasBinaryNamesAndIcon() {
-        for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
+        for (Harness h : HarnessCatalog.ALL) {
             assertFalse(h.binaryNames().isEmpty(), h.id() + ": no binary names");
             assertNotNull(h.iconBase(), h.id() + ": no icon");
         }
@@ -53,7 +53,7 @@ class HarnessCatalogTest {
 
     @Test
     void everyHarnessHasActivationGuidance() {
-        for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
+        for (Harness h : HarnessCatalog.ALL) {
             HarnessCatalog.Activation activation = HarnessCatalog.activation(h.id());
             assertFalse(activation.hint().isBlank(), h.id() + ": no sign-in hint");
         }
@@ -126,7 +126,7 @@ class HarnessCatalogTest {
 
     @Test
     void unknownHarnessHasGenericCapabilities() {
-        HarnessCatalog.Harness u = HarnessCatalog.UNKNOWN;
+        Harness u = HarnessCatalog.UNKNOWN;
         assertEquals("Agent", u.displayName());
         assertTrue(u.sendsMcpServerConfig());
         assertTrue(u.supportsMcpServer());
@@ -191,8 +191,8 @@ class HarnessCatalogTest {
 
     @Test
     void opencodeV2VariantDiffersOnlyInMessageQueue() {
-        HarnessCatalog.Harness v1 = HarnessCatalog.OPENCODE;
-        HarnessCatalog.Harness v2 = HarnessCatalog.OPENCODE_V2;
+        Harness v1 = HarnessCatalog.OPENCODE;
+        Harness v2 = HarnessCatalog.OPENCODE_V2;
         assertEquals(v1.withRequiresMessageQueue(true), v2);
         // Identical identity and launch metadata: id-keyed caches and stored
         // preferences must not see a distinct harness just because it is v2.
@@ -211,7 +211,7 @@ class HarnessCatalogTest {
 
     @Test
     void allHarnessesExceptOpenclawAndJcodeSupportAgentList() {
-        for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
+        for (Harness h : HarnessCatalog.ALL) {
             if ("openclaw".equals(h.id()) || "jcode".equals(h.id())) {
                 continue;
             }
@@ -223,7 +223,7 @@ class HarnessCatalogTest {
 
     @Test
     void onlyJcodeSeparatesReplayChunks() {
-        for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
+        for (Harness h : HarnessCatalog.ALL) {
             assertEquals("jcode".equals(h.id()), h.separateBubblesPerReplayChunk(),
                     h.id() + " replay-chunk capability");
         }
@@ -233,7 +233,7 @@ class HarnessCatalogTest {
     @Test
     void onlyTheCuratedSetHasLimitedSupport() {
         java.util.Set<String> limitedIds = java.util.Set.of("openclaw", "jcode", "gemini", "pi", "cline");
-        for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
+        for (Harness h : HarnessCatalog.ALL) {
             boolean limited = limitedIds.contains(h.id());
             assertEquals(limited, h.hasLimitedSupport(), h.id() + " support tier");
             assertEquals(limited ? HarnessCatalog.SupportTier.LIMITED : HarnessCatalog.SupportTier.FULL,
@@ -245,7 +245,7 @@ class HarnessCatalogTest {
 
     @Test
     void onlyPiAndJcodeRejectMcpAuthTokens() {
-        for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
+        for (Harness h : HarnessCatalog.ALL) {
             boolean tokenless = "pi".equals(h.id()) || "jcode".equals(h.id());
             assertEquals(!tokenless, h.acceptsMcpAuthToken(), h.id() + " MCP token capability");
         }
@@ -430,10 +430,10 @@ class HarnessCatalogTest {
 
     @Test
     void sortedByNameIsAlphabetical() {
-        List<HarnessCatalog.Harness> sorted = HarnessCatalog.sortedByName();
+        List<Harness> sorted = HarnessCatalog.sortedByName();
 
         assertEquals(HarnessCatalog.ALL.size(), sorted.size());
-        List<String> names = sorted.stream().map(HarnessCatalog.Harness::displayName).toList();
+        List<String> names = sorted.stream().map(Harness::displayName).toList();
         List<String> expected = new java.util.ArrayList<>(names);
         expected.sort(String.CASE_INSENSITIVE_ORDER);
         assertEquals(expected, names, "sortedByName must be alphabetical, case-insensitive");

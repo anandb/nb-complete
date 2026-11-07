@@ -35,7 +35,6 @@ import org.openide.util.lookup.ServiceProvider;
 import github.anandb.netbeans.contract.PermissionHandler;
 import github.anandb.netbeans.contract.SlashCommandInterceptor;
 import github.anandb.netbeans.model.SessionUpdate;
-import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.support.PreferenceKeys;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
@@ -53,6 +52,7 @@ import github.anandb.netbeans.support.LanguageResolver;
 import github.anandb.netbeans.support.XmlUtils;
 import java.io.File;
 import org.openide.awt.NotificationDisplayer;
+import github.anandb.netbeans.model.Harness;
 
 /**
  * Spawns and owns the ACP server subprocess; central request
@@ -522,12 +522,12 @@ public class ProcessManager implements ProcessControl {
     }
 
     @Override
-    public void setHarnessListener(Consumer<HarnessCatalog.Harness> listener) {
+    public void setHarnessListener(Consumer<Harness> listener) {
         serverLifecycle.setHarnessListener(listener);
     }
 
     @Override
-    public HarnessCatalog.Harness getCapabilities() {
+    public Harness getCapabilities() {
         return serverLifecycle.getCapabilities();
     }
 

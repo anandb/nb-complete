@@ -3,7 +3,6 @@ package github.anandb.netbeans.mcp;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
-import github.anandb.netbeans.model.HarnessCatalog;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -18,6 +17,7 @@ import java.util.prefs.PreferenceChangeListener;
 import java.util.prefs.Preferences;
 import org.openide.util.NbPreferences;
 import github.anandb.netbeans.support.PreferenceKeys;
+import github.anandb.netbeans.model.Harness;
 
 public class McpManager {
     private static final Logger LOG = Logger.from(McpManager.class);
@@ -203,7 +203,7 @@ public class McpManager {
         return mcpServer.getMcpTools();
     }
 
-    public void checkServerSupport(HarnessCatalog.Harness caps) {
+    public void checkServerSupport(Harness caps) {
         if (caps == null || !caps.supportsMcpServer()) {
             return;
         }

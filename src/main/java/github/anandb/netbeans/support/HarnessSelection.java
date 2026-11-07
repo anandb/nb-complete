@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Locale;
 
 import github.anandb.netbeans.model.HarnessCatalog;
+import github.anandb.netbeans.model.Harness;
 
 /**
  * Maps the configured executable and the stored harness preference to the harness the
@@ -29,7 +30,7 @@ public final class HarnessSelection {
      * The Options-panel choice. {@code auto} means "derive the id from the binary name";
      * otherwise {@code harness} is the user's explicit answer for this path.
      */
-    public record Selection(HarnessCatalog.Harness harness, boolean auto) {
+    public record Selection(Harness harness, boolean auto) {
     }
 
     /** Container runtimes whose basename can never identify the harness inside them. */
@@ -44,7 +45,7 @@ public final class HarnessSelection {
     }
 
     /** Harness detected from the binary name, or {@link HarnessCatalog#UNKNOWN}. */
-    public static HarnessCatalog.Harness detect(String binaryName) {
+    public static Harness detect(String binaryName) {
         return binaryName == null ? HarnessCatalog.UNKNOWN : HarnessCatalog.byBinaryName(binaryName);
     }
 
@@ -54,8 +55,8 @@ public final class HarnessSelection {
      * launcher and is kept; otherwise the state is Auto-detect.
      */
     public static Selection resolve(String storedHarnessId, String binaryName) {
-        HarnessCatalog.Harness detected = detect(binaryName);
-        HarnessCatalog.Harness stored = HarnessCatalog.byId(storedHarnessId);
+        Harness detected = detect(binaryName);
+        Harness stored = HarnessCatalog.byId(storedHarnessId);
         if (stored != HarnessCatalog.UNKNOWN && stored != detected) {
             return new Selection(stored, false);
         }
@@ -70,7 +71,7 @@ public final class HarnessSelection {
         if (!selection.auto()) {
             return selection.harness().id();
         }
-        HarnessCatalog.Harness detected = detect(binaryName);
+        Harness detected = detect(binaryName);
         return detected == HarnessCatalog.UNKNOWN ? "" : detected.id();
     }
 
@@ -82,7 +83,7 @@ public final class HarnessSelection {
         if (!selection.auto()) {
             return selection.harness().displayName();
         }
-        HarnessCatalog.Harness detected = detect(binaryName);
+        Harness detected = detect(binaryName);
         return detected == HarnessCatalog.UNKNOWN ? "" : detected.displayName();
     }
 

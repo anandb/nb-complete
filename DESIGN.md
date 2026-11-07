@@ -218,7 +218,7 @@ The plugin embeds a **Model Context Protocol (MCP) server** so the AI subprocess
 - Rows pass through `support/ModelIdNormalizer` in `bindAttribution`; a model belongs to a session and is captured as messages arrive, never resolved from UI state at query time.
 
 ### Harness capabilities, steer and custom notifications
-- **`model/HarnessCatalog`** is the single seam for per-harness capabilities (15 supported harnesses). `HarnessCatalog.forAgentVersion(...)` derives OpenCode v2 while keeping the shared v1 id so id-keyed model caches and stored preferences still resolve.
+- **`model/HarnessCatalog`** is the single seam for per-harness capabilities (15 supported harnesses); their definitions live in `model/harness-catalog.yaml`, loaded by `HarnessCatalogLoader` into the top-level `Harness` record. `HarnessCatalog.forAgentVersion(...)` derives OpenCode v2 while keeping the shared v1 id so id-keyed model caches and stored preferences still resolve.
 - **goose steer** (`_goose/unstable/session/steer`): `manager/ActiveRunTracker` stores the active run id from `_meta.goose.activeRunId`; `ProcessManager.steerMessage()` builds the request with `support/SteerRequest` and retries once on `error.data.actualRunId`. `support/SteerEchoes` prevents a duplicated user bubble.
 - **goose custom notifications** (`_goose/unstable/session/update`): enabled by `clientCapabilities._meta.goose.customNotifications`; `manager/SessionUpdateDecoder` dispatches `message_usage`/`status_message` while dropping the duplicate custom `usage_update`.
 - `SessionManager` resolves LLM-chosen session titles by refreshing `session/list` after a title-less `/title` turn completes; harness-triggered renames can only be observed through that refresh.
@@ -237,13 +237,6 @@ The plugin embeds a **Model Context Protocol (MCP) server** so the AI subprocess
 
 ## 11. Architectural Recommendations & Opportunities
 
-While the architecture is highly decoupled and performant, these areas remain opportunities:
+The prior recommendations (platform-bridge migration, pattern consolidation, cached-preference registry, non-blocking transport) were resolved or rejected as unnecessary. Harness definitions now live in `model/harness-catalog.yaml`, loaded by `model/HarnessCatalogLoader` into the top-level `Harness` record.
 
-> [!TIP]
-> **Consolidate the `pattern/` package**: 40 tiny classes each wrap one compiled `Pattern`; one `Patterns` class with static fields would remove ~39 files and their boilerplate.
->
-> **Generic cached preferences**: `support/PluginSettings` still hand-writes a volatile field + listener + accessor per key. A `CachedPref<T>` registry would remove several hundred lines.
->
-> **Externalize the harness catalog**: ~20 harness definitions are verbose Java builder chains; a JSON resource parsed at startup would shrink `model/HarnessCatalog` and make additions data-only.
->
-> **Non-blocking JSON-RPC client**: `AcpProtocolClient` uses blocking stream reads on stdin/stdout; consider a non-blocking framework or thread pool if throughput scales.
+No outstanding architectural recommendations.

@@ -11,6 +11,7 @@ import java.util.prefs.Preferences;
 import org.openide.util.NbPreferences;
 
 import github.anandb.netbeans.model.HarnessCatalog;
+import github.anandb.netbeans.model.Harness;
 
 public final class PluginSettings {
 
@@ -169,7 +170,7 @@ public final class PluginSettings {
      * since that is the expensive part.
      */
     private static String harnessRulesOverlay() {
-        HarnessCatalog.Harness harness = HarnessCatalog.byId(
+        Harness harness = HarnessCatalog.byId(
                 NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                         .get(PreferenceKeys.ACP_HARNESS_ID, null));
         if (harness == HarnessCatalog.UNKNOWN) {

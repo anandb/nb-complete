@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import github.anandb.netbeans.model.Harness;
 
 /**
  * Tests for {@link BinaryResolver} binary-name resolution used by the MCP
@@ -59,7 +60,7 @@ class BinaryResolverTest {
     @Test
     void knownHarnessesDerivedFromCatalog() {
         // Every catalog launch binary must be part of the detection set...
-        for (HarnessCatalog.Harness harness : HarnessCatalog.ALL) {
+        for (Harness harness : HarnessCatalog.ALL) {
             for (String name : harness.binaryNames()) {
                 assertTrue(BinaryResolver.KNOWN_HARNESSES.contains(name),
                         harness.id() + "/" + name + " missing from KNOWN_HARNESSES");

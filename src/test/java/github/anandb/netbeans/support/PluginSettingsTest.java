@@ -10,6 +10,7 @@ import github.anandb.netbeans.model.HarnessCatalog;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import github.anandb.netbeans.model.Harness;
 
 class PluginSettingsTest {
 
@@ -148,7 +149,7 @@ class PluginSettingsTest {
     void testEveryCatalogHarnessHasAnOverlayResource() {
         // Guards id/file drift: adding a harness without critical_rules/<id>.md
         // (or renaming an id) must fail here, not silently drop the overlay.
-        for (HarnessCatalog.Harness harness : HarnessCatalog.ALL) {
+        for (Harness harness : HarnessCatalog.ALL) {
             String overlay = AgentUtils.readResource("critical_rules/" + harness.id() + ".md");
             assertTrue(overlay != null && !overlay.isBlank(),
                     "missing critical_rules/" + harness.id() + ".md for harness '" + harness.id() + "'");

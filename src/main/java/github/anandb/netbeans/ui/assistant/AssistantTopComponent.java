@@ -90,6 +90,7 @@ import github.anandb.netbeans.ui.export.ConversationExporter;
 import github.anandb.netbeans.ui.stats.TokenUsageDialog;
 import github.anandb.netbeans.ui.components.UIUtils;
 import github.anandb.netbeans.ui.platform.PrefStore;
+import github.anandb.netbeans.model.Harness;
 
 
 @ConvertAsProperties(
@@ -613,7 +614,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     /** Applies harness capability flags to queueing, token-stats, and tooltip. */
-    private void applyHarnessCapabilities(HarnessCatalog.Harness caps) {
+    private void applyHarnessCapabilities(Harness caps) {
         queueManager.setEnabled(caps.requiresMessageQueue());
         updateTokenStatsButton();
         if (caps != HarnessCatalog.UNKNOWN && caps.supportsModelSelection()) {
@@ -1295,7 +1296,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
      * immediately, into an unauthenticated session.
      */
     private void onHarnessSelected(String harnessId, String path) {
-        HarnessCatalog.Harness harness = HarnessCatalog.byId(harnessId);
+        Harness harness = HarnessCatalog.byId(harnessId);
         if (harness == null) {
             LOG.severe("Unknown harness id in onboarding selection: {0}", harnessId);
             return;

@@ -1,0 +1,296 @@
+# Harness catalog: one entry per supported ACP agent.
+# Only fields that differ from the HarnessBuilder defaults are listed;
+# see HarnessBuilder for the defaults and Harness for the schema.
+harnesses:
+  - id: "omp"
+    displayName: "Oh My Pi"
+    iconBase: "omp"
+    binaryNames: ["omp"]
+    launchArgs: "acp"
+    prerequisites: "Authenticate a model provider in a terminal (omp, then /login) before ACP. The ACP entry point is omp acp."
+    docsUrl: "https://omp.sh/docs/acp"
+    supportsMessageIds: true
+    supportsSessionSetMode: true
+    install:
+      windows: "powershell -c \"irm https://omp.sh/install.ps1 | iex\""
+      mac: "curl -fsSL https://omp.sh/install | sh"
+      linux: "curl -fsSL https://omp.sh/install | sh"
+    windowsInstallSubDirs: ["%LOCALAPPDATA%\\omp"]
+    activation:
+      command: "omp"
+      hint: "Start it once and use /login to connect a model provider."
+
+  - id: "opencode"
+    displayName: "OpenCode"
+    iconBase: "opencode"
+    binaryNames: ["opencode"]
+    launchArgs: "acp"
+    docsUrl: "https://opencode.ai/docs/"
+    supportsMessageIds: true
+    install:
+      windows: "winget install SST.opencode"
+      mac: "brew install anomalyco/tap/opencode"
+      linux: "curl -fsSL https://opencode.ai/install | bash"
+    activation:
+      command: "opencode auth login"
+      hint: "Sign in once and connect a model provider."
+
+  # Codex via codex-acp. ACP v1; mid-turn steering exists only as the
+  # _session/steering extension this client does not implement, so messages queue.
+  - id: "codex"
+    displayName: "Codex"
+    iconBase: "codex"
+    binaryNames: ["codex-acp"]
+    prerequisites: "Requires Node.js and a ChatGPT account or OPENAI_API_KEY. Bundles the Codex CLI, so a separate codex install is not needed."
+    docsUrl: "https://github.com/agentclientprotocol/codex-acp"
+    requiresMessageQueue: true
+    supportsMessageIds: true
+    supportsSessionSetMode: true
+    install:
+      windows: "npm install -g @agentclientprotocol/codex-acp@2.2.2"
+      mac: "npm install -g @agentclientprotocol/codex-acp@2.2.2"
+      linux: "npm install -g @agentclientprotocol/codex-acp@2.2.2"
+    activation:
+      hint: "The first session asks you to sign in with a ChatGPT account; set OPENAI_API_KEY to skip that."
+
+  - id: "openclaw"
+    displayName: "OpenClaw"
+    iconBase: "openclaw"
+    binaryNames: ["openclaw"]
+    launchArgs: "acp"
+    prerequisites: "Requires Node 24.16+ or 26.1+ - Node 26 is recommended; the installer provisions Node 26 on macOS and Node 24 LTS on Linux"
+    docsUrl: "https://docs.openclaw.ai/install"
+    requiresMessageQueue: true
+    sendsMcpServerConfig: false
+    supportsModelSelection: false
+    supportsSessionList: false
+    supportsAgentList: false
+    supportTier: LIMITED
+    limitationsKey: "Harness.Limitations.OpenClaw"
+    unsupportedModelSelectionMessage: "MSG_OpenClawUnsupportedModelSelection"
+    unsupportedModelSelectionPlaceholder: "MSG_OpenClawUnsupportedModelSelectionPlaceholder"
+    install:
+      windows: "powershell -c \"iwr -useb https://openclaw.ai/install.ps1 | iex\""
+      mac: "curl -fsSL https://openclaw.ai/install.sh | bash"
+      linux: "curl -fsSL https://openclaw.ai/install.sh | bash"
+    activation:
+      hint: "Start OpenClaw once to connect a Gateway and a model provider."
+
+  # PI-family binaries cannot carry the MCP auth token on their URL, so the
+  # embedded server runs without token enforcement for them.
+  - id: "pi"
+    displayName: "Pi"
+    iconBase: "pi-logo"
+    binaryNames: ["pi-acp"]
+    prerequisites: "Requires Node.js 22+ and pi 0.80.4+ on your PATH. Install the ACP adapter separately: npm install -g @geohar/pi-acp. For MCP Tools, add pi-mcp-adapter to your Pi packages."
+    docsUrl: "https://github.com/georgeharker/pi-acp"
+    requiresMessageQueue: true
+    injectsEditorContext: false
+    acceptsMcpAuthToken: false
+    supportTier: LIMITED
+    limitationsKey: "Harness.Limitations.Pi"
+    install:
+      windows: "powershell -c \"irm https://pi.dev/install.ps1 | iex\""
+      mac: "curl -fsSL https://pi.dev/install.sh | sh"
+      linux: "curl -fsSL https://pi.dev/install.sh | sh"
+    windowsInstallSubDirs: ["%LOCALAPPDATA%\\pi-node\\current"]
+    activation:
+      hint: "Connect a model provider in the Pi CLI before the first session."
+
+  - id: "goose"
+    displayName: "Goose"
+    iconBase: "goose"
+    binaryNames: ["goose"]
+    launchArgs: "acp"
+    docsUrl: "https://goose-docs.ai/docs/getting-started/installation"
+    requiresMessageQueue: true
+    injectsEditorContext: false
+    supportsMessageIds: true
+    install:
+      windows: "powershell -c \"iwr https://raw.githubusercontent.com/aaif-goose/goose/main/download_cli.ps1 -OutFile download_cli.ps1; .\\download_cli.ps1\""
+      mac: "brew install block-goose-cli"
+      linux: "curl -fsSL https://github.com/aaif-goose/goose/releases/download/stable/download_cli.sh | bash"
+    activation:
+      command: "goose configure"
+      hint: "Connect a model provider once."
+
+  - id: "cursor"
+    displayName: "Cursor"
+    iconBase: "cursor"
+    binaryNames: ["agent", "cursor-agent"]
+    launchArgs: "acp"
+    prerequisites: "The ACP entry point is the cursor-agent CLI itself (run with \"agent acp\")."
+    docsUrl: "https://cursor.com/docs/cli/acp"
+    install:
+      windows: "powershell -c \"irm 'https://cursor.com/install?win32=true' | iex\""
+      mac: "curl https://cursor.com/install -fsSL | bash"
+      linux: "curl https://cursor.com/install -fsSL | bash"
+    activation:
+      command: "agent login"
+      hint: "Register once, or set CURSOR_API_KEY."
+
+  - id: "copilot"
+    displayName: "Copilot"
+    iconBase: "copilot"
+    binaryNames: ["copilot"]
+    launchArgs: "--acp"
+    prerequisites: "Requires Node.js 22+. Authenticate with \"copilot login\" before using ACP."
+    docsUrl: "https://github.com/github/copilot-cli"
+    install:
+      windows: "npm install -g @github/copilot"
+      mac: "npm install -g @github/copilot"
+      linux: "npm install -g @github/copilot"
+    activation:
+      command: "copilot login"
+      hint: "Sign in with an account that has Copilot access, or set GITHUB_TOKEN."
+
+  - id: "claude"
+    displayName: "Claude"
+    iconBase: "claude"
+    binaryNames: ["claude-agent-acp"]
+    prerequisites: "Requires Node.js 18+. Bundles the Claude Agent SDK, so a separate claude CLI install is not needed."
+    docsUrl: "https://github.com/agentclientprotocol/claude-agent-acp"
+    supportsMessageIds: true
+    supportsSessionSetMode: true
+    install:
+      windows: "npm install -g @agentclientprotocol/claude-agent-acp"
+      mac: "npm install -g @agentclientprotocol/claude-agent-acp"
+      linux: "npm install -g @agentclientprotocol/claude-agent-acp"
+    activation:
+      hint: "Set ANTHROPIC_API_KEY before the first session."
+
+  - id: "hermes"
+    displayName: "Hermes"
+    iconBase: "hermes"
+    binaryNames: ["hermes"]
+    launchArgs: "acp"
+    prerequisites: "Requires Python 3.10+. Enable ACP with: cd ~/.hermes/hermes-agent && uv pip install -e '.[acp]'."
+    docsUrl: "https://hermes-agent.nousresearch.com/docs/user-guide/features/acp"
+    requiresMessageQueue: true
+    injectsEditorContext: false
+    supportsSessionSetModel: true
+    install:
+      windows: "powershell -c \"iex (irm https://hermes-agent.nousresearch.com/install.ps1)\""
+      mac: "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash"
+      linux: "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash"
+    windowsInstallSubDirs: ["%LOCALAPPDATA%\\hermes\\bin"]
+    activation:
+      command: "hermes"
+      hint: "Start it once and connect a model provider."
+
+  - id: "gemini"
+    displayName: "Gemini"
+    iconBase: "gemini"
+    binaryNames: ["gemini"]
+    launchArgs: "--acp --model gemini-3.8-flash"
+    prerequisites: "Requires Node.js 20+"
+    docsUrl: "https://geminicli.com/docs/get-started/installation/"
+    supportsMessageIds: true
+    supportsSessionSetMode: true
+    supportsSessionSetConfigOption: false
+    supportsModelSelection: false
+    supportsSessionList: false
+    supportTier: LIMITED
+    limitationsKey: "Harness.Limitations.Gemini"
+    unsupportedModelSelectionMessage: "MSG_UnsupportedModelSelection"
+    unsupportedModelSelectionPlaceholder: "MSG_GeminiUnsupportedModelSelectionPlaceholder"
+    install:
+      windows: "npm install -g @google/gemini-cli"
+      mac: "npm install -g @google/gemini-cli"
+      linux: "npm install -g @google/gemini-cli"
+    activation:
+      hint: "The first run opens the Google sign-in flow; set GEMINI_API_KEY to skip it."
+
+  - id: "devin"
+    displayName: "Devin"
+    iconBase: "devin"
+    binaryNames: ["devin"]
+    launchArgs: "acp"
+    docsUrl: "https://docs.devin.ai/cli"
+    install:
+      windows: "powershell -c \"irm https://static.devin.ai/cli/setup.ps1 | iex\""
+      mac: "brew install --cask devin-cli"
+      linux: "curl -fsSL https://cli.devin.ai/install.sh | bash"
+    activation:
+      command: "devin auth login"
+      hint: "Sign in once, or set WINDSURF_API_KEY."
+
+  # OpenCode-derived, own 7.x version scheme and prompt queue; model switch uses
+  # the stable `model` config option (the dedicated request is unstable_).
+  - id: "kilo"
+    displayName: "Kilo Code"
+    iconBase: "kilo"
+    binaryNames: ["kilo", "kilocode"]
+    launchArgs: "acp"
+    prerequisites: "Authenticate with kilo auth login (or run kilo and use /connect) before connecting. The npm route requires Node.js."
+    docsUrl: "https://kilo.ai/docs/code-with-ai/platforms/cli"
+    requiresMessageQueue: true
+    supportsMessageIds: true
+    supportsSessionSetMode: true
+    install:
+      windows: "npm install -g @kilocode/cli"
+      mac: "brew install Kilo-Org/tap/kilo"
+      linux: "curl -fsSL https://kilo.ai/cli/install | bash"
+    windowsInstallSubDirs: ["%USERHOME%/.kilo/bin"]
+    activation:
+      command: "kilo auth login"
+      hint: "Sign in once, or start kilo and use /connect."
+
+  # Sparse ACP v1: no session capability block, no session/list, no message ids
+  # and no usage updates; ignores per-session mcpServers. A prompt during a run
+  # resolves end_turn immediately, so messages queue.
+  - id: "cline"
+    displayName: "Cline"
+    iconBase: "cline"
+    binaryNames: ["cline"]
+    launchArgs: "--acp"
+    prerequisites: "Requires Cline CLI 3.0.74+ (npm i -g cline@latest). Run cline auth once (or set CLINE_API_KEY) before connecting; ACP sessions start no interactive login."
+    docsUrl: "https://docs.cline.bot/usage/acp"
+    requiresMessageQueue: true
+    sendsMcpServerConfig: false
+    supportsMcpServer: false
+    supportsSessionSetMode: true
+    supportsSessionList: false
+    supportTier: LIMITED
+    limitationsKey: "Harness.Limitations.Cline"
+    install:
+      windows: "npm i -g cline"
+      mac: "npm i -g cline"
+      linux: "npm i -g cline"
+    activation:
+      command: "cline auth"
+      hint: "Sign in once, or set CLINE_API_KEY."
+
+  # Replay arrives as independent chunks with no message ids, so each chunk is
+  # its own bubble; session-scoped MCP is not implemented. A second prompt while
+  # a run is active is rejected, so messages queue.
+  - id: "jcode"
+    displayName: "Jcode"
+    iconBase: "jcode"
+    binaryNames: ["jcode"]
+    launchArgs: "acp"
+    prerequisites: "Sign in once with jcode login (or import an existing provider credential) before connecting. The ACP entry point is jcode acp."
+    docsUrl: "https://jcode.sh/docs"
+    requiresMessageQueue: true
+    sendsMcpServerConfig: false
+    supportsMcpServer: false
+    supportsSessionList: false
+    supportsAgentList: false
+    separateBubblesPerReplayChunk: true
+    acceptsMcpAuthToken: false
+    supportTier: LIMITED
+    limitationsKey: "Harness.Limitations.Jcode"
+    install:
+      windows: "powershell -c \"irm https://jcode.sh/install.ps1 | iex\""
+      mac: "curl -fsSL https://jcode.sh/install | bash"
+      linux: "curl -fsSL https://jcode.sh/install | bash"
+    windowsInstallSubDirs: ["%LOCALAPPDATA%\\jcode\\bin"]
+    activation:
+      command: "jcode login"
+      hint: "Sign in once, or import an existing provider credential."
+
+  - id: "unknown"
+    displayName: "Agent"
+    iconBase: "agent"
+    requiresMessageQueue: true
+    listed: false

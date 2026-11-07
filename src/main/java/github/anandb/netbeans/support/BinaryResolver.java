@@ -21,6 +21,7 @@ import github.anandb.netbeans.pattern.PathSeparatorPattern;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
+import github.anandb.netbeans.model.Harness;
 
 public final class BinaryResolver {
 
@@ -77,7 +78,7 @@ public final class BinaryResolver {
 
     /** First known harness found on PATH, or {@code null}. */
     private static String findFirstKnownOnPath() {
-        for (HarnessCatalog.Harness harness : HarnessCatalog.ALL) {
+        for (Harness harness : HarnessCatalog.ALL) {
             String found = findHarnessBinary(harness);
             if (found != null) {
                 return found;
@@ -101,7 +102,7 @@ public final class BinaryResolver {
         String harnessId = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .get(PreferenceKeys.ACP_HARNESS_ID, null);
         if (isNotBlank(harnessId)) {
-            HarnessCatalog.Harness h = HarnessCatalog.byId(harnessId);
+            Harness h = HarnessCatalog.byId(harnessId);
             if (h != null && !h.binaryNames().isEmpty()) {
                 return h.binaryNames().get(0);
             }
@@ -124,7 +125,7 @@ public final class BinaryResolver {
             return null;
         }
         // Known catalog harness — use its display name.
-        HarnessCatalog.Harness h = HarnessCatalog.byBinaryName(name);
+        Harness h = HarnessCatalog.byBinaryName(name);
         if (h != null) {
             return h.displayName();
         }
@@ -376,7 +377,7 @@ public final class BinaryResolver {
      * </ol>
      * Ties keep catalog name order, then probe order. Package-visible for tests.
      */
-    static String findHarnessBinary(HarnessCatalog.Harness harness) {
+    static String findHarnessBinary(Harness harness) {
         String bestPath = null;
         int bestRank = Integer.MAX_VALUE;
         for (String name : harness.binaryNames()) {
@@ -510,7 +511,7 @@ public final class BinaryResolver {
      * variable/user property before use.
      */
     private static List<File> harnessInstallDirs(String exeName) {
-        HarnessCatalog.Harness h = HarnessCatalog.byBinaryName(exeName.toLowerCase(Locale.ROOT));
+        Harness h = HarnessCatalog.byBinaryName(exeName.toLowerCase(Locale.ROOT));
         List<String> subdirs = h.windowsInstallSubDirs();
         if (subdirs.isEmpty()) {
             return List.of();
@@ -616,7 +617,7 @@ public final class BinaryResolver {
      */
     public static List<FoundBinary> findAllKnownOnPath() {
         List<FoundBinary> found = new ArrayList<>();
-        for (HarnessCatalog.Harness harness : HarnessCatalog.ALL) {
+        for (Harness harness : HarnessCatalog.ALL) {
             String nativePath = findHarnessBinary(harness);
             if (nativePath != null) {
                 found.add(new FoundBinary(harness.id(), harness.displayName(), nativePath));

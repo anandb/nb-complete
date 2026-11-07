@@ -19,6 +19,18 @@ class AppLinksTest {
     }
 
     @Test
+    void projectUrlPointsAtTheGitHubRepositoryAndIsOverridable() {
+        assertEquals("https://github.com/anandb/nb-complete", AppLinks.projectUrl());
+        String old = System.getProperty("beanbot.project.url");
+        try {
+            System.setProperty("beanbot.project.url", "https://example.test/home");
+            assertEquals("https://example.test/home", AppLinks.projectUrl());
+        } finally {
+            restore("beanbot.project.url", old);
+        }
+    }
+
+    @Test
     void basesAreOverridableForForksAndTolerateTrailingSlash() {
         String oldNbm = System.getProperty("beanbot.nbm.base");
         String oldChangelog = System.getProperty("beanbot.changelog.url");

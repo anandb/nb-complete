@@ -28,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import github.anandb.netbeans.model.Harness;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -241,7 +242,7 @@ class ServerProcessLifecycleTest {
         @Override public CompletableFuture<Void> waitForReady() { return CompletableFuture.completedFuture(null); }
         @Override public void disable() {}
         @Override public boolean isDisabled() { return false; }
-        @Override public void checkServerSupport(HarnessCatalog.Harness c) {}
+        @Override public void checkServerSupport(Harness c) {}
         @Override public java.util.List<java.util.Map<String, Object>> getServerConfig() { return java.util.List.of(); }
     }
 }

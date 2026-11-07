@@ -7,6 +7,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.model.HarnessCatalog;
+import github.anandb.netbeans.model.Harness;
 
 /**
  * Control interface for the ACP process and message sending.
@@ -68,13 +69,13 @@ public interface ProcessControl {
 
     /** Registers a listener invoked when the harness is resolved after the
      *  {@code initialize} handshake. Fires once per server start. */
-    void setHarnessListener(Consumer<HarnessCatalog.Harness> listener);
+    void setHarnessListener(Consumer<Harness> listener);
 
     /**
      * Returns the resolved harness with capability flags. Returns
      * {@link HarnessCatalog#UNKNOWN} until the handshake completes.
      */
-    HarnessCatalog.Harness getCapabilities();
+    Harness getCapabilities();
 
     /**
      * Whether the current agent advertised {@code promptCapabilities.embeddedContext}

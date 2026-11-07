@@ -60,6 +60,7 @@ import github.anandb.netbeans.ui.assistant.MiniAssistantDialog;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.SessionService;
 import github.anandb.netbeans.ui.components.UIUtils;
+import github.anandb.netbeans.model.Harness;
 
 // DSL-LEAF: not a view-pure form — builds the agent/model/thinking combo panel
 // (GridBagLayout). Migration target: OptionsFormSpec + ConfigComboSpec; the
@@ -353,7 +354,7 @@ public class ConfigPanelController {
      *  Null-safe: with no platform bridge registered, `processServiceSafe()` hands back a dummy whose
      *  `getCapabilities()` is null (see PlatformBridge.createDummy). */
     private boolean agentSupportsSessionSetMode() {
-        HarnessCatalog.Harness caps = PlatformBridge.processControl().getCapabilities();
+        Harness caps = PlatformBridge.processControl().getCapabilities();
         return caps != null && caps.supportsSessionSetMode();
     }
 
@@ -699,7 +700,7 @@ public class ConfigPanelController {
         if (pc == null) {
             return null;
         }
-        HarnessCatalog.Harness caps = pc.getCapabilities();
+        Harness caps = pc.getCapabilities();
         return caps == null || caps == HarnessCatalog.UNKNOWN ? null : caps.id();
     }
 

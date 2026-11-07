@@ -72,6 +72,7 @@ import github.anandb.netbeans.ui.platform.SessionService;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.components.UIUtils;
+import github.anandb.netbeans.model.Harness;
 
 // DSL-LEAF: keep imperative, wrap via UI.of(...) — NetBeans Options panel
 // (GridBagLayout form). When the DSL lands, port the form to OptionsFormSpec;
@@ -232,7 +233,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
                 // Auto-fill launch args from catalog when user picks a known harness
                 String path = getExecutablePath();
                 String binName = BinaryResolver.binaryNameFromPath(path);
-                HarnessCatalog.Harness h = binName != null ? HarnessCatalog.byBinaryName(binName) : null;
+                Harness h = binName != null ? HarnessCatalog.byBinaryName(binName) : null;
                 if (h != null) {
                     argsField.setText(h.launchArgs());
                 }
@@ -293,7 +294,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         // because those arguments belong to the launcher, not to the harness.
         harnessCombo = new JComboBox<>();
         harnessCombo.addItem(new HarnessSelection.Selection(HarnessCatalog.UNKNOWN, true));
-        for (HarnessCatalog.Harness harness : HarnessCatalog.sortedByName()) {
+        for (Harness harness : HarnessCatalog.sortedByName()) {
             harnessCombo.addItem(new HarnessSelection.Selection(harness, false));
         }
         harnessCombo.setRenderer(new HarnessChoiceRenderer());
@@ -978,7 +979,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     /** Shows a reminder to change --model when the selected binary is Gemini. */
     private void updateGeminiModelHint() {
         String binName = BinaryResolver.binaryNameFromPath(getExecutablePath());
-        HarnessCatalog.Harness h = binName != null ? HarnessCatalog.byBinaryName(binName) : null;
+        Harness h = binName != null ? HarnessCatalog.byBinaryName(binName) : null;
         if (h != null && "gemini".equals(h.id())) {
             argsHintLabel.setText(NbBundle.getMessage(UIBundle.class, "MSG_GeminiDefaultModel"));
             argsHintLabel.setVisible(true);
@@ -989,7 +990,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     }
 
     /** Harness detected from the current path, or {@link HarnessCatalog#UNKNOWN}. */
-    private HarnessCatalog.Harness detectedHarness() {
+    private Harness detectedHarness() {
         return HarnessSelection.detect(BinaryResolver.binaryNameFromPath(getExecutablePath()));
     }
 
@@ -1002,7 +1003,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
             setToolTipText(null);
             if (value instanceof HarnessSelection.Selection selection) {
                 setText(harnessChoiceLabel(selection));
-                HarnessCatalog.Harness harness = selection.harness();
+                Harness harness = selection.harness();
                 if (harness.hasLimitedSupport() && !harness.limitations().isBlank()) {
                     setToolTipText(harness.limitations());
                 }
@@ -1014,12 +1015,12 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     /** Label for one combo entry; Auto names the detected harness when there is one. */
     private String harnessChoiceLabel(HarnessSelection.Selection selection) {
         if (!selection.auto()) {
-            HarnessCatalog.Harness harness = selection.harness();
+            Harness harness = selection.harness();
             return harness.hasLimitedSupport()
                     ? NbBundle.getMessage(UIBundle.class, "OPT_Harness_Limited", harness.displayName())
                     : harness.displayName();
         }
-        HarnessCatalog.Harness detected = detectedHarness();
+        Harness detected = detectedHarness();
         return detected == HarnessCatalog.UNKNOWN
                 ? NbBundle.getMessage(UIBundle.class, "OPT_Harness_AutoDetectUnknown")
                 : NbBundle.getMessage(UIBundle.class, "OPT_Harness_AutoDetect", detected.displayName());
@@ -1034,7 +1035,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
             return;
         }
         String binaryName = BinaryResolver.binaryNameFromPath(getExecutablePath());
-        HarnessCatalog.Harness detected = HarnessSelection.detect(binaryName);
+        Harness detected = HarnessSelection.detect(binaryName);
         HarnessSelection.Selection selection =
                 (HarnessSelection.Selection) harnessCombo.getSelectedItem();
         boolean auto = selection == null || selection.auto();

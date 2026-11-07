@@ -133,7 +133,7 @@ All source lives under `src/main/java/github/anandb/netbeans/`:
 | `db/` | 8 | H2 persistence layer (usage-stats store, session store, pinned-message and model-list caches, SQL loader, preference migration) |
 | `manager/` | 26 | Core orchestration, protocol clients, session management, process lifecycle (includes `strategy/`, file cache, VCS ignore) |
 | `mcp/` | 44 | MCP server integration (editor, filesystem, VCS, task and project tool providers, tool input records, message servlet) |
-| `model/` | 31 | ACP-compliant data models (session, messages, updates, config options, color tokens, usage records, harness catalog) |
+| `model/` | 32 | ACP-compliant data models (session, messages, updates, config options, color tokens, usage records); `harness-catalog.yaml` holds the harness definitions |
 | `pattern/` | 40 | Compiled regex patterns (pure constants, no dependencies; consumed by all layers) |
 | `project/` | 12 | NetBeans lifecycle hooks, project manager (includes `mdproject/`, the markdown project type) |
 | `support/` | 41 | Utilities (logging, JSON mapping, text scanning, constants, browser helpers, pinned message store, shortcut utils, binary resolution) |

@@ -506,6 +506,12 @@ public final class ChatLayoutBuilder {
                     "STATUS_IssueUrlCopied", (url, key) -> topComponent.setStatus(key, url)));
             helpPopup.add(reportIssueItem);
 
+            JMenuItem starOnGitHubItem = new JMenuItem(NbBundle.getMessage(
+                    UIBundle.class, "CTL_StarOnGitHub"));
+            starOnGitHubItem.addActionListener(ev -> BrowserUtils.openOrCopyUrl(AppLinks.projectUrl(),
+                    "STATUS_ProjectUrlCopied", (url, key) -> topComponent.setStatus(key, url)));
+            helpPopup.add(starOnGitHubItem);
+
             helpPopup.show(helpBtn, 0, helpBtn.getHeight());
         });
 

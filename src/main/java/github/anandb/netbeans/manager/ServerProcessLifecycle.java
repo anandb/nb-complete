@@ -28,6 +28,7 @@ import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.AcpFsPolicy;
 import github.anandb.netbeans.support.ProcessTerminator;
 import github.anandb.netbeans.support.SteerEchoes;
+import github.anandb.netbeans.model.Harness;
 
 /**
  * Extracted server lifecycle methods from ProcessManager.
@@ -59,7 +60,7 @@ class ServerProcessLifecycle {
     private volatile boolean isClosing = false;
     private volatile boolean serverStarted = false;
     /** Resolved harness with capability flags. */
-    private volatile HarnessCatalog.Harness capabilities = HarnessCatalog.UNKNOWN;
+    private volatile Harness capabilities = HarnessCatalog.UNKNOWN;
     /**
      * Whether this agent advertised {@code sessionCapabilities.close} in the
      * {@code initialize} response. Per connection, not part of the static
@@ -86,7 +87,7 @@ class ServerProcessLifecycle {
     /** Whether the agent advertised {@code promptCapabilities.embeddedContext}. */
     private volatile boolean embeddedContextSupported;
     /** Listener fired once the harness is resolved after the initialize handshake. */
-    private volatile Consumer<HarnessCatalog.Harness> harnessListener;
+    private volatile Consumer<Harness> harnessListener;
     private RequestProcessor reconnectRP;
     private RequestProcessor.Task reconnectTask;
 
@@ -111,7 +112,7 @@ class ServerProcessLifecycle {
     }
 
     /** Returns the resolved harness with capability flags. */
-    HarnessCatalog.Harness getCapabilities() {
+    Harness getCapabilities() {
         return capabilities;
     }
 
@@ -157,7 +158,7 @@ class ServerProcessLifecycle {
 
     /** Registers a listener fired (on the initialize completion thread) when the
      *  harness is resolved from stored preferences. */
-    void setHarnessListener(Consumer<HarnessCatalog.Harness> listener) {
+    void setHarnessListener(Consumer<Harness> listener) {
         this.harnessListener = listener;
     }
 
@@ -491,7 +492,7 @@ class ServerProcessLifecycle {
                         capabilities = HarnessCatalog.forAgentVersion(capabilities, agentVersion);
                         toolExecutor.checkServerSupport(capabilities);
                         LOG.info("Harness resolved: {0} ({1})", capabilities.id(), capabilities.displayName());
-                        Consumer<HarnessCatalog.Harness> listener = harnessListener;
+                        Consumer<Harness> listener = harnessListener;
                         if (listener != null) {
                             listener.accept(capabilities);
                         }
@@ -536,7 +537,7 @@ class ServerProcessLifecycle {
      * installs.
      */
     private static boolean requiresMcpAuthToken() {
-        HarnessCatalog.Harness harness = configuredHarness();
+        Harness harness = configuredHarness();
         if (harness != HarnessCatalog.UNKNOWN) {
             return harness.acceptsMcpAuthToken();
         }
@@ -545,10 +546,10 @@ class ServerProcessLifecycle {
     }
 
     /** Configured harness before the handshake: stored id, then binary name, then {@link HarnessCatalog#UNKNOWN}. */
-    private static HarnessCatalog.Harness configuredHarness() {
+    private static Harness configuredHarness() {
         String harnessId = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .get(PreferenceKeys.ACP_HARNESS_ID, null);
-        HarnessCatalog.Harness harness = harnessId == null || harnessId.isEmpty()
+        Harness harness = harnessId == null || harnessId.isEmpty()
                 ? null : HarnessCatalog.byId(harnessId);
         if (harness == null || harness == HarnessCatalog.UNKNOWN) {
             harness = HarnessCatalog.byBinaryName(BinaryResolver.resolveBinaryName());

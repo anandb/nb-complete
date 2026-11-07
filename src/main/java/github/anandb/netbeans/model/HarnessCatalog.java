@@ -4,14 +4,12 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
-import org.openide.util.NbBundle;
 
 /**
- * Catalog of the ACP harnesses the plugin can launch. Single source of truth
- * for display names, toolbar icons, binary names (native and WSL), default
- * launch arguments, capability flags, per-OS install commands, and documentation links.
- * Data-only record; the only dependency is NbBundle for user-facing message lookup.
+ * Catalog of the ACP harnesses the plugin can launch: lookups, ordering and
+ * version-dependent capability deltas. The definitions themselves live in
+ * {@code harness-catalog.yaml} and are loaded into the top-level {@link Harness}
+ * record by {@link HarnessCatalogLoader}.
  */
 public final class HarnessCatalog {
 
@@ -23,424 +21,36 @@ public final class HarnessCatalog {
      */
     public enum SupportTier { FULL, LIMITED }
 
-    /** One supported harness and everything needed to detect, launch, and use it. */
-    public record Harness(
-            String id,
-            String displayName,
-            String iconBase,
-            List<String> binaryNames,
-            String launchArgs,
-            /** True when a second {@code session/prompt} does not steer the in-flight
-             *  turn, so messages must be queued until turn end. Read it off the entry
-             *  rather than a list here: it is per harness and changes across major
-             *  releases (OpenCode v1 steers, v2 queues — see
-             *  {@link HarnessCatalog#forAgentVersion}). A queueing harness may still
-             *  steer through its own extension — see {@link #supportsSessionSteer()}. */
-            boolean requiresMessageQueue,
-            boolean sendsMcpServerConfig,
-            boolean injectsEditorContext,
-            boolean supportsMessageIds,
-            boolean supportsMcpServer,
-            boolean supportsSessionSetMode,
-            boolean supportsSessionSetConfigOption,
-            /** True when model switching must go through ACP {@code session/set_model} (Hermes). */
-            boolean supportsSessionSetModel,
-            boolean supportsModelSelection,
-            boolean supportsSessionList,
-            /** True when the agent/mode dropdown is offered; false disables it (OpenClaw). */
-            boolean supportsAgentList,
-            /** True when a session replay must render every {@code agent_message_chunk}
-             *  as its own bubble instead of merging the chunks of one turn. Jcode
-             *  replays history as independent chunks with no message ids, so merging
-             *  would collapse a whole turn into a single bubble. */
-            boolean separateBubblesPerReplayChunk,
-            /** Completeness of the plugin's support; see {@link SupportTier}. */
-            SupportTier supportTier,
-            /** Bundle key listing what a {@code LIMITED} harness cannot do, shown as the
-             *  chooser tooltip; empty for {@code FULL}. */
-            String limitationsKey,
-            /** Bundle key of the message shown when model selection is unavailable; empty when none. */
-            String unsupportedModelSelectionMessage,
-            /** Bundle key of the placeholder item text shown in the disabled model
-             *  dropdown when model selection is unavailable; empty when none. */
-            String unsupportedModelSelectionPlaceholder,
-            String installWindows,
-            String installMac,
-            String installLinux,
-            String prerequisites,
-            String docsUrl,
-            List<String> windowsInstallSubDirs,
-            /** True when the agent can carry the embedded MCP server's auth token on its
-             *  MCP URL. False for the PI family and Jcode, which cannot, so the server
-             *  runs without token enforcement for them. */
-            boolean acceptsMcpAuthToken) {
+    /** Loaded once from {@code harness-catalog.yaml}; see that resource for the definitions. */
+    private static final HarnessCatalogLoader.Catalog CATALOG = HarnessCatalogLoader.load();
 
-        /** Starts a fluent definition; see {@link HarnessBuilder} for the defaults an entry overrides. */
-        public static HarnessBuilder builder(String id, String displayName, String iconBase) {
-            return new HarnessBuilder(id, displayName, iconBase);
-        }
+    public static final Harness OMP = CATALOG.require("omp");
+    public static final Harness OPENCODE = CATALOG.require("opencode");
+    public static final Harness CODEX = CATALOG.require("codex");
+    public static final Harness OPENCLAW = CATALOG.require("openclaw");
+    public static final Harness PI = CATALOG.require("pi");
+    public static final Harness GOOSE = CATALOG.require("goose");
+    public static final Harness CURSOR = CATALOG.require("cursor");
+    public static final Harness COPILOT = CATALOG.require("copilot");
+    public static final Harness CLAUDE = CATALOG.require("claude");
+    public static final Harness HERMES = CATALOG.require("hermes");
+    public static final Harness GEMINI = CATALOG.require("gemini");
+    public static final Harness DEVIN = CATALOG.require("devin");
+    public static final Harness KILO = CATALOG.require("kilo");
+    public static final Harness CLINE = CATALOG.require("cline");
+    public static final Harness JCODE = CATALOG.require("jcode");
 
-        /**
-         * Resolves the unsupported-model-selection message from the model
-         * bundle. The record field holds the bundle key (empty when the
-         * harness has no such message), keeping the literal text localized.
-         */
-        @Override
-        public String unsupportedModelSelectionMessage() {
-            return unsupportedModelSelectionMessage == null || unsupportedModelSelectionMessage.isEmpty()
-                    ? "" : NbBundle.getMessage(HarnessCatalog.class, unsupportedModelSelectionMessage);
-        }
-
-        /** Resolves the placeholder item text for the disabled model dropdown
-         *  (empty when the harness has none). */
-        @Override
-        public String unsupportedModelSelectionPlaceholder() {
-            return unsupportedModelSelectionPlaceholder == null || unsupportedModelSelectionPlaceholder.isEmpty()
-                    ? "" : NbBundle.getMessage(HarnessCatalog.class, unsupportedModelSelectionPlaceholder);
-        }
-
-        /** Resolves what this harness cannot do (empty for a {@code FULL} harness). */
-        public String limitations() {
-            return limitationsKey == null || limitationsKey.isEmpty()
-                    ? "" : NbBundle.getMessage(HarnessCatalog.class, limitationsKey);
-        }
-
-        /** True when the plugin's support for this harness is partial; see {@link SupportTier}. */
-        public boolean hasLimitedSupport() {
-            return supportTier == SupportTier.LIMITED;
-        }
-
-        /**
-         * Returns a copy of this harness with only the message-queue capability
-         * replaced. Used to derive a runtime variant (e.g. OpenCode v2) from its
-         * catalog base without duplicating the remaining launch metadata, so the
-         * two variants can never drift apart on any other flag.
-         */
-        public Harness withRequiresMessageQueue(boolean queueMessages) {
-            return new Harness(id, displayName, iconBase, binaryNames, launchArgs, queueMessages,
-                    sendsMcpServerConfig, injectsEditorContext, supportsMessageIds, supportsMcpServer,
-                    supportsSessionSetMode, supportsSessionSetConfigOption, supportsSessionSetModel,
-                    supportsModelSelection, supportsSessionList, supportsAgentList,
-                    separateBubblesPerReplayChunk, supportTier, limitationsKey,
-                    unsupportedModelSelectionMessage, unsupportedModelSelectionPlaceholder,
-                    installWindows, installMac, installLinux, prerequisites, docsUrl,
-                    windowsInstallSubDirs, acceptsMcpAuthToken);
-        }
-
-        /** True when the given binary basename belongs to this harness, with or
-         *  without a Windows executable extension ({@code omp}, {@code omp.exe}). */
-        public boolean matchesBinary(String binaryName) {
-            String base = stripBinaryExtension(binaryName);
-            return base != null && binaryNames.contains(base);
-        }
-
-        /**
-         * True when the harness adds input to a running turn through its own protocol
-         * extension instead of a second {@code session/prompt}. Only goose does:
-         * {@code _goose/unstable/session/steer}, which needs the active run id the
-         * harness publishes as {@code _meta.goose.activeRunId}.
-         */
-        public boolean supportsSessionSteer() {
-            return "goose".equals(id);
-        }
-
-        /** True when the harness retitles a session server-side
-         *  ({@code _goose/unstable/session/rename}); ACP itself has no rename. */
-        public boolean supportsSessionRename() {
-            return "goose".equals(id);
-        }
-
-        /** True when the harness moves a session's working directory live
-         *  ({@code _goose/unstable/session/working-dir/update}), so a cwd change needs no
-         *  process restart and terminates no sessions. */
-        public boolean supportsWorkingDirUpdate() {
-            return "goose".equals(id);
-        }
-
-        /** True when the harness can break down its context window
-         *  ({@code _goose/unstable/context/report}). */
-        public boolean supportsContextReport() {
-            return "goose".equals(id);
-        }
-    }
-
-    public static final Harness OPENCODE = Harness.builder("opencode", "OpenCode", "opencode")
-        .binaryNames("opencode")
-        .launchArgs("acp")
-        .supportsMessageIds(true)
-        .install("winget install SST.opencode",
-                "brew install anomalyco/tap/opencode",
-                "curl -fsSL https://opencode.ai/install | bash")
-        .docsUrl("https://opencode.ai/docs/")
-        .build();
-
-    /**
-     * OpenCode v2 capability variant: identical identity and launch metadata as
-     * {@link #OPENCODE}, but without mid-turn steering — a second
-     * {@code session/prompt} is not folded into the running turn, so the client
-     * must queue messages until turn end. Selected at handshake by
-     * {@link #forAgentVersion(Harness, String)} from the reported
-     * {@code agentInfo.version}; deliberately NOT part of {@link #ALL} so
-     * onboarding, install metadata and id/binary lookups keep resolving the v1
-     * base entry.
-     */
+    /** OpenCode v2 capability variant: same identity as {@link #OPENCODE}, but without
+     *  mid-turn steering. Selected by {@link #forAgentVersion}; deliberately not in
+     *  {@link #ALL} so onboarding, install metadata and id/binary lookups keep
+     *  resolving the v1 base entry. */
     public static final Harness OPENCODE_V2 = OPENCODE.withRequiresMessageQueue(true);
 
-    /**
-     * Codex via the {@code codex-acp} ACP adapter. The adapter speaks ACP v1 to
-     * this client (v2 folds {@code session/load} into {@code session/resume});
-     * its mid-turn steering is only available through the {@code _session/steering}
-     * extension this client does not implement, so messages queue until turn end.
-     * The bundled {@code @openai/codex} dependency means a separate Codex CLI
-     * install is not needed.
-     */
-    public static final Harness CODEX = Harness.builder("codex", "Codex", "codex")
-        .binaryNames("codex-acp")
-        .requiresMessageQueue(true)
-        .supportsMessageIds(true)
-        .supportsSessionSetMode(true)
-        .install("npm install -g @agentclientprotocol/codex-acp@2.2.2",
-                "npm install -g @agentclientprotocol/codex-acp@2.2.2",
-                "npm install -g @agentclientprotocol/codex-acp@2.2.2")
-        .prerequisites("Requires Node.js and a ChatGPT account or OPENAI_API_KEY. Bundles the Codex CLI, "
-                + "so a separate codex install is not needed.")
-        .docsUrl("https://github.com/agentclientprotocol/codex-acp")
-        .build();
-
-    public static final Harness GOOSE = Harness.builder("goose", "Goose", "goose")
-        .binaryNames("goose")
-        .launchArgs("acp")
-        .requiresMessageQueue(true)
-        .injectsEditorContext(false)
-        .supportsMessageIds(true)
-        .install("powershell -c \"iwr https://raw.githubusercontent.com/aaif-goose/goose/main/download_cli.ps1 -OutFile download_cli.ps1; .\\download_cli.ps1\"",
-                "brew install block-goose-cli",
-                "curl -fsSL https://github.com/aaif-goose/goose/releases/download/stable/download_cli.sh | bash")
-        .docsUrl("https://goose-docs.ai/docs/getting-started/installation")
-        .build();
-
-    public static final Harness PI = Harness.builder("pi", "Pi", "pi-logo")
-        .binaryNames("pi-acp")
-        .requiresMessageQueue(true)
-        .injectsEditorContext(false)
-        .acceptsMcpAuthToken(false)
-        .limited("Harness.Limitations.Pi")
-        .install("powershell -c \"irm https://pi.dev/install.ps1 | iex\"",
-                "curl -fsSL https://pi.dev/install.sh | sh",
-                "curl -fsSL https://pi.dev/install.sh | sh")
-        .prerequisites("Requires Node.js 22+ and pi 0.80.4+ on your PATH. Install the ACP adapter separately: "
-                + "npm install -g @geohar/pi-acp. For MCP Tools, add pi-mcp-adapter to your Pi packages.")
-        .docsUrl("https://github.com/georgeharker/pi-acp")
-        .windowsInstallSubDirs("%LOCALAPPDATA%\\pi-node\\current")
-        .build();
-
-    public static final Harness CURSOR = Harness.builder("cursor", "Cursor", "cursor")
-        .binaryNames("agent", "cursor-agent")
-        .launchArgs("acp")
-        .install("powershell -c \"irm 'https://cursor.com/install?win32=true' | iex\"",
-                "curl https://cursor.com/install -fsSL | bash",
-                "curl https://cursor.com/install -fsSL | bash")
-        .prerequisites("The ACP entry point is the cursor-agent CLI itself (run with \"agent acp\").")
-        .docsUrl("https://cursor.com/docs/cli/acp")
-        .build();
-
-    public static final Harness COPILOT = Harness.builder("copilot", "Copilot", "copilot")
-        .binaryNames("copilot")
-        .launchArgs("--acp")
-        .install("npm install -g @github/copilot",
-                "npm install -g @github/copilot",
-                "npm install -g @github/copilot")
-        .prerequisites("Requires Node.js 22+. Authenticate with \"copilot login\" before using ACP.")
-        .docsUrl("https://github.com/github/copilot-cli")
-        .build();
-
-    public static final Harness CLAUDE = Harness.builder("claude", "Claude", "claude")
-        .binaryNames("claude-agent-acp")
-        .supportsMessageIds(true)
-        .supportsSessionSetMode(true)
-        .install("npm install -g @agentclientprotocol/claude-agent-acp",
-                "npm install -g @agentclientprotocol/claude-agent-acp",
-                "npm install -g @agentclientprotocol/claude-agent-acp")
-        .prerequisites("Requires Node.js 18+. Bundles the Claude Agent SDK, "
-                + "so a separate claude CLI install is not needed.")
-        .docsUrl("https://github.com/agentclientprotocol/claude-agent-acp")
-        .build();
-
-    public static final Harness HERMES = Harness.builder("hermes", "Hermes", "hermes")
-        .binaryNames("hermes")
-        .launchArgs("acp")
-        .requiresMessageQueue(true)
-        .injectsEditorContext(false)
-        .supportsSessionSetModel(true)
-        .install("powershell -c \"iex (irm https://hermes-agent.nousresearch.com/install.ps1)\"",
-                "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash",
-                "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash")
-        .prerequisites("Requires Python 3.10+. Enable ACP with: "
-                + "cd ~/.hermes/hermes-agent && uv pip install -e '.[acp]'.")
-        .docsUrl("https://hermes-agent.nousresearch.com/docs/user-guide/features/acp")
-        .windowsInstallSubDirs("%LOCALAPPDATA%\\hermes\\bin")
-        .build();
-
-    public static final Harness GEMINI = Harness.builder("gemini", "Gemini", "gemini")
-        .binaryNames("gemini")
-        .launchArgs("--acp --model gemini-3.8-flash")
-        .supportsMessageIds(true)
-        .supportsSessionSetMode(true)
-        .supportsSessionSetConfigOption(false)
-        .supportsModelSelection(false)
-        .supportsSessionList(false)
-        .limited("Harness.Limitations.Gemini")
-        .unsupportedModelSelection("MSG_UnsupportedModelSelection",
-                "MSG_GeminiUnsupportedModelSelectionPlaceholder")
-        .install("npm install -g @google/gemini-cli",
-                "npm install -g @google/gemini-cli",
-                "npm install -g @google/gemini-cli")
-        .prerequisites("Requires Node.js 20+")
-        .docsUrl("https://geminicli.com/docs/get-started/installation/")
-        .build();
-
-    public static final Harness OMP = Harness.builder("omp", "Oh My Pi", "omp")
-        .binaryNames("omp")
-        .launchArgs("acp")
-        .supportsMessageIds(true)
-        .supportsSessionSetMode(true)
-        .install("powershell -c \"irm https://omp.sh/install.ps1 | iex\"",
-                "curl -fsSL https://omp.sh/install | sh",
-                "curl -fsSL https://omp.sh/install | sh")
-        .prerequisites("Authenticate a model provider in a terminal (omp, then /login) before ACP. "
-                + "The ACP entry point is omp acp.")
-        .docsUrl("https://omp.sh/docs/acp")
-        .windowsInstallSubDirs("%LOCALAPPDATA%\\omp")
-        .build();
-
-    public static final Harness OPENCLAW = Harness.builder("openclaw", "OpenClaw", "openclaw")
-        .binaryNames("openclaw")
-        .launchArgs("acp")
-        .requiresMessageQueue(true)
-        .sendsMcpServerConfig(false)
-        .supportsModelSelection(false)
-        .supportsSessionList(false)
-        .supportsAgentList(false)
-        .limited("Harness.Limitations.OpenClaw")
-        .unsupportedModelSelection("MSG_OpenClawUnsupportedModelSelection",
-                "MSG_OpenClawUnsupportedModelSelectionPlaceholder")
-        .install("powershell -c \"iwr -useb https://openclaw.ai/install.ps1 | iex\"",
-                "curl -fsSL https://openclaw.ai/install.sh | bash",
-                "curl -fsSL https://openclaw.ai/install.sh | bash")
-        .prerequisites("Requires Node 24.16+ or 26.1+ - Node 26 is recommended; "
-                + "the installer provisions Node 26 on macOS and Node 24 LTS on Linux")
-        .docsUrl("https://docs.openclaw.ai/install")
-        .build();
-
-    public static final Harness DEVIN = Harness.builder("devin", "Devin", "devin")
-        .binaryNames("devin")
-        .launchArgs("acp")
-        .install("powershell -c \"irm https://static.devin.ai/cli/setup.ps1 | iex\"",
-                "brew install --cask devin-cli",
-                "curl -fsSL https://cli.devin.ai/install.sh | bash")
-        .docsUrl("https://docs.devin.ai/cli")
-        .build();
-
-    /**
-     * Kilo Code: an OpenCode-derived ACP agent with its own version scheme
-     * ({@code 7.x}) and prompt queue, so it is catalogued on its own rather than
-     * as an {@link #OPENCODE} variant. Messages are queued by the client until
-     * turn end ({@code requiresMessageQueue}) instead of interleaved. Model
-     * switching uses the stable {@code model} config option; Kilo also exposes
-     * the thinking variant as a separate {@code effort} option, and its
-     * dedicated model request is only registered as {@code unstable_}.
-     */
-    public static final Harness KILO = Harness.builder("kilo", "Kilo Code", "kilo")
-        .binaryNames("kilo", "kilocode")
-        .launchArgs("acp")
-        .requiresMessageQueue(true)
-        .supportsMessageIds(true)
-        .supportsSessionSetMode(true)
-        .install("npm install -g @kilocode/cli",
-                "brew install Kilo-Org/tap/kilo",
-                "curl -fsSL https://kilo.ai/cli/install | bash")
-        .prerequisites("Authenticate with kilo auth login (or run kilo and use /connect) before connecting. "
-                + "The npm route requires Node.js.")
-        .docsUrl("https://kilo.ai/docs/code-with-ai/platforms/cli")
-        .windowsInstallSubDirs("%USERHOME%/.kilo/bin")
-        .build();
-
-    /**
-     * Cline: a native ACP agent launched as {@code cline --acp}. Its ACP layer
-     * is v1 but sparse — no session capability block, no {@code session/list},
-     * no message ids and no usage updates — and it ignores the per-session
-     * {@code mcpServers} field, so the plugin's MCP server is never offered. A
-     * prompt sent during a running turn resolves {@code end_turn} immediately
-     * while that turn continues, so messages must be queued
-     * ({@code requiresMessageQueue}). Model and mode are driven by config
-     * options and {@code session/set_mode}; the dedicated model request is only
-     * registered as {@code unstable_}. {@code session/new} returns plan/act
-     * modes, so the agent selector is offered. Credentials come from a prior
-     * {@code cline auth} (or {@code CLINE_API_KEY}); BeanBot has no ACP
-     * authenticate client.
-     */
-    public static final Harness CLINE = Harness.builder("cline", "Cline", "cline")
-        .binaryNames("cline")
-        .launchArgs("--acp")
-        .requiresMessageQueue(true)
-        .sendsMcpServerConfig(false)
-        .supportsMcpServer(false)
-        .supportsSessionSetMode(true)
-        .supportsSessionList(false)
-        .limited("Harness.Limitations.Cline")
-        .install("npm i -g cline",
-                "npm i -g cline",
-                "npm i -g cline")
-        .prerequisites("Requires Cline CLI 3.0.74+ (npm i -g cline@latest). Run cline auth once "
-                + "(or set CLINE_API_KEY) before connecting; ACP sessions start no interactive login.")
-        .docsUrl("https://docs.cline.bot/usage/acp")
-        .build();
-
-    /**
-     * Jcode: a native ACP agent launched as {@code jcode acp}. It validates the
-     * ACP {@code mcpServers} field but never starts those servers (session-scoped
-     * MCP is not implemented), so the plugin's internal MCP server is not offered.
-     * A second {@code session/prompt} while a turn is running is rejected with
-     * "already processing a prompt", so messages queue until turn end. Model and
-     * reasoning effort come from config options; there is no mode request, no
-     * {@code session/list} and no message ids. Because a replay arrives as
-     * independent chunks with no message ids, each chunk is rendered as its own
-     * bubble. {@code session/load}, {@code session/close} and usage updates are
-     * implemented.
-     */
-    public static final Harness JCODE = Harness.builder("jcode", "Jcode", "jcode")
-        .binaryNames("jcode")
-        .launchArgs("acp")
-        .requiresMessageQueue(true)
-        .sendsMcpServerConfig(false)
-        .supportsMcpServer(false)
-        .supportsSessionList(false)
-        .supportsAgentList(false)
-        .separateBubblesPerReplayChunk(true)
-        .limited("Harness.Limitations.Jcode")
-        .acceptsMcpAuthToken(false)
-        .install("powershell -c \"irm https://jcode.sh/install.ps1 | iex\"",
-                "curl -fsSL https://jcode.sh/install | bash",
-                "curl -fsSL https://jcode.sh/install | bash")
-        .prerequisites("Sign in once with jcode login (or import an existing provider credential) "
-                + "before connecting. The ACP entry point is jcode acp.")
-        .docsUrl("https://jcode.sh/docs")
-        .windowsInstallSubDirs("%LOCALAPPDATA%\\jcode\\bin")
-        .build();
-
     /** Fallback for unknown harnesses. */
-    public static final Harness UNKNOWN = Harness.builder("unknown", "Agent", "agent")
-        .requiresMessageQueue(true)
-        .build();
+    public static final Harness UNKNOWN = CATALOG.unknown();
 
-    /**
-     * All supported harnesses, in declaration order. User-facing lists are sorted
-     * explicitly with {@link #sortedByName()} or {@link #BY_DISPLAY_NAME}; do not rely
-     * on this order for presentation.
-     */
-    public static final List<Harness> ALL =
-            List.of(OMP, OPENCODE, CODEX, OPENCLAW, PI, GOOSE, CURSOR, COPILOT, CLAUDE, HERMES, GEMINI, DEVIN,
-                    KILO, CLINE, JCODE);
+    /** All supported harnesses, in YAML declaration order. */
+    public static final List<Harness> ALL = CATALOG.listed();
 
     /** Alphabetical display-name order, case-insensitive. */
     public static final Comparator<Harness> BY_DISPLAY_NAME =
@@ -467,61 +77,19 @@ public final class HarnessCatalog {
         }
     }
 
-    /**
-     * Per-harness sign-in guidance, keyed by catalog id. Derived from the
-     * per-harness pages in the user guide; keep the two in step. A harness with
-     * no entry (including {@link #UNKNOWN}) yields an empty activation.
-     */
-    private static final Map<String, Activation> ACTIVATIONS = Map.ofEntries(
-        Map.entry("opencode", new Activation("opencode auth login",
-                "Sign in once and connect a model provider.")),
-        Map.entry("codex", new Activation("",
-                "The first session asks you to sign in with a ChatGPT account; "
-                        + "set OPENAI_API_KEY to skip that.")),
-        Map.entry("goose", new Activation("goose configure",
-                "Connect a model provider once.")),
-        Map.entry("pi", new Activation("",
-                "Connect a model provider in the Pi CLI before the first session.")),
-        Map.entry("cursor", new Activation("agent login",
-                "Register once, or set CURSOR_API_KEY.")),
-        Map.entry("copilot", new Activation("copilot login",
-                "Sign in with an account that has Copilot access, or set GITHUB_TOKEN.")),
-        Map.entry("claude", new Activation("",
-                "Set ANTHROPIC_API_KEY before the first session.")),
-        Map.entry("hermes", new Activation("hermes",
-                "Start it once and connect a model provider.")),
-        Map.entry("gemini", new Activation("",
-                "The first run opens the Google sign-in flow; set GEMINI_API_KEY to skip it.")),
-        Map.entry("omp", new Activation("omp",
-                "Start it once and use /login to connect a model provider.")),
-        Map.entry("openclaw", new Activation("",
-                "Start OpenClaw once to connect a Gateway and a model provider.")),
-        Map.entry("devin", new Activation("devin auth login",
-                "Sign in once, or set WINDSURF_API_KEY.")),
-        Map.entry("kilo", new Activation("kilo auth login",
-                "Sign in once, or start kilo and use /connect.")),
-        Map.entry("cline", new Activation("cline auth",
-                "Sign in once, or set CLINE_API_KEY.")),
-        Map.entry("jcode", new Activation("jcode login",
-                "Sign in once, or import an existing provider credential.")));
-
     /** Shared value for a harness without sign-in guidance; allocation-free. */
     private static final Activation NO_ACTIVATION = new Activation("", "");
 
     /** Sign-in guidance for a harness id; empty when the harness has none. */
     public static Activation activation(String harnessId) {
-        Activation activation = harnessId == null ? null : ACTIVATIONS.get(harnessId);
+        Activation activation = harnessId == null ? null : CATALOG.activations().get(harnessId);
         return activation != null ? activation : NO_ACTIVATION;
     }
 
     /** Looks up a harness by catalog id; {@link #UNKNOWN} when not found. */
     public static Harness byId(String id) {
-        for (Harness h : ALL) {
-            if (h.id().equals(id)) {
-                return h;
-            }
-        }
-        return UNKNOWN;
+        Harness harness = id == null ? null : CATALOG.byId().get(id);
+        return harness != null ? harness : UNKNOWN;
     }
 
     /** First OpenCode major version without mid-turn steering; v2 and later
@@ -578,12 +146,9 @@ public final class HarnessCatalog {
     /** Finds the harness that owns the given binary basename; {@link #UNKNOWN} when not found.
      *  Accepts bare names and Windows-ornamented ones ({@code omp.exe}). */
     public static Harness byBinaryName(String binaryName) {
-        for (Harness h : ALL) {
-            if (h.matchesBinary(binaryName)) {
-                return h;
-            }
-        }
-        return UNKNOWN;
+        String key = stripBinaryExtension(binaryName);
+        Harness harness = key == null ? null : CATALOG.byBinaryName().get(key);
+        return harness != null ? harness : UNKNOWN;
     }
 
     /**

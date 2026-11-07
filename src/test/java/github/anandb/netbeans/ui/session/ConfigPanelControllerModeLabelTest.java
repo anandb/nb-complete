@@ -29,6 +29,7 @@ import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.SessionService;
 import github.anandb.netbeans.ui.platform.ProcessService;
+import github.anandb.netbeans.model.Harness;
 
 /**
  * The mode combo's label and tooltip must name the field its values were read
@@ -56,12 +57,12 @@ class ConfigPanelControllerModeLabelTest {
     private MockedStatic<PluginSettings> pluginSettingsMock;
 
     /** Applies options for {@code harness} and returns the rendered label pair. */
-    private Rendered renderFor(HarnessCatalog.Harness harness) throws Exception {
+    private Rendered renderFor(Harness harness) throws Exception {
         return renderOptionsFor(harness, MODE_OPTION);
     }
 
     /** Applies options for {@code harness} and returns the rendered label pair. */
-    private Rendered renderOptionsFor(HarnessCatalog.Harness harness, List<SessionConfigOption> options) throws Exception {
+    private Rendered renderOptionsFor(Harness harness, List<SessionConfigOption> options) throws Exception {
         AtomicReference<Rendered> rendered = new AtomicReference<>();
 
         SwingUtilities.invokeAndWait(() -> {
@@ -126,7 +127,7 @@ class ConfigPanelControllerModeLabelTest {
     void labelsModeWhenHarnessAdvertisesTheModesField() throws Exception {
         // Claude and Oh My Pi carry both fields; Gemini has no configOption
         // fallback at all, so the modes field is its only source.
-        for (HarnessCatalog.Harness harness : List.of(HarnessCatalog.CLAUDE, HarnessCatalog.GEMINI,
+        for (Harness harness : List.of(HarnessCatalog.CLAUDE, HarnessCatalog.GEMINI,
                 HarnessCatalog.OMP)) {
             Rendered rendered = renderFor(harness);
             assertEquals(message("LBL_Mode"), rendered.text(), "label for harness " + harness.id());
@@ -139,7 +140,7 @@ class ConfigPanelControllerModeLabelTest {
         // configOptions carry the harness's own terminology in the option's
         // name field; the label mirrors it verbatim (plus the : style of the
         // static labels when missing).
-        for (HarnessCatalog.Harness harness : List.of(HarnessCatalog.OPENCODE, HarnessCatalog.CURSOR,
+        for (Harness harness : List.of(HarnessCatalog.OPENCODE, HarnessCatalog.CURSOR,
                 HarnessCatalog.HERMES)) {
             Rendered rendered = renderFor(harness);
             assertEquals("Mode:", rendered.text(), "server-declared name for harness " + harness.id());

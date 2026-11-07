@@ -3,7 +3,7 @@ package github.anandb.netbeans.model;
 import java.util.List;
 
 /**
- * Fluent builder for {@link HarnessCatalog.Harness}. A catalog entry sets only
+ * Fluent builder for {@link Harness}. A catalog entry sets only
  * what differs from the defaults below, so its capabilities read as named
  * deviations instead of a positional run of booleans.
  *
@@ -166,8 +166,8 @@ public final class HarnessBuilder {
         return this;
     }
 
-    public HarnessCatalog.Harness build() {
-        return new HarnessCatalog.Harness(id, displayName, iconBase, binaryNames, launchArgs,
+    public Harness build() {
+        return new Harness(id, displayName, iconBase, binaryNames, launchArgs,
                 requiresMessageQueue, sendsMcpServerConfig, injectsEditorContext, supportsMessageIds,
                 supportsMcpServer, supportsSessionSetMode, supportsSessionSetConfigOption,
                 supportsSessionSetModel, supportsModelSelection, supportsSessionList, supportsAgentList,

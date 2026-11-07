@@ -28,6 +28,7 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import github.anandb.netbeans.model.Harness;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -90,7 +91,7 @@ class SessionRpcClientTest {
             @Override public void stop() {}
             @Override public CompletableFuture<Void> waitForReady() { return CompletableFuture.completedFuture(null); }
             @Override public java.util.List<Map<String, Object>> getServerConfig() { return java.util.List.of(); }
-            @Override public void checkServerSupport(HarnessCatalog.Harness caps) {}
+            @Override public void checkServerSupport(Harness caps) {}
             @Override public void setMcpAuthRequired(boolean required) {}
             @Override public void disable() {}
             @Override public boolean isDisabled() { return false; }

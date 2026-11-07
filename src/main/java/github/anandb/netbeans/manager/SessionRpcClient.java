@@ -10,8 +10,8 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.model.Harness;
 
 
 /**
@@ -172,7 +172,7 @@ final class SessionRpcClient {
         ), 30, TimeUnit.SECONDS);
     }
 
-    private HarnessCatalog.Harness caps() {
+    private Harness caps() {
         return processManager.getCapabilities();
     }
 }

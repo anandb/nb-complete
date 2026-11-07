@@ -78,6 +78,7 @@ import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
+import github.anandb.netbeans.model.Harness;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -1379,7 +1380,7 @@ class SessionManagerTest {
         // A harness may support session/set_model without set_config_option;
         // the routing check must run before the set_config_option guard so the
         // model switch is not silently dropped.
-        HarnessCatalog.Harness setModelOnly = HarnessCatalog.Harness
+        Harness setModelOnly = Harness
                 .builder("setmodel-only", "SetModel Only", "agent")
                 .binaryNames("agent")
                 .supportsMessageIds(true)

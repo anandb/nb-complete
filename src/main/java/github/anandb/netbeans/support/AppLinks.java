@@ -22,10 +22,14 @@ public final class AppLinks {
     /** Issue tracker behind Help ▸ Report an Issue. */
     private static final String DEFAULT_ISSUES_URL = "https://github.com/anandb/nb-complete/issues/";
 
+    /** Project home behind Help ▸ Star on GitHub. */
+    private static final String DEFAULT_PROJECT_URL = "https://github.com/anandb/nb-complete";
+
     private static final String NBM_BASE_PROP = "beanbot.nbm.base";
     private static final String CHANGELOG_URL_PROP = "beanbot.changelog.url";
     private static final String SUPPORT_URL_PROP = "beanbot.support.url";
     private static final String ISSUES_URL_PROP = "beanbot.issues.url";
+    private static final String PROJECT_URL_PROP = "beanbot.project.url";
 
     private AppLinks() {}
 
@@ -68,6 +72,12 @@ public final class AppLinks {
     /** @return the issue tracker, overridable with {@code -Dbeanbot.issues.url}. */
     public static String issuesUrl() {
         return System.getProperty(ISSUES_URL_PROP, DEFAULT_ISSUES_URL);
+    }
+
+    /** @return the project home page (GitHub repository), overridable with
+     *  {@code -Dbeanbot.project.url} so a fork can point at its own home. */
+    public static String projectUrl() {
+        return System.getProperty(PROJECT_URL_PROP, DEFAULT_PROJECT_URL);
     }
 
     /** @return the custom user-guide URL, or {@code null} when none is configured. */

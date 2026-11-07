@@ -53,7 +53,6 @@ import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.contract.ProcessControl;
-import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.pattern.SectionSplitPattern;
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.GlobalOpencodeConfig;
@@ -79,6 +78,7 @@ import github.anandb.netbeans.ui.components.UIUtils;
 import github.anandb.netbeans.ui.components.ScrollablePanel;
 import github.anandb.netbeans.ui.components.RoundedPanel;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
+import github.anandb.netbeans.model.Harness;
 
 // DSL-CONTROLLER: not a view — flushTimer/messageQueue EDT bridge + trimMessages/cachedMessages.
 public class ChatThreadPanel extends JPanel {
@@ -1605,7 +1605,7 @@ public class ChatThreadPanel extends JPanel {
             return ignoresMessageIdForStreamingForTest;
         }
         ProcessControl pc = PlatformBridge.processControl();
-        HarnessCatalog.Harness caps = pc != null ? pc.getCapabilities() : null;
+        Harness caps = pc != null ? pc.getCapabilities() : null;
         return caps != null && !caps.supportsMessageIds();
     }
 
@@ -1619,7 +1619,7 @@ public class ChatThreadPanel extends JPanel {
      *  own bubble instead of merging one turn's chunks (Jcode). */
     private boolean separateBubblesPerReplayChunk() {
         ProcessControl pc = PlatformBridge.processControl();
-        HarnessCatalog.Harness caps = pc != null ? pc.getCapabilities() : null;
+        Harness caps = pc != null ? pc.getCapabilities() : null;
         return caps != null && caps.separateBubblesPerReplayChunk();
     }
 }

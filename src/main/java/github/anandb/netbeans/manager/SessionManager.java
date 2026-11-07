@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.ConfigOptionConverter;
@@ -69,6 +68,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.text.StringEscapeUtils.unescapeHtml4;
+import github.anandb.netbeans.model.Harness;
 
 /**
  * Manages the state and lifecycle of chat sessions.
@@ -185,7 +185,7 @@ public class SessionManager implements SessionQuery, SessionControl,
 
     /** True when the harness has no session/list and the plugin tracks IDs locally. */
     private boolean tracksSessionsLocally() {
-        HarnessCatalog.Harness caps = processManager.getCapabilities();
+        Harness caps = processManager.getCapabilities();
         return caps != null && !caps.supportsSessionList();
     }
 
@@ -1047,7 +1047,7 @@ public class SessionManager implements SessionQuery, SessionControl,
 
     @Override
     public CompletableFuture<Void> setSessionConfigOption(String sessionId, String configId, String value) {
-        HarnessCatalog.Harness caps = processManager.getCapabilities();
+        Harness caps = processManager.getCapabilities();
         // Hermes-style agents expose model switching as a dedicated RPC; a
         // "model" config option is silently stored there (acp_adapter
         // set_config_option) without switching the model. Route it to

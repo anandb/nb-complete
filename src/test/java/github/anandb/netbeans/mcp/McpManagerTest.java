@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import github.anandb.netbeans.model.HarnessCatalog;
-import github.anandb.netbeans.model.HarnessCatalog.Harness;
+import github.anandb.netbeans.model.Harness;
 import github.anandb.netbeans.support.PluginSettings;
 
 /**

@@ -43,6 +43,7 @@ import github.anandb.netbeans.ui.rendering.IconResourceManager;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.components.UIUtils;
+import github.anandb.netbeans.model.Harness;
 
 /**
  * Onboarding bubble shown when no harness is configured. Lists every catalog
@@ -128,10 +129,10 @@ public class OnboardingBubble extends JPanel {
         // Partition catalog harnesses into installed vs. uninstalled, alphabetical within
         // each group so the chooser does not depend on detection order. Partially
         // supported harnesses are held back into one collapsed section, installed or not.
-        java.util.List<HarnessCatalog.Harness> installed = new java.util.ArrayList<>();
-        java.util.List<HarnessCatalog.Harness> uninstalled = new java.util.ArrayList<>();
-        java.util.List<HarnessCatalog.Harness> limited = new java.util.ArrayList<>();
-        for (HarnessCatalog.Harness h : HarnessCatalog.ALL) {
+        java.util.List<Harness> installed = new java.util.ArrayList<>();
+        java.util.List<Harness> uninstalled = new java.util.ArrayList<>();
+        java.util.List<Harness> limited = new java.util.ArrayList<>();
+        for (Harness h : HarnessCatalog.ALL) {
             if (h.hasLimitedSupport()) {
                 limited.add(h);
             } else if (findFoundBinary(h.id()) != null) {
@@ -159,20 +160,20 @@ public class OnboardingBubble extends JPanel {
         if (activePath != null) {
             rowsPanel.add(createActiveCard(activeHarnessId, activePath, theme), gbc);
         }
-        java.util.List<HarnessCatalog.Harness> switchable = new java.util.ArrayList<>();
-        for (HarnessCatalog.Harness h : installed) {
+        java.util.List<Harness> switchable = new java.util.ArrayList<>();
+        for (Harness h : installed) {
             if (!h.id().equals(activeHarnessId)) {
                 switchable.add(h);
             }
         }
         rowsPanel.add(createSectionLabel(NbBundle.getMessage(
                 UIBundle.class, "OnboardingBubble.Section.Installed", switchable.size()), theme), gbc);
-        for (HarnessCatalog.Harness harness : switchable) {
+        for (Harness harness : switchable) {
             rowsPanel.add(createInstalledRow(harness, false, theme), gbc);
         }
         rowsPanel.add(createSectionLabel(NbBundle.getMessage(
                 UIBundle.class, "OnboardingBubble.Section.Uninstalled", uninstalled.size()), theme), gbc);
-        for (HarnessCatalog.Harness harness : uninstalled) {
+        for (Harness harness : uninstalled) {
             rowsPanel.add(createUninstalledRow(harness, theme), gbc);
         }
         JPanel limitedSection = createLimitedSection(limited, activeHarnessId, theme);
@@ -215,7 +216,7 @@ public class OnboardingBubble extends JPanel {
         if (base.endsWith(".exe")) {
             base = base.substring(0, base.length() - 4);
         }
-        HarnessCatalog.Harness h = HarnessCatalog.byBinaryName(base);
+        Harness h = HarnessCatalog.byBinaryName(base);
         return h == HarnessCatalog.UNKNOWN ? null : h.id();
     }
 
@@ -248,10 +249,10 @@ public class OnboardingBubble extends JPanel {
      * of the main chooser's installed/available lists, but the user still sees it.
      * Returns {@code null} when there is nothing left to list.
      */
-    private JPanel createLimitedSection(java.util.List<HarnessCatalog.Harness> limited,
+    private JPanel createLimitedSection(java.util.List<Harness> limited,
             String activeHarnessId, ColorTheme theme) {
-        java.util.List<HarnessCatalog.Harness> rows = new java.util.ArrayList<>();
-        for (HarnessCatalog.Harness harness : limited) {
+        java.util.List<Harness> rows = new java.util.ArrayList<>();
+        for (Harness harness : limited) {
             if (!harness.id().equals(activeHarnessId)) {
                 rows.add(harness);
             }
@@ -268,7 +269,7 @@ public class OnboardingBubble extends JPanel {
         rowContainer.setOpaque(false);
         rowContainer.setLayout(new BoxLayout(rowContainer, BoxLayout.Y_AXIS));
         rowContainer.setVisible(true);
-        for (HarnessCatalog.Harness harness : rows) {
+        for (Harness harness : rows) {
             JPanel row = findFoundBinary(harness.id()) != null
                     ? createInstalledRow(harness, false, theme)
                     : createUninstalledRow(harness, theme);
@@ -289,7 +290,7 @@ public class OnboardingBubble extends JPanel {
     }
 
     /** Harness name plus a "Limited" pill when the plugin's support is partial. */
-    private static JPanel nameWithBadge(HarnessCatalog.Harness harness, ColorTheme theme) {
+    private static JPanel nameWithBadge(Harness harness, ColorTheme theme) {
         JPanel line = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         line.setOpaque(false);
         line.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -304,7 +305,7 @@ public class OnboardingBubble extends JPanel {
     }
 
     /** Muted, non-alarming pill; the word "Limited" carries the meaning without color. */
-    private static JLabel limitedBadge(HarnessCatalog.Harness harness, ColorTheme theme) {
+    private static JLabel limitedBadge(Harness harness, ColorTheme theme) {
         JLabel badge = new JLabel(NbBundle.getMessage(
                 UIBundle.class, "OnboardingBubble.Badge.Limited"));
         badge.setFont(ThemeManager.getFont().deriveFont(Font.BOLD,
@@ -323,7 +324,7 @@ public class OnboardingBubble extends JPanel {
 
     /** Prominent card for the currently configured harness with a disabled Active badge. */
     private JPanel createActiveCard(String harnessId, String path, ColorTheme theme) {
-        HarnessCatalog.Harness harness = harnessId != null ? HarnessCatalog.byId(harnessId) : HarnessCatalog.UNKNOWN;
+        Harness harness = harnessId != null ? HarnessCatalog.byId(harnessId) : HarnessCatalog.UNKNOWN;
         JPanel card = new JPanel(new BorderLayout(8, 4));
         card.setOpaque(true);
         card.setBackground(theme.isDark() ? new Color(0x2A2B33) : new Color(0xEDEDE8));
@@ -365,7 +366,7 @@ public class OnboardingBubble extends JPanel {
     }
 
     /** Installed row: disclosure triangle hides the path; Use button, or Active badge when current. */
-    private JPanel createInstalledRow(HarnessCatalog.Harness harness, boolean isActive, ColorTheme theme) {
+    private JPanel createInstalledRow(Harness harness, boolean isActive, ColorTheme theme) {
         BinaryResolver.FoundBinary foundBinary = findFoundBinary(harness.id());
         String path = foundBinary != null ? foundBinary.path() : "";
         JPanel cell = new JPanel(new BorderLayout(0, 2));
@@ -432,7 +433,7 @@ public class OnboardingBubble extends JPanel {
     }
 
     /** Uninstalled row: Get Plugin button toggles the copy-command install panel. */
-    private JPanel createUninstalledRow(HarnessCatalog.Harness harness, ColorTheme theme) {
+    private JPanel createUninstalledRow(Harness harness, ColorTheme theme) {
         JPanel cell = new JPanel(new BorderLayout(0, 2));
         cell.setOpaque(false);
         JPanel row = new JPanel(new BorderLayout(8, 0));
@@ -469,7 +470,7 @@ public class OnboardingBubble extends JPanel {
      * and — in an install panel — the PATH/restart caveat. Returns {@code null}
      * when the harness has no guidance (and no title is requested).
      */
-    private JPanel createActivationPanel(HarnessCatalog.Harness harness, ColorTheme theme,
+    private JPanel createActivationPanel(Harness harness, ColorTheme theme,
             boolean afterInstall, boolean withTitle) {
         HarnessCatalog.Activation activation = HarnessCatalog.activation(harness.id());
         if (withTitle == false && activation.hint().isBlank() && activation.hasCommand() == false) {
@@ -568,7 +569,7 @@ public class OnboardingBubble extends JPanel {
     }
 
     /** Theme-aware harness icon label with generic fallback. */
-    private static JLabel harnessIconLabel(HarnessCatalog.Harness harness) {
+    private static JLabel harnessIconLabel(Harness harness) {
         Icon icon = ThemeManager.getIcon(harness.iconBase() + ".svg", 32);
         if (icon == null) {
             icon = ThemeManager.getIcon("agent.svg", 32);
@@ -580,7 +581,7 @@ public class OnboardingBubble extends JPanel {
 
     /** Show-and-copy install panel: per-OS command, copy-on-click, prerequisites note,
      *  and a documentation link. Hidden by default; toggled by the Install button. */
-    private JPanel createInstallPanel(HarnessCatalog.Harness harness, ColorTheme theme) {
+    private JPanel createInstallPanel(Harness harness, ColorTheme theme) {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setOpaque(false);
