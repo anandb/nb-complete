@@ -1,4 +1,5 @@
 package github.anandb.netbeans.ui.assistant;
+import java.awt.AlphaComposite;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
@@ -8,6 +9,8 @@ import java.awt.Color;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.GridBagConstraints;
@@ -130,6 +133,12 @@ public class MiniAssistantDialog extends JDialog {
     private int wordCount;
     private final Map<String, Integer> wordsByMessageId = new ConcurrentHashMap<>();
 
+    /** Hosts the bubble shown in the response pane so a sent prompt can grey the old answer. */
+    private final ResponseHost responseHost = new ResponseHost();
+    /** Sidebar bubble the mini view was mirroring when the user sent; it stays dimmed. */
+    private MessageBubble displayedSource;
+    private MessageBubble dimmedSource;
+
     // Processing status components (elapsed time + spinner + stop button)
     private final JLabel elapsedLabel;
     private final JLabel spinnerLabel;
@@ -216,6 +225,7 @@ public class MiniAssistantDialog extends JDialog {
         responsePane = new ScrollablePanel(new BorderLayout());
         responsePane.setOpaque(true);
         responsePane.setBorder(BorderFactory.createEmptyBorder(2, 2, 0, 2));
+        responsePane.add(responseHost, BorderLayout.CENTER);
 
         JScrollPane scrollPane = new JScrollPane(responsePane);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
@@ -464,6 +474,11 @@ public class MiniAssistantDialog extends JDialog {
         wordsByMessageId.clear();
         isAutoTrackingLatest = true;
         currentBubbleIndex = -1;
+        // A turn is starting (Enter/send here, or a message sent from the main panel): the
+        // answer on screen belongs to the previous turn, so grey it out until a new one
+        // arrives. It is un-greyed by displayBubble once the sidebar produces the next bubble.
+        dimmedSource = displayedSource;
+        responseHost.setDimmed(dimmedSource != null);
         if (spinnerBar != null) {
             spinnerBar.setVisible(true);
         }
@@ -641,7 +656,7 @@ public class MiniAssistantDialog extends JDialog {
     }
 
     private void displayBubble(MessageBubble realBubble) {
-        responsePane.removeAll();
+        responseHost.removeAll();
 
         MessageBubble localBubble = new MessageBubble(MessageType.agent_message_chunk,
             realBubble.getRawText(), realBubble.getMessageId(), null,
@@ -649,14 +664,19 @@ public class MiniAssistantDialog extends JDialog {
 
         styleAsMiniBubble(localBubble);
         reduceFontSize(localBubble);
-        responsePane.add(localBubble, BorderLayout.CENTER);
+        responseHost.add(localBubble, BorderLayout.CENTER);
 
         localBubble.setFontSizeOverride(Math.max(9, ThemeManager.getFont().getSize() - 2));
         // Keep code blocks collapsed, matching the main sidebar's streaming behavior.
         localBubble.finalizeStreaming(false);
 
-        responsePane.revalidate();
-        responsePane.repaint();
+        displayedSource = realBubble;
+        // A new answer un-dims itself; the one that was showing when the user sent stays grey
+        // until the sidebar produces the next bubble.
+        responseHost.setDimmed(realBubble == dimmedSource);
+
+        responseHost.revalidate();
+        responseHost.repaint();
     }
 
     private void reduceFontSize(Component comp) {
@@ -690,6 +710,10 @@ public class MiniAssistantDialog extends JDialog {
                 if (spinnerBar != null) {
                     spinnerBar.setVisible(false);
                 }
+                // The turn is over: nothing supersedes the old answer any more, so un-grey it
+                // (a response that did arrive has already replaced it undimmed).
+                dimmedSource = null;
+                responseHost.setDimmed(false);
                 if (isVisible()) {
                     syncLatestBubble();
                 }
@@ -767,7 +791,7 @@ public class MiniAssistantDialog extends JDialog {
             return;
         }
 
-        Component[] comps = responsePane.getComponents();
+        Component[] comps = responseHost.getComponents();
         if (comps.length > 0 && comps[0] instanceof MessageBubble) {
             MessageBubble bubble = (MessageBubble) comps[0];
             String text = bubble.getRawText();
@@ -798,7 +822,7 @@ public class MiniAssistantDialog extends JDialog {
             displayBubble(bubbles.get(currentBubbleIndex));
         } else {
             currentBubbleIndex = -1;
-            responsePane.removeAll();
+            responseHost.removeAll();
 
             String msg = (sessionId == null) ? "Start a chat from the main sidebar to begin." : "Ready to help.";
 
@@ -809,13 +833,15 @@ public class MiniAssistantDialog extends JDialog {
             styleAsMiniBubble(bubble);
             reduceFontSize(bubble);
 
-            responsePane.add(bubble, BorderLayout.CENTER);
+            responseHost.add(bubble, BorderLayout.CENTER);
 
             bubble.setFontSizeOverride(Math.max(9, ThemeManager.getFont().getSize() - 2));
             bubble.finalizeStreaming(false);
+            displayedSource = null;
+            responseHost.setDimmed(false);
 
-            responsePane.revalidate();
-            responsePane.repaint();
+            responseHost.revalidate();
+            responseHost.repaint();
         }
     }
 
@@ -1158,6 +1184,41 @@ public class MiniAssistantDialog extends JDialog {
             miniPermissionButtons.revalidate();
             miniPermissionButtons.repaint();
         });
+    }
+
+    /**
+     * Single-child host for the displayed bubble. Painting the children through a translucent
+     * composite greys the previous answer out while the turn that superseded it is running,
+     * without touching the bubble's own text or its copy behaviour.
+     */
+    private static final class ResponseHost extends JPanel {
+        /** Clearly inactive, still readable. */
+        private static final float DIMMED_ALPHA = 0.4f;
+        private boolean dimmed;
+
+        ResponseHost() {
+            super(new BorderLayout());
+            setOpaque(false);
+        }
+
+        void setDimmed(boolean dimmed) {
+            if (this.dimmed != dimmed) {
+                this.dimmed = dimmed;
+                repaint();
+            }
+        }
+
+        @Override
+        protected void paintChildren(Graphics g) {
+            if (!dimmed) {
+                super.paintChildren(g);
+                return;
+            }
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, DIMMED_ALPHA));
+            super.paintChildren(g2);
+            g2.dispose();
+        }
     }
 
     private static class ScrollablePanel extends JPanel implements Scrollable {

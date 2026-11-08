@@ -41,6 +41,7 @@ import github.anandb.netbeans.support.XmlUtils;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.UIBundle;
+import java.util.Arrays;
 
 /**
  * Modal dialog listing all keyboard shortcuts supported by the plugin.
@@ -384,7 +385,7 @@ public final class KeyboardShortcutsDialog extends JDialog {
     private static List<String[]> filterRows(String[][] rows, String filter) {
         List<String[]> result = new ArrayList<>();
         if (filter.isEmpty()) {
-            for (String[] row : rows) { result.add(row); }
+            result.addAll(Arrays.asList(rows));
             return result;
         }
         for (String[] row : rows) {

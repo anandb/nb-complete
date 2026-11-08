@@ -431,7 +431,7 @@ final class SessionDatasets {
             return null;
         }
         try {
-            return Long.parseLong(value.trim());
+            return Long.valueOf(value.trim());
         } catch (NumberFormatException e) {
             return null;
         }
@@ -442,7 +442,7 @@ final class SessionDatasets {
             return null;
         }
         try {
-            return Integer.parseInt(value.trim());
+            return Integer.valueOf(value.trim());
         } catch (NumberFormatException e) {
             return null;
         }

@@ -7,7 +7,6 @@ import java.awt.BorderLayout;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JViewport;
 import javax.swing.SwingUtilities;
 
@@ -33,7 +32,6 @@ class BaseCollapsiblePaneViewportTest {
         JPanel view = new JPanel(new BorderLayout());
         view.add(pane);
         viewport.setView(view);
-        new JScrollPane(viewport);
 
         int before = viewport.repaints.get();
         expand(pane, true);
