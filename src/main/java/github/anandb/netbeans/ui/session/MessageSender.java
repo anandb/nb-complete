@@ -180,7 +180,7 @@ public class MessageSender {
             statusController.setStatus("STATUS_NoSession");
             return;
         }
-        
+
         String text = inputArea.getText(); // Don't trim user input spaces
         if (text.isEmpty() && attachmentManager.getAttachments().isEmpty()) {
             return;
@@ -195,7 +195,7 @@ public class MessageSender {
         }
 
         ProcessControl proc = processService.get();
-        
+
         // Mid-turn delivery has four routes: a harness with its own steering extension (goose)
         // adds the text to the running turn; Hermes steers through /steer; an agent that
         // advertises `_session/steering` injects it; a queueing harness holds it until turn end;
@@ -215,7 +215,7 @@ public class MessageSender {
 
         dispatchPrompt(sessionId, text, slash, midTurn, turnEnded);
     }
-    
+
 
     /** Outcome of slash interception: a handled local command ends the send, while a
      *  forwarded one (`/compact`, `/dcp`) continues as a real send carrying its echo label. */
@@ -621,30 +621,15 @@ public class MessageSender {
 
     /** Steers through the harness's own extension (goose `_goose/unstable/session/steer`). */
     private boolean tryExtensionSteer(String text, ProcessControl proc) {
-        List<AttachedFile> attachedFiles = attachmentManager.getAttachments();
-        if ((text == null || text.isEmpty()) && attachedFiles.isEmpty()) {
-            return false;
-        }
         String sessionId = sessionService.get().getCurrentSessionId();
         if (sessionId == null || proc.getActiveRunId(sessionId) == null) {
             return false;
         }
-        List<Map<String, Object>> fileBlocks = attachmentManager.buildFileBlocks(proc.supportsEmbeddedContext());
-        attachmentManager.clear();
-        paperclipUpdater.run();
-        inputArea.setText("");
-        final String echoText = text == null ? "" : text;
-        final String echoMessageId = UUID.randomUUID().toString();
-        if (localEchoEnabled) {
-            String rendered = buildEchoText(echoText, attachedFiles);
-            chatPanel.addMessage(new ProcessedMessage.Builder()
-                    .messageType(MessageType.user_message_chunk)
-                    .text(rendered)
-                    .rawText(rendered)
-                    .messageId(echoMessageId)
-                    .build());
+        SteerDraft draft = prepareSteerDraft(text, proc);
+        if (draft == null) {
+            return false;
         }
-        proc.steerMessage(sessionId, echoText, fileBlocks)
+        proc.steerMessage(sessionId, draft.echoText(), draft.fileBlocks())
                 .thenAccept(result -> {
                     String messageId = result != null && result.has("messageId")
                             ? result.get("messageId").asText() : null;
@@ -656,19 +641,7 @@ public class MessageSender {
                     LOG.info("Steered running turn for session {0}, messageId={1}", sessionId, messageId);
                 })
                 .exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() -> {
-                        statusController.setStatus("STATUS_Error",
-                                ExceptionUtils.getMessage(ex) != null
-                                        ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName());
-                        restoreComposerText(echoText);
-                        // The echo bubble was never delivered: drop it so resending does not
-                        // draw a second identical bubble (user bubbles never merge).
-                        chatPanel.removeMessageBubble(echoMessageId);
-                        // The steer never landed, so the attachments go back in the composer
-                        // with the text.
-                        restoreAttachments(attachedFiles);
-                        inputFocusRequester.run();
-                    });
+                    onSteerFailure(ex, draft);
                     return null;
                 });
         return true;
@@ -728,36 +701,21 @@ public class MessageSender {
      * prompt's completion still ends the turn.
      */
     private boolean tryProtocolSteer(String text, ProcessControl proc) {
-        List<AttachedFile> attachedFiles = attachmentManager.getAttachments();
-        if ((text == null || text.isEmpty()) && attachedFiles.isEmpty()) {
-            return false;
-        }
         String sessionId = sessionService.get().getCurrentSessionId();
         if (sessionId == null) {
             return false;
         }
-        List<Map<String, Object>> fileBlocks = attachmentManager.buildFileBlocks(proc.supportsEmbeddedContext());
-        attachmentManager.clear();
-        paperclipUpdater.run();
-        inputArea.setText("");
-        final String echoText = text == null ? "" : text;
-        final String echoMessageId = UUID.randomUUID().toString();
-        if (localEchoEnabled) {
-            String rendered = buildEchoText(echoText, attachedFiles);
-            chatPanel.addMessage(new ProcessedMessage.Builder()
-                    .messageType(MessageType.user_message_chunk)
-                    .text(rendered)
-                    .rawText(rendered)
-                    .messageId(echoMessageId)
-                    .build());
+        SteerDraft draft = prepareSteerDraft(text, proc);
+        if (draft == null) {
+            return false;
         }
-        proc.steerSession(sessionId, echoText, fileBlocks)
+        proc.steerSession(sessionId, draft.echoText(), draft.fileBlocks())
                 .thenAccept(result -> {
                     if (SteeringRequest.isInjected(result)) {
                         // Adapters that stream the injected message back would draw it twice;
                         // the reply carries no message id, so the echo is matched by text.
                         if (localEchoEnabled) {
-                            SteerEchoes.expectText(sessionId, echoText);
+                            SteerEchoes.expectText(sessionId, draft.echoText());
                         }
                         LOG.info("Steered running turn for session {0} via {1}",
                                 sessionId, SteeringRequest.METHOD);
@@ -774,25 +732,58 @@ public class MessageSender {
                         } else {
                             statusController.setStatus("STATUS_Error", outcome != null ? outcome : "no outcome");
                         }
-                        restoreComposerText(echoText);
-                        chatPanel.removeMessageBubble(echoMessageId);
-                        restoreAttachments(attachedFiles);
-                        inputFocusRequester.run();
+                        restoreFailedSteer(draft);
                     });
                 })
                 .exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() -> {
-                        statusController.setStatus("STATUS_Error",
-                                ExceptionUtils.getMessage(ex) != null
-                                        ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName());
-                        restoreComposerText(echoText);
-                        chatPanel.removeMessageBubble(echoMessageId);
-                        restoreAttachments(attachedFiles);
-                        inputFocusRequester.run();
-                    });
+                    onSteerFailure(ex, draft);
                     return null;
                 });
         return true;
+    }
+
+    /** Attachment snapshot, cleared composer state and local echo shared by the steer routes. */
+    private record SteerDraft(List<AttachedFile> attachedFiles,
+            List<Map<String, Object>> fileBlocks, String echoText, String echoMessageId) {
+    }
+
+    /**
+     * Builds the file blocks, clears the composer and draws the local echo. Returns null
+     * when there is nothing to steer (no text and no attachments).
+     */
+    private SteerDraft prepareSteerDraft(String text, ProcessControl proc) {
+        List<AttachedFile> attachedFiles = attachmentManager.getAttachments();
+        if ((text == null || text.isEmpty()) && attachedFiles.isEmpty()) {
+            return null;
+        }
+        List<Map<String, Object>> fileBlocks = attachmentManager.buildFileBlocks(proc.supportsEmbeddedContext());
+        attachmentManager.clear();
+        paperclipUpdater.run();
+        inputArea.setText("");
+        String echoText = text == null ? "" : text;
+        String echoMessageId = UUID.randomUUID().toString();
+        if (localEchoEnabled) {
+            drawLocalEcho(echoText, attachedFiles, echoMessageId);
+        }
+        return new SteerDraft(attachedFiles, fileBlocks, echoText, echoMessageId);
+    }
+
+    /** Reports a steer delivery error, then restores the text, echo bubble and attachments. */
+    private void onSteerFailure(Throwable ex, SteerDraft draft) {
+        SwingUtilities.invokeLater(() -> {
+            String message = ExceptionUtils.getMessage(ex);
+            statusController.setStatus("STATUS_Error",
+                    message != null ? message : ex.getClass().getSimpleName());
+            restoreFailedSteer(draft);
+        });
+    }
+
+    /** Undoes a steer draft that never landed; the caller sets the status first. */
+    private void restoreFailedSteer(SteerDraft draft) {
+        restoreComposerText(draft.echoText());
+        chatPanel.removeMessageBubble(draft.echoMessageId());
+        restoreAttachments(draft.attachedFiles());
+        inputFocusRequester.run();
     }
 
     /** Renders the local echo of a user message, appending one label line per attachment. */
