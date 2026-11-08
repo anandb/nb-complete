@@ -1,6 +1,7 @@
 package github.anandb.netbeans.ui.session;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.contract.RpcFailure;
 import github.anandb.netbeans.contract.SessionControl;
@@ -132,6 +133,73 @@ class MessageSenderTurnRoutesTest {
         verify(proc).steerMessage(anyString(), anyString(), any());
         verify(queue, never()).enqueue(anyString());
         verify(proc, never()).sendMessage(anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    void anAgentThatAdvertisesSteeringInjectsInsteadOfQueueing() throws Exception {
+        session(false);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.PI);
+        when(proc.supportsSessionSteering()).thenReturn(true);
+        when(proc.steerSession(anyString(), anyString(), any())).thenReturn(new CompletableFuture<>());
+        input.append("hello");
+
+        sender.sendMessage();
+
+        verify(proc).steerSession(anyString(), anyString(), any());
+        // PI requiresMessageQueue: steering must win over the queue.
+        verify(queue, never()).enqueue(anyString());
+        verify(proc, never()).sendMessage(anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    void aFailedProtocolSteerRestoresTheTextAndKeepsTheTurnAlive() throws Exception {
+        session(false);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.PI);
+        when(proc.supportsSessionSteering()).thenReturn(true);
+        when(proc.steerSession(anyString(), anyString(), any()))
+                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("boom")));
+        input.append("hello");
+
+        sender.sendMessage();
+        drainEdt();
+
+        assertEquals("hello", input.toString(), "the text goes back so it can be resent");
+        verify(chatPanel, never()).stopStreaming();
+        assertEquals(false, messageDone.get(), "the running turn is not done because of the steer");
+        assertEquals(false, turnEndedCallbackRan.get());
+    }
+
+    @Test
+    void aSteerRejectedBecauseTheTurnEndedRestoresTheText() throws Exception {
+        session(false);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.PI);
+        when(proc.supportsSessionSteering()).thenReturn(true);
+        ObjectNode reply = MapperSupplier.get().createObjectNode().put("outcome", "promptRequired");
+        when(proc.steerSession(anyString(), anyString(), any()))
+                .thenReturn(CompletableFuture.completedFuture(reply));
+        input.append("hello");
+
+        sender.sendMessage();
+        drainEdt();
+
+        assertEquals("hello", input.toString(), "a steer that missed its turn must not swallow the text");
+        verify(queue, never()).enqueue(anyString());
+        verify(chatPanel).removeMessageBubble(anyString());
+        verify(chatPanel, never()).stopStreaming();
+        assertEquals(false, messageDone.get());
+    }
+
+    @Test
+    void anAgentWithoutTheExtensionKeepsTheQueueRoute() throws Exception {
+        session(false);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.PI);
+        when(proc.supportsSessionSteering()).thenReturn(false);
+        input.append("hello");
+
+        sender.sendMessage();
+
+        verify(queue).enqueue("hello");
+        verify(proc, never()).steerSession(anyString(), anyString(), any());
     }
 
     @Test

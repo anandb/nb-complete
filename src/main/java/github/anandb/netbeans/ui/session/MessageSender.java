@@ -32,6 +32,7 @@ import github.anandb.netbeans.model.UsageRecords.PromptUsageRow;
 import java.util.prefs.PreferenceChangeListener;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.SteerEchoes;
+import github.anandb.netbeans.support.SteeringRequest;
 import github.anandb.netbeans.support.VcsUtils;
 import org.openide.util.RequestProcessor;
 import github.anandb.netbeans.ui.UIBundle;
@@ -195,9 +196,10 @@ public class MessageSender {
 
         ProcessControl proc = processService.get();
         
-        // Mid-turn delivery has three routes: a harness with its own steering extension
-        // (goose) adds the text to the running turn; a queueing harness
-        // (requiresMessageQueue) holds it until turn end; the rest accept a second prompt.
+        // Mid-turn delivery has four routes: a harness with its own steering extension (goose)
+        // adds the text to the running turn; Hermes steers through /steer; an agent that
+        // advertises `_session/steering` injects it; a queueing harness holds it until turn end;
+        // the rest accept a second prompt.
         boolean turnEnded = turnEndedCheck != null ? turnEndedCheck.getAsBoolean() : true;
         boolean midTurn = isMidTurn(turnEnded);
 
@@ -597,8 +599,9 @@ public class MessageSender {
     /**
      * Adds the text to the running turn. Returns false when the harness cannot
      * steer right now, leaving the caller to queue or to start a new prompt.
-     * Two mechanisms exist: a dedicated extension (goose) and a slash command
-     * the harness interprets as guidance (Hermes {@code /steer}).
+     * Three mechanisms exist: a dedicated extension (goose), a slash command
+     * the harness interprets as guidance (Hermes {@code /steer}), and the
+     * cross-adapter {@code _session/steering} extension the agent advertises.
      */
     private boolean trySteer(String text, ProcessControl proc) {
         if (proc == null) {
@@ -609,6 +612,9 @@ public class MessageSender {
         }
         if (proc.getCapabilities().supportsSlashSteer()) {
             return trySlashSteer(text, proc);
+        }
+        if (proc.supportsSessionSteering()) {
+            return tryProtocolSteer(text, proc);
         }
         return false;
     }
@@ -708,6 +714,80 @@ public class MessageSender {
                         // The steer never landed: drop the echo so a resend does not
                         // draw a second identical bubble.
                         chatPanel.removeMessageBubble(echoMessageId);
+                        inputFocusRequester.run();
+                    });
+                    return null;
+                });
+        return true;
+    }
+
+    /**
+     * Steers through the cross-adapter {@code _session/steering} extension (claude-agent-acp and
+     * several pi ACP adapters). It answers with an {@code outcome} instead of a stop reason, so
+     * this route never touches the send generation or the turn-end handlers — the original
+     * prompt's completion still ends the turn.
+     */
+    private boolean tryProtocolSteer(String text, ProcessControl proc) {
+        List<AttachedFile> attachedFiles = attachmentManager.getAttachments();
+        if ((text == null || text.isEmpty()) && attachedFiles.isEmpty()) {
+            return false;
+        }
+        String sessionId = sessionService.get().getCurrentSessionId();
+        if (sessionId == null) {
+            return false;
+        }
+        List<Map<String, Object>> fileBlocks = attachmentManager.buildFileBlocks(proc.supportsEmbeddedContext());
+        attachmentManager.clear();
+        paperclipUpdater.run();
+        inputArea.setText("");
+        final String echoText = text == null ? "" : text;
+        final String echoMessageId = UUID.randomUUID().toString();
+        if (localEchoEnabled) {
+            String rendered = buildEchoText(echoText, attachedFiles);
+            chatPanel.addMessage(new ProcessedMessage.Builder()
+                    .messageType(MessageType.user_message_chunk)
+                    .text(rendered)
+                    .rawText(rendered)
+                    .messageId(echoMessageId)
+                    .build());
+        }
+        proc.steerSession(sessionId, echoText, fileBlocks)
+                .thenAccept(result -> {
+                    if (SteeringRequest.isInjected(result)) {
+                        // Adapters that stream the injected message back would draw it twice;
+                        // the reply carries no message id, so the echo is matched by text.
+                        if (localEchoEnabled) {
+                            SteerEchoes.expectText(sessionId, echoText);
+                        }
+                        LOG.info("Steered running turn for session {0} via {1}",
+                                sessionId, SteeringRequest.METHOD);
+                        return;
+                    }
+                    // `promptRequired`/`startedNewTurn`: the turn this was meant for is already
+                    // gone, so hand the text back rather than drop it silently. Any other outcome
+                    // (omp's `failed`) is a real delivery error and is surfaced as one.
+                    boolean turnGone = SteeringRequest.isTurnGone(result);
+                    String outcome = SteeringRequest.outcome(result);
+                    SwingUtilities.invokeLater(() -> {
+                        if (turnGone) {
+                            statusController.setStatus("STATUS_SteerTurnEnded");
+                        } else {
+                            statusController.setStatus("STATUS_Error", outcome != null ? outcome : "no outcome");
+                        }
+                        restoreComposerText(echoText);
+                        chatPanel.removeMessageBubble(echoMessageId);
+                        restoreAttachments(attachedFiles);
+                        inputFocusRequester.run();
+                    });
+                })
+                .exceptionally(ex -> {
+                    SwingUtilities.invokeLater(() -> {
+                        statusController.setStatus("STATUS_Error",
+                                ExceptionUtils.getMessage(ex) != null
+                                        ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName());
+                        restoreComposerText(echoText);
+                        chatPanel.removeMessageBubble(echoMessageId);
+                        restoreAttachments(attachedFiles);
                         inputFocusRequester.run();
                     });
                     return null;

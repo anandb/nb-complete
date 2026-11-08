@@ -86,6 +86,13 @@ class ServerProcessLifecycle {
     private volatile boolean sessionLoadUnsupported;
     /** Whether the agent advertised {@code promptCapabilities.embeddedContext}. */
     private volatile boolean embeddedContextSupported;
+    /**
+     * Whether this agent advertised the {@code _session/steering} extension at
+     * {@code _meta.steering.supported} in the {@code initialize} response. Per connection,
+     * like {@code sessionCapabilities.close}: it decides whether a mid-turn message is
+     * injected into the running turn instead of being queued.
+     */
+    private volatile boolean sessionSteeringSupported;
     /** Listener fired once the harness is resolved after the initialize handshake. */
     private volatile Consumer<Harness> harnessListener;
     private RequestProcessor reconnectRP;
@@ -119,6 +126,12 @@ class ServerProcessLifecycle {
     /** Whether the agent advertised {@code sessionCapabilities.close}. */
     boolean isSessionCloseSupported() {
         return sessionCloseSupported;
+    }
+
+    /** Whether the agent advertised the {@code _session/steering} extension
+     *  ({@code _meta.steering.supported}). */
+    boolean isSessionSteeringSupported() {
+        return sessionSteeringSupported;
     }
 
     /** Whether the agent advertised {@code sessionCapabilities.delete}. */
@@ -330,6 +343,7 @@ class ServerProcessLifecycle {
             sessionResumeSupported = false;
             sessionLoadUnsupported = false;
             embeddedContextSupported = false;
+            sessionSteeringSupported = false;
 
             AcpProtocolClient client = new AcpProtocolClient(serverProcess);
             this.rpcClient.set(client);
@@ -478,6 +492,11 @@ class ServerProcessLifecycle {
                         sessionDeleteSupported = sessionCaps != null && sessionCaps.has("delete");
                         sessionForkSupported = sessionCaps != null && sessionCaps.has("fork");
                         sessionResumeSupported = sessionCaps != null && sessionCaps.has("resume");
+                        // `_session/steering` is advertised per agent at the top level of the
+                        // handshake (`_meta.steering`), a sibling of agentCapabilities, so it is
+                        // captured here like session/close rather than read from the catalog.
+                        sessionSteeringSupported = res.path("_meta").path("steering")
+                                .path("supported").asBoolean(false);
                         // Prompt capabilities decide how an attachment reaches the
                         // agent: embedded resources need embeddedContext, otherwise
                         // the client inlines text or sends a resource link.

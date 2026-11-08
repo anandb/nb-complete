@@ -14,7 +14,7 @@ Install the CLI, then configure <code>goose</code> as the Harness in Options (Be
 
 What works with Goose in BeanBot:
 
-- **[[Queuing Messages]]** — while Goose is working, your messages are queued and combined into one prompt at turn end (Goose, Pi, Hermes, and Oh My Pi all need this; interleaved agents send immediately).
+- **[[Queuing Messages]]** — while Goose is working, a new message is steered into the running turn through Goose's own extension, so the agent can adapt at its next step. If no run is active (or the steer is refused), it is queued and sent when the turn ends.
 - **[[MCP Tools]]** — the plugin hands Goose a token-protected MCP server URL; the AI can read files, navigate the editor, and run git or Mercurial commands from the conversation.
 
 > [[Post Install]]

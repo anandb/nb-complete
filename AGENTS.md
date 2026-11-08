@@ -448,9 +448,10 @@ Resolved — kept as regression guards:
   (updating `ActiveRunTracker`). Only `actualRunId` triggers the retry; any other failure is
   returned as-is. `AcpRpcException` carries `error.data` and implements `contract/RpcFailure`,
   which is how a caller reads `data.actualRunId`/`data.reason` without touching the transport.
-- `MessageSender.trySteer()` takes the steer route only when the turn is in flight, no
-  permission request is pending, the harness supports steering and a run id is known;
-  otherwise the queue branch handles it. A failed steer restores the text *and*
+- `MessageSender.trySteer()` takes a steer route only when the turn is in flight and no
+  permission request is pending; the route depends on the harness: goose needs a known run id,
+  Hermes takes `/steer`, and the `_session/steering` extension needs the handshake capability
+  (no run id). Otherwise the queue branch handles it. A failed steer restores the text *and*
   the attachments and drops its echo bubble (`ChatThreadPanel.removeMessageBubble`),
   so a resend does not draw a second identical bubble — user bubbles never merge.
   The same restore runs on the prompt path: `PromptPayload` carries the attachments it
@@ -511,6 +512,40 @@ Resolved — kept as regression guards:
   unhandled result is exactly why the original turn's UI survives; do NOT "harden" the route
   by wiring turn-end suppression onto `SessionLifecycleHandler`'s `end_turn` branch for it.
 - Attachments and non-`/steer` slash commands fall back to the normal queue.
+
+### ACP Steering Extension (`_session/steering`)
+
+- Agents advertise it per connection at the **top level** of the `initialize` response —
+  `_meta.steering.supported`, a sibling of `agentCapabilities` — so `ServerProcessLifecycle`
+  captures it beside `sessionCapabilities.close` and `ProcessManager.supportsSessionSteering()`
+  reports it. Do NOT add a `Harness` id flag: the same adapter ships with and without the
+  extension. It is implemented by `claude-agent-acp` (our Claude harness), by `omp`'s `acp`
+  mode (our Oh My Pi harness) and by the `@automatalabs/pi-acp`, `@openma/pi-acp`,
+  `@gugu-acp/pi-acp` and `jetbrains-pi-acp` adapters; `@geohar/pi-acp` (the one onboarding
+  installs), the original `pi-acp`, `@regadas/pi-acp` and `codex-acp` do not have it.
+- omp answers `outcome: "failed"` when the injection itself breaks; that is surfaced as
+  `STATUS_Error`, while only `promptRequired`/`startedNewTurn` get the benign
+  `STATUS_SteerTurnEnded` "turn already ended" restore. Do NOT collapse every non-`injected`
+  outcome into one branch.
+- `MessageSender.trySteer` order is goose extension → Hermes `/steer` → this extension → queue →
+  second prompt. It must stay **before** the queue: an agent that advertises steering must not
+  have its mid-turn input parked until turn end just because its catalog entry says
+  `requiresMessageQueue` (pi still does, as the fallback for adapters without the extension).
+  It must also stay before the second-prompt path: omp's `session/prompt` **implicitly cancels**
+  the running turn when one arrives mid-turn, and its catalog entry has no `requiresMessageQueue`.
+- `support/SteeringRequest` owns the wire shape (`{sessionId, prompt, _meta}`, no `expectedRunId`)
+  and the reply. The request MUST carry `_meta.steering.idleBehavior = promptRequired`:
+  claude-agent-acp otherwise starts a detached turn when the steer loses the race to turn end,
+  which the plugin would not own while it restores the text. Only `outcome: "injected"` means the
+  message joined the turn; `promptRequired` and `startedNewTurn` mean the turn was already gone,
+  so the text, attachments and echo bubble are restored/removed (`STATUS_SteerTurnEnded`).
+- The reply carries no message id, but claude-agent-acp streams the injected message back as a
+  `user_message_chunk`, so the local echo is registered by text (`SteerEchoes.expectText`) and
+  `StrategyRegistry` drops the matching echo. Do NOT key this on `seenMessageIdsBySession`, and
+  do NOT skip the local echo — adapters without the echo (the pi forks) would then render nothing.
+- The extension answers with an outcome, not a stop reason: this route must never bump the send
+  generation or wire turn-end handlers, or the original prompt's completion would be lost.
+- `/steering` (the pi-adapter slash command) is unrelated: it only sets pi's queue-drain mode.
 
 ### Hermes Lost-Turn Attach (`unknown_execution`)
 

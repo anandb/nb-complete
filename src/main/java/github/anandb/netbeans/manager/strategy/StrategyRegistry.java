@@ -182,6 +182,12 @@ public class StrategyRegistry implements UpdateDispatcher {
                     LOG.fine("Skipping echoed steer {0}: already rendered locally", update.messageId());
                     return;
                 }
+                // `_session/steering` reports an outcome instead of a message id, so that echo is
+                // matched by text; only the steer we drew locally is registered here.
+                if (SteerEchoes.consumeText(userSessionId, text)) {
+                    LOG.fine("Skipping text-matched echoed steer for session {0}", userSessionId);
+                    return;
+                }
                 handler.displayMessage(buildStreamingMessage(update, text));
             }
 

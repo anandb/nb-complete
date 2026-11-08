@@ -25,7 +25,7 @@ The executable you configure in BeanBot is <code>omp</code>, run with the defaul
 Oh My Pi Agent in BeanBot supports:
 - [[Editor Context->Automatic Context Capture]] Seamlessly injects the active editor state into agent prompts.
 - **MCP Servers**: Automatically registers and injects the plug-in's [[MCP Tools]].
-- **[[Queuing Messages]]**: Queues and batches user prompts at turn end.
+- **[[Queuing Messages]]**: a message sent mid-turn is injected into the running turn — Oh My Pi advertises the cross-adapter <code>&#95;session/steering</code> extension — instead of starting a second turn.
 - **Session Management**: Supports full session lists and state persistence.
 
 > [[Post Install]]

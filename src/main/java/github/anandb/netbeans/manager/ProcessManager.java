@@ -42,6 +42,7 @@ import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.SteerEchoes;
 import github.anandb.netbeans.support.SteerRequest;
+import github.anandb.netbeans.support.SteeringRequest;
 import github.anandb.netbeans.contract.ToolExecutor;
 import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.contract.RpcFailure;
@@ -470,6 +471,19 @@ public class ProcessManager implements ProcessControl {
                 idleTimeoutSec, TimeUnit.SECONDS);
     }
 
+    @Override
+    public CompletableFuture<JsonNode> steerSession(String sessionId, String text,
+                                                    List<Map<String, Object>> additionalBlocks) {
+        AcpProtocolClient client = rpcClient.get();
+        if (client == null) {
+            return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
+        }
+        int idleTimeoutSec = PluginSettings.getSessionIdleTimeout();
+        return client.sendRequest(SteeringRequest.METHOD,
+                SteeringRequest.params(sessionId, text, additionalBlocks),
+                idleTimeoutSec, TimeUnit.SECONDS);
+    }
+
     /**
      * {@code data.actualRunId} of a rejected steer whose {@code expectedRunId} no longer
      * matches, or null when the failure is anything else (no run active, transport error).
@@ -554,6 +568,11 @@ public class ProcessManager implements ProcessControl {
     /** True once this server process rejected {@code session/load} as unknown. */
     public boolean isSessionLoadUnsupported() {
         return serverLifecycle.isSessionLoadUnsupported();
+    }
+
+    @Override
+    public boolean supportsSessionSteering() {
+        return serverLifecycle.isSessionSteeringSupported();
     }
 
     /** Marks {@code session/load} unsupported for this server process. */

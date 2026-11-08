@@ -22,6 +22,8 @@ The package bundles the Claude Agent SDK, so a separate `claude` CLI install is 
 
 The executable you configure in BeanBot is <code>claude-agent-acp</code>.
 
+A message you send while Claude is working is not parked as a second request: the adapter advertises the cross-adapter <code>&#95;session/steering</code> extension, so BeanBot injects it into the running turn at Claude's next step boundary. See [[Queuing Messages]].
+
 > [[Post Install]]
 > [[Starting a Session]]
 > [[MCP Tools]]

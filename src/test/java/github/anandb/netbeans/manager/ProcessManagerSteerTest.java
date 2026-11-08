@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.SteerEchoes;
 import github.anandb.netbeans.support.SteerRequest;
+import github.anandb.netbeans.support.SteeringRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -114,6 +115,29 @@ class ProcessManagerSteerTest {
         assertTrue(future.isCompletedExceptionally(), "no run id means no steer to issue");
         verify(client, never()).sendRequest(eq(SteerRequest.METHOD), any(), anyLong(), any(TimeUnit.class));
         assertNull(processManager.getActiveRunId("s1"));
+    }
+
+    @Test
+    void steerSessionSendsTheCrossAdapterSteeringRequest() {
+        if (processManager == null) {
+            return;
+        }
+        ObjectNode reply = MapperSupplier.get().createObjectNode().put("outcome", "injected");
+        when(client.sendRequest(eq(SteeringRequest.METHOD), any(), anyLong(), any(TimeUnit.class)))
+                .thenReturn(CompletableFuture.completedFuture(reply));
+        List<Map<String, Object>> blocks = List.of(Map.of("type", "text", "text", "attached"));
+
+        JsonNode result = processManager.steerSession("s1", "hello", blocks).join();
+
+        ArgumentCaptor<Object> params = ArgumentCaptor.forClass(Object.class);
+        verify(client).sendRequest(eq(SteeringRequest.METHOD), params.capture(), anyLong(), any(TimeUnit.class));
+        Map<?, ?> sent = assertInstanceOf(Map.class, params.getValue());
+        assertEquals("s1", sent.get("sessionId"));
+        assertFalse(sent.containsKey("expectedRunId"), "_session/steering carries no run id");
+        List<?> prompt = assertInstanceOf(List.class, sent.get("prompt"));
+        assertEquals(2, prompt.size(), "the text block, then the attachment blocks");
+        assertEquals(Map.of("type", "text", "text", "hello"), prompt.get(0));
+        assertEquals("injected", SteeringRequest.outcome(result));
     }
 
     /** goose's rejection of a steer whose expectedRunId no longer names the live run. */

@@ -102,6 +102,18 @@ class StrategyRegistryDispatchTest {
     }
 
     @Test
+    void aSteerEchoWithoutAMessageIdIsMatchedByText() {
+        SteerEchoes.expectText("s1", "hello");
+
+        registry.handle(update("s1", chunk(MessageType.user_message_chunk, "hello", null)), handler);
+
+        verify(handler, never()).displayMessage(any());
+        // The expectation is spent: the same text renders normally next time.
+        registry.handle(update("s1", chunk(MessageType.user_message_chunk, "hello", null)), handler);
+        assertEquals("hello", captureDisplayed().text());
+    }
+
+    @Test
     void userMessageWithoutSteerExpectationIsRendered() {
         registry.handle(update("s1", chunk(MessageType.user_message_chunk, "hello", "steer_2")), handler);
 

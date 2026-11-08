@@ -78,6 +78,9 @@ harnesses:
 
   # PI-family binaries cannot carry the MCP auth token on their URL, so the
   # embedded server runs without token enforcement for them.
+  # requiresMessageQueue is the fallback: adapters that advertise
+  # `_meta.steering.supported` (@automatalabs, @openma, @gugu-acp, jetbrains) steer a
+  # running turn instead, decided from the handshake, not from this flag.
   - id: "pi"
     displayName: "Pi"
     iconBase: "pi-logo"

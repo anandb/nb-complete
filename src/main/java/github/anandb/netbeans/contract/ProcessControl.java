@@ -37,6 +37,21 @@ public interface ProcessControl {
      */
     CompletableFuture<JsonNode> steerMessage(String sessionId, String text, List<Map<String, Object>> additionalBlocks);
 
+    /**
+     * Whether the agent advertised the cross-adapter {@code _session/steering} extension in the
+     * {@code initialize} handshake ({@code _meta.steering.supported}). Per connection: false
+     * before the handshake completes and after a restart until the new process answers.
+     */
+    boolean supportsSessionSteering();
+
+    /**
+     * Adds user input to the running turn through {@code _session/steering}, the extension shared
+     * by claude-agent-acp and several pi ACP adapters. The reply's {@code outcome} says whether
+     * the message joined the turn ({@code injected}) or the turn had already ended
+     * ({@code promptRequired}, {@code startedNewTurn}).
+     */
+    CompletableFuture<JsonNode> steerSession(String sessionId, String text, List<Map<String, Object>> additionalBlocks);
+
     /** Stops the current message being processed. */
     CompletableFuture<Void> stopMessage(String sessionId);
 
