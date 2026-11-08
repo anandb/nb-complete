@@ -32,8 +32,6 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -67,7 +65,6 @@ import github.anandb.netbeans.support.SlidingTask;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
-import static org.apache.commons.text.StringEscapeUtils.unescapeHtml4;
 import github.anandb.netbeans.model.Harness;
 
 /**
@@ -227,9 +224,6 @@ public class SessionManager implements SessionQuery, SessionControl,
     }
 
 
-    /** Metadata for a session that has none yet. */
-    private static final SessionMetadata EMPTY_METADATA = new SessionMetadata(null, null, false, null);
-
     /**
      * Model id per session, learned from the {@code model} config option. Harnesses
      * that report the model as a config option (goose-style, e.g. omp) send neither
@@ -238,79 +232,20 @@ public class SessionManager implements SessionQuery, SessionControl,
      */
     private final Map<String, String> modelBySession = new ConcurrentHashMap<>();
 
-    /**
-     * The local store. Resolved from the service registry on first use and then
-     * kept, so the per-session metadata reads that the UI makes in a loop do not
-     * each pay for a lookup. Never cached when absent, so a store registered
-     * later is still picked up.
-     */
-    private volatile SessionStore sessionStore;
-
-    /** The local store holding the per-session metadata, or null when none is registered. */
-    private SessionStore store() {
-        SessionStore local = sessionStore;
-        if (local != null) {
-            return local;
-        }
-        local = Lookup.getDefault().lookup(SessionStore.class);
-        if (local != null) {
-            sessionStore = local;
-        }
-        return local;
-    }
+    private final SessionMetadataStore metadata = new SessionMetadataStore(SessionManager::agentName);
 
     /**
      * Overrides the store, bypassing the service registry. Tests use this so a
      * unit test never opens the real database under the user directory.
      */
     void setStoreForTest(SessionStore store) {
-        this.sessionStore = store;
-    }
-
-    /** Metadata for one session, or {@link #EMPTY_METADATA} when it has none. */
-    private SessionMetadata metadataOf(String sessionId) {
-        if (sessionId == null) {
-            return EMPTY_METADATA;
-        }
-        SessionStore sessionStore = store();
-        if (sessionStore == null) {
-            return EMPTY_METADATA;
-        }
-        String harness = agentName();
-        SessionMetadata meta = sessionStore.sessionMetadata(harness).get(sessionId);
-        if (meta == null && harness != null) {
-            // Metadata written before a harness was configured carries no harness
-            // id. The preference-backed reader fell back to the unqualified node,
-            // so keep those titles, hidden flags and usage visible.
-            meta = sessionStore.sessionMetadata(null).get(sessionId);
-        }
-        return meta != null ? meta : EMPTY_METADATA;
-    }
-
-    /**
-     * Applies {@code updater} to a session's metadata and saves the result. The
-     * read-modify-write is not atomic against other writers, which is acceptable:
-     * every caller runs on the EDT or an RPC thread and changes a single field,
-     * exactly as the preference-backed version this replaced did.
-     */
-    private synchronized void updateMetadata(String sessionId,
-            Function<SessionMetadata, SessionMetadata> updater) {
-        if (sessionId == null || sessionId.isEmpty() || updater == null) {
-            return;
-        }
-        SessionStore sessionStore = store();
-        if (sessionStore == null) {
-            return;
-        }
-        sessionStore.saveSessionMetadata(agentName(), sessionId, updater.apply(metadataOf(sessionId)));
+        metadata.setStoreForTest(store);
     }
 
     /** @see SessionQuery#getCustomTitle(String, String) */
     @Override
     public String getCustomTitle(String sessionId, String defaultTitle) {
-        if (sessionId == null) return defaultTitle;
-        String val = metadataOf(sessionId).title();
-        return decodeHtmlEntities(val != null ? val : defaultTitle);
+        return metadata.customTitle(sessionId, defaultTitle);
     }
 
     /** @see SessionQuery#getSessionTitle(String) */
@@ -326,27 +261,22 @@ public class SessionManager implements SessionQuery, SessionControl,
         return getCustomTitle(sessionId, serverTitle);
     }
 
-    private static String decodeHtmlEntities(String input) {
-        if (input == null) return null;
-        return unescapeHtml4(input);
-    }
-
     /** Stores a session's custom title. An instance method so the write lands on
      *  the same instance whose caches the caller just updated. */
     void setCustomTitle(String sessionId, String title) {
-        updateMetadata(sessionId, m -> new SessionMetadata(title, m.usage(), m.hidden(), m.cwd()));
+        metadata.setCustomTitle(sessionId, title);
     }
 
     // --- hidden session flag (stored locally) -------------------------------
 
     @Override
     public boolean isHidden(String sessionId) {
-        return metadataOf(sessionId).hidden();
+        return metadata.hidden(sessionId);
     }
 
     @Override
     public void setHidden(String sessionId, boolean hidden) {
-        updateMetadata(sessionId, m -> new SessionMetadata(m.title(), m.usage(), hidden, m.cwd()));
+        metadata.setHidden(sessionId, hidden);
     }
 
     /**
@@ -354,23 +284,8 @@ public class SessionManager implements SessionQuery, SessionControl,
      * the whole set, so archiving N sessions costs one write instead of N.
      */
     @Override
-    public synchronized void setHiddenBulk(Collection<String> sessionIds, boolean hidden) {
-        if (sessionIds == null || sessionIds.isEmpty()) {
-            return;
-        }
-        SessionStore sessionStore = store();
-        if (sessionStore == null) {
-            return;
-        }
-        Map<String, SessionMetadata> updates = new LinkedHashMap<>();
-        for (String sessionId : sessionIds) {
-            if (sessionId == null || sessionId.isEmpty()) {
-                continue;
-            }
-            SessionMetadata m = metadataOf(sessionId);
-            updates.put(sessionId, new SessionMetadata(m.title(), m.usage(), hidden, m.cwd()));
-        }
-        sessionStore.saveSessionMetadataBulk(agentName(), updates);
+    public void setHiddenBulk(Collection<String> sessionIds, boolean hidden) {
+        metadata.setHiddenBulk(sessionIds, hidden);
     }
     // -------------------------------------------------------------------------
 
@@ -378,7 +293,7 @@ public class SessionManager implements SessionQuery, SessionControl,
 
     @Override
     public String getContextUsage(String sessionId) {
-        return metadataOf(sessionId).usage();
+        return metadata.usage(sessionId);
     }
 
     @Override
@@ -388,54 +303,7 @@ public class SessionManager implements SessionQuery, SessionControl,
 
     @Override
     public void setContextUsage(String sessionId, long used, long size) {
-        updateMetadata(sessionId, m -> new SessionMetadata(m.title(), used + "," + size, m.hidden(), m.cwd()));
-    }
-
-    // --- locally-created sessions (for agents without session/list) ------------
-    //
-    // The ids are no longer stored separately: a session's metadata row is what
-    // makes it locally known, and the store orders those rows newest first, which
-    // is the ordering the dropped sessids_<harness> nodes used to encode.
-
-    /**
-     * Restores the locally-created sessions into the cache manager, newest first.
-     * Only meaningful for a harness without {@code session/list}: every session it
-     * has is one created locally.
-     */
-    private void loadLocallyCreatedSessionIds() {
-        String agent = agentName();
-        SessionStore sessionStore = store();
-        if (sessionStore == null) {
-            return;
-        }
-        List<String> ids = new ArrayList<>(sessionStore.sessionMetadata(agent).keySet());
-        if (ids.isEmpty()) {
-            return;
-        }
-        // Data repair: sessions saved before the cwd field existed carry no project
-        // directory. With exactly one project open they can be attributed safely —
-        // backfill and persist the repair once. With several projects open the
-        // ambiguity is left to the load-time fallback instead of guessing.
-        ProjectQuery projectQuery = Lookup.getDefault().lookup(ProjectQuery.class);
-        Project[] openProjects = projectQuery == null
-                ? new Project[0] : projectQuery.getAllOpenProjects();
-        String repairCwd = openProjects.length == 1 && openProjects[0] != null
-                ? ProjectPaths.nativePath(openProjects[0]) : null;
-        // Load in reverse order since cacheManager.addLocallyCreated prepends
-        for (int i = ids.size() - 1; i >= 0; i--) {
-            String sessionId = ids.get(i);
-            String title = getCustomTitle(sessionId, sessionId);
-            String cwd = metadataOf(sessionId).cwd();
-            if (cwd == null && repairCwd != null) {
-                LOG.info("Repairing missing cwd for session {0}: {1}",
-                        sessionId, repairCwd);
-                updateMetadata(sessionId, m -> new SessionMetadata(
-                        m.title(), m.usage(), m.hidden(), m.cwd() != null ? m.cwd() : repairCwd));
-                cwd = repairCwd;
-            }
-            Session s = new Session(sessionId, title, cwd, cwd, null, null, null, null, null, null);
-            cacheManager.addLocallyCreated(s, agent);
-        }
+        metadata.setUsage(sessionId, used, size);
     }
 
     // -------------------------------------------------------------------------
@@ -452,7 +320,7 @@ public class SessionManager implements SessionQuery, SessionControl,
     private static final int PROJECT_REFRESH_DELAY_MS = 250;
 
     private static final ObjectMapper MAPPER = MapperSupplier.get();
-    private final List<SessionListener> listeners = new CopyOnWriteArrayList<>();
+    private final SessionEventBus events = new SessionEventBus();
     /**
      * Explicit {@code createSession}/{@code loadSession} calls currently in flight.
      * A restart they cause fires the ready handler; that handler must not schedule
@@ -512,7 +380,7 @@ public class SessionManager implements SessionQuery, SessionControl,
     private final SessionRpcClient rpcClient;
     private final SlidingTask projectRefreshTask = new SlidingTask(
             SESSION_REFRESH_RP, PROJECT_REFRESH_DELAY_MS, this::refreshSessions);
-    private volatile BiFunction<String, List<SessionConfigOption>, CompletableFuture<Void>> beforePreambleHandler;
+    private final PreambleSender preambleSender;
     /** True if a manual reconnect was initiated by the user. */
     private volatile boolean manualReconnectPending;
     /**
@@ -535,6 +403,7 @@ public class SessionManager implements SessionQuery, SessionControl,
         // thread (a static mock is thread-local, so a lookup there resolves the
         // real singleton and breaks unit tests).
         this.processManager = ProcessManager.getInstance();
+        this.preambleSender = new PreambleSender(events, this::sendAssistantPrompt);
 
         // Register for SSE updates to route them to the active session
         processManager.addSseListener(sseListener);
@@ -543,7 +412,7 @@ public class SessionManager implements SessionQuery, SessionControl,
         // Reset state machine and notify UI when server crashes
         processManager.setCrashHandler(() -> {
             stateMachine.transitionTo(SessionState.IDLE);
-            notifyError(NbBundle.getMessage(SessionManager.class, "ERR_ServerDisconnected"));
+            events.sessionError(NbBundle.getMessage(SessionManager.class, "ERR_ServerDisconnected"));
         });
 
         // Reset sticky session state on EVERY manual server restart (Restart
@@ -568,11 +437,7 @@ public class SessionManager implements SessionQuery, SessionControl,
             }
         });
 
-        // Fire onSessionLoading for UI backward compatibility — copy avoids CME if listener mutates list
-        stateMachine.addListener(newState -> {
-            boolean loading = newState == SessionState.LOADING;
-            new ArrayList<>(listeners).forEach(l -> l.onSessionLoading(loading));
-        });
+        stateMachine.addListener(newState -> events.sessionLoading(newState == SessionState.LOADING));
     }
 
     private void handleSseUpdate(SessionUpdate update) {
@@ -588,7 +453,7 @@ public class SessionManager implements SessionQuery, SessionControl,
         if (updateSessionId != null
                 && (updateSessionId.equals(currentSid)
                     || cacheManager.isDescendantOfCurrent(updateSessionId, currentSid))) {
-            new ArrayList<>(listeners).forEach(l -> l.onSessionUpdate(update));
+            events.sessionUpdate(update);
         } else {
             LOG.fine("Ignoring update for background session: {0}", updateSessionId);
         }
@@ -624,12 +489,12 @@ public class SessionManager implements SessionQuery, SessionControl,
 
     @Override
     public void addSessionListener(SessionListener listener) {
-        listeners.add(listener);
+        events.add(listener);
     }
 
     @Override
     public void removeSessionListener(SessionListener listener) {
-        listeners.remove(listener);
+        events.remove(listener);
     }
 
     @Override
@@ -675,7 +540,7 @@ public class SessionManager implements SessionQuery, SessionControl,
 
     @Override
     public void setBeforePreambleHandler(BiFunction<String, List<SessionConfigOption>, CompletableFuture<Void>> handler) {
-        this.beforePreambleHandler = handler;
+        preambleSender.setBeforeHandler(handler);
     }
 
     @Override
@@ -787,7 +652,7 @@ public class SessionManager implements SessionQuery, SessionControl,
                 .map(dir -> getSessions(dir))
                 .toList();
 
-        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+        return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))
                 .thenCompose(v -> {
                     List<Session> currentBatch = new ArrayList<>();
                     for (CompletableFuture<List<Session>> f : futures) {
@@ -879,7 +744,7 @@ public class SessionManager implements SessionQuery, SessionControl,
                         cacheManager.cacheSession(s);
                         loadedSessionId = s.id();
                         loadedSessionGeneration = processManager.serverGeneration();
-                        updateMetadata(s.id(), m -> new SessionMetadata(m.title(), m.usage(), m.hidden(), finalCwd));
+                        metadata.update(s.id(), m -> new SessionMetadata(m.title(), m.usage(), m.hidden(), finalCwd));
                         if (tracksSessionsLocally()) {
                             cacheManager.addLocallyCreated(s, agentName());
                         }
@@ -1142,11 +1007,11 @@ public class SessionManager implements SessionQuery, SessionControl,
                     // Agents that don't support session/list (e.g. Gemini) rely on
                     // locally-created sessions tracked in the cache. Skip the RPC.
                     if (tracksSessionsLocally()) {
-                        loadLocallyCreatedSessionIds();
+                        metadata.loadLocallyCreatedSessions(cacheManager);
                         List<String> openDirs = openProjectDirectories();
                         List<Session> local = retainSessionsForDirectories(
                                 cacheManager.getLocallyCreatedSessions(agentName()), openDirs);
-                        // Do not preserve: loadLocallyCreatedSessionIds already put
+                        // Do not preserve: loadLocallyCreatedSessions already put
                         // closed-project rows in the cache; merge would undo the filter.
                         cacheManager.setCachedSessions(local, agentName(), false);
                         return CompletableFuture.completedFuture(local);
@@ -1166,7 +1031,7 @@ public class SessionManager implements SessionQuery, SessionControl,
 
                     LOG.info("refreshSessions: got {0} sessions", filteredSessions.size());
                     cacheManager.setCachedSessions(filteredSessions, agentName(), false);
-                    notifySessionListUpdated(filteredSessions);
+                    events.sessionListUpdated(filteredSessions);
                 })
                 .exceptionally(ex -> {
                     LOG.warn("Failed to refresh sessions, keeping cache: {0}", ExceptionUtils.getRootCauseMessage(ex), ex);
@@ -1178,7 +1043,7 @@ public class SessionManager implements SessionQuery, SessionControl,
     public void refreshSessionList() {
         List<Session> cached = cacheManager.getCachedSessions();
         if (!cached.isEmpty()) {
-            notifySessionListUpdated(cached);
+            events.sessionListUpdated(cached);
         }
     }
 
@@ -1194,10 +1059,10 @@ public class SessionManager implements SessionQuery, SessionControl,
             return;
         }
 
-        notifySessionStarted(null);
-        notifySessionProgress(10);
+        events.sessionStarted(null);
+        events.sessionProgress(10);
 
-        notifySessionProgress(30);
+        events.sessionProgress(30);
         try {
             createSession(explicitCwd)
                     .thenAccept(session -> {
@@ -1214,7 +1079,7 @@ public class SessionManager implements SessionQuery, SessionControl,
                         this.lastProjectDir = session.effectiveDirectory();
                         Logger.setSession(session.id(), session.title());
 
-                        notifySessionProgress(60);
+                        events.sessionProgress(60);
 
                         // Run on the CompletableFuture thread for consistency with loadSession
                         // The state machine is thread-safe and listeners marshall their own
@@ -1237,33 +1102,20 @@ public class SessionManager implements SessionQuery, SessionControl,
                         // Do NOT call refreshSessions() here — the server may not have
                         // added the new session to its list yet, causing onSessionListUpdated
                         // to fall back to loading an old session instead of the new one.
-                        // Before preamble, let the UI handler (if set) show a config
-                        // dialog so the user can pick agent/model/level.
-                        if (beforePreambleHandler != null) {
-                            beforePreambleHandler.apply(session.id(), resolvedOptions)
-                                .whenComplete((v, ex) -> {
-                                    if (!sendPreamble(session.id())) {
-                                        notifyPreambleSkipped(session.id());
-                                        notifyPreambleDone();
-                                    }
-                                });
-                        } else {
-                            if (!sendPreamble(session.id())) {
-                                notifyPreambleSkipped(session.id());
-                                notifyPreambleDone();
-                            }
-                        }
+                        // Before preamble, the UI handler (if set) shows a config dialog
+                        // so the user can pick agent/model/level.
+                        preambleSender.sendForNewSession(session.id(), resolvedOptions);
                     })
                     .exceptionally(ex -> {
                         LOG.severe("Failed to create session", ex);
                         stateMachine.transitionTo(SessionState.IDLE);
-                        notifyError(rootMessage(ex));
+                        events.sessionError(rootMessage(ex));
                         return null;
                     });
         } catch (Exception ex) {
             LOG.severe("Failed to create session", ex);
             stateMachine.transitionTo(SessionState.IDLE);
-            notifyError(rootMessage(ex));
+            events.sessionError(rootMessage(ex));
         }
     }
 
@@ -1333,15 +1185,15 @@ public class SessionManager implements SessionQuery, SessionControl,
             // Post clearMessages() to EDT first, then set currentSessionId,
             // so SSE messages for the new session always arrive after the
             // old session's bubbles have been cleared.
-            notifySessionStarted(sessionId);
+            events.sessionStarted(sessionId);
         }
         this.currentSessionId = sessionId;
-        notifySessionProgress(10);
+        events.sessionProgress(10);
 
         if (workingCwd == null && tracksSessionsLocally()) {
             this.currentSessionId = null;
             stateMachine.transitionTo(SessionState.IDLE);
-            notifyError(NbBundle.getMessage(SessionManager.class,
+            events.sessionError(NbBundle.getMessage(SessionManager.class,
                     "ERR_LoadSessionNoCwd", sessionId));
             return false;
         }
@@ -1349,7 +1201,7 @@ public class SessionManager implements SessionQuery, SessionControl,
         if (workingCwd != null) {
             this.lastProjectDir = workingCwd;
         }
-        notifySessionProgress(30);
+        events.sessionProgress(30);
         explicitSessionOps.incrementAndGet();
         try {
             final String cwd = workingCwd;
@@ -1363,7 +1215,7 @@ public class SessionManager implements SessionQuery, SessionControl,
                             throw new CompletionException(new IllegalStateException("session/load unsupported"));
                         }
                         if (sessionId.equals(this.currentSessionId)) {
-                            notifySessionProgress(60);
+                            events.sessionProgress(60);
                             stateMachine.transitionTo(SessionState.STREAMING);
                             notifySessionLoaded(sessionId, configOptions, isStartup);
 
@@ -1389,7 +1241,7 @@ public class SessionManager implements SessionQuery, SessionControl,
                             if (unsupported) {
                                 notifyLoadUnsupportedOnce();
                             } else {
-                                notifyError(NbBundle.getMessage(SessionManager.class, "ERR_LoadSessionFailed",
+                                events.sessionError(NbBundle.getMessage(SessionManager.class, "ERR_LoadSessionFailed",
                                         rootMessage(ex)));
                             }
                             // Re-sync session list from server so the dropdown reflects
@@ -1404,7 +1256,7 @@ public class SessionManager implements SessionQuery, SessionControl,
             LOG.severe("Failed to load session", ex);
             this.currentSessionId = null;
             stateMachine.transitionTo(SessionState.IDLE);
-            notifyError(NbBundle.getMessage(SessionManager.class, "ERR_LoadSessionFailed", rootMessage(ex)));
+            events.sessionError(NbBundle.getMessage(SessionManager.class, "ERR_LoadSessionFailed", rootMessage(ex)));
             refreshSessions();
         }
         return true;
@@ -1435,7 +1287,7 @@ public class SessionManager implements SessionQuery, SessionControl,
             }
             cacheManager.setCachedSessions(updatedList, agentName(), tracksSessionsLocally());
         }
-        notifySessionRenamed(sessionId);
+        events.sessionRenamed(sessionId);
     }
 
     /**
@@ -1577,7 +1429,7 @@ public class SessionManager implements SessionQuery, SessionControl,
                 }
                 cacheManager.setCachedSessions(updatedList, agentName(), tracksSessionsLocally());
             }
-            updateMetadata(sessionId, m -> new SessionMetadata(m.title(), m.usage(), m.hidden(), directory));
+            metadata.update(sessionId, m -> new SessionMetadata(m.title(), m.usage(), m.hidden(), directory));
             return true;
         });
     }
@@ -1619,7 +1471,7 @@ public class SessionManager implements SessionQuery, SessionControl,
             }
         }
         cacheManager.setCachedSessions(remaining, agentName(), tracksSessionsLocally());
-        notifySessionListUpdated(remaining);
+        events.sessionListUpdated(remaining);
     }
 
     @SuppressWarnings("unused") // parameter required by the Consumer<String> listener
@@ -1645,93 +1497,13 @@ public class SessionManager implements SessionQuery, SessionControl,
                 && ProjectPaths.nativePath(remaining[0]).equals(closedDir))) {
             lastProjectDir = "";
             if (remaining == null || remaining.length == 0) {
-                new ArrayList<>(listeners).forEach(SessionListener::onAllProjectsClosed);
+                events.allProjectsClosed();
             }
         }
-    }
-
-    /** Sends the startup prompt (critical rules + WSL guidance + preamble)
-     *  for a new session, gated by the Enable Session Preamble checkbox.
-     *  Returns false when nothing is sent — callers notify preamble-done.
-     *  Splits the prompt by "---" separators and sends each chunk separately.
-     *  @return true if a prompt was sent, false if skipped/empty */
-    private boolean sendPreamble(String sessionId) {
-        String[] chunks = preambleChunks();
-        if (chunks == null || chunks.length == 0) {
-            return false;
-        }
-
-        // Notify UI that preamble is being posted
-        new ArrayList<>(listeners).forEach(l -> l.onPreambleStarted(sessionId));
-
-        // Send chunks sequentially, waiting for each to complete
-        sendPreambleChunks(sessionId, chunks, 0);
-        return true;
-    }
-
-    /**
-     * Builds the startup prompt chunks (critical rules, then the user
-     * preamble) or returns {@code null} when the Enable Session Preamble
-     * checkbox is off or the combined text is empty. The checkbox gates the
-     * whole prompt: no critical rules, no WSL block, no user preamble.
-     * Chunks are split on {@code "\n---\n"} and sent one at a time.
-     */
-    static String[] preambleChunks() {
-        if (!PluginSettings.isPreambleEnabled()) {
-            return null;
-        }
-        String rules = PluginSettings.getCriticalRules();
-        String preamble = PluginSettings.getPreamble();
-
-        // Combine critical rules and preamble (caveman terseness now lives
-        // in the preamble's Communication mode)
-        StringBuilder combined = new StringBuilder();
-        if (!isBlank(rules)) {
-            combined.append(rules);
-        }
-        if (!isBlank(preamble)) {
-            if (!combined.isEmpty()) {
-                combined.append("\n\n");
-            }
-            combined.append(preamble);
-        }
-
-        String text = combined.toString().trim();
-        if (text.isEmpty()) {
-            return null;
-        }
-        return text.split("\n---\n");
-    }
-
-    /** Sends preamble chunks sequentially, one at a time */
-    private void sendPreambleChunks(String sessionId, String[] chunks, int index) {
-        if (index >= chunks.length) {
-            // All chunks sent, notify done
-            notifyPreambleDone();
-            return;
-        }
-
-        String chunk = chunks[index].trim();
-        if (chunk.isEmpty()) {
-            // Skip empty chunks
-            sendPreambleChunks(sessionId, chunks, index + 1);
-            return;
-        }
-
-        String label = "preamble chunk " + (index + 1) + "/" + chunks.length;
-        sendAssistantPrompt(sessionId, chunk, label)
-                .whenComplete((res, ex) -> {
-                    if (ex != null) {
-                        LOG.warn("Failed to send {0}: {1}", label, ExceptionUtils.getRootCauseMessage(ex));
-                        // Continue with next chunk even if this one failed
-                    }
-                    // Send next chunk
-                    sendPreambleChunks(sessionId, chunks, index + 1);
-                });
     }
 
     private CompletableFuture<JsonNode> sendAssistantPrompt(String sessionId, String text, String label) {
-        new ArrayList<>(listeners).forEach(SessionListener::onInternalMessageSent);
+        events.internalMessageSent();
 
         Map<String, Object> textBlock = new HashMap<>();
         textBlock.put("type", "text");
@@ -1746,10 +1518,10 @@ public class SessionManager implements SessionQuery, SessionControl,
                 .whenComplete((res, ex) -> {
                     if (ex != null) {
                         LOG.warn("Failed to send {0}: {1}", label, ExceptionUtils.getRootCauseMessage(ex));
-                        notifyError(NbBundle.getMessage(SessionManager.class, "ERR_SendFailed",
+                        events.sessionError(NbBundle.getMessage(SessionManager.class, "ERR_SendFailed",
                                 label, ExceptionUtils.getRootCauseMessage(ex)));
                     }
-                    new ArrayList<>(listeners).forEach(SessionListener::onInternalMessageDone);
+                    events.internalMessageDone();
                 });
     }
 
@@ -1765,7 +1537,7 @@ public class SessionManager implements SessionQuery, SessionControl,
         this.lastProjectDir = null;
 
         if (stateMachine.transitionTo(SessionState.IDLE)) {
-            new ArrayList<>(listeners).forEach(l -> l.onSessionLoading(false));
+            events.sessionLoading(false);
         }
 
         if (sessionId != null) {
@@ -1787,7 +1559,7 @@ public class SessionManager implements SessionQuery, SessionControl,
         if (stateMachine.getState() != SessionState.IDLE
                 && stateMachine.transitionTo(SessionState.IDLE)) {
             LOG.info("resetForServerRestart: transitioning to IDLE");
-            new ArrayList<>(listeners).forEach(l -> l.onSessionLoading(false));
+            events.sessionLoading(false);
         }
         // The current session id is kept: ComponentLifecycleHandler.doRestart()
         // reloads it once the restarted server is ready. In-flight prompts
@@ -1832,26 +1604,6 @@ public class SessionManager implements SessionQuery, SessionControl,
         }
     }
 
-    private void notifyPreambleDone() {
-        new ArrayList<>(listeners).forEach(SessionListener::onPreambleDone);
-    }
-
-    private void notifyPreambleSkipped(String sessionId) {
-        new ArrayList<>(listeners).forEach(l -> l.onPreambleSkipped(sessionId));
-    }
-
-    private void notifySessionListUpdated(List<Session> sessions) {
-        new ArrayList<>(listeners).forEach(l -> l.onSessionListUpdated(sessions));
-    }
-
-    private void notifySessionRenamed(String sessionId) {
-        new ArrayList<>(listeners).forEach(l -> l.onSessionRenamed(sessionId));
-    }
-
-    private void notifySessionStarted(String sessionId) {
-        new ArrayList<>(listeners).forEach(l -> l.onSessionStarted(sessionId));
-    }
-
     private void notifySessionLoaded(String sessionId, List<SessionConfigOption> options, boolean isStartup) {
         // Remember the effective model for attribution. session/new, session/load
         // and set_config_option all funnel through here, and a harness may report
@@ -1860,15 +1612,7 @@ public class SessionManager implements SessionQuery, SessionControl,
         if (modelId != null) {
             modelBySession.put(sessionId, modelId);
         }
-        new ArrayList<>(listeners).forEach(l -> l.onSessionLoaded(sessionId, options, isStartup));
-    }
-
-    private void notifySessionProgress(int percent) {
-        new ArrayList<>(listeners).forEach(l -> l.onSessionProgress(percent));
-    }
-
-    private void notifyError(String message) {
-        new ArrayList<>(listeners).forEach(l -> l.onSessionError(message));
+        events.sessionLoaded(sessionId, options, isStartup);
     }
 
     /**
@@ -2011,15 +1755,15 @@ public class SessionManager implements SessionQuery, SessionControl,
             return;
         }
         loadUnsupportedNoticeGeneration = generation;
-        notifyError(NbBundle.getMessage(SessionManager.class, "ERR_LoadSessionUnsupported"));
+        events.sessionError(NbBundle.getMessage(SessionManager.class, "ERR_LoadSessionUnsupported"));
     }
 
     /** True when the cause chain contains a JSON-RPC "Method not found" error. */
     private static boolean isMethodNotFound(Throwable ex) {
         Throwable cause = ex;
         while (cause != null) {
-            if (cause instanceof AcpRpcException) {
-                if (((AcpRpcException) cause).isMethodNotFound()) {
+            if (cause instanceof AcpRpcException acpRpcException) {
+                if (acpRpcException.isMethodNotFound()) {
                     return true;
                 }
             }

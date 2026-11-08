@@ -106,7 +106,7 @@ class SessionManagerTest {
         when(processManager.getCapabilities()).thenReturn(github.anandb.netbeans.model.HarnessCatalog.UNKNOWN);
         when(toolExecutor.waitForReady()).thenReturn(CompletableFuture.completedFuture(null));
         when(toolExecutor.getServerConfig()).thenReturn(List.of());
-        // Default stub for 2-param sendRequest (e.g. session/prompt from sendPreamble)
+        // Default stub for 2-param sendRequest (e.g. session/prompt from PreambleSender)
         when(processManager.sendRequest(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
         when(processManager.stopMessage(any())).thenReturn(CompletableFuture.completedFuture(null));
 
@@ -173,7 +173,7 @@ class SessionManagerTest {
             PluginSettings.setPreamble("custom-preamble-a\n---\ncustom-preamble-b");
 
             PluginSettings.setPreambleEnabled(false);
-            assertNull(SessionManager.preambleChunks(),
+            assertNull(PreambleSender.preambleChunks(),
                     "checkbox off means no critical rules, WSL block or user preamble");
 
             PluginSettings.setPreambleEnabled(true);
@@ -181,7 +181,7 @@ class SessionManagerTest {
             String[] chunks = null;
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
             while (chunks == null && System.nanoTime() < deadline) {
-                chunks = SessionManager.preambleChunks();
+                chunks = PreambleSender.preambleChunks();
                 if (chunks == null) {
                     Thread.sleep(10);
                 }
@@ -237,7 +237,8 @@ class SessionManagerTest {
 
     @Test
     void refreshLocalSessionsHidesClosedProjectButKeepsPersistedId(@TempDir Path projectRoot) throws Exception {
-        Method updateMeta = SessionManager.class.getDeclaredMethod("updateMetadata",
+        SessionMetadataStore metadata = metadataStore();
+        Method updateMeta = SessionMetadataStore.class.getDeclaredMethod("update",
                 String.class, java.util.function.Function.class);
         updateMeta.setAccessible(true);
         when(processManager.getCapabilities()).thenReturn(HarnessCatalog.GEMINI);
@@ -255,10 +256,10 @@ class SessionManagerTest {
 
             cacheManager().addLocallyCreated(cachedSession("keep", projectPath), null);
             cacheManager().addLocallyCreated(cachedSession("gone", "/closed"), null);
-            updateMeta.invoke(sessionManager, "keep",
+            updateMeta.invoke(metadata, "keep",
                     (java.util.function.Function<SessionMetadata, SessionMetadata>)
                     m -> new SessionMetadata(m.title(), m.usage(), m.hidden(), projectPath));
-            updateMeta.invoke(sessionManager, "gone",
+            updateMeta.invoke(metadata, "gone",
                     (java.util.function.Function<SessionMetadata, SessionMetadata>)
                     m -> new SessionMetadata(m.title(), m.usage(), m.hidden(), "/closed"));
 
@@ -384,6 +385,12 @@ class SessionManagerTest {
         Field cacheField = SessionManager.class.getDeclaredField("cacheManager");
         cacheField.setAccessible(true);
         return (SessionCacheManager) cacheField.get(sessionManager);
+    }
+
+    private SessionMetadataStore metadataStore() throws Exception {
+        Field metadataField = SessionManager.class.getDeclaredField("metadata");
+        metadataField.setAccessible(true);
+        return (SessionMetadataStore) metadataField.get(sessionManager);
     }
 
     private Session cachedSession(String id, String cwd) {
@@ -753,11 +760,12 @@ class SessionManagerTest {
 
     @Test
     void testDecodeHtmlEntities() throws Exception {
-        Method m = SessionManager.class
+        SessionMetadataStore metadata = metadataStore();
+        Method m = SessionMetadataStore.class
                 .getDeclaredMethod("decodeHtmlEntities", String.class);
         m.setAccessible(true);
-        assertEquals("a & b", m.invoke(sessionManager, "a &amp; b"));
-        assertEquals("\"hi\"", m.invoke(sessionManager, "&quot;hi&quot;"));
+        assertEquals("a & b", m.invoke(metadata, "a &amp; b"));
+        assertEquals("\"hi\"", m.invoke(metadata, "&quot;hi&quot;"));
     }
 
     @Test
@@ -1826,9 +1834,11 @@ class SessionManagerTest {
         Field listField = SessionCacheManager.class.getDeclaredField("cachedSessions");
         listField.setAccessible(true);
         listField.set(cacheManager(), new CopyOnWriteArrayList<>());
-        Method loadMethod = SessionManager.class.getDeclaredMethod("loadLocallyCreatedSessionIds");
+        SessionMetadataStore metadata = metadataStore();
+        Method loadMethod = SessionMetadataStore.class.getDeclaredMethod("loadLocallyCreatedSessions",
+                SessionCacheManager.class);
         loadMethod.setAccessible(true);
-        loadMethod.invoke(sessionManager);
+        loadMethod.invoke(metadata, cacheManager());
         List<Session> restored = cacheManager().getLocallyCreatedSessions(null);
         assertTrue(restored.stream().anyMatch(s -> "s1".equals(s.id()) && "Persisted".equals(s.title())));
     }
