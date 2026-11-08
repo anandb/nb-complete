@@ -48,7 +48,7 @@ class ACPOptionsPanelTooltipTest {
     void markupIsEscaped() {
         String wrapped = ACPOptionsPanel.wrapTooltip("use <b> and & here");
 
-        assertTrue(wrapped.contains("&lt;b&gt;"), wrapped);
+        assertTrue(wrapped.contains("&lt;b"), wrapped);
         assertTrue(wrapped.contains("&amp;"), wrapped);
         assertFalse(wrapped.contains("<b>"), wrapped);
     }

@@ -25,6 +25,7 @@ import github.anandb.netbeans.model.Message;
 import github.anandb.netbeans.pattern.TitleSanitizePattern;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.support.XmlUtils;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import github.anandb.netbeans.ui.chat.MessageBubble;
 import github.anandb.netbeans.ui.chat.CollapsibleToolPane;
@@ -70,7 +71,7 @@ public final class HtmlConversationExporter {
         StringBuilder body = new StringBuilder();
         body.append("<div class=\"chat-container\">\n");
         body.append("  <div class=\"chat-header\">\n")
-            .append("    <h1>").append(escHtml(pageTitle)).append("</h1>\n")
+            .append("    <h1>").append(XmlUtils.escapeHtml(pageTitle)).append("</h1>\n")
             .append("    <span class=\"header-date\">Exported ")
             .append(timestamp).append("</span>\n")
             .append("  </div>\n");
@@ -267,7 +268,7 @@ public final class HtmlConversationExporter {
 
     private static String buildUserHtml(String text, boolean dark) {
         String iconUrl = userIcon(dark);
-        String escaped = escHtml(text).replace("\n", "<br/>\n");
+        String escaped = XmlUtils.escapeHtml(text).replace("\n", "<br/>\n");
         return "  <div class=\"message user\">\n"
              + "    <div class=\"bubble user-bubble\">\n"
              + "      <div class=\"bubble-header\">\n"
@@ -304,12 +305,12 @@ public final class HtmlConversationExporter {
 
     private static String buildToolHtml(String text, String toolTitle, boolean dark) {
         String title = toolTitle != null && !toolTitle.isEmpty() ? toolTitle : "Tool";
-        String escaped = escHtml(text);
+        String escaped = XmlUtils.escapeHtml(text);
         return "  <div class=\"message tool\">\n"
              + "    <div class=\"activity-segment tool\">\n"
              + "      <div class=\"segment-header\">\n"
              + "        <img src=\"" + toolIcon(dark)
-             + "\" alt=\"\" width=\"16\" height=\"16\"/> " + escHtml(title) + "\n"
+             + "\" alt=\"\" width=\"16\" height=\"16\"/> " + XmlUtils.escapeHtml(title) + "\n"
              + "      </div>\n"
              + "      <div class=\"segment-body\"><pre>" + escaped + "</pre></div>\n"
              + "    </div>\n"
@@ -336,7 +337,7 @@ public final class HtmlConversationExporter {
               .append("          <img src=\"")
               .append(seg.isThought() ? brainIcon(dark) : toolIcon(dark))
               .append("\" alt=\"\" width=\"16\" height=\"16\"/> ")
-              .append(escHtml(segTitle)).append("\n")
+              .append(XmlUtils.escapeHtml(segTitle)).append("\n")
               .append("        </summary>\n")
               .append("        <div class=\"segment-body\">");
             if (seg.isThought()) {
@@ -344,7 +345,7 @@ public final class HtmlConversationExporter {
                 html = postProcessHtml(html, theme);
                 sb.append(html);
             } else {
-                sb.append("<pre>").append(escHtml(seg.text())).append("</pre>");
+                sb.append("<pre>").append(XmlUtils.escapeHtml(seg.text())).append("</pre>");
             }
             sb.append("</div>\n")
               .append("      </details>\n");
@@ -403,7 +404,7 @@ public final class HtmlConversationExporter {
              + "<meta charset=\"UTF-8\">\n"
              + "<meta name=\"viewport\" content=\"width=device-width, "
              + "initial-scale=1.0\">\n"
-             + "<title>" + escHtml(title) + " - exported " + timestamp + "</title>\n"
+             + "<title>" + XmlUtils.escapeHtml(title) + " - exported " + timestamp + "</title>\n"
              + "<style>\n" + css + "</style>\n"
              + "</head>\n<body>\n"
              + body
@@ -429,16 +430,6 @@ public final class HtmlConversationExporter {
                 "<td align='left' style='padding: 8px; vertical-align: top;'>");
         result = result.replace("</th>", "</b></th>");
         return result;
-    }
-
-    // ---- HTML escaping --------------------------------------------------------
-
-    private static String escHtml(String s) {
-        if (s == null) return "";
-        return s.replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-                .replace("\"", "&quot;");
     }
 
     // ---- Export dialog --------------------------------------------------------

@@ -37,6 +37,7 @@ import javax.swing.table.TableColumnModel;
 
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.support.ShortcutUtils;
+import github.anandb.netbeans.support.XmlUtils;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.UIBundle;
@@ -267,7 +268,7 @@ public final class KeyboardShortcutsDialog extends JDialog {
                     boolean sel, boolean focus, int row, int column) {
                 super.getTableCellRendererComponent(t, val, sel, focus, row, column);
                 String text = val != null ? val.toString() : "";
-                setText("<html><body style='width:285px;'>" + escapeHtml(text) + "</body></html>");
+                setText("<html><body style='width:285px;'>" + XmlUtils.escapeHtml(text) + "</body></html>");
                 setBackground(sel ? t.getSelectionBackground() : (row % 2 == 0 ? bg : alt));
                 setForeground(fg);
                 setBorder(new EmptyBorder(4, 4, 4, 4));
@@ -281,7 +282,7 @@ public final class KeyboardShortcutsDialog extends JDialog {
             JLabel probe = new JLabel();
             probe.setFont(table.getFont());
             String text = (String) table.getValueAt(r, 1);
-            probe.setText("<html><body style='width:285px;'>" + escapeHtml(text) + "</body></html>");
+            probe.setText("<html><body style='width:285px;'>" + XmlUtils.escapeHtml(text) + "</body></html>");
             int wrapH = probe.getPreferredSize().height;
             table.setRowHeight(r, Math.max(32, wrapH + 8));
         }
@@ -362,11 +363,6 @@ public final class KeyboardShortcutsDialog extends JDialog {
         wrapper.add(summary, BorderLayout.NORTH);
         wrapper.add(detailWrapper, BorderLayout.CENTER);
         return wrapper;
-    }
-
-    /** Escape text for safe embedding in HTML. */
-    private static String escapeHtml(String text) {
-        return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
     /** Format a key string as an HTML kbd badge span. */

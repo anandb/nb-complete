@@ -63,6 +63,7 @@ import java.util.ArrayList;
 import java.util.List;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.UsageStatsFormat;
+import github.anandb.netbeans.support.XmlUtils;
 import static github.anandb.netbeans.ui.components.UIUtils.MONO_STACK;
 import github.anandb.netbeans.ui.rendering.FitEditorPane;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
@@ -399,11 +400,6 @@ public class TokenUsageDialog extends JDialog {
 
     // ---- Summary to HTML ----
 
-    /** Escapes HTML special characters. */
-    private static String escapeHtml(String s) {
-        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-    }
-
     // ---- Summary stylesheet ---------------------------------------------------
 
     private static volatile String cachedCssTemplate;
@@ -547,7 +543,7 @@ public class TokenUsageDialog extends JDialog {
     private static void appendSegmentsTable(StringBuilder sb, ContextReport report,
                                             String headerBg, String altBg) {
         sb.append("<table><tr><th colspan='2'>")
-          .append(escapeHtml(NbBundle.getMessage(UIBundle.class, "LBL_ContextSegments")))
+          .append(XmlUtils.escapeHtml(NbBundle.getMessage(UIBundle.class, "LBL_ContextSegments")))
           .append("</th></tr>");
         boolean alt = false;
         for (ContextReport.Segment segment : report.segments()) {
@@ -558,7 +554,7 @@ public class TokenUsageDialog extends JDialog {
             int percent = total <= 0 ? 0 : (int) Math.round(100.0 * segment.tokenCount() / total);
             String style = alt ? " style='background-color: " + altBg + ";'" : "";
             sb.append("<tr").append(style).append(">")
-              .append("<td style='white-space:nowrap;'>").append(escapeHtml(label)).append("</td>")
+              .append("<td style='white-space:nowrap;'>").append(XmlUtils.escapeHtml(label)).append("</td>")
               .append("<td style='text-align:right;white-space:nowrap;'>")
               .append(UsageStatsFormat.thousands(segment.tokenCount()))
               .append(" (").append(percent).append("%)")
@@ -571,7 +567,7 @@ public class TokenUsageDialog extends JDialog {
     /** A single explanatory line under the context block. */
     private static void appendNote(StringBuilder sb, String key) {
         sb.append("<div style='margin:4px 0;'>")
-          .append(escapeHtml(NbBundle.getMessage(UIBundle.class, key)))
+          .append(XmlUtils.escapeHtml(NbBundle.getMessage(UIBundle.class, key)))
           .append("</div>");
     }
 
@@ -603,14 +599,14 @@ public class TokenUsageDialog extends JDialog {
                                             String altBg) {
         long total = byTool.stream().mapToLong(ToolTotals::calls).sum();
         sb.append("<table><tr><th colspan='3'>")
-          .append(escapeHtml(NbBundle.getMessage(UIBundle.class, "LBL_McpToolCalls")))
+          .append(XmlUtils.escapeHtml(NbBundle.getMessage(UIBundle.class, "LBL_McpToolCalls")))
           .append("</th></tr>");
         boolean alt = false;
         for (ToolTotals tool : byTool) {
             int pct = toolPercent(tool.calls(), total);
             String style = alt ? " style='background-color: " + altBg + ";'" : "";
             sb.append("<tr").append(style).append(">")
-              .append("<td style='white-space:nowrap;'>").append(escapeHtml(tool.toolName())).append("</td>")
+              .append("<td style='white-space:nowrap;'>").append(XmlUtils.escapeHtml(tool.toolName())).append("</td>")
               .append("<td style='width:100%;'>")
               .append("<table style='margin:0;border:0;width:100%;'><tr>")
               .append("<td style='border:0;padding:1px;width:").append(pct).append("%;'>")
@@ -619,7 +615,7 @@ public class TokenUsageDialog extends JDialog {
               .append("</tr></table>")
               .append("</td>")
               .append("<td style='text-align:right;white-space:nowrap;'>")
-              .append(escapeHtml(toolCallsLabel(tool, pct)))
+              .append(XmlUtils.escapeHtml(toolCallsLabel(tool, pct)))
               .append("</td></tr>");
             alt = !alt;
         }
@@ -688,7 +684,7 @@ public class TokenUsageDialog extends JDialog {
     private static void appendTable(StringBuilder sb, String title, String headerBg,
                                     String altBg, String[][] rows) {
         sb.append("<table><tr><th colspan='2'>")
-          .append(escapeHtml(title))
+          .append(XmlUtils.escapeHtml(title))
           .append("</th></tr>");
         boolean alt = false;
         for (String[] row : rows) {
@@ -706,8 +702,8 @@ public class TokenUsageDialog extends JDialog {
             String trAttr = style.isEmpty() ? "" : " style='" + style + "'";
             sb.append("<tr").append(trAttr).append(">")
               .append("<td style='white-space:nowrap;'>")
-              .append(escapeHtml(NbBundle.getMessage(UIBundle.class, row[0]))).append("</td>")
-              .append("<td style='text-align:right;'>").append(escapeHtml(row[1])).append("</td>")
+              .append(XmlUtils.escapeHtml(NbBundle.getMessage(UIBundle.class, row[0]))).append("</td>")
+              .append("<td style='text-align:right;'>").append(XmlUtils.escapeHtml(row[1])).append("</td>")
               .append("</tr>");
             alt = !alt;
         }
@@ -723,7 +719,7 @@ public class TokenUsageDialog extends JDialog {
         String fg = theme.toHtmlHex(theme.foreground());
         return "<html><body style='margin:0;padding:8px;color:" + fg
             + ";font-family:sans-serif;font-size:13px;'>"
-            + escapeHtml(message) + "</body></html>";
+            + XmlUtils.escapeHtml(message) + "</body></html>";
     }
 
     public static void show(Frame parent) {

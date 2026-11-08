@@ -46,6 +46,7 @@ import github.anandb.netbeans.support.ToolCallDiffParser;
 import github.anandb.netbeans.support.ToolCallDiffParser.FileChange;
 import github.anandb.netbeans.support.ToolContextExtractor;
 import github.anandb.netbeans.support.WobbleAnimator;
+import github.anandb.netbeans.support.XmlUtils;
 import org.openide.util.NbBundle;
 import org.openide.windows.WindowManager;
 import github.anandb.netbeans.ui.UIBundle;
@@ -648,11 +649,11 @@ public final class PermissionRequestPanel extends JPanel {
             String pathHex = Integer.toHexString(theme.permissionPath().getRGB() & 0xFFFFFF);
             if (!parent.isEmpty() && !parent.equals(new File(fc.filePath()).getName())) {
                 nameLabel.setText("<html><font color='#" + fnameHex
-                        + "'><b>" + escapeHtml(name) + "</b></font> <font color='#"
-                        + pathHex + "'>" + escapeHtml(parent) + "</font></html>");
+                        + "'><b>" + XmlUtils.escapeHtml(name) + "</b></font> <font color='#"
+                        + pathHex + "'>" + XmlUtils.escapeHtml(parent) + "</font></html>");
             } else {
                 nameLabel.setText("<html><font color='#" + fnameHex
-                        + "'><b>" + escapeHtml(name) + "</b></font></html>");
+                        + "'><b>" + XmlUtils.escapeHtml(name) + "</b></font></html>");
             }
 
             String statusStr = "(" + fc.status() + ")";
@@ -993,10 +994,6 @@ public final class PermissionRequestPanel extends JPanel {
         if (!java.awt.GraphicsEnvironment.isHeadless()) {
             java.awt.Toolkit.getDefaultToolkit().beep();
         }
-    }
-
-    private static String escapeHtml(String s) {
-        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
     private static class ScrollableBlocksPanel extends JPanel implements Scrollable {
