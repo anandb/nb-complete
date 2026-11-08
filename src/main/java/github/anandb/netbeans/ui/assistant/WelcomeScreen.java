@@ -176,10 +176,6 @@ public final class WelcomeScreen {
         row.add(newChatBtn, BorderLayout.CENTER);
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, newChatBtn.getPreferredSize().height));
         container.add(row);
-
-        JLabel hint = createMutedLabel(NbBundle.getMessage(UIBundle.class, "LBL_StartNewChatHint"), theme);
-        hint.setBorder(BorderFactory.createEmptyBorder(6, GUTTER + 2, 0, GUTTER));
-        container.add(hint);
     }
 
     /** Example prompts. They fill the composer and start the chat: a welcome screen
