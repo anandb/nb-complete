@@ -660,10 +660,13 @@ public final class ChatLayoutBuilder {
         sendBtn = UIUtils.createTextButton(goText, null, true);
         applyHarnessIcon(sendBtn, goText);
         String agentName = BinaryResolver.resolveDisplayName();
-        sendBtn.setToolTipText(goText + " (" + (agentName != null ? agentName : "Agent") + ")");
+        String harnessLabel = agentName != null ? agentName : "Agent";
+        sendBtn.setToolTipText(goText + " (" + harnessLabel + ")");
         sendBtn.setMnemonic(KeyEvent.VK_G);
         sendBtn.setDisplayedMnemonicIndex(0);
-        stopBtn = UIUtils.createTextButton(NbBundle.getMessage(UIBundle.class, "BTN_Stop"), null);
+        String stopText = NbBundle.getMessage(UIBundle.class, "BTN_Stop");
+        stopBtn = UIUtils.createTextButton(stopText, null);
+        stopBtn.setToolTipText(stopText + " (" + harnessLabel + ")");
         stopBtn.setPreferredSize(new Dimension(100, sendBtn.getPreferredSize().height));
         stopBtn.setMnemonic(KeyEvent.VK_S);
         stopBtn.setDisplayedMnemonicIndex(0);
