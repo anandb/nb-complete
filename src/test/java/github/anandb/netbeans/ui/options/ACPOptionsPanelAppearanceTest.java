@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.awt.Color;
 import java.awt.Component;
@@ -92,14 +93,20 @@ class ACPOptionsPanelAppearanceTest {
         colorCombo(panel, "userBubbleDarkCombo").setSelectedColor(new Color(0x04, 0x05, 0x06));
         colorCombo(panel, "assistantBubbleLightCombo").setSelectedColor(new Color(0x07, 0x08, 0x09));
         colorCombo(panel, "assistantBubbleDarkCombo").setSelectedColor(new Color(0x0a, 0x0b, 0x0c));
-        fontCombo(panel).setSelectedItem("Fira Sans");
+        // Pick whatever family this machine has installed: the combo is not editable, so a
+        // named family that happens to be missing here would silently leave "Inherited" (the
+        // empty override) selected and the test would fail for the wrong reason.
+        JComboBox<String> fonts = fontCombo(panel);
+        assumeTrue(fonts.getItemCount() > 1, "no installed font families to choose from");
+        fonts.setSelectedIndex(1);
+        String chosenFamily = (String) fonts.getSelectedItem();
         panel.store();
 
         assertEquals("#010203", PluginSettings.getUserBubbleBackgroundLight());
         assertEquals("#040506", PluginSettings.getUserBubbleBackgroundDark());
         assertEquals("#070809", PluginSettings.getAssistantBubbleBackgroundLight());
         assertEquals("#0a0b0c", PluginSettings.getAssistantBubbleBackgroundDark());
-        assertEquals("Fira Sans", PluginSettings.getChatFontFamily());
+        assertEquals(chosenFamily, PluginSettings.getChatFontFamily());
     }
 
     @Test
