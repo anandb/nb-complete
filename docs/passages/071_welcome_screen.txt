@@ -6,13 +6,19 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-When the assistant panel is opened with no session selected, you'll see the welcome screen instead of a chat thread. Click the **New Session** button (green plus icon) on the toolbar to begin a new conversation.
+When the assistant panel is opened with no session selected, you'll see the welcome screen instead of a chat thread. It is built from a few bands, top to bottom:
+
+* The BeanBot logo with a one-line greeting — **Welcome to BeanBot** on a fresh installation, **Welcome back** once you have sessions.
+* **Recent** — on a returning workspace, your most recent sessions as a clickable list. Picking one loads it (its folder is shown under the title). Archived sessions stay hidden unless *show archived* is on.
+* **✨ Start New Chat** — the primary action. It starts a session in the current project, or asks which project when several are open. This is the same as the toolbar's **New Session** (green plus) button.
+* **Try one of these** — three example prompts: **Explain this file**, **Find a bug**, and **Write a test**. Clicking one drafts the prompt in the input area and starts a new chat; the text stays in the composer so you send it yourself once the session is configured.
+
+The input area stays disabled while there is no session, so every conversation starts from this screen — either from **Start New Chat** or from one of the example prompts.
 
 ![Welcome Screen Toolbar](../images/welcome_screen-1.webp){style="max-width:100%;"}
 
 
 > [[Starting a Session]]
+> [[New Session Confirm Bar]]
 > [[Session Dropdown Menu]]
 > [[Archiving Sessions]]
-
-

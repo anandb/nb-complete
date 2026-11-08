@@ -10,6 +10,8 @@
 
 When you start a new session, a slide-in confirmation bar appears above the input area. On harnesses that can pick a model in-session it reads *"Select the agent, model and level below, then click Continue."* On [[Gemini Agent]], which has no in-session model dropdown, it reads *"Select the agent and level below, then click Continue."* The dropdowns stay locked until you confirm, so the session starts with the configuration you intend. Clicking **Continue** unlocks them and starts the session.
 
+The **Go** button and the input area are disabled for as long as that bar is open: nothing can be sent before the preamble has been posted. Clicking **Continue** releases them immediately — the composer opens even if applying the selected configuration fails — and the preamble follows as the first message of the session.
+
 
 > [[Starting a Session]]
 > [[Picking an Agent, Model and Thinking Level]]

@@ -10,6 +10,8 @@ The dialog has a simple layout: a response display area on top and a text input 
 
 While the AI is processing, a spinner and a token counter appear in the header so you can see progress in real time. The latest response is displayed as a compact bubble with a reduced font size.
 
+The answer that was on screen when you pressed Enter is greyed out while the new prompt is being worked on, so the old text no longer reads as the live response. It returns to normal contrast when the assistant's next response replaces it — or when the turn ends without one, for example after you press Stop.
+
 
 > [[Mini Assistant]]
 > [[Opening the Mini Assistant]]
