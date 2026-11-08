@@ -60,6 +60,17 @@ public final class PluginSettings {
     private static volatile int cachedMcpServerPort = 0;
     /** Cached markdown project type toggle — volatile for cross-thread visibility. Defaults to true. */
     private static volatile boolean cachedMarkdownProjectEnabled = true;
+    /**
+     * Cached diff-font toggle, read once at startup by {@code IdeDiffFontHook} — volatile for
+     * cross-thread visibility. Defaults to true.
+     */
+    private static volatile boolean cachedDiffIdeFont = true;
+    /** Bubble colours (hex) and chat font family; empty means the theme / system property. */
+    private static volatile String cachedUserBubbleLight = "";
+    private static volatile String cachedUserBubbleDark = "";
+    private static volatile String cachedAssistantBubbleLight = "";
+    private static volatile String cachedAssistantBubbleDark = "";
+    private static volatile String cachedChatFontFamily = "";
     /** Cached show hidden sessions toggle — volatile for cross-thread visibility. Defaults to false. */
     private static volatile boolean cachedShowHiddenSessions = false;
     /** Cached keep older messages toggle — volatile for cross-thread visibility. Defaults to false. */
@@ -117,6 +128,12 @@ public final class PluginSettings {
         cachedMcpServerEnabled = prefs.getBoolean(PreferenceKeys.MCP_SERVER_ENABLED, true);
         cachedMcpServerPort = prefs.getInt(PreferenceKeys.MCP_SERVER_PORT, 0);
         cachedMarkdownProjectEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_MARKDOWN_PROJECT, true);
+        cachedDiffIdeFont = prefs.getBoolean(PreferenceKeys.DIFF_IDE_FONT, true);
+        cachedUserBubbleLight = prefs.get(PreferenceKeys.USER_BUBBLE_LIGHT, "");
+        cachedUserBubbleDark = prefs.get(PreferenceKeys.USER_BUBBLE_DARK, "");
+        cachedAssistantBubbleLight = prefs.get(PreferenceKeys.ASSISTANT_BUBBLE_LIGHT, "");
+        cachedAssistantBubbleDark = prefs.get(PreferenceKeys.ASSISTANT_BUBBLE_DARK, "");
+        cachedChatFontFamily = prefs.get(PreferenceKeys.CHAT_FONT_FAMILY, "");
         cachedShowHiddenSessions = prefs.getBoolean(PreferenceKeys.SHOW_HIDDEN_SESSIONS, false);
         cachedKeepOlderMessages = prefs.getBoolean(PreferenceKeys.KEEP_OLDER_MESSAGES, false);
         cachedEchoUserInput = prefs.getBoolean(PreferenceKeys.ECHO_USER_INPUT, true);
@@ -300,6 +317,18 @@ public final class PluginSettings {
             cachedMcpServerPort = intPref(PreferenceKeys.MCP_SERVER_PORT, 0);
         } else if (PreferenceKeys.ACTIONS_MARKDOWN_PROJECT.equals(evt.getKey())) {
             cachedMarkdownProjectEnabled = prefs().getBoolean(PreferenceKeys.ACTIONS_MARKDOWN_PROJECT, true);
+        } else if (PreferenceKeys.DIFF_IDE_FONT.equals(evt.getKey())) {
+            cachedDiffIdeFont = prefs().getBoolean(PreferenceKeys.DIFF_IDE_FONT, true);
+        } else if (PreferenceKeys.USER_BUBBLE_LIGHT.equals(evt.getKey())) {
+            cachedUserBubbleLight = prefs().get(PreferenceKeys.USER_BUBBLE_LIGHT, "");
+        } else if (PreferenceKeys.USER_BUBBLE_DARK.equals(evt.getKey())) {
+            cachedUserBubbleDark = prefs().get(PreferenceKeys.USER_BUBBLE_DARK, "");
+        } else if (PreferenceKeys.ASSISTANT_BUBBLE_LIGHT.equals(evt.getKey())) {
+            cachedAssistantBubbleLight = prefs().get(PreferenceKeys.ASSISTANT_BUBBLE_LIGHT, "");
+        } else if (PreferenceKeys.ASSISTANT_BUBBLE_DARK.equals(evt.getKey())) {
+            cachedAssistantBubbleDark = prefs().get(PreferenceKeys.ASSISTANT_BUBBLE_DARK, "");
+        } else if (PreferenceKeys.CHAT_FONT_FAMILY.equals(evt.getKey())) {
+            cachedChatFontFamily = prefs().get(PreferenceKeys.CHAT_FONT_FAMILY, "");
         } else if (PreferenceKeys.SHOW_HIDDEN_SESSIONS.equals(evt.getKey())) {
             cachedShowHiddenSessions = prefs().getBoolean(PreferenceKeys.SHOW_HIDDEN_SESSIONS, false);
         } else if (PreferenceKeys.KEEP_OLDER_MESSAGES.equals(evt.getKey())) {
@@ -546,6 +575,71 @@ public final class PluginSettings {
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .putBoolean(PreferenceKeys.ACTIONS_MARKDOWN_PROJECT, enabled);
         cachedMarkdownProjectEnabled = enabled;
+    }
+
+    /** Whether the IDE's own diff windows take the plugin's smaller diff font. */
+    public static boolean isDiffIdeFontEnabled() {
+        return cachedDiffIdeFont;
+    }
+
+    public static void setDiffIdeFontEnabled(boolean enabled) {
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .putBoolean(PreferenceKeys.DIFF_IDE_FONT, enabled);
+        cachedDiffIdeFont = enabled;
+    }
+
+    /** User bubble background ({@code #rrggbb}) for the light theme; empty keeps the theme colour. */
+    public static String getUserBubbleBackgroundLight() {
+        return cachedUserBubbleLight;
+    }
+
+    public static void setUserBubbleBackgroundLight(String color) {
+        cachedUserBubbleLight = putColor(PreferenceKeys.USER_BUBBLE_LIGHT, color);
+    }
+
+    /** User bubble background ({@code #rrggbb}) for the dark theme; empty keeps the theme colour. */
+    public static String getUserBubbleBackgroundDark() {
+        return cachedUserBubbleDark;
+    }
+
+    public static void setUserBubbleBackgroundDark(String color) {
+        cachedUserBubbleDark = putColor(PreferenceKeys.USER_BUBBLE_DARK, color);
+    }
+
+    /** Assistant bubble background ({@code #rrggbb}) for the light theme; empty keeps the theme colour. */
+    public static String getAssistantBubbleBackgroundLight() {
+        return cachedAssistantBubbleLight;
+    }
+
+    public static void setAssistantBubbleBackgroundLight(String color) {
+        cachedAssistantBubbleLight = putColor(PreferenceKeys.ASSISTANT_BUBBLE_LIGHT, color);
+    }
+
+    /** Assistant bubble background ({@code #rrggbb}) for the dark theme; empty keeps the theme colour. */
+    public static String getAssistantBubbleBackgroundDark() {
+        return cachedAssistantBubbleDark;
+    }
+
+    public static void setAssistantBubbleBackgroundDark(String color) {
+        cachedAssistantBubbleDark = putColor(PreferenceKeys.ASSISTANT_BUBBLE_DARK, color);
+    }
+
+    /** Chat font family for all chat text; empty keeps the LAF / system-property choice. */
+    public static String getChatFontFamily() {
+        return cachedChatFontFamily;
+    }
+
+    public static void setChatFontFamily(String family) {
+        String value = nullToEmpty(family).trim();
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(PreferenceKeys.CHAT_FONT_FAMILY, value);
+        cachedChatFontFamily = value;
+    }
+
+    /** Stores a colour override, treating a blank value as "not set". */
+    private static String putColor(String key, String color) {
+        String value = nullToEmpty(color).trim();
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).put(key, value);
+        return value;
     }
 
     /** Whether to show hidden sessions in the session list. */

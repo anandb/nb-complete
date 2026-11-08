@@ -19,6 +19,16 @@ public class ThemeManager {
         IconResourceManager.clearIconCache();
     }
 
+    /** Drops the cached Swing font after the font-family setting changes. */
+    public static void clearFontCache() {
+        IconResourceManager.clearFontCache();
+    }
+
+    /** Rebuilds the theme and its CSS after a colour setting changes. */
+    public static void reloadTheme() {
+        ColorTheme.invalidate();
+    }
+
     public static Icon getIcon(String name) {
         return getIcon(name, 0);
     }

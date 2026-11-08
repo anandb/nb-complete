@@ -56,9 +56,9 @@ public final class IconPreviewManager {
     }
 
     private void initPreviewLabel() {
-        // The grid gives the preview the height of the three rows it spans; the width has
-        // to follow that height, so the box stays square without stretching the rows.
-        previewLabel.setPreferredSize(new Dimension(previewSize, 0));
+        // A square of this size; a titled box around the preview may reserve more width for
+        // its title, so the label keeps its own size instead of stretching to the box.
+        previewLabel.setPreferredSize(new Dimension(previewSize, previewSize));
         previewLabel.setMinimumSize(new Dimension(32, 32));
         previewLabel.setHorizontalAlignment(SwingConstants.CENTER);
         previewLabel.setVerticalAlignment(SwingConstants.CENTER);
@@ -148,7 +148,7 @@ public final class IconPreviewManager {
         });
     }
 
-    /** Keeps the preview square: the grid sets its height, so the width follows that height. */
+    /** Keeps the preview square when its box is wider than the picture. */
     private void matchWidthToHeight() {
         int side = previewLabel.getHeight();
         if (side <= 0 || previewLabel.getWidth() == side) {

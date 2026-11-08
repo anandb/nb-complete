@@ -2,6 +2,7 @@ package github.anandb.netbeans.model;
 
 import java.awt.Color;
 import java.util.EnumMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import javax.swing.UIManager;
 
@@ -58,16 +59,26 @@ public final class ColorRegistry {
 
     /**
      * Builds a ColorRegistry from a colors.json config node.
-     * Resolution order: System property → UIManager key → hardcoded light/dark fallback.
+     * Resolution order: System property → Options setting (propertyOverrides) → UIManager key →
+     * hardcoded light/dark fallback.
      */
     public static ColorRegistry fromJson(JsonNode config, boolean darkMode) {
+        return fromJson(config, darkMode, Map.of());
+    }
+
+    /**
+     * Builds a ColorRegistry with Options-setting overrides: a system property still wins over
+     * the setting, and the setting wins over colors.json.
+     */
+    public static ColorRegistry fromJson(JsonNode config, boolean darkMode,
+            Map<String, String> propertyOverrides) {
         EnumMap<ColorKey, Color> map = new EnumMap<>(ColorKey.class);
         for (JsonNode entry : config) {
             String name = entry.has("name") ? entry.get("name").asText() : null;
             if (name == null) continue;
             ColorKey key = ColorKey.fromJsonName(name);
             if (key == null) continue; // unknown name — skip silently
-            Color color = resolveColor(entry, darkMode);
+            Color color = resolveColor(entry, darkMode, propertyOverrides);
             if (color != null) {
                 map.put(key, color);
             }
@@ -75,15 +86,17 @@ public final class ColorRegistry {
         return new ColorRegistry(darkMode, map);
     }
 
-    private static Color resolveColor(JsonNode entry, boolean darkMode) {
-        Color fromProp = resolveFromProperty(entry, darkMode);
+    private static Color resolveColor(JsonNode entry, boolean darkMode,
+            Map<String, String> propertyOverrides) {
+        Color fromProp = resolveFromProperty(entry, darkMode, propertyOverrides);
         if (fromProp != null) return fromProp;
         Color fromKey = resolveFromKey(entry, darkMode);
         if (fromKey != null) return fromKey;
         return resolveFallback(entry, darkMode);
     }
 
-    private static Color resolveFromProperty(JsonNode entry, boolean darkMode) {
+    private static Color resolveFromProperty(JsonNode entry, boolean darkMode,
+            Map<String, String> propertyOverrides) {
         String propName = entry.has("property") ? entry.get("property").asText() : null;
         String propDark = entry.has("propertyDark") ? entry.get("propertyDark").asText() : null;
         String propLight = entry.has("propertyLight") ? entry.get("propertyLight").asText() : null;
@@ -97,6 +110,9 @@ public final class ColorRegistry {
         }
         if (effective == null) return null;
         String value = System.getProperty(effective);
+        if (value == null || value.isBlank()) {
+            value = propertyOverrides.get(effective);
+        }
         if (value != null && !value.isBlank()) {
             try {
                 return Color.decode(value);

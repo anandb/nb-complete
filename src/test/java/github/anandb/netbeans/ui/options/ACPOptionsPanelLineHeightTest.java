@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.lang.reflect.Field;
@@ -85,24 +84,22 @@ class ACPOptionsPanelLineHeightTest {
         ACPOptionsPanelController controller = new ACPOptionsPanelController();
         ACPOptionsPanel panel = new ACPOptionsPanel(controller);
 
-        JCheckBox setting = getCheckbox(panel, "projectSwitchRestartCheckbox");
-        Container system = setting.getParent();
-        Field hintField = ACPOptionsPanel.class.getDeclaredField("projectSwitchHint");
-        hintField.setAccessible(true);
-        Component hint = (Component) hintField.get(panel);
-        assertSame(system, hint.getParent(), "both rows must live in the System grid");
+        JCheckBox first = getCheckbox(panel, "projectSwitchRestartCheckbox");
+        JCheckBox second = getCheckbox(panel, "autoBackupChangesCheckbox");
+        Container group = first.getParent();
+        assertSame(group, second.getParent(), "both experimental rows must live in the group");
 
         // The Options dialog stretches sections beyond their preferred height.
         // Only a row with weighty > 0 grows; the last row must stay flush with
         // the previous one instead of centring itself in the spare space.
-        Dimension preferred = system.getPreferredSize();
-        system.setSize(preferred.width, preferred.height);
-        system.doLayout();
-        int gapBefore = hint.getY() - (setting.getY() + setting.getHeight());
-        system.setSize(preferred.width, preferred.height + 80);
-        system.doLayout();
+        Dimension preferred = group.getPreferredSize();
+        group.setSize(preferred.width, preferred.height);
+        group.doLayout();
+        int gapBefore = second.getY() - (first.getY() + first.getHeight());
+        group.setSize(preferred.width, preferred.height + 80);
+        group.doLayout();
 
-        int gapAfter = hint.getY() - (setting.getY() + setting.getHeight());
+        int gapAfter = second.getY() - (first.getY() + first.getHeight());
         assertTrue(gapAfter - gapBefore <= 1,
                 "last row must not absorb extra vertical space, gap grew from "
                         + gapBefore + "px to " + gapAfter + "px");

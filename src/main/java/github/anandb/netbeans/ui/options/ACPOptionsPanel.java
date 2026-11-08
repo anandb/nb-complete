@@ -24,24 +24,29 @@ import org.netbeans.api.editor.settings.SimpleValueNames;
 import org.openide.util.NbBundle;
 import org.openide.util.RequestProcessor;
 
+import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.GraphicsEnvironment;
 import java.awt.Insets;
+import java.awt.Rectangle;
 import java.awt.Window;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.util.Arrays;
+import java.util.Locale;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.Box;
 import javax.swing.border.TitledBorder;
 import javax.swing.border.EmptyBorder;
 
-import javax.swing.AbstractButton;
-import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -49,13 +54,19 @@ import javax.swing.DefaultListCellRenderer;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.ListCellRenderer;
+import javax.swing.Scrollable;
+import javax.swing.JScrollPane;
+import javax.swing.ScrollPaneConstants;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.JPanel;
-import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
+import javax.swing.JTree;
+import javax.swing.ToolTipManager;
 import javax.swing.UIManager;
 import javax.swing.SwingUtilities;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeCellRenderer;
 
 import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.model.HarnessCatalog;
@@ -64,7 +75,7 @@ import github.anandb.netbeans.support.Logger;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import github.anandb.netbeans.support.PreferenceKeys;
 import org.openide.awt.NotificationDisplayer;
-import github.anandb.netbeans.ui.permission.ContextActionsDialog;
+import org.openide.awt.ColorComboBox;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.rendering.IconPreviewManager;
@@ -117,13 +128,11 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private JCheckBox miniAssistantCheckbox;
     private JCheckBox taskRepositoryCheckbox;
     private JCheckBox markdownProjectCheckbox;
+    private JCheckBox diffIdeFontCheckbox;
     private JCheckBox mcpServerCheckbox;
     private JSpinner mcpPortSpinner;
     private JCheckBox useWslCheckbox;
     private JCheckBox projectSwitchRestartCheckbox;
-    private JPanel projectSwitchHint;
-    private JLabel contextActionsSummary;
-    private JButton contextActionsButton;
     private JSpinner idleTimeoutSpinner;
     private JSpinner maxMessagesSpinner;
     private JLabel argsLabel;
@@ -137,7 +146,16 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private JTextField iconPathField;
     private JButton iconBrowseButton;
     private JLabel iconPreviewLabel;
+    private JPanel iconPreviewBox;
+    private ColorComboBox userBubbleLightCombo;
+    private ColorComboBox userBubbleDarkCombo;
+    private ColorComboBox assistantBubbleLightCombo;
+    private ColorComboBox assistantBubbleDarkCombo;
+    private JComboBox<String> chatFontFamilyCombo;
     private JPanel pendingRestartBar;
+    private JPanel detailCards;
+    private JLabel detailHeader;
+    private JScrollPane detailScroll;
     private JLabel pendingRestartTitle;
     private JLabel pendingRestartBody;
     private transient IconPreviewManager iconPreviewManager;
@@ -165,6 +183,31 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         initComponents();
     }
 
+    private int savedTooltipDismissDelay = -1;
+
+    /**
+     * Swing's tooltip timeout is process-wide, so the panel doubles it while it is on screen
+     * and restores the previous value when the Options dialog closes.
+     */
+    @Override
+    public void addNotify() {
+        super.addNotify();
+        if (savedTooltipDismissDelay < 0) {
+            ToolTipManager tips = ToolTipManager.sharedInstance();
+            savedTooltipDismissDelay = tips.getDismissDelay();
+            tips.setDismissDelay((int) Math.min(Integer.MAX_VALUE, savedTooltipDismissDelay * 2L));
+        }
+    }
+
+    @Override
+    public void removeNotify() {
+        if (savedTooltipDismissDelay >= 0) {
+            ToolTipManager.sharedInstance().setDismissDelay(savedTooltipDismissDelay);
+            savedTooltipDismissDelay = -1;
+        }
+        super.removeNotify();
+    }
+
     private void initComponents() {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
@@ -172,16 +215,6 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         createPendingRestartBar();
         add(createScopeLegend());
         add(Box.createVerticalStrut(2));
-
-        // Two tabs: the handful of controls a normal user needs, and the expert knobs
-        // (server ports, limits, restart policy) behind them. Same controls, same store().
-        JPanel essentialsTab = newTabPanel();
-        JPanel advancedTab = newTabPanel();
-        JTabbedPane tabbedPane = new JTabbedPane();
-        tabbedPane.addTab(NbBundle.getMessage(UIBundle.class, "LBL_TabEssentials"), essentialsTab);
-        tabbedPane.addTab(NbBundle.getMessage(UIBundle.class, "LBL_TabAdvanced"), advancedTab);
-        tabbedPane.setBorder(BorderFactory.createEmptyBorder(4, 0, 0, 0));
-        add(tabbedPane);
 
         jLabel1 = new JLabel();
         pathCombo = new JComboBox<>();
@@ -205,18 +238,19 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         miniAssistantCheckbox = new JCheckBox();
         taskRepositoryCheckbox = new JCheckBox();
         markdownProjectCheckbox = new JCheckBox();
+        diffIdeFontCheckbox = new JCheckBox();
         mcpServerCheckbox = new JCheckBox();
         preambleEnabledCheckbox = new JCheckBox();
         projectSwitchRestartCheckbox = new JCheckBox();
         iconLabel = new JLabel();
-        iconPathField = new JTextField(26);
+        iconPathField = new JTextField(18);
         iconBrowseButton = new JButton();
         iconPreviewLabel = new JLabel();
 
         iconPreviewManager = new IconPreviewManager(iconPreviewLabel, iconPathField, PREVIEW_SIZE,
                 controller::changed);
 
-        // --- Assistant Service ---
+        // --- Assistant ---
         JPanel servicePanel = createSectionPanel("LBL_ServiceHeader");
         servicePanel.setLayout(new GridBagLayout());
         int row = 0;
@@ -343,10 +377,8 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
             servicePanel.add(useWslCheckbox, gbcWsl);
         }
 
-        addSection(essentialsTab, servicePanel);
-
         // --- System ---
-        JPanel systemPanel = createSectionPanel("LBL_SystemHeader");
+        JPanel systemPanel = createSectionPanel("LBL_GeneralHeader");
         systemPanel.setLayout(new GridBagLayout());
 
         checkForUpdatesCheckbox.setText(NbBundle.getMessage(UIBundle.class, "LBL_CheckForUpdates"));
@@ -416,36 +448,25 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         systemPanel.add(runCommandPolicyButton, UIUtils.createGbc(3, 3, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.NORTHEAST, new Insets(4, 0, 5, 12)));
 
+        // Experimental options live on their own page: no border nested in the General page.
+        JPanel experimentalPanel = createSectionPanel("LBL_ExperimentalHeader");
+        experimentalPanel.setLayout(new GridBagLayout());
+
         projectSwitchRestartCheckbox.setText(
                 scopedLabel("LBL_ProjectSwitchRestart", PluginSettings.Effect.IDE_RESTART));
-        projectSwitchRestartCheckbox.setToolTipText(tooltip("TT_ProjectSwitchRestart"));
+        // The hint is part of the tooltip: the checkbox no longer prints a paragraph under it.
+        projectSwitchRestartCheckbox.setToolTipText(wrapTooltip(
+                NbBundle.getMessage(UIBundle.class, "TT_ProjectSwitchRestart")
+                        + "\n" + NbBundle.getMessage(UIBundle.class, "HLP_ProjectSwitchRestart")));
         projectSwitchRestartCheckbox.addActionListener(evt -> controller.changed());
-        GridBagConstraints restartGbc = UIUtils.createGbc(0, 2, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                GridBagConstraints.SOUTHWEST, new Insets(0, 12, 1, 0));
-        restartGbc.gridwidth = 2;
-        systemPanel.add(projectSwitchRestartCheckbox, restartGbc);
+        experimentalPanel.add(projectSwitchRestartCheckbox, UIUtils.createGbc(0, 0, 1.0, 0,
+                GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST, new Insets(0, 12, 5, 12)));
 
-        // Visible without a hover: the cost of this option must be readable before it is ticked.
-        // Two lines, so the whole sentence reads instead of being cut off at the button.
-        String restartHint = NbBundle.getMessage(UIBundle.class, "HLP_ProjectSwitchRestart");
-        projectSwitchHint = new JPanel();
-        projectSwitchHint.setOpaque(false);
-        projectSwitchHint.setLayout(new BoxLayout(projectSwitchHint, BoxLayout.Y_AXIS));
-        projectSwitchHint.setToolTipText(restartHint);
-        for (String hintLine : splitHint(restartHint)) {
-            JLabel line = new JLabel(hintLine);
-            line.setForeground(UIManager.getColor("Label.disabledForeground"));
-            line.setFont(line.getFont().deriveFont(Font.ITALIC, line.getFont().getSize() - 1f));
-            line.setAlignmentX(Component.LEFT_ALIGNMENT);
-            projectSwitchHint.add(line);
-        }
-        // Start under the checkbox text, not under the check glyph: the icon width and gap
-        // differ per LAF, so a fixed indent drifts with the look and feel.
-        int hintIndent = 12 + checkboxTextInset(projectSwitchRestartCheckbox);
-        GridBagConstraints projectSwitchHintGbc = UIUtils.createGbc(0, 3, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                GridBagConstraints.NORTHWEST, new Insets(0, hintIndent, 5, 0));
-        projectSwitchHintGbc.gridwidth = 3;
-        systemPanel.add(projectSwitchHint, projectSwitchHintGbc);
+        autoBackupChangesCheckbox.setText(NbBundle.getMessage(UIBundle.class, "LBL_AutoBackupChanges"));
+        autoBackupChangesCheckbox.setToolTipText(tooltip("TT_AutoBackupChanges"));
+        autoBackupChangesCheckbox.addActionListener(evt -> controller.changed());
+        experimentalPanel.add(autoBackupChangesCheckbox, UIUtils.createGbc(0, 1, 1.0, 0,
+                GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST, new Insets(0, 12, 5, 12)));
 
         // One width for the right-hand controls: the two spinners match the
         // ACP file-access dropdown instead of rendering as narrow boxes.
@@ -458,9 +479,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         runCommandPolicyButton.setPreferredSize(
                 new Dimension(rightColumnWidth, whitelistSize.height));
 
-        addSection(advancedTab, systemPanel);
-
-        // --- Chat Behavior (essentials) ---
+        // --- Chat Behavior ---
         JPanel behaviorPanel = createSectionPanel("LBL_BehaviorHeader");
         behaviorPanel.setLayout(new GridBagLayout());
         row = 0;
@@ -494,9 +513,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         behaviorPanel.add(editPreambleButton, UIUtils.createGbc(3, row, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
 
-        addSection(essentialsTab, behaviorPanel);
-
-        // --- Session Limits (advanced) ---
+        // --- Session Limits ---
         JPanel limitsPanel = createSectionPanel("LBL_LimitsHeader");
         limitsPanel.setLayout(new GridBagLayout());
         row = 0;
@@ -525,18 +542,8 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         limitsPanel.add(maxMessagesSpinner, UIUtils.createGbc(3, row, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
 
-        autoBackupChangesCheckbox.setText(NbBundle.getMessage(UIBundle.class, "LBL_AutoBackupChanges"));
-        autoBackupChangesCheckbox.setToolTipText(tooltip("TT_AutoBackupChanges"));
-        autoBackupChangesCheckbox.addActionListener(evt -> controller.changed());
-        GridBagConstraints backupGbc = UIUtils.createGbc(0, ++row, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                GridBagConstraints.WEST, new Insets(0, 12, 5, 0));
-        backupGbc.gridwidth = 4;
-        limitsPanel.add(autoBackupChangesCheckbox, backupGbc);
-
-        addSection(advancedTab, limitsPanel);
-
         // --- IDE Extensions ---
-        JPanel actionsPanel = createSectionPanel("LBL_ActionsHeader");
+        JPanel actionsPanel = createSectionPanel("LBL_FeaturesHeader");
         actionsPanel.setLayout(new GridBagLayout());
 
         markdownProjectCheckbox.setText(NbBundle.getMessage(UIBundle.class, "LBL_EnableMarkdownProject"));
@@ -545,39 +552,39 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         actionsPanel.add(markdownProjectCheckbox, UIUtils.createGbc(0, 0, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
 
-        miniAssistantCheckbox.setText(NbBundle.getMessage(UIBundle.class, "LBL_EnableMiniAssistant"));
-        miniAssistantCheckbox.setToolTipText(tooltip("TT_EnableMiniAssistant"));
-        miniAssistantCheckbox.addActionListener(evt -> controller.changed());
-        actionsPanel.add(miniAssistantCheckbox, UIUtils.createGbc(1, 0, 0.0, 0, GridBagConstraints.NONE,
-                GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
-
         taskRepositoryCheckbox.setText(NbBundle.getMessage(UIBundle.class, "LBL_EnableTaskRepository"));
         taskRepositoryCheckbox.setToolTipText(tooltip("TT_EnableTaskRepository"));
         taskRepositoryCheckbox.addActionListener(evt -> controller.changed());
         actionsPanel.add(taskRepositoryCheckbox, UIUtils.createGbc(0, 1, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
 
-        contextActionsSummary = new JLabel();
-        contextActionsSummary.setToolTipText(tooltip("TT_ContextActions"));
-        actionsPanel.add(contextActionsSummary, UIUtils.createGbc(0, 2, 1.0, 0, GridBagConstraints.HORIZONTAL,
-                GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
+        miniAssistantCheckbox.setText(NbBundle.getMessage(UIBundle.class, "LBL_EnableMiniAssistant"));
+        miniAssistantCheckbox.setToolTipText(tooltip("TT_EnableMiniAssistant"));
+        miniAssistantCheckbox.addActionListener(evt -> controller.changed());
+        actionsPanel.add(miniAssistantCheckbox, UIUtils.createGbc(0, 2, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
 
-        contextActionsButton = new JButton(NbBundle.getMessage(UIBundle.class, "LBL_Configure"));
-        contextActionsButton.setToolTipText(tooltip("TT_ContextActions"));
-        contextActionsButton.addActionListener(evt -> editContextActions());
-        actionsPanel.add(contextActionsButton, UIUtils.createGbc(1, 2, 0.0, 0, GridBagConstraints.NONE,
-                GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
+        diffIdeFontCheckbox.setText(scopedLabel("LBL_DiffIdeFont", PluginSettings.Effect.IDE_RESTART));
+        diffIdeFontCheckbox.setToolTipText(tooltip("TT_DiffIdeFont"));
+        diffIdeFontCheckbox.addActionListener(evt -> controller.changed());
+        actionsPanel.add(diffIdeFontCheckbox, UIUtils.createGbc(0, 3, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
 
-        addSection(advancedTab, actionsPanel);
+        JPanel contextActionsPanel = buildContextActionsPage();
 
         // --- Appearance ---
         JPanel appearancePanel = createSectionPanel("LBL_AppearanceHeader");
-        appearancePanel.setLayout(new GridBagLayout());
+        // Two independent columns: the form keeps one row rhythm, and the preview box no
+        // longer stretches the first rows just because it spans them.
+        appearancePanel.setLayout(new BorderLayout(8, 0));
+        JPanel appearanceForm = new JPanel(new GridBagLayout());
+        appearanceForm.setOpaque(false);
+        appearancePanel.add(appearanceForm, BorderLayout.CENTER);
         row = 0;
 
         iconLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_UserIcon"));
         iconLabel.setToolTipText(tooltip("TT_UserIcon"));
-        appearancePanel.add(iconLabel, UIUtils.createGbc(0, row, 0.0, 0, GridBagConstraints.HORIZONTAL,
+        appearanceForm.add(iconLabel, UIUtils.createGbc(0, row, 0.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
 
         iconPathField.addKeyListener(new KeyAdapter() {
@@ -588,37 +595,52 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
             }
         });
         iconPathField.setToolTipText(tooltip("TT_UserIcon"));
-        appearancePanel.add(iconPathField, UIUtils.createGbc(1, row, 1.0, 0, GridBagConstraints.HORIZONTAL,
+        appearanceForm.add(iconPathField, UIUtils.createGbc(1, row, 1.0, 0, GridBagConstraints.HORIZONTAL,
                                              GridBagConstraints.EAST, new Insets(0, 0, 5, 5)));
 
         iconBrowseButton.setText(NbBundle.getMessage(UIBundle.class, "BTN_Browse"));
         iconBrowseButton.setToolTipText(tooltip("TT_UserIcon"));
         iconBrowseButton.addActionListener(evt -> iconBrowseButtonActionPerformed());
-        appearancePanel.add(iconBrowseButton, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE,
+        appearanceForm.add(iconBrowseButton, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE,
                                                 GridBagConstraints.EAST, new Insets(0, 0, 5, 5)));
 
-        GridBagConstraints previewGbc = UIUtils.createGbc(3, 0, 0.0, 0, GridBagConstraints.VERTICAL,
-                GridBagConstraints.CENTER, new Insets(0, 8, 5, 12));
-        previewGbc.gridheight = 3;
-        appearancePanel.add(iconPreviewLabel, previewGbc);
+        // The mock groups the avatar in its own titled box, so the preview reads as a picture
+        // rather than a floating label next to the size controls. The box must be at least as
+        // wide as its title (a TitledBorder clips at the box width) and the avatar keeps a
+        // square of its own inside it, so the grid centres the label at its preferred size.
+        iconPreviewBox = createSectionPanel("LBL_AvatarPreviewHeader");
+        iconPreviewBox.setLayout(new GridBagLayout());
+        iconPreviewBox.add(iconPreviewLabel);
+        Insets boxInsets = iconPreviewBox.getInsets();
+        Font titleFont = iconPreviewBox.getFont().deriveFont(Font.BOLD);
+        int titleWidth = iconPreviewBox.getFontMetrics(titleFont)
+                .stringWidth(NbBundle.getMessage(UIBundle.class, "LBL_AvatarPreviewHeader")) + 12;
+        iconPreviewBox.setPreferredSize(new Dimension(
+                Math.max(PREVIEW_SIZE + boxInsets.left + boxInsets.right, titleWidth),
+                PREVIEW_SIZE + boxInsets.top + boxInsets.bottom));
+
+        JPanel previewColumn = new JPanel(new BorderLayout());
+        previewColumn.setOpaque(false);
+        previewColumn.add(iconPreviewBox, BorderLayout.NORTH);
+        appearancePanel.add(previewColumn, BorderLayout.EAST);
         row++;
         JLabel toolbarIconLabel = new JLabel(scopedLabel("LBL_ToolbarIconSize",
                 PluginSettings.Effect.IDE_RESTART));
         toolbarIconLabel.setToolTipText(tooltip("TT_ToolbarIconSize"));
-        appearancePanel.add(toolbarIconLabel, UIUtils.createGbc(0, row, 0.0, 0, GridBagConstraints.HORIZONTAL,
+        appearanceForm.add(toolbarIconLabel, UIUtils.createGbc(0, row, 0.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
 
         toolbarIconCombo = new JComboBox<>(new String[]{"16", "24", "28", "32", "48"});
         toolbarIconCombo.setToolTipText(tooltip("TT_ToolbarIconSize"));
         toolbarIconCombo.setPrototypeDisplayValue("100");
         toolbarIconCombo.addActionListener(evt -> controller.changed());
-        appearancePanel.add(toolbarIconCombo, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE,
+        appearanceForm.add(toolbarIconCombo, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.EAST, new Insets(0, 0, 5, 5)));
 
         row++;
         JLabel chatFontLabel = new JLabel(scopedLabel("LBL_ChatFontSize", PluginSettings.Effect.SESSION_RELOAD));
         chatFontLabel.setToolTipText(tooltip("TT_ChatFontSize"));
-        appearancePanel.add(chatFontLabel, UIUtils.createGbc(0, row, 0.0, 0, GridBagConstraints.HORIZONTAL,
+        appearanceForm.add(chatFontLabel, UIUtils.createGbc(0, row, 0.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
 
         chatFontCombo = new JComboBox<>(new String[]{"Inherited", "10", "11", "12", "13", "14", "16", "18", "20", "22", "24"});
@@ -626,44 +648,404 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         // "Inherited" is the widest value and the stored default, so it sets the width.
         chatFontCombo.setPrototypeDisplayValue("Inherited");
         chatFontCombo.addActionListener(evt -> controller.changed());
-        appearancePanel.add(chatFontCombo, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE,
+        appearanceForm.add(chatFontCombo, UIUtils.createGbc(2, row, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.EAST, new Insets(0, 0, 5, 5)));
 
-        addSection(essentialsTab, appearancePanel);
-        finishTab(essentialsTab);
-        finishTab(advancedTab);
+        userBubbleLightCombo = colorCombo("TT_UserBubbleLight",
+                ColorTheme.configuredBubbleColor(true, false));
+        userBubbleDarkCombo = colorCombo("TT_UserBubbleDark",
+                ColorTheme.configuredBubbleColor(true, true));
+        addColorRow(appearanceForm, ++row, "LBL_UserBubbleBackground",
+                userBubbleLightCombo, userBubbleDarkCombo);
+        assistantBubbleLightCombo = colorCombo("TT_AssistantBubbleLight",
+                ColorTheme.configuredBubbleColor(false, false));
+        assistantBubbleDarkCombo = colorCombo("TT_AssistantBubbleDark",
+                ColorTheme.configuredBubbleColor(false, true));
+        addColorRow(appearanceForm, ++row, "LBL_AssistantBubbleBackground",
+                assistantBubbleLightCombo, assistantBubbleDarkCombo);
+
+        JLabel chatFontFamilyLabel = new JLabel(scopedLabel("LBL_ChatFontFamily",
+                PluginSettings.Effect.SESSION_RELOAD));
+        chatFontFamilyLabel.setToolTipText(tooltip("TT_ChatFontFamily"));
+        appearanceForm.add(chatFontFamilyLabel, UIUtils.createGbc(0, ++row, 0.0, 0,
+                GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
+        chatFontFamilyCombo = new JComboBox<>(fontFamilyItems());
+        chatFontFamilyCombo.setToolTipText(tooltip("TT_ChatFontFamily"));
+        chatFontFamilyCombo.setPrototypeDisplayValue("SansSerif");
+        chatFontFamilyCombo.addActionListener(evt -> controller.changed());
+        GridBagConstraints familyGbc = UIUtils.createGbc(1, row, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 0, 5, 5));
+        familyGbc.gridwidth = 2;
+        appearanceForm.add(chatFontFamilyCombo, familyGbc);
+
+        add(createNavigation(servicePanel, behaviorPanel, appearancePanel,
+                systemPanel, experimentalPanel, limitsPanel, actionsPanel, contextActionsPanel));
     }
 
-    private static final int SECTION_GAP = 6;
+    /** One bubble type: label, then the light and dark colour pickers side by side. */
+    private void addColorRow(JPanel panel, int row, String labelKey,
+            ColorComboBox light, ColorComboBox dark) {
+        JLabel label = new JLabel(scopedLabel(labelKey, PluginSettings.Effect.SESSION_RELOAD));
+        panel.add(label, UIUtils.createGbc(0, row, 0.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
 
-    /** Tab content: sections stacked top-down at their natural height, spare space at the bottom. */
-    private static JPanel newTabPanel() {
-        JPanel tab = new JPanel(new GridBagLayout());
-        tab.setBorder(BorderFactory.createEmptyBorder(6, 2, 2, 2));
-        return tab;
+        JPanel pickers = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        pickers.setOpaque(false);
+        pickers.add(caption("LBL_Light"));
+        pickers.add(light);
+        pickers.add(caption("LBL_Dark"));
+        pickers.add(dark);
+        GridBagConstraints gbc = UIUtils.createGbc(1, row, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 0, 5, 5));
+        gbc.gridwidth = 2;
+        panel.add(pickers, gbc);
     }
 
-    /** Appends one titled section to a tab, full width, in insertion order. */
-    private static void addSection(JPanel tab, JPanel section) {
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.gridy = tab.getComponentCount();
-        gbc.weightx = 1.0;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.anchor = GridBagConstraints.NORTHWEST;
-        gbc.insets = new Insets(0, 0, SECTION_GAP, 0);
-        tab.add(section, gbc);
+    private static JLabel caption(String key) {
+        return new JLabel(NbBundle.getMessage(UIBundle.class, key));
     }
 
-    /** Hands the remaining height to one filler, so the sections keep their preferred height. */
-    private static void finishTab(JPanel tab) {
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.gridy = tab.getComponentCount();
-        gbc.weightx = 1.0;
-        gbc.weighty = 1.0;
-        gbc.fill = GridBagConstraints.BOTH;
-        tab.add(Box.createGlue(), gbc);
+    /**
+     * NetBeans' own colour picker ({@link ColorComboBox}): a swatch, the colour's value and a
+     * Custom entry that opens {@link javax.swing.JColorChooser}. The first entry is the default
+     * (theme) colour, which stores no override.
+     */
+    private ColorComboBox colorCombo(String tooltipKey, Color themeColor) {
+        ColorComboBox combo = new ColorComboBox(new Color[]{themeColor},
+                new String[]{NbBundle.getMessage(UIBundle.class, "LBL_DefaultEntry")}, true);
+        combo.setToolTipText(wrapTooltip(NbBundle.getMessage(UIBundle.class, tooltipKey)
+                + "\n" + NbBundle.getMessage(UIBundle.class, "TT_ColorCombo")));
+        combo.addActionListener(evt -> controller.changed());
+        combo.setPreferredSize(new Dimension(160, combo.getPreferredSize().height));
+        return combo;
+    }
+
+    /** Selects the stored colour, or the default entry when no override is stored. */
+    private static void selectColor(ColorComboBox combo, String value, Color themeColor) {
+        if (value == null || value.isBlank()) {
+            combo.setSelectedColor(themeColor);
+            return;
+        }
+        try {
+            combo.setSelectedColor(Color.decode(value.trim()));
+        } catch (NumberFormatException ignored) {
+            // an unreadable stored value falls back to the theme colour
+            combo.setSelectedColor(themeColor);
+        }
+    }
+
+    /** The chosen colour as {@code #rrggbb}, or empty when the default entry is selected. */
+    private static String selectedColorValue(ColorComboBox combo, Color themeColor) {
+        Color selected = combo.getSelectedColor();
+        if (selected == null || selected.equals(themeColor)) {
+            return "";
+        }
+        return toHex(selected);
+    }
+
+    private static String toHex(Color color) {
+        return String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
+    }
+
+    /** Installed font families, with "Inherited" first so the empty value is visible. */
+    private static String[] fontFamilyItems() {
+        String[] families = GraphicsEnvironment.getLocalGraphicsEnvironment()
+                .getAvailableFontFamilyNames(Locale.ROOT);
+        Arrays.sort(families);
+        String[] items = new String[families.length + 1];
+        items[0] = NbBundle.getMessage(UIBundle.class, "LBL_FontInherited");
+        System.arraycopy(families, 0, items, 1, families.length);
+        return items;
+    }
+
+    /** Selects the stored family, keeping an uninstalled one visible instead of resetting it. */
+    private void applyFontFamily(String family) {
+        if (family == null || family.isBlank()) {
+            chatFontFamilyCombo.setSelectedIndex(0);
+            return;
+        }
+        for (int i = 0; i < chatFontFamilyCombo.getItemCount(); i++) {
+            if (family.equals(chatFontFamilyCombo.getItemAt(i))) {
+                chatFontFamilyCombo.setSelectedIndex(i);
+                return;
+            }
+        }
+        chatFontFamilyCombo.addItem(family);
+        chatFontFamilyCombo.setSelectedItem(family);
+    }
+
+    /** The chosen family, or an empty string for the "Inherited" row. */
+    private String selectedFontFamily() {
+        Object item = chatFontFamilyCombo.getSelectedItem();
+        if (item == null || chatFontFamilyCombo.getSelectedIndex() == 0) {
+            return "";
+        }
+        return item.toString();
+    }
+
+    /** Persists the five appearance overrides; returns true when any value changed. */
+    private boolean writeAppearanceSettings() {
+        Color userLightTheme = ColorTheme.configuredBubbleColor(true, false);
+        Color userDarkTheme = ColorTheme.configuredBubbleColor(true, true);
+        Color assistantLightTheme = ColorTheme.configuredBubbleColor(false, false);
+        Color assistantDarkTheme = ColorTheme.configuredBubbleColor(false, true);
+        String userLight = selectedColorValue(userBubbleLightCombo, userLightTheme);
+        String userDark = selectedColorValue(userBubbleDarkCombo, userDarkTheme);
+        String assistantLight = selectedColorValue(assistantBubbleLightCombo, assistantLightTheme);
+        String assistantDark = selectedColorValue(assistantBubbleDarkCombo, assistantDarkTheme);
+        boolean changed = !userLight.equals(PluginSettings.getUserBubbleBackgroundLight())
+                || !userDark.equals(PluginSettings.getUserBubbleBackgroundDark())
+                || !assistantLight.equals(PluginSettings.getAssistantBubbleBackgroundLight())
+                || !assistantDark.equals(PluginSettings.getAssistantBubbleBackgroundDark())
+                || !selectedFontFamily().equals(PluginSettings.getChatFontFamily());
+        PluginSettings.setUserBubbleBackgroundLight(userLight);
+        PluginSettings.setUserBubbleBackgroundDark(userDark);
+        PluginSettings.setAssistantBubbleBackgroundLight(assistantLight);
+        PluginSettings.setAssistantBubbleBackgroundDark(assistantDark);
+        PluginSettings.setChatFontFamily(selectedFontFamily());
+        if (changed) {
+            ThemeManager.reloadTheme();
+            ThemeManager.clearFontCache();
+            UIUtils.clearFontStackCache();
+        }
+        return changed;
+    }
+
+    /** The editor context-menu toggles, shown inline instead of behind a Configure dialog. */
+    private JPanel buildContextActionsPage() {
+        JPanel panel = createSectionPanel("LBL_ContextActionsHeader");
+        panel.setLayout(new GridBagLayout());
+        int row = 0;
+        addActionToggle(panel, row++, sortLinesCheckbox, "LBL_ActionSortLines", "TT_SortLines");
+        addActionToggle(panel, row++, compactJsonCheckbox, "LBL_ActionCompactJson", "TT_CompactJson");
+        addActionToggle(panel, row++, searchWebCheckbox, "LBL_ActionSearchWeb", "TT_SearchWeb");
+        addActionToggle(panel, row++, showAnnotationsCheckbox, "LBL_ActionShowAnnotations", "TT_ShowAnnotations");
+        addActionToggle(panel, row++, viewFileHistoryCheckbox, "LBL_ActionViewFileHistory", "TT_ViewFileHistory");
+        addActionToggle(panel, row++, stashDiffCheckbox, "LBL_ActionStashDiff", "TT_StashDiff");
+        addActionToggle(panel, row++, quickJumpCheckbox, "LBL_ActionQuickJump", "TT_QuickJump");
+        addActionToggle(panel, row, copyAllItemsCheckbox, "LBL_ActionCopyAllItems", "TT_CopyAllItems");
+        return panel;
+    }
+
+    private void addActionToggle(JPanel panel, int row, JCheckBox box, String labelKey, String tooltipKey) {
+        box.setText(NbBundle.getMessage(UIBundle.class, labelKey));
+        box.setToolTipText(tooltip(tooltipKey));
+        box.addActionListener(evt -> controller.changed());
+        panel.add(box, UIUtils.createGbc(0, row, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
+    }
+
+    /**
+     * Trailing space inside the category tree, past its longest row. The tree sizes itself
+     * from that preferred width, so a wider IDE font still fits and no horizontal scroll
+     * bar is ever needed.
+     */
+    private static final int NAV_TRAILING_PADDING = 24;
+    /** Room a settings page gets before it scrolls; the dialog can still be resized. */
+    private static final int DETAIL_PREF_HEIGHT = 480;
+
+    /**
+     * Builds the master/detail body: a category tree on the left and one settings page at
+     * a time on the right. The tree keeps a fixed width so the forms keep theirs.
+     */
+    private JPanel createNavigation(JPanel service, JPanel behavior, JPanel appearance,
+            JPanel system, JPanel experimental, JPanel limits, JPanel actions, JPanel contextActions) {
+        detailCards = new ScrollableCards();
+        addCard("service", service);
+        addCard("behavior", behavior);
+        addCard("appearance", appearance);
+        addCard("general", system);
+        addCard("experimental", experimental);
+        addCard("limits", limits);
+        addCard("extensions", actions);
+        addCard("contextActions", contextActions);
+
+        JTree tree = new JTree(buildNavModel());
+        tree.setRootVisible(false);
+        tree.setShowsRootHandles(true);
+        tree.setToggleClickCount(1);
+        tree.setCellRenderer(new NavRenderer());
+        tree.setBorder(new EmptyBorder(4, 4, 4, NAV_TRAILING_PADDING));
+        for (int row = 0; row < tree.getRowCount(); row++) {
+            tree.expandRow(row);
+        }
+        tree.addTreeSelectionListener(evt -> {
+            Object last = tree.getLastSelectedPathComponent();
+            if (last instanceof DefaultMutableTreeNode node
+                    && node.getUserObject() instanceof NavNode nav && nav.cardKey() != null) {
+                showPage(nav);
+            }
+        });
+
+        JPanel navColumn = new JPanel(new BorderLayout(0, 4));
+        navColumn.setOpaque(false);
+        JLabel categoriesLabel = new JLabel(NbBundle.getMessage(UIBundle.class, "LBL_Categories"));
+        categoriesLabel.setFont(categoriesLabel.getFont().deriveFont(Font.BOLD));
+        navColumn.add(categoriesLabel, BorderLayout.NORTH);
+        JScrollPane navScroll = new JScrollPane(tree);
+        navScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        navScroll.getVerticalScrollBar().setUnitIncrement(16);
+        navColumn.add(navScroll, BorderLayout.CENTER);
+
+        detailHeader = new JLabel();
+        detailHeader.setFont(detailHeader.getFont().deriveFont(Font.BOLD,
+                detailHeader.getFont().getSize2D() + 2f));
+        detailScroll = new JScrollPane(detailCards,
+                ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        detailScroll.setBorder(null);
+        // Width follows the widest page: squeezing a page clips its checkbox labels.
+        detailScroll.setPreferredSize(new Dimension(
+                detailCards.getPreferredSize().width, DETAIL_PREF_HEIGHT));
+        detailScroll.getVerticalScrollBar().setUnitIncrement(16);
+
+        JPanel detail = new JPanel(new BorderLayout(0, 6));
+        detail.setOpaque(false);
+        detail.setBorder(new EmptyBorder(0, 10, 0, 0));
+        detail.add(detailHeader, BorderLayout.NORTH);
+        detail.add(detailScroll, BorderLayout.CENTER);
+
+        JPanel body = new JPanel(new BorderLayout());
+        body.setOpaque(false);
+        body.add(navColumn, BorderLayout.WEST);
+        body.add(detail, BorderLayout.CENTER);
+        // Same centred alignment as the scope legend: BoxLayout only hands a child the full
+        // width when every child of the column shares one alignment line.
+        body.setAlignmentX(Component.CENTER_ALIGNMENT);
+        body.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+
+        selectFirstPage(tree);
+        return body;
+    }
+
+    /** Category tree: three groups, each holding the pages a user opens by name. */
+    private DefaultMutableTreeNode buildNavModel() {
+        DefaultMutableTreeNode root = new DefaultMutableTreeNode();
+        root.add(category("LBL_NavCoreService",
+                page("LBL_ServiceHeader", "service"),
+                page("LBL_BehaviorHeader", "behavior"),
+                page("LBL_AppearanceHeader", "appearance")));
+        root.add(category("LBL_NavSystem",
+                page("LBL_GeneralHeader", "general"),
+                page("LBL_ExperimentalHeader", "experimental"),
+                page("LBL_LimitsHeader", "limits")));
+        root.add(category("LBL_NavExtensions",
+                page("LBL_FeaturesHeader", "extensions"),
+                page("LBL_ContextActionsHeader", "contextActions")));
+        return root;
+    }
+
+    private static DefaultMutableTreeNode category(String labelKey, DefaultMutableTreeNode... pages) {
+        DefaultMutableTreeNode node = new DefaultMutableTreeNode(
+                new NavNode(NbBundle.getMessage(UIBundle.class, labelKey), null));
+        for (DefaultMutableTreeNode page : pages) {
+            node.add(page);
+        }
+        return node;
+    }
+
+    private static DefaultMutableTreeNode page(String labelKey, String cardKey) {
+        return new DefaultMutableTreeNode(
+                new NavNode(NbBundle.getMessage(UIBundle.class, labelKey), cardKey));
+    }
+
+    /** Registers one page with the card layout; the section keeps its own height. */
+    private void addCard(String cardKey, JPanel section) {
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setOpaque(false);
+        wrapper.add(section, BorderLayout.NORTH);
+        detailCards.add(wrapper, cardKey);
+    }
+
+    /** Shows the page and names it in the header above the detail pane. */
+    private void showPage(NavNode nav) {
+        detailHeader.setText(NbBundle.getMessage(UIBundle.class, "LBL_SettingsHeader", nav.label()));
+        ((CardLayout) detailCards.getLayout()).show(detailCards, nav.cardKey());
+        detailCards.revalidate();
+        if (detailScroll != null) {
+            detailScroll.getVerticalScrollBar().setValue(0);
+        }
+    }
+
+    /** Selects the first page so the detail pane is never blank. */
+    private static void selectFirstPage(JTree tree) {
+        for (int row = 0; row < tree.getRowCount(); row++) {
+            Object last = tree.getPathForRow(row).getLastPathComponent();
+            if (last instanceof DefaultMutableTreeNode node
+                    && node.getUserObject() instanceof NavNode nav && nav.cardKey() != null) {
+                tree.setSelectionRow(row);
+                return;
+            }
+        }
+    }
+
+    /** One tree entry: a category when {@code cardKey} is null, otherwise a settings page. */
+    private record NavNode(String label, String cardKey) {
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
+
+    /** Card holder that tracks the viewport width, so the detail pane never scrolls sideways. */
+    private static final class ScrollableCards extends JPanel implements Scrollable {
+        ScrollableCards() {
+            super(new CardLayout());
+        }
+
+        @Override
+        public Dimension getPreferredScrollableViewportSize() {
+            return getPreferredSize();
+        }
+
+        @Override
+        public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return 16;
+        }
+
+        @Override
+        public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return 16 * 4;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+            return true;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportHeight() {
+            return false;
+        }
+    }
+
+    /** Category rows are bold; page rows are plain. Neither carries an icon. */
+    private static final class NavRenderer extends DefaultTreeCellRenderer {
+        NavRenderer() {
+            setLeafIcon(null);
+            setOpenIcon(null);
+            setClosedIcon(null);
+        }
+
+        @Override
+        public Component getTreeCellRendererComponent(JTree tree, Object value, boolean selected,
+                boolean expanded, boolean leaf, int row, boolean hasFocus) {
+            super.getTreeCellRendererComponent(tree, value, selected, expanded, leaf, row, hasFocus);
+            if (value instanceof DefaultMutableTreeNode node
+                    && node.getUserObject() instanceof NavNode nav) {
+                setText(nav.label());
+                setFont(navFont(tree, nav.cardKey() == null));
+            }
+            return this;
+        }
+
+        private static Font navFont(JTree tree, boolean bold) {
+            Font base = UIManager.getFont("Tree.font");
+            if (base == null) {
+                base = tree.getFont();
+            }
+            return base.deriveFont(bold ? Font.BOLD : Font.PLAIN);
+        }
     }
 
     private JPanel createSectionPanel(String headerKey) {
@@ -807,6 +1189,15 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
 
         int currentChatFont = PluginSettings.getChatFontSize();
         chatFontCombo.setSelectedItem(currentChatFont < 0 ? "Inherited" : String.valueOf(currentChatFont));
+        selectColor(userBubbleLightCombo, PluginSettings.getUserBubbleBackgroundLight(),
+                ColorTheme.configuredBubbleColor(true, false));
+        selectColor(userBubbleDarkCombo, PluginSettings.getUserBubbleBackgroundDark(),
+                ColorTheme.configuredBubbleColor(true, true));
+        selectColor(assistantBubbleLightCombo, PluginSettings.getAssistantBubbleBackgroundLight(),
+                ColorTheme.configuredBubbleColor(false, false));
+        selectColor(assistantBubbleDarkCombo, PluginSettings.getAssistantBubbleBackgroundDark(),
+                ColorTheme.configuredBubbleColor(false, true));
+        applyFontFamily(PluginSettings.getChatFontFamily());
 
         sortLinesCheckbox.setSelected(PluginSettings.isSortLinesEnabled());
         compactJsonCheckbox.setSelected(PluginSettings.isCompactJsonEnabled());
@@ -818,7 +1209,6 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         copyAllItemsCheckbox.setSelected(PluginSettings.isCopyAllItemsEnabled());
         miniAssistantCheckbox.setSelected(PluginSettings.isMiniAssistantEnabled());
         taskRepositoryCheckbox.setSelected(PluginSettings.isTaskRepositoryEnabled());
-        updateContextActionsSummary();
         fsPolicyCombo.setSelectedItem(PluginSettings.getAcpFsPolicy());
         updateFsPolicyTooltip();
         runCommandAllowlist = PluginSettings.getRunCommandAllowlist();
@@ -826,6 +1216,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         updateRunCommandTooltip();
         projectSwitchRestartCheckbox.setSelected(PluginSettings.isProjectSwitchRestartConfigured());
         markdownProjectCheckbox.setSelected(PluginSettings.isMarkdownProjectEnabled());
+        diffIdeFontCheckbox.setSelected(PluginSettings.isDiffIdeFontEnabled());
         mcpServerCheckbox.setSelected(PluginSettings.isMcpServerEnabled());
         mcpPortSpinner.setValue(PluginSettings.getMcpServerPort());
         useWslCheckbox.setSelected(PluginSettings.isUseWsl());
@@ -911,47 +1302,6 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
                 + "\nAllowed: " + (runCommandAllowlist.isBlank() ? "(any)" : runCommandAllowlist)
                 + "\nDenied: " + (runCommandDenylist.isBlank() ? "(none)" : runCommandDenylist);
         runCommandPolicyButton.setToolTipText(wrapTooltip(summary));
-    }
-
-    /** Opens the editor-context action toggles; values apply when Options is applied. */
-    private void editContextActions() {
-        List<ContextActionsDialog.Toggle> toggles = contextActionToggles();
-        ContextActionsDialog.show(this, toggles).ifPresent(selected -> {
-            for (int i = 0; i < toggles.size(); i++) {
-                toggles.get(i).setter().accept(selected[i]);
-            }
-            updateContextActionsSummary();
-            controller.changed();
-        });
-    }
-
-    /** The editor-context toggles edited in the Configure dialog. */
-    private List<ContextActionsDialog.Toggle> contextActionToggles() {
-        return List.of(
-                toggle("LBL_ActionSortLines", "TT_SortLines", sortLinesCheckbox),
-                toggle("LBL_ActionCompactJson", "TT_CompactJson", compactJsonCheckbox),
-                toggle("LBL_ActionSearchWeb", "TT_SearchWeb", searchWebCheckbox),
-                toggle("LBL_ActionShowAnnotations", "TT_ShowAnnotations", showAnnotationsCheckbox),
-                toggle("LBL_ActionViewFileHistory", "TT_ViewFileHistory", viewFileHistoryCheckbox),
-                toggle("LBL_ActionStashDiff", "TT_StashDiff", stashDiffCheckbox),
-                toggle("LBL_ActionQuickJump", "TT_QuickJump", quickJumpCheckbox),
-                toggle("LBL_ActionCopyAllItems", "TT_CopyAllItems", copyAllItemsCheckbox));
-    }
-
-    private static ContextActionsDialog.Toggle toggle(String labelKey, String tooltipKey, JCheckBox box) {
-        return new ContextActionsDialog.Toggle(
-                NbBundle.getMessage(UIBundle.class, labelKey),
-                tooltip(tooltipKey),
-                box::isSelected,
-                box::setSelected);
-    }
-
-    /** Refreshes "N of M enabled" from the current toggle states. */
-    private void updateContextActionsSummary() {
-        List<ContextActionsDialog.Toggle> toggles = contextActionToggles();
-        long enabled = toggles.stream().filter(t -> t.selected().getAsBoolean()).count();
-        contextActionsSummary.setText(NbBundle.getMessage(UIBundle.class, "LBL_ContextActions",
-                enabled, toggles.size()));
     }
 
     /** Short label for one file-access policy option. */
@@ -1076,36 +1426,6 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private String getExecutablePath() {
         Object item = pathCombo.getSelectedItem();
         return item != null ? item.toString().trim() : "";
-    }
-
-    /**
-     * Horizontal offset from a checkbox's left edge to the first character of its text.
-     * Some LAFs leave {@link AbstractButton#getIcon()} null and paint the glyph
-     * from {@code CheckBox.icon}, so both sources are consulted before falling back to the
-     * component insets alone.
-     */
-    static int checkboxTextInset(AbstractButton button) {
-        Icon icon = button.getIcon();
-        if (icon == null && UIManager.get("CheckBox.icon") instanceof Icon lafIcon) {
-            icon = lafIcon;
-        }
-        return button.getInsets().left
-                + (icon != null ? icon.getIconWidth() : 0)
-                + button.getIconTextGap();
-    }
-
-    /**
-     * Splits a hint into the two lines it is rendered on: at its sentence break when it has
-     * one, otherwise at the space nearest the middle. One line is returned when the text
-     * has no usable break.
-     */
-    static List<String> splitHint(String text) {
-        int sentence = text.indexOf(". ");
-        int cut = sentence >= 0 ? sentence + 1 : text.indexOf(' ', text.length() / 2);
-        if (cut <= 0 || cut >= text.length() - 1) {
-            return List.of(text);
-        }
-        return List.of(text.substring(0, cut).trim(), text.substring(cut).trim());
     }
 
     /**
@@ -1324,6 +1644,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         PluginSettings.setRunCommandDenylist(runCommandDenylist);
         PluginSettings.setProjectSwitchRestartEnabled(projectSwitchRestartCheckbox.isSelected());
         PluginSettings.setMarkdownProjectEnabled(markdownProjectCheckbox.isSelected());
+        PluginSettings.setDiffIdeFontEnabled(diffIdeFontCheckbox.isSelected());
         PluginSettings.setMcpServerEnabled(mcpServerCheckbox.isSelected());
         PluginSettings.setMcpServerPort((Integer) mcpPortSpinner.getValue());
         PluginSettings.setUseWsl(useWslCheckbox.isSelected());
@@ -1331,9 +1652,15 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         String newIconPath = iconPathField.getText();
         String oldPath = previousIconPath != null ? previousIconPath : "";
         String newPath = newIconPath != null ? newIconPath : "";
-        if (!oldPath.equals(newPath)) {
+        boolean iconChanged = !oldPath.equals(newPath);
+        if (iconChanged) {
             LOG.info("User icon changed: {0} -> {1}", oldPath, newPath);
             previousIconPath = newPath;
+        }
+        boolean appearanceChanged = writeAppearanceSettings();
+        if (iconChanged || appearanceChanged) {
+            // Both re-render the thread: a new avatar, bubble colour or font only shows on a
+            // fresh load, so reload the current session once.
             SwingUtilities.invokeLater(() -> {
                 SessionControl sm = sessionService.get();
                 String currentId = sm.getCurrentSessionId();

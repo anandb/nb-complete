@@ -7,18 +7,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.Rectangle;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
+import javax.swing.border.TitledBorder;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import github.anandb.netbeans.ui.UiTestSupport;
 
 /**
- * Guards the Assistant Service row rhythm: the binary, arguments and harness rows are
+ * Guards the Assistant row rhythm: the binary, arguments and harness rows are
  * separated by one gap, so no row runs closer to its neighbour than the rest of the
  * section does.
  */
@@ -55,22 +58,33 @@ class ACPOptionsPanelSpacingTest {
         ACPOptionsPanel panel = new ACPOptionsPanel(new ACPOptionsPanelController());
         panel.load();
         Component preview = field(panel, "iconPreviewLabel");
-        // The width follows the height the grid gives the preview, so let that deferred
-        // adjustment land before measuring.
+        Component box = field(panel, "iconPreviewBox");
+        Container appearance = box.getParent().getParent();
+        // The width follows the height the box gives the preview, so let that deferred
+        // adjustment land before measuring; the section's two columns size the box.
         for (int i = 0; i < 4; i++) {
-            layout(preview.getParent());
+            layout(appearance);
             SwingUtilities.invokeAndWait(() -> { });
             if (preview.getWidth() == preview.getHeight()) {
                 break;
             }
         }
-        layout(preview.getParent());
+        layout(appearance);
 
         assertEquals(preview.getWidth(), preview.getHeight(), "the preview area must be square");
         assertTrue(preview.getWidth() >= 80, "the preview needs room, was " + preview.getWidth());
+        JPanel previewBox = (JPanel) box;
+        int titleWidth = ((TitledBorder) previewBox.getBorder()).getMinimumSize(previewBox).width;
+        assertTrue(previewBox.getPreferredSize().width >= titleWidth,
+                "the box must be wide enough for the whole title, was "
+                        + previewBox.getPreferredSize().width + " vs " + titleWidth);
+        Rectangle boxBounds = SwingUtilities.convertRectangle(
+                box.getParent(), box.getBounds(), appearance);
         for (String name : new String[]{"toolbarIconCombo", "chatFontCombo"}) {
             Component control = field(panel, name);
-            assertTrue(control.getX() + control.getWidth() <= preview.getX(),
+            Rectangle bounds = SwingUtilities.convertRectangle(
+                    control.getParent(), control.getBounds(), appearance);
+            assertTrue(bounds.x + bounds.width <= boxBounds.x,
                     name + " must not reach into the preview column");
         }
         List<Component> rightColumn = List.of(field(panel, "iconBrowseButton"),
@@ -90,11 +104,26 @@ class ACPOptionsPanelSpacingTest {
                 "the Browse button must not share the path field's cell");
     }
 
-    /** Sizes a section to its preferred height and lays it out. */
+    /** Sizes a section to its preferred height, lays it out, and lays out its nested containers. */
     private static void layout(Container section) {
         Dimension preferred = section.getPreferredSize();
         section.setSize(preferred.width, preferred.height);
         section.doLayout();
+        for (Component child : section.getComponents()) {
+            if (child instanceof Container nested) {
+                layoutChildren(nested);
+            }
+        }
+    }
+
+    /** Lays out a container within the bounds its parent assigned, all the way down. */
+    private static void layoutChildren(Container container) {
+        container.doLayout();
+        for (Component child : container.getComponents()) {
+            if (child instanceof Container nested) {
+                layoutChildren(nested);
+            }
+        }
     }
 
     /** Lays out the section and returns the gaps between the consecutive rows. */

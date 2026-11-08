@@ -7,13 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.Component;
 import java.awt.Container;
-import java.awt.Dimension;
 import java.lang.reflect.Field;
 
-import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
-import javax.swing.JPanel;
 
 import org.junit.jupiter.api.Test;
 import org.openide.util.NbBundle;
@@ -111,52 +108,6 @@ class ACPOptionsPanelTooltipTest {
         assertEquals(Component.CENTER_ALIGNMENT,
                 findLabel(panel, NbBundle.getMessage(UIBundle.class, "SCOPE_Legend")).getAlignmentX(),
                 "the legend must be centred, not lost among the left-aligned rows");
-    }
-
-    @Test
-    void switchHintStartsWithTheCheckboxLabelText() throws Exception {
-        UiTestSupport.assumeGraphicsStack();
-
-        ACPOptionsPanel panel = new ACPOptionsPanel(new ACPOptionsPanelController());
-        JCheckBox check = (JCheckBox) field(panel, "projectSwitchRestartCheckbox");
-        Container system = check.getParent();
-        JPanel hint = (JPanel) field(panel, "projectSwitchHint");
-        assertEquals(2, hint.getComponentCount(), "the restart explanation must read on two lines");
-
-        Dimension preferred = system.getPreferredSize();
-        system.setSize(preferred.width, preferred.height);
-        system.doLayout();
-
-        int textX = check.getX() + ACPOptionsPanel.checkboxTextInset(check);
-        assertTrue(ACPOptionsPanel.checkboxTextInset(check) > check.getInsets().left,
-                "the LAF glyph must be counted even when the component icon is null");
-        assertEquals(textX, hint.getX(), 1,
-                "the hint must line up with the checkbox text, not the check glyph");
-        assertTrue(hint.getY() - (check.getY() + check.getHeight()) <= 2,
-                "the hint must sit directly under the checkbox, gap was "
-                        + (hint.getY() - (check.getY() + check.getHeight())) + "px");
-
-        JButton whitelist = (JButton) field(panel, "runCommandPolicyButton");
-        assertEquals(hint.getY() + 4, whitelist.getY(),
-                "the two-line hint must not push the whitelist button down");
-    }
-
-    @Test
-    void systemCheckboxRowsAreEvenlySpaced() throws Exception {
-        UiTestSupport.assumeGraphicsStack();
-
-        ACPOptionsPanel panel = new ACPOptionsPanel(new ACPOptionsPanelController());
-        JCheckBox first = (JCheckBox) field(panel, "checkForUpdatesCheckbox");
-        JCheckBox second = (JCheckBox) field(panel, "mcpServerCheckbox");
-        JCheckBox third = (JCheckBox) field(panel, "projectSwitchRestartCheckbox");
-
-        Container system = first.getParent();
-        Dimension preferred = system.getPreferredSize();
-        system.setSize(preferred.width, preferred.height);
-        system.doLayout();
-
-        assertEquals(second.getY() - first.getY(), third.getY() - second.getY(), 1,
-                "the third checkbox must not inherit the taller grid row above it");
     }
 
     private static Object field(Object owner, String name) throws Exception {

@@ -6,86 +6,116 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-Customise the plugin behavior by navigating to `Tools > Options > BeanBot`. Here, you can configure the path to the Harness, add process arguments, set a global system Preamble for all sessions, and toggle **Local Echo** for instant message rendering. You can also adjust UI preferences like toolbar icon size, chat font size, enable or disable specific features (like Stash Diff or Jump to file), and set a custom user avatar.
+Customise the plugin behavior by navigating to `Tools > Options > BeanBot`. The panel is split in two: the **Categories** tree on the left picks a page, and that page opens on the right under its own **Settings:** heading. Three categories group the pages — **Core Service** holds *Assistant*, *Chat Behavior* and *Appearance*, **System** holds *General*, *Experimental* and *Session Limits*, and **IDE Extensions** holds *Features* and *Context Actions*. Selecting a category expands it; selecting a page shows it.
 
-Additionally, the plugin includes a background **Update Checker Service** that automatically queries for new releases (with randomised intervals between 16 and 24 hours). You can toggle the update checks under `Tools > Options > BeanBot > Check for updates`. When an update is found, you will be prompted with a dialog to download the update immediately, get reminded later, or skip the version entirely.
-
-This page describes every preference in the panel, organised into six sections.
+Additionally, the plugin includes a background **Update Checker Service** that automatically queries for new releases (with randomised intervals between 16 and 24 hours). You can toggle the update checks under `Tools > Options > BeanBot > System > General > Check for Updates`. When an update is found, you will be prompted with a dialog to download the update immediately, get reminded later, or skip the version entirely.
 
 A one-character marker next to an option name tells you when its value takes effect, and a legend line at the top of the panel repeats the key. **¹** means the running IDE only reads that value while it starts, so the change applies after you restart NetBeans — a bar at the top of the panel lists what is still waiting, and your sessions are restored automatically after the restart. **³** means the change applies to sessions you create from then on; sessions already open keep the value they started with. **²** means the current chat keeps the old setting until its history is reloaded. Options without a marker take effect as soon as you click **Apply** or **OK**.
 
-##### 1. Assistant Service
+This page describes every preference, grouped by the page that holds it.
+
+##### Core Service › Assistant
 
 <table class="ug-table">
 <thead><tr><th>Preference</th><th>Default</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td><strong>Path to Agent Server Binary</strong></td><td>Empty</td><td>The full path to the harness executable. If left blank, nothing runs until you pick a harness through the [[Onboarding]] screen. Use <strong>Browse...</strong> to pick a binary. Invalid paths show a validation error (e.g. <em>File not found</em>, <em>File is not executable</em>).</td></tr>
-<tr><td><strong>Process Arguments</strong></td><td><code>acp</code> (harness-specific)</td><td>Extra command-line arguments passed when launching the server process. The chooser fills this from the harness catalog — most agents use <code>acp</code>; [[Gemini Agent]] uses <code>--acp --model gemini-3.8-flash</code> and [[Copilot Agent]] uses <code>--acp</code>. Change <code>--model</code> here if you want a different Gemini model. When Gemini is selected, a reminder appears under this field.</td></tr>
+<tr><td><strong>Path to Agent Server Binary</strong></td><td>Empty</td><td>The full path to the harness executable. If left blank, nothing runs until you pick a harness through the [[Onboarding]] screen. Use <strong>Browse...</strong> to pick a binary. Invalid paths show a validation error (e.g. <em>File not found</em>, <em>File is not executable</em>). Marked <em>¹</em>.</td></tr>
+<tr><td><strong>Process Arguments</strong></td><td><code>acp</code> (harness-specific)</td><td>Extra command-line arguments passed when launching the server process. The chooser fills this from the harness catalog — most agents use <code>acp</code>; [[Gemini Agent]] uses <code>--acp --model gemini-3.8-flash</code> and [[Copilot Agent]] uses <code>--acp</code>. Change <code>--model</code> here if you want a different Gemini model. When Gemini is selected, a reminder appears under this field. Marked <em>¹</em>.</td></tr>
 <tr><td><strong>Harness</strong></td><td>Auto-detect</td><td>The agent the configured executable launches. <strong>Auto-detect</strong> reads the binary's file name and names the detected agent inline. A container launcher cannot be detected, so when the path is <code>docker</code>, <code>podman</code>, <code>nerdctl</code> or <code>finch</code> the field asks you to choose the harness running inside the image — for example path <code>/usr/bin/docker</code>, arguments <code>run --rm -i &lt;image&gt; acp</code>, harness <em>Goose</em>. An explicit choice wins over detection and survives path changes; a conflicting binary name shows a one-click switch instead of replacing your choice. Marked <em>¹</em>.</td></tr>
-<tr><td><strong>Launch through WSL (Windows only)</strong></td><td>Off</td><td>When enabled, all Harness invocations (running the daemon and token-usage stats for supported agents) are wrapped through <strong>WSL</strong> using <code>wsl.exe</code>. The resolved Windows executable is automatically translated to its WSL mount path, so custom/WinGet/Choco-shim install locations resolve correctly. If the Harness is installed as a native Linux binary inside WSL (no Windows executable found), it is invoked directly on the WSL PATH.</td></tr>
+<tr><td><strong>Launch through WSL (Windows only)</strong></td><td>Off</td><td>When enabled, all Harness invocations (running the daemon and token-usage stats for supported agents) are wrapped through <strong>WSL</strong> using <code>wsl.exe</code>. The resolved Windows executable is automatically translated to its WSL mount path, so custom/WinGet/Choco-shim install locations resolve correctly. If the Harness is installed as a native Linux binary inside WSL (no Windows executable found), it is invoked directly on the WSL PATH. Marked <em>¹</em>.</td></tr>
 <tr><td><strong>Browse...</strong></td><td>—</td><td>Opens a file chooser to select the executable.</td></tr>
 </tbody>
 </table>
 
-##### 2. Updates
-
-<table class="ug-table">
-<thead><tr><th>Preference</th><th>Default</th><th>Description</th></tr></thead>
-<tbody>
-<tr><td><strong>Check for Updates</strong></td><td>On</td><td>Enables the background <strong>Update Checker Service</strong>, which queries for new releases at randomised intervals between 16 and 24 hours. When an update is found you can download it immediately, get reminded later, or skip that version. A check can also be run on demand from the toolbar's help menu (<strong>Check for Updates</strong>).</td></tr>
-</tbody>
-</table>
-
-##### 3. Chat Behavior
+##### Core Service › Chat Behavior
 
 <table class="ug-table">
 <thead><tr><th>Preference</th><th>Default</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td><strong>Echo user input immediately (Local Echo)</strong></td><td>On</td><td>Renders your message instantly in the chat while the server is processing, instead of waiting for the first response.</td></tr>
-<tr><td><strong>Session Idle Timeout (seconds)</strong></td><td>600</td><td>How long (0–3600, step 5) a request may sit idle — with no data arriving from the server — before it is failed. This is an <em>idle</em> timeout, not an absolute deadline, so long-running responses that keep streaming are never cut off.</td></tr>
-<tr><td><strong>Combine tool and thought bubbles into a single accordion</strong></td><td>On</td><td>Groups tool outputs and reasoning into one expandable header instead of separate bubbles. Takes effect after the session is reloaded. Marked <em>²</em>.</td></tr>
-<tr><td><strong>Auto-backup uncommitted changes on turn start (git/hg) (Experimental)</strong></td><td>On</td><td>Stashes uncommitted changes in git/hg repositories before each turn, so the AI can be rolled back safely.</td></tr>
-<tr><td><strong>Max Displayed Messages</strong></td><td>100</td><td>The maximum number of visible bubbles (10–200, step 5) kept in the chat panel before older ones are trimmed from the view to conserve memory. The full history remains on the server and can be reloaded.</td></tr>
+<tr><td><strong>Combine tool and thought bubbles into a single accordion</strong></td><td>On</td><td>Groups tool outputs and reasoning into one expandable header instead of separate bubbles. Marked <em>²</em>.</td></tr>
+<tr><td><strong>Enable Session Preamble</strong></td><td>On</td><td>Controls the startup prompt sent as the first user message for new chats: the bundled critical rules, any WSL guidance, and the session preamble. When disabled, no startup prompt is sent at all, and the pencil button next to it is disabled. Marked <em>³</em>.</td></tr>
+<tr><td><strong>Edit Preamble (pencil button)</strong></td><td>—</td><td>Opens the preamble editor. The session preamble is sent as part of the first user message for new chats. Use <code>---</code> on its own line as a message separator. Right-click the text area to <strong>Clear</strong> it or <strong>Reset to default</strong>.</td></tr>
 </tbody>
 </table>
 
-##### 4. Actions
-
-<table class="ug-table">
-<thead><tr><th>Preference</th><th>Default</th><th>Description</th></tr></thead>
-<tbody>
-<tr><td><strong>Enable Sort Lines editor context menu actions</strong></td><td>On</td><td>Adds the <strong>Sort Lines Ascending</strong> and <strong>Sort Lines Descending</strong> items to the editor's right-click context menu.</td></tr>
-<tr><td><strong>Enable Minify JSON editor context menu action</strong></td><td>On</td><td>Adds the <strong>Minify JSON</strong> item to the editor's right-click context menu for stripping formatting whitespace from JSON.</td></tr>
-<tr><td><strong>Enable Search Web editor context menu action</strong></td><td>On</td><td>Adds the <strong>Search Web</strong> item to the editor's right-click context menu for searching the selected text (or the word under the cursor) on Google.</td></tr>
-<tr><td><strong>Enable Toggle Annotations editor context menu action</strong></td><td>On</td><td>Adds the <strong>Toggle Annotations</strong> item to the editor's right-click context menu for toggling the versioning system's blame annotations.</td></tr>
-<tr><td><strong>Enable View File History editor context menu action</strong></td><td>On</td><td>Adds the <strong>View File History</strong> item to the editor's right-click context menu for opening the versioning system's history view, plus git/Mercurial versioning window enhancements: a Refresh button and a Copy Message item on commit rows in the Show History window, and a Locate in System item in the Show Changes context menu. Requires an IDE restart to apply.</td></tr>
-<tr><td><strong>Enable Stash Diff toolbar button and action</strong></td><td>On</td><td>Enables the <strong>Stash Diff</strong> toolbar button and the <code>Ctrl + Shift + L</code> action for viewing git stash diffs.</td></tr>
-<tr><td><strong>Enable Jump to file dialog</strong></td><td>On</td><td>Enables the <strong>Jump to File</strong> dialog (a shortcut, e.g. <code>Ctrl + Alt + J</code>, is shown next to the label when one is available).</td></tr>
-<tr><td><strong>Enable Copy All in Action Items</strong></td><td>On</td><td>Adds a copy button to NetBeans' Action Items toolbar that copies every task in the active scope and filters — including tasks hidden inside collapsed groups — as a plain-text list, with file and location details when available.</td></tr>
-<tr><td><strong>Enable Mini Assistant</strong></td><td>On</td><td>Decides where <strong>Send to Assistant</strong> / <strong>Ask Assistant</strong> actions open: the floating mini dialog (enabled) or the main sidebar (disabled).</td></tr>
-<tr><td><strong>Enable Task Repository</strong></td><td>On</td><td>Enables the todo.txt task management feature. When disabled, no task repositories are loaded, the Tasks Dashboard is hidden, and AI task tools (e.g. <code>add&#95;task</code>) are unavailable.</td></tr>
-<tr><td><strong>Enable ACP server restart on project switch (Experimental)</strong></td><td>Off</td><td>Binds the ACP server's working directory to the project of the session being opened, restarting the server when that project changes. The setting wins for every harness, including goose. Off by default while the feature stabilises; the panel shows a note that a project switch restarts the server and ends every session it is serving. When disabled, the server keeps the directory it was started with and only a manual restart or an IDE restart rebinds it — except that goose moves the loaded session's working directory in place, so that session opens in its own project without a restart. Marked <em>¹</em>.</td></tr>
-</tbody>
-</table>
-
-##### 5. Appearance
+##### Core Service › Appearance
 
 <table class="ug-table">
 <thead><tr><th>Preference</th><th>Default</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td><strong>Custom User Icon (PNG)</strong></td><td>(empty)</td><td>Path to a PNG used as your avatar in chat. Click <strong>Browse...</strong> to pick one, or right-click the preview to clear it. Changing it reloads the session.</td></tr>
 <tr><td><strong>Toolbar Icon Size</strong></td><td>24</td><td>Icon size for the assistant toolbar: 16, 24, 28, 32, or 48. Marked <em>¹</em>.</td></tr>
-<tr><td><strong>Chat Font Size</strong></td><td>Inherited</td><td>Font size for chat text: Inherited (uses the theme), or 10, 11, 12, 13, 14, 16. Existing chats keep their current size until the session is reloaded. Marked <em>²</em>.</td></tr>
+<tr><td><strong>Chat Font Size</strong></td><td>Inherited</td><td>Font size for chat text: Inherited (uses the theme), or 10, 11, 12, 13, 14, 16, 18, 20, 22, 24. Existing chats keep their current size until the session is reloaded. Marked <em>²</em>.</td></tr>
+<tr><td><strong>User bubble background (light / dark)</strong></td><td>(theme)</td><td>Two colour pickers, one per theme, showing the background used for your own messages. Each is NetBeans' own colour combo: its first entry, <strong>Default</strong>, uses the colour <code>colors.json</code> configures for that theme (and stores no override), while <strong>Custom…</strong> opens the colour chooser. A <code>-J-Dbeanbot.color.bubbleUserBackground</code> (or <code>...Dark</code>) launch option still wins. Marked <em>²</em>.</td></tr>
+<tr><td><strong>Assistant bubble background (light / dark)</strong></td><td>(theme)</td><td>The same two colour pickers for the assistant's messages, with the <code>-J-Dbeanbot.color.bubbleAssistant</code> (or <code>...Dark</code>) launch option taking priority. Marked <em>²</em>.</td></tr>
+<tr><td><strong>Chat font family</strong></td><td>Inherited</td><td>Picker of the installed font families for all chat text, with <strong>Inherited</strong> first (the NetBeans look-and-feel font). A family stored earlier stays selectable even if it is no longer installed; a <code>-J-Dbeanbot.font.family</code> launch option still wins. Marked <em>²</em>.</td></tr>
 </tbody>
 </table>
 
-##### 6. Session Preamble
+##### System › General
 
 <table class="ug-table">
 <thead><tr><th>Preference</th><th>Default</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td><strong>Enable Session Preamble</strong></td><td>On</td><td>Controls the startup prompt sent as the first user message for new chats: the bundled critical rules, any WSL guidance, and the session preamble. When disabled, no startup prompt is sent at all. When unchecked, the pencil button next to it is disabled. Marked <em>³</em>.</td></tr>
-<tr><td><strong>Pencil button</strong></td><td>—</td><td>Opens the preamble editor. The session preamble is sent as part of the first user message for new chats. Use <code>---</code> on its own line as a message separator. Right-click the text area to <strong>Clear</strong> it or <strong>Reset to default</strong>.</td></tr>
+<tr><td><strong>Check for Updates</strong></td><td>On</td><td>Enables the background <strong>Update Checker Service</strong>, which queries for new releases at randomised intervals between 16 and 24 hours. When an update is found you can download it immediately, get reminded later, or skip that version. A check can also be run on demand from the toolbar's help menu (<strong>Check for Updates</strong>).</td></tr>
+<tr><td><strong>Editor Line Height Correction</strong></td><td>1.0</td><td>Multiplier applied to the editor's line height (0.5–3.0, step 0.1). Values above 1 increase the spacing between lines; the value is stored in the editor's own preferences, so it applies to every editor, not only the chat.</td></tr>
+<tr><td><strong>Enable Internal MCP Server</strong></td><td>On</td><td>Offers the agent the plugin's IDE tool set (open-file context, editor search, file tools, git/hg, tasks) over an internal MCP server. Marked <em>¹</em>.</td></tr>
+<tr><td><strong>Internal MCP Server Port</strong></td><td>0</td><td>Fixed port for the internal MCP server. <code>0</code> lets the IDE pick a free port, which is the recommended setting; a fixed port is only useful when something outside the IDE must reach the server. Marked <em>¹</em>.</td></tr>
+<tr><td><strong>ACP file access</strong></td><td>Allow (project only)</td><td>The policy for the agent's own <code>fs/read&#95;text&#95;file</code> and <code>fs/write&#95;text&#95;file</code> calls: <strong>Allow (project only)</strong> permits reads and writes inside the session's project, <strong>Read external, write project</strong> permits reads anywhere but keeps writes inside the project, and <strong>Read-only</strong> permits project reads and rejects writes. Credential files are always refused, and writes inside <code>.git</code>, <code>.hg</code> and <code>.mvn</code> are always rejected. The policy governs the ACP file tools only — the agent's own shell access is not sandboxed.</td></tr>
+<tr><td><strong>Command Whitelist</strong></td><td>(empty)</td><td>Opens a dialog with <strong>Denied</strong> and <strong>Allowed</strong> lists for the <code>run&#95;command</code> MCP tool, one executable name or glob per line (<code>*</code> and <code>?</code> supported; matching is by executable name, so <code>./mvnw</code> matches <code>mvnw</code>). Denied always wins, and a denied <code>*</code> denies everything. When either list is set, shell operators (<code>; | &amp; &gt; &lt;</code>, <code>$(…)</code>), environment assignments and command chaining are rejected, so an allowed binary cannot smuggle in another. Both lists empty leaves the command string unrestricted. The button's tooltip summarises the current lists.</td></tr>
+</tbody>
+</table>
+
+##### System › Experimental
+
+The unfinished features live on their own page rather than in the General settings.
+
+<table class="ug-table">
+<thead><tr><th>Preference</th><th>Default</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><strong>Enable ACP server restart on project switch (Experimental)</strong></td><td>Off</td><td>Binds the ACP server's working directory to the project of the session being opened, restarting the server when that project changes. The setting wins for every harness, including goose. Off by default while the feature stabilises. Its tooltip carries the full explanation: a project switch restarts the server and ends every session it is serving, while when disabled the server keeps the directory it was started with and only a manual restart or an IDE restart rebinds it — except that goose moves the loaded session's working directory in place, so that session opens in its own project without a restart. Marked <em>¹</em>.</td></tr>
+<tr><td><strong>Auto-backup uncommitted changes on turn start (git/hg) (Experimental)</strong></td><td>On</td><td>Stashes uncommitted changes in git/hg repositories before each turn, so the AI can be rolled back safely. See [[Auto-Backup on Turn Start]].</td></tr>
+</tbody>
+</table>
+
+##### System › Session Limits
+
+<table class="ug-table">
+<thead><tr><th>Preference</th><th>Default</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><strong>Session Idle Timeout (seconds)</strong></td><td>600</td><td>How long (0–3600, step 5) a request may sit idle — with no data arriving from the server — before it is failed. This is an <em>idle</em> timeout, not an absolute deadline, so long-running responses that keep streaming are never cut off.</td></tr>
+<tr><td><strong>Max Displayed Messages</strong></td><td>100</td><td>The maximum number of visible bubbles (10–200, step 5) kept in the chat panel before older ones are trimmed from the view to conserve memory. The full history remains on the server and can be reloaded.</td></tr>
+</tbody>
+</table>
+
+##### IDE Extensions › Features
+
+<table class="ug-table">
+<thead><tr><th>Preference</th><th>Default</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><strong>Enable Markdown Project Type</strong></td><td>On</td><td>Registers the Markdown project type, so a folder of Markdown files can be opened as a project with its own toolbar and actions. See [[Markdown Project Type]].</td></tr>
+<tr><td><strong>Enable Task Repository</strong></td><td>On</td><td>Enables the todo.txt task management feature. When disabled, no task repositories are loaded, the Tasks Dashboard is hidden, and AI task tools (e.g. <code>add&#95;task</code>) are unavailable.</td></tr>
+<tr><td><strong>Enable Mini Assistant</strong></td><td>On</td><td>Decides where <strong>Send to Assistant</strong> / <strong>Ask Assistant</strong> actions open: the floating mini dialog (enabled) or the main sidebar (disabled).</td></tr>
+<tr><td><strong>Use a smaller font size on diffs</strong></td><td>On</td><td>Applies the plugin's diff font — the editor font one point smaller, never below 9 pt — to NetBeans' own diff windows, such as Git &gt; Show Changes and Diff to Head; the plugin's stash and permission diffs already use it. Unticked, those windows keep the editor's default colouring font. Marked <em>¹</em>.</td></tr>
+</tbody>
+</table>
+
+##### IDE Extensions › Context Actions
+
+Each switch adds one item to the editor's right-click menu or toolbar; the change applies when you click **OK** or **Apply**.
+
+<table class="ug-table">
+<thead><tr><th>Preference</th><th>Default</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><strong>Sort Lines</strong></td><td>On</td><td>Adds the <strong>Sort Lines Ascending</strong> and <strong>Sort Lines Descending</strong> items to the editor's right-click context menu.</td></tr>
+<tr><td><strong>Minify JSON</strong></td><td>On</td><td>Adds the <strong>Minify JSON</strong> item to the editor's right-click context menu for stripping formatting whitespace from JSON.</td></tr>
+<tr><td><strong>Search Web</strong></td><td>On</td><td>Adds the <strong>Search Web</strong> item to the editor's right-click context menu for searching the selected text (or the word under the cursor) on Google.</td></tr>
+<tr><td><strong>Toggle Annotations</strong></td><td>On</td><td>Adds the <strong>Toggle Annotations</strong> item to the editor's right-click context menu for toggling the versioning system's blame annotations.</td></tr>
+<tr><td><strong>View File History</strong></td><td>On</td><td>Adds the <strong>View File History</strong> item to the editor's right-click context menu for opening the versioning system's history view, plus git/Mercurial versioning window enhancements: a Refresh button and a Copy Message item on commit rows in the Show History window, and a Locate in System item in the Show Changes context menu. Requires an IDE restart to apply.</td></tr>
+<tr><td><strong>Stash Diff</strong></td><td>On</td><td>Enables the <strong>Stash Diff</strong> toolbar button and the <code>Ctrl + Shift + L</code> action for viewing git stash diffs.</td></tr>
+<tr><td><strong>Jump to File</strong></td><td>On</td><td>Enables the <strong>Jump to File</strong> dialog (a shortcut, e.g. <code>Ctrl + Alt + J</code>, is shown next to the label when one is available).</td></tr>
+<tr><td><strong>Copy All in Action Items</strong></td><td>On</td><td>Adds a copy button to NetBeans' Action Items toolbar that copies every task in the active scope and filters, including tasks hidden inside collapsed groups, as a plain-text list, with file and location details when available.</td></tr>
 </tbody>
 </table>
 
@@ -101,8 +131,3 @@ A one-character marker next to an option name tells you when its value takes eff
 > [[Customising the Toolbar]]
 > [[Starting a Session]]
 > [[Gemini Agent]]
-
-
-
-
-

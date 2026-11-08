@@ -19,6 +19,7 @@ import org.openide.modules.OnStart;
 import org.openide.windows.TopComponent;
 
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.ui.rendering.IconResourceManager;
 
 /**
@@ -35,15 +36,13 @@ import github.anandb.netbeans.ui.rendering.IconResourceManager;
  * <p>It only styles text components whose ancestry includes an {@code org.netbeans.modules.diff}
  * class, so the Git window's file tree and labels keep their own font.</p>
  *
- * <p><b>Off unless asked.</b> Poking another module's component tree is best-effort, so the hook
- * does nothing unless {@value #ENABLE_PROPERTY} is set, e.g. add
- * {@code -J-Dbeanbot.diff.ideFont=true} to {@code netbeans.conf}.</p>
+ * <p><b>On by default, restart-scoped.</b> Poking another module's component tree is best-effort,
+ * so *Options &gt; BeanBot &gt; IDE Extensions &gt; Features &gt; Use a smaller font size on diffs*
+ * turns it off; the hook reads that setting once at startup, so a change applies after NetBeans
+ * restarts.</p>
  */
 @OnStart
 public final class IdeDiffFontHook implements Runnable {
-
-    /** System property that enables the hook; absent or {@code false} leaves diff windows alone. */
-    public static final String ENABLE_PROPERTY = "beanbot.diff.ideFont";
 
     private static final Logger LOG = Logger.from(IdeDiffFontHook.class);
 
@@ -92,9 +91,9 @@ public final class IdeDiffFontHook implements Runnable {
         });
     }
 
-    /** Package-visible for tests: the hook is a no-op unless the property is set. */
+    /** Package-visible for tests: the hook is a no-op while the setting is off. */
     static boolean isEnabled() {
-        return Boolean.getBoolean(ENABLE_PROPERTY);
+        return PluginSettings.isDiffIdeFontEnabled();
     }
 
     private static void applyTo(TopComponent tc) {

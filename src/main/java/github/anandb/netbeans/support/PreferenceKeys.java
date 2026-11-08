@@ -90,6 +90,16 @@ public final class PreferenceKeys {
     /** Whether the Markdown project type factory is enabled (enabled by default). */
     public static final String ACTIONS_MARKDOWN_PROJECT = "actions.markdownProject";
 
+    /** Whether the IDE's own diff windows take the plugin's smaller diff font (enabled by default). */
+    public static final String DIFF_IDE_FONT = "diff.ideFont";
+
+    /** Bubble colours and chat font family; empty means "use the theme / system property". */
+    public static final String USER_BUBBLE_LIGHT = "appearance.userBubbleLight";
+    public static final String USER_BUBBLE_DARK = "appearance.userBubbleDark";
+    public static final String ASSISTANT_BUBBLE_LIGHT = "appearance.assistantBubbleLight";
+    public static final String ASSISTANT_BUBBLE_DARK = "appearance.assistantBubbleDark";
+    public static final String CHAT_FONT_FAMILY = "appearance.chatFontFamily";
+
     /** Whether to show hidden sessions in the session list. */
     public static final String SHOW_HIDDEN_SESSIONS = "showHiddenSessions";
 

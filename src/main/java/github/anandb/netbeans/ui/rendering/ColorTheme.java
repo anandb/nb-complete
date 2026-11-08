@@ -3,6 +3,8 @@ package github.anandb.netbeans.ui.rendering;
 import java.awt.Color;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.swing.UIManager;
 
@@ -11,6 +13,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import github.anandb.netbeans.model.ColorKey;
 import github.anandb.netbeans.model.ColorRegistry;
 import github.anandb.netbeans.support.MapperSupplier;
+import github.anandb.netbeans.support.PluginSettings;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.ui.UIBundle;
 
@@ -36,14 +39,19 @@ public final class ColorTheme {
     private static volatile ColorTheme cachedTheme;
 
     static {
-        UIManager.addPropertyChangeListener(e -> {
-            cachedTheme = null;
-            CssGenerator.clearGeneratedCss();
-            CssGenerator.clearHexCache();
-            CssGenerator.clearCssTemplateCache();
-            StyleResolver.clearCache();
-            HtmlContentPreparer.clearCache();
-        });
+        UIManager.addPropertyChangeListener(e -> invalidate());
+    }
+
+    /** Drops the cached theme and every cache built from it; the next read reloads colors.json. */
+    public static synchronized void invalidate() {
+        cachedTheme = null;
+        lightDefaults = null;
+        darkDefaults = null;
+        CssGenerator.clearGeneratedCss();
+        CssGenerator.clearHexCache();
+        CssGenerator.clearCssTemplateCache();
+        StyleResolver.clearCache();
+        HtmlContentPreparer.clearCache();
     }
 
     /** Returns the cached native theme, refreshing it if the L&amp;F changed. */
@@ -52,10 +60,63 @@ public final class ColorTheme {
         if (theme != null) {
             return theme;
         }
-        ColorRegistry reg = ColorRegistry.fromJson(loadColorConfig(), darkMode);
+        ColorRegistry reg = ColorRegistry.fromJson(loadColorConfig(), darkMode, colorOverrides());
         theme = new ColorTheme(darkMode, reg);
         cachedTheme = theme;
         return theme;
+    }
+
+    /** Property names from colors.json that have an Options setting; a system property wins. */
+    private static final String PROP_USER_BUBBLE_LIGHT = "beanbot.color.bubbleUserBackground";
+    private static final String PROP_USER_BUBBLE_DARK = "beanbot.color.bubbleUserBackgroundDark";
+    private static final String PROP_ASSISTANT_BUBBLE_LIGHT = "beanbot.color.bubbleAssistant";
+    private static final String PROP_ASSISTANT_BUBBLE_DARK = "beanbot.color.bubbleAssistantDark";
+
+    private static Map<String, String> colorOverrides() {
+        Map<String, String> overrides = new HashMap<>();
+        putOverride(overrides, PROP_USER_BUBBLE_LIGHT, PluginSettings.getUserBubbleBackgroundLight());
+        putOverride(overrides, PROP_USER_BUBBLE_DARK, PluginSettings.getUserBubbleBackgroundDark());
+        putOverride(overrides, PROP_ASSISTANT_BUBBLE_LIGHT,
+                PluginSettings.getAssistantBubbleBackgroundLight());
+        putOverride(overrides, PROP_ASSISTANT_BUBBLE_DARK,
+                PluginSettings.getAssistantBubbleBackgroundDark());
+        return overrides;
+    }
+
+    /** Blank means "not set", so the system property (then the theme) still applies. */
+    private static void putOverride(Map<String, String> overrides, String property, String value) {
+        if (value != null && !value.isBlank()) {
+            overrides.put(property, value);
+        }
+    }
+
+    /** Cached colours.json registries used to preview the configured bubble colours. */
+    private static volatile ColorRegistry lightDefaults;
+    private static volatile ColorRegistry darkDefaults;
+    private static final Object DEFAULTS_LOCK = new Object();
+
+    /**
+     * The bubble background {@code colors.json} configures for the given theme, ignoring the
+     * Options overrides (a system property still applies). Used to seed the Appearance swatches
+     * with the colour that takes effect when no override is stored.
+     */
+    public static Color configuredBubbleColor(boolean userBubble, boolean darkMode) {
+        ColorRegistry registry = darkMode ? darkDefaults : lightDefaults;
+        if (registry == null) {
+            synchronized (DEFAULTS_LOCK) {
+                registry = darkMode ? darkDefaults : lightDefaults;
+                if (registry == null) {
+                    registry = ColorRegistry.fromJson(loadColorConfig(), darkMode);
+                    if (darkMode) {
+                        darkDefaults = registry;
+                    } else {
+                        lightDefaults = registry;
+                    }
+                }
+            }
+        }
+        Color color = registry.get(userBubble ? ColorKey.bubble_user : ColorKey.bubble_assistant);
+        return color != null ? color : Color.LIGHT_GRAY;
     }
 
     // ---- color accessors ----------------------------------------------------

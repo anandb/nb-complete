@@ -53,8 +53,9 @@ import github.anandb.netbeans.ui.platform.PlatformBridge;
 public class UIUtils {
 
     // --- font stacks (merged from FontStacks) --------------------------------
-    // Override via system properties (beanbot.* namespace). IconResourceManager reads the
-    // same keys live, so the Swing chat font (user bubbles are a JTextArea) follows them too.
+    // Override via the Options setting, then system properties (beanbot.* namespace).
+    // IconResourceManager reads the same keys live, so the Swing chat font (user bubbles are
+    // a JTextArea) follows them too.
     public static final String FONT_FAMILY_PROPERTY = "beanbot.font.family";
     public static final String MONO_FONT_FAMILY_PROPERTY = "beanbot.mono.font.family";
 
@@ -84,9 +85,13 @@ public class UIUtils {
     /** Guards against concurrent background preloads of the same icon. */
     private static final AtomicBoolean userIconPreloading = new AtomicBoolean(false);
 
-    /** CSS font-family stack that respects the system-property override, then
+    /** CSS font-family stack that respects the override, then
      *  the NetBeans LAF font, then the generic fallback. */
     public static String fontStackWithActual() {
+        String override = chatFontFamilyOverride();
+        if (override != null) {
+            return override.contains(" ") ? "'" + override + "'" : override;
+        }
         String actual = ThemeManager.getFont().getFamily();
         if (actual == null || actual.isEmpty()) {
             return FONT_STACK;
@@ -95,12 +100,28 @@ public class UIUtils {
             return cachedFontStack;
         }
         String quoted = actual.contains(" ") ? "'" + actual + "'" : actual;
-        // System-property override > NetBeans font > generic fallback
+        // NetBeans font > generic fallback
         cachedFontFamily = actual;
-        cachedFontStack = FONT_OVERRIDE != null
-                ? FONT_STACK
-                : quoted + ", " + FONT_STACK;
+        cachedFontStack = quoted + ", " + FONT_STACK;
         return cachedFontStack;
+    }
+
+    /**
+     * Effective chat font family: the system property wins over the Options setting, and
+     * {@code null} means neither is set (the LAF family applies).
+     */
+    public static String chatFontFamilyOverride() {
+        String family = System.getProperty(FONT_FAMILY_PROPERTY);
+        if (family == null || family.isBlank()) {
+            family = PluginSettings.getChatFontFamily();
+        }
+        return family == null || family.isBlank() ? null : family;
+    }
+
+    /** Drops the cached LAF font stack after the font-family setting changes. */
+    public static void clearFontStackCache() {
+        cachedFontFamily = null;
+        cachedFontStack = null;
     }
 
     private static final Logger LOG = Logger.from(UIUtils.class);

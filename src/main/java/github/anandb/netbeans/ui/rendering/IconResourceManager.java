@@ -123,15 +123,18 @@ public final class IconResourceManager {
         if (f == null) {
             f = new Font("Dialog", Font.PLAIN, 12);
         }
-        f = withFamilyOverride(f, UIUtils.FONT_FAMILY_PROPERTY);
+        f = withFamilyOverride(f);
         cachedFont = f;
         return f;
     }
 
-    /** Applies {@code -J-Dbeanbot.font.family} over the LAF family, keeping its style and size. */
-    private static Font withFamilyOverride(Font base, String property) {
-        String family = System.getProperty(property);
-        if (family == null || family.isBlank() || family.equals(base.getFamily())) {
+    /**
+     * Applies the Options font-family setting (or {@code -J-Dbeanbot.font.family}) over the LAF
+     * family, keeping its style and size.
+     */
+    private static Font withFamilyOverride(Font base) {
+        String family = UIUtils.chatFontFamilyOverride();
+        if (family == null || family.equals(base.getFamily())) {
             return base;
         }
         return new Font(family, base.getStyle(), base.getSize());

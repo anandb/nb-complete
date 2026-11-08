@@ -14,7 +14,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import github.anandb.netbeans.contract.SlashCommandInterceptor;
-import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.ToolDataExtractor;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
@@ -29,7 +28,6 @@ import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.contract.UsageStatsStore;
 import github.anandb.netbeans.model.UsageRecords.Attribution;
 import github.anandb.netbeans.model.UsageRecords.PromptUsageRow;
-import java.util.prefs.PreferenceChangeListener;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.SteerEchoes;
 import github.anandb.netbeans.support.SteeringRequest;
@@ -59,17 +57,6 @@ public class MessageSender {
 
     /** Auto-backup runs off the EDT, serialized on its own processor. */
     private static final RequestProcessor BACKUP_RP = new RequestProcessor("ACP-AutoBackup", 1);
-
-    private static volatile boolean localEchoEnabled = true;
-    private static final PreferenceChangeListener PREF_LISTENER = evt -> {
-        if (PreferenceKeys.ECHO_USER_INPUT.equals(evt.getKey())) {
-            localEchoEnabled = Boolean.parseBoolean(evt.getNewValue());
-        }
-    };
-    static {
-        localEchoEnabled = PluginSettings.isEchoUserInput();
-        PlatformBridge.prefStoreSafe().addChangeListener(PREF_LISTENER);
-    }
 
     private final SessionService sessionService;
     private final ProcessService processService;
@@ -326,7 +313,7 @@ public class MessageSender {
         if (!isForwardedSlash) {
             attachmentManager.clear();
             paperclipUpdater.run();
-            if (localEchoEnabled) {
+            if (PluginSettings.isEchoUserInput()) {
                 drawLocalEcho(text, attachedFiles, clientMessageId);
             }
         }
@@ -635,7 +622,7 @@ public class MessageSender {
                             ? result.get("messageId").asText() : null;
                     // goose streams the queued steer back later; the local echo already
                     // drew it, so that echo is skipped by its server message id.
-                    if (localEchoEnabled) {
+                    if (PluginSettings.isEchoUserInput()) {
                         SteerEchoes.expect(sessionId, messageId);
                     }
                     LOG.info("Steered running turn for session {0}, messageId={1}", sessionId, messageId);
@@ -669,7 +656,7 @@ public class MessageSender {
         inputArea.setText("");
         final String echoText = text;
         final String echoMessageId = UUID.randomUUID().toString();
-        if (localEchoEnabled) {
+        if (PluginSettings.isEchoUserInput()) {
             chatPanel.addMessage(new ProcessedMessage.Builder()
                     .messageType(MessageType.user_message_chunk)
                     .text(echoText)
@@ -714,7 +701,7 @@ public class MessageSender {
                     if (SteeringRequest.isInjected(result)) {
                         // Adapters that stream the injected message back would draw it twice;
                         // the reply carries no message id, so the echo is matched by text.
-                        if (localEchoEnabled) {
+                        if (PluginSettings.isEchoUserInput()) {
                             SteerEchoes.expectText(sessionId, draft.echoText());
                         }
                         LOG.info("Steered running turn for session {0} via {1}",
@@ -762,7 +749,7 @@ public class MessageSender {
         inputArea.setText("");
         String echoText = text == null ? "" : text;
         String echoMessageId = UUID.randomUUID().toString();
-        if (localEchoEnabled) {
+        if (PluginSettings.isEchoUserInput()) {
             drawLocalEcho(echoText, attachedFiles, echoMessageId);
         }
         return new SteerDraft(attachedFiles, fileBlocks, echoText, echoMessageId);

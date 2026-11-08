@@ -1,37 +1,41 @@
 package github.anandb.netbeans.ui.editor;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import github.anandb.netbeans.support.PluginSettings;
+
 /**
- * The hook reaches into another module's component tree, so it must stay inert unless the user
- * opts in via the system property.
+ * The hook reaches into another module's component tree, so it must obey the Options switch that
+ * gates it instead of running unconditionally.
  */
 class IdeDiffFontHookTest {
 
+    private boolean original;
+
+    @BeforeEach
+    void rememberSetting() {
+        original = PluginSettings.isDiffIdeFontEnabled();
+    }
+
     @AfterEach
-    void clearProperty() {
-        System.clearProperty(IdeDiffFontHook.ENABLE_PROPERTY);
+    void restoreSetting() {
+        PluginSettings.setDiffIdeFontEnabled(original);
     }
 
     @Test
-    void disabledWhenThePropertyIsAbsent() {
-        System.clearProperty(IdeDiffFontHook.ENABLE_PROPERTY);
+    void disabledWhenTheSettingIsOff() {
+        PluginSettings.setDiffIdeFontEnabled(false);
         assertFalse(IdeDiffFontHook.isEnabled());
     }
 
     @Test
-    void disabledWhenThePropertyIsFalse() {
-        System.setProperty(IdeDiffFontHook.ENABLE_PROPERTY, "false");
-        assertFalse(IdeDiffFontHook.isEnabled());
-    }
-
-    @Test
-    void enabledOnlyWhenThePropertyIsTrue() {
-        System.setProperty(IdeDiffFontHook.ENABLE_PROPERTY, "true");
+    void enabledWhenTheSettingIsOn() {
+        PluginSettings.setDiffIdeFontEnabled(true);
         assertTrue(IdeDiffFontHook.isEnabled());
     }
 }

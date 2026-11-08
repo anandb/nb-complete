@@ -37,13 +37,14 @@
     "name": "bubbleUser",
     "propertyLight": "beanbot.color.bubbleUserBackground",
     "propertyDark": "beanbot.color.bubbleUserBackgroundDark",
-    "dark": "#2D2A23",
+    "dark": "#1E2126",
     "light": "#E9E8E2"
   },
   {
     "name": "bubbleAssistant",
-    "property": "beanbot.color.bubbleAssistant",
-    "dark": "#2d2d2d",
+    "propertyLight": "beanbot.color.bubbleAssistant",
+    "propertyDark": "beanbot.color.bubbleAssistantDark",
+    "dark": "#333029",
     "light": "#FBF4E1"
   },
   {

@@ -77,6 +77,12 @@ class PluginSettingsRoundTripTest {
     }
 
     @Test
+    void diffIdeFontRoundTrips() {
+        assertBooleanRoundTrip(PreferenceKeys.DIFF_IDE_FONT, PluginSettings.isDiffIdeFontEnabled(),
+                PluginSettings::setDiffIdeFontEnabled, PluginSettings::isDiffIdeFontEnabled);
+    }
+
+    @Test
     void sortLinesRoundTrips() {
         assertBooleanRoundTrip(PreferenceKeys.ACTIONS_SORT_LINES, PluginSettings.isSortLinesEnabled(),
                 PluginSettings::setSortLinesEnabled, PluginSettings::isSortLinesEnabled);
