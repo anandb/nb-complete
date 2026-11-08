@@ -180,14 +180,6 @@ public class H2UsageStatsStore
         return lifecycle.connection();
     }
 
-    private void runDb(Runnable task) {
-        lifecycle.runDb(task);
-    }
-
-    private boolean ensureDatabase() {
-        return lifecycle.ensureDatabase();
-    }
-
     private <T> T call(java.util.concurrent.Callable<T> task, T fallback) {
         return lifecycle.call(task, fallback);
     }

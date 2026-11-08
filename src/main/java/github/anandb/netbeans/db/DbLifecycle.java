@@ -275,16 +275,6 @@ final class DbLifecycle {
         }
     }
 
-    /** True when the database failed to open and no retry is in flight. */
-    boolean isUnavailable() {
-        return unavailable;
-    }
-
-    /** JDBC URL this lifecycle opens; used only in the unavailable log line. */
-    String jdbcUrl() {
-        return jdbcUrl;
-    }
-
     /**
      * Applies the data migrations a stored database needs, one branch per released
      * version; the statements themselves live in {@code queries.sql}. Version 1 rows
