@@ -356,6 +356,11 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     configPanelController.setConfigConfirmActive(true);
 
                     uiFuture.whenComplete((res, ex) -> {
+                        // Continue was clicked: open the composer here, first, on every outcome.
+                        // Nothing downstream (config sends, the preamble request, a failure) may
+                        // be able to keep Go dead — and running on the click itself means the
+                        // release can never be lost.
+                        statusController.setComposerLocked(false);
                         // Hop to the EDT no matter which thread completes the
                         // future (normally the Continue button on the EDT).
                         SwingUtilities.invokeLater(() -> {
@@ -380,6 +385,12 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                             });
                         });
                     });
+
+                    // Hold Go and the composer shut until Continue: a prompt sent before the
+                    // preamble would land first and make the preamble a second session/prompt.
+                    // Locked AFTER the release hook is registered, so a click can never find the
+                    // composer locked with nothing left to open it.
+                    statusController.setComposerLocked(true);
                 });
             } catch (Exception e) {
                 LOG.log(Level.WARNING, "Config confirmation interrupted", e);
@@ -641,7 +652,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         if (shouldAnimate) {
             if (attentionPeriodicTimer == null) {
-                attentionPeriodicTimer = new Timer(4000, e -> {
+                attentionPeriodicTimer = new Timer(8000, e -> {
                     if (isOpened() && isShowing()) {
                         triggerAttentionShake();
                     }

@@ -7,6 +7,7 @@ import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
@@ -182,6 +183,35 @@ class StatusControllerTest {
         c.setContextUsage(100, 200);
         c.clearContextUsage();
         assertEquals(-1.0, meter().getFraction(), 1e-9);
+    }
+
+    @Test
+    void configGateHoldsGoAndComposerShutUntilUnlocked() throws Exception {
+        // The new-session config gate (Continue bar) must keep both shut: a prompt posted
+        // before the preamble arrives first and makes the preamble a second session/prompt.
+        JButton send = new JButton();
+        PlaceholderTextArea input = new PlaceholderTextArea("");
+        StatusController c = new StatusController(label(), send, new JButton(), input, new JButton(), meter());
+
+        SwingUtilities.invokeAndWait(() -> {
+            c.setSessionActive(true);
+            c.updateButtonState(false);
+            c.setComposerLocked(true);
+            // Applied inside the EDT event that asked for it: nothing can queue the release
+            // behind the lock and leave the composer shut.
+            assertTrue(c.isComposerLocked());
+            assertFalse(send.isEnabled(), "Go must be disabled while the config gate is open");
+            assertFalse(input.isEnabled(), "the composer must be disabled while the config gate is open");
+        });
+
+        // Continue releases it in the same event — no wait for the preamble response, and no
+        // dependency on the config sends succeeding.
+        SwingUtilities.invokeAndWait(() -> {
+            c.setComposerLocked(false);
+            assertFalse(c.isComposerLocked());
+            assertTrue(send.isEnabled(), "Continue re-enables Go");
+            assertTrue(input.isEnabled(), "Continue re-enables the composer");
+        });
     }
 
     @Test

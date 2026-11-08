@@ -160,6 +160,12 @@ public class MessageSender {
             return;
         }
 
+        // The new-session config gate keeps the composer shut until Continue: anything sent
+        // now would reach the server before the preamble and be rejected as a second prompt.
+        if (statusController.isComposerLocked()) {
+            return;
+        }
+
         // No session means nothing can go anywhere: bail out before the history, the slash
         // interceptor, the attachments or the queue are touched.
         String sessionId = sessionService.get().getCurrentSessionId();

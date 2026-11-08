@@ -7,7 +7,8 @@ import org.openide.util.NbBundle;
 /**
  * One supported harness and everything needed to detect, launch, and use it.
  * Definitions live in {@code harness-catalog.yaml}; see {@link HarnessBuilder}
- * for the defaults an entry overrides.
+ * for the defaults an entry overrides. This also acts like a "Quirks" layer
+ * having flags to indicate non-standard behaviour.
  */
 public record Harness(
         String id,

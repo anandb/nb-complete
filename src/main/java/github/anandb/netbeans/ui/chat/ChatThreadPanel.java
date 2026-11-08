@@ -1259,10 +1259,10 @@ public class ChatThreadPanel extends JPanel {
     public void clearMessages() {
         cachedMessages = null;
         // Stop the repeating flush timer off-EDT. The per-bubble streaming
-        // finalization (stopStreaming) must run on EDT inside invokeLater
+        // finalization (stopStreaming) must run on EDT inside the clear body
         // to safely touch the component tree before removeAll.
         streamingCoordinator.cleanup();
-        SwingUtilities.invokeLater(() -> {
+        Runnable clear = () -> {
             // Clear queue/buffers on the EDT: clearing the queue off-EDT and
             // wiping the container a tick later let a racing addMessage()
             // enqueue between the two, leaving ghost bubbles on an empty panel.
@@ -1271,12 +1271,21 @@ public class ChatThreadPanel extends JPanel {
             seenMessageIdsBySession.clear();
             stopStreaming();
             messagesContainer.removeAll();
+            // Chat content may be taller than the viewport; only the welcome screen tracks its height.
+            messagesContainer.putClientProperty(ScrollablePanel.TRACK_HEIGHT_IF_SHORTER, null);
             startSessionHintShown = false;
             scrollController.unfixAllMouseWheel();
             lastUserTimestamp = -1L;
             userMessageCount = 0;
             messagesContainer.revalidate();
-        });
+        };
+        // Inline on the EDT: a queued wipe would land after the caller's next
+        // add (e.g. WelcomeScreen.show) and erase it one tick later.
+        if (SwingUtilities.isEventDispatchThread()) {
+            clear.run();
+        } else {
+            SwingUtilities.invokeLater(clear);
+        }
     }
 
     /** Flush buffered messages and clean stale pins. Runs for both streaming + history-load paths. */
@@ -1471,6 +1480,7 @@ public class ChatThreadPanel extends JPanel {
             // Clear synchronously — avoid clearMessages()'s own invokeLater
             // which would add an extra EDT tick.
             messagesContainer.removeAll();
+            messagesContainer.putClientProperty(ScrollablePanel.TRACK_HEIGHT_IF_SHORTER, null);
             scrollController.unfixAllMouseWheel();
             lastUserTimestamp = -1L;
             userMessageCount = 0;
@@ -1496,12 +1506,19 @@ public class ChatThreadPanel extends JPanel {
     }
 
     public void setSessionList(List<Session> sessions, Consumer<String> onSessionSelected, Runnable onNewChat) {
+        setSessionList(sessions, onSessionSelected, onNewChat, null);
+    }
+
+    /** {@code onStarterPrompt} receives an example prompt from the welcome screen; it fills the
+     *  composer and starts the chat (there is no session to type into on that screen). */
+    public void setSessionList(List<Session> sessions, Consumer<String> onSessionSelected, Runnable onNewChat,
+                               Consumer<String> onStarterPrompt) {
         int count = sessions != null ? sessions.size() : 0;
         LOG.fine("setSessionList: received {0} sessions, onSessionSelected={1}", new Object[]{count, onSessionSelected});
         SwingUtilities.invokeLater(() -> {
             try {
                 clearMessages();
-                WelcomeScreen.show(messagesContainer, sessions, onSessionSelected, onNewChat);
+                WelcomeScreen.show(messagesContainer, sessions, onSessionSelected, onNewChat, onStarterPrompt);
             } catch (Exception ex) {
                 LOG.warn("setSessionList error: {0}", ExceptionUtils.getMessage(ex));
             }

@@ -52,6 +52,10 @@ public class StatusController {
     private volatile boolean animatedStatus = false;
     private int thinkingDots = 0;
     private volatile boolean sessionActive = true;
+    /** Base composer availability (a session is open); the config gate can still override it. */
+    private volatile boolean inputEnabled = true;
+    /** Set while the new-session config gate is open — the user must press Continue first. */
+    private volatile boolean composerLocked = false;
     /** The unpadded, capped text the label shows when it is not animating. The
      *  animation composes frames from this rather than from the label's current
      *  text: recovering a base by stripping trailing dots and padding back off the
@@ -346,9 +350,34 @@ public class StatusController {
         sessionActive = active;
     }
 
+    /**
+     * Locks the composer and the Go button while the new-session config gate is open. The
+     * preamble is only posted after Continue, so a prompt sent before it would arrive first
+     * and make the preamble a second {@code session/prompt} during an active run (rejected).
+     *
+     * <p>Applied synchronously on the EDT so the release can never queue up behind the lock:
+     * Continue must reopen the composer in the same event that clicked it.
+     */
+    public void setComposerLocked(boolean locked) {
+        if (SwingUtilities.isEventDispatchThread()) {
+            composerLocked = locked;
+            applyInputState();
+        } else {
+            SwingUtilities.invokeLater(() -> {
+                composerLocked = locked;
+                applyInputState();
+            });
+        }
+    }
+
+    /** Whether the new-session config gate currently holds the composer closed. */
+    public boolean isComposerLocked() {
+        return composerLocked;
+    }
+
     /** MUST be called on EDT. */
     public void updateButtonState(boolean isProcessing) {
-        sendBtn.setEnabled(sessionActive);
+        sendBtn.setEnabled(sessionActive && !composerLocked);
         stopBtn.setEnabled(isProcessing && sessionActive);
         if (sendBtn.getParent() != null && sendBtn.getParent().getLayout() instanceof CardLayout cl) {
             cl.show(sendBtn.getParent(), isProcessing ? "STOP" : "SEND");
@@ -376,12 +405,20 @@ public class StatusController {
 
     public void setInputEnabled(boolean enabled) {
         SwingUtilities.invokeLater(() -> {
-            toggleOptionsBtn.setVisible(enabled);
-            inputArea.setEnabled(enabled);
-            for (Consumer<Boolean> listener : inputEnabledListeners) {
-                listener.accept(enabled);
-            }
+            inputEnabled = enabled;
+            applyInputState();
         });
+    }
+
+    /** Applies the base availability and the config gate; MUST run on the EDT. */
+    private void applyInputState() {
+        boolean effective = inputEnabled && !composerLocked;
+        toggleOptionsBtn.setVisible(inputEnabled);
+        inputArea.setEnabled(effective);
+        sendBtn.setEnabled(sessionActive && !composerLocked);
+        for (Consumer<Boolean> listener : inputEnabledListeners) {
+            listener.accept(effective);
+        }
     }
 
     /** Listeners notified (on the EDT) whenever the input-enabled state changes. */

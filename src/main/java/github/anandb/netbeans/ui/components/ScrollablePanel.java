@@ -1,5 +1,6 @@
 package github.anandb.netbeans.ui.components;
 
+import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Rectangle;
 import javax.swing.JPanel;
@@ -12,6 +13,9 @@ import javax.swing.SwingConstants;
  */
 public class ScrollablePanel extends JPanel implements Scrollable {
     private static final long serialVersionUID = 1L;
+
+    /** Client property: fill the viewport height while the content is shorter than it. */
+    public static final String TRACK_HEIGHT_IF_SHORTER = "scrollablePanel.trackHeightIfShorter";
 
     public ScrollablePanel() {
         setOpaque(false);
@@ -40,6 +44,11 @@ public class ScrollablePanel extends JPanel implements Scrollable {
 
     @Override
     public boolean getScrollableTracksViewportHeight() {
-        return false;
+        if (!Boolean.TRUE.equals(getClientProperty(TRACK_HEIGHT_IF_SHORTER))) {
+            return false;
+        }
+        // Only while the content fits: tracking a taller panel would clip it instead of scrolling.
+        Container parent = getParent();
+        return parent == null || getPreferredSize().height < parent.getHeight();
     }
 }

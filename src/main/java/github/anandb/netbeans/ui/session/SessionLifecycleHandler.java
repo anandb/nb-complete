@@ -146,6 +146,31 @@ public class SessionLifecycleHandler implements SessionListener {
         this.pendingUiCleanup = pendingUiCleanup;
     }
 
+    /** Starts a chat from the welcome screen: one project binds directly, several ask which one. */
+    private void startNewChat() {
+        Project[] projects = projectContext.getAllOpenProjects();
+        if (projects == null || projects.length == 0) {
+            return;
+        }
+        if (projects.length == 1) {
+            sessionService.get().createNewSession(ProjectPaths.nativePath(projects[0]));
+        } else {
+            projectPickerShower.accept(sessionDropdown);
+        }
+    }
+
+    /** An example prompt has no session to land in yet: draft it in the composer, then start
+     *  the chat, so the user only has to press Enter once the session is ready. */
+    private void startNewChatWithPrompt(String prompt) {
+        if (prompt == null || prompt.isBlank()) {
+            startNewChat();
+            return;
+        }
+        inputArea.setText(prompt);
+        inputArea.setCaretPosition(prompt.length());
+        startNewChat();
+    }
+
     public boolean isOptionsPanelCollapsed() {
         return optionsPanelCollapsed;
     }
@@ -536,16 +561,8 @@ public class SessionLifecycleHandler implements SessionListener {
                             statusController.clearContextUsage();
                             showingWelcomeScreen = true;
                             chatPanel.setSessionList(sessions,
-                                id -> sessionService.get().loadSession(id), () -> {
-                                    Project[] projects = projectContext.getAllOpenProjects();
-                                    if (projects == null || projects.length == 0) return;
-                                    if (projects.length == 1) {
-                                        sessionService.get().createNewSession(
-                                            ProjectPaths.nativePath(projects[0]));
-                                    } else {
-                                        projectPickerShower.accept(sessionDropdown);
-                                    }
-                                });
+                                id -> sessionService.get().loadSession(id),
+                                this::startNewChat, this::startNewChatWithPrompt);
                             sessionDropdown.setSelectedIndex(-1);
                             statusController.setInputEnabled(false);
                             sessionStateHandler.accept(false);
@@ -572,18 +589,8 @@ public class SessionLifecycleHandler implements SessionListener {
                         : sessions.stream()
                             .filter(s -> !hiddenById.getOrDefault(s.id(), false))
                             .toList();
-                    chatPanel.setSessionList(visibleSessions, id -> sessionService.get().loadSession(id), () -> {
-                        Project[] projects = projectContext.getAllOpenProjects();
-                        if (projects == null || projects.length == 0) {
-                            return;
-                        }
-                        if (projects.length == 1) {
-                            sessionService.get().createNewSession(
-                                    ProjectPaths.nativePath(projects[0]));
-                        } else {
-                            projectPickerShower.accept(sessionDropdown);
-                        }
-                    });
+                    chatPanel.setSessionList(visibleSessions, id -> sessionService.get().loadSession(id),
+                        this::startNewChat, this::startNewChatWithPrompt);
                     sessionDropdown.setSelectedIndex(-1);
                     if (!hasProjects) {
                         statusController.setStatus("STATUS_OpenProject");
@@ -821,6 +828,9 @@ public class SessionLifecycleHandler implements SessionListener {
             // race the replayed plan updates.
             if (isLoading) {
                 planPanel.clear();
+                // A new session lifecycle re-locks the composer if it has a config gate;
+                // a gate abandoned mid-way must never keep the next session shut.
+                statusController.setComposerLocked(false);
             }
             statusController.setInputEnabled(!isLoading);
         });
