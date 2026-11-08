@@ -131,7 +131,10 @@ public final class IdeDiffFontHook implements Runnable {
      */
     private static boolean isDiffWindow(TopComponent tc) {
         String name = tc.getClass().getName();
-        if (name.startsWith(DIFF_MODULE_PREFIX) || name.contains("Diff")) {
+        // The Git/Mercurial/Subversion history windows host a diff view (with a
+        // summary and Show Diff toggle) even though their own class name says
+        // "History", so they must be wired too.
+        if (name.startsWith(DIFF_MODULE_PREFIX) || name.contains("Diff") || name.contains("History")) {
             return true;
         }
         int children = tc.getComponentCount();
@@ -191,7 +194,10 @@ public final class IdeDiffFontHook implements Runnable {
     }
 
     private static boolean containsDiffView(Component component) {
-        if (component.getClass().getName().startsWith(DIFF_MODULE_PREFIX)) {
+        String name = component.getClass().getName();
+        // git's embedded diff view is org.netbeans.modules.git.ui.history.DiffResultsView,
+        // which lives outside the diff module package but names itself with "Diff".
+        if (name.startsWith(DIFF_MODULE_PREFIX) || name.contains("Diff")) {
             return true;
         }
         if (component instanceof Container container) {
