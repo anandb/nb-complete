@@ -128,7 +128,7 @@ public final class PluginSettings {
         cachedMcpServerEnabled = prefs.getBoolean(PreferenceKeys.MCP_SERVER_ENABLED, true);
         cachedMcpServerPort = prefs.getInt(PreferenceKeys.MCP_SERVER_PORT, 0);
         cachedMarkdownProjectEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_MARKDOWN_PROJECT, true);
-        cachedDiffIdeFont = prefs.getBoolean(PreferenceKeys.DIFF_IDE_FONT, true);
+        cachedDiffIdeFont = prefs.getBoolean(PreferenceKeys.DIFF_IDE_FONT, false);
         cachedUserBubbleLight = prefs.get(PreferenceKeys.USER_BUBBLE_LIGHT, "");
         cachedUserBubbleDark = prefs.get(PreferenceKeys.USER_BUBBLE_DARK, "");
         cachedAssistantBubbleLight = prefs.get(PreferenceKeys.ASSISTANT_BUBBLE_LIGHT, "");
@@ -318,7 +318,7 @@ public final class PluginSettings {
         } else if (PreferenceKeys.ACTIONS_MARKDOWN_PROJECT.equals(evt.getKey())) {
             cachedMarkdownProjectEnabled = prefs().getBoolean(PreferenceKeys.ACTIONS_MARKDOWN_PROJECT, true);
         } else if (PreferenceKeys.DIFF_IDE_FONT.equals(evt.getKey())) {
-            cachedDiffIdeFont = prefs().getBoolean(PreferenceKeys.DIFF_IDE_FONT, true);
+            cachedDiffIdeFont = prefs().getBoolean(PreferenceKeys.DIFF_IDE_FONT, false);
         } else if (PreferenceKeys.USER_BUBBLE_LIGHT.equals(evt.getKey())) {
             cachedUserBubbleLight = prefs().get(PreferenceKeys.USER_BUBBLE_LIGHT, "");
         } else if (PreferenceKeys.USER_BUBBLE_DARK.equals(evt.getKey())) {
