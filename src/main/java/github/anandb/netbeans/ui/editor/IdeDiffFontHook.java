@@ -89,6 +89,14 @@ public final class IdeDiffFontHook implements Runnable {
                 applyTo(activated);
             }
         });
+        // Windows restored at startup (or opened before this hook ran) never fire a PROP_OPENED
+        // event we can catch, so style them now. applyTo is idempotent via the WIRED set.
+        // run() is invoked off the EDT, so the scan (and its listener registration) is marshalled.
+        SwingUtilities.invokeLater(() -> {
+            for (TopComponent tc : TopComponent.getRegistry().getOpened()) {
+                applyTo(tc);
+            }
+        });
     }
 
     /** Package-visible for tests: the hook is a no-op while the setting is off. */
@@ -174,7 +182,8 @@ public final class IdeDiffFontHook implements Runnable {
     /** The panes are plain {@code JEditorPane}s, so ancestry — not their own class — identifies them. */
     private static boolean hasDiffAncestor(Component component) {
         for (Component current = component; current != null; current = current.getParent()) {
-            if (current.getClass().getName().startsWith(DIFF_MODULE_PREFIX)) {
+            String name = current.getClass().getName();
+            if (name.startsWith(DIFF_MODULE_PREFIX) || name.contains("Diff")) {
                 return true;
             }
         }
