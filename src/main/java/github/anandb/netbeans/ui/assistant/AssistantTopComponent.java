@@ -346,7 +346,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     // reusing the permission-panel look and slide animation.
                     CompletableFuture<String> uiFuture = new CompletableFuture<>();
                     ProcessControl currentPc = PlatformBridge.processControl();
-                    boolean isGemini = currentPc != null && "gemini".equals(currentPc.getCapabilities().id());
+                    Harness caps = currentPc == null ? null : currentPc.getCapabilities();
+                    boolean isGemini = caps != null && "gemini".equals(caps.id());
                     String promptMsg = isGemini
                         ? NbBundle.getMessage(UIBundle.class, "MSG_SelectAgentLevel")
                         : NbBundle.getMessage(UIBundle.class, "MSG_SelectAgentModelLevel");
@@ -810,7 +811,8 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         toggleOptionsBtn.setIcon(ThemeManager.getIcon(visible ? "arrow-down.svg" : "settings.svg", 25));
 
         ProcessControl pc = PlatformBridge.processControl();
-        boolean modelSelectable = pc != null && pc.getCapabilities().supportsModelSelection();
+        Harness caps = pc == null ? null : pc.getCapabilities();
+        boolean modelSelectable = caps != null && caps.supportsModelSelection();
         // Show the model dropdown even when selection is unsupported (e.g. OpenClaw);
         // the disabled state is managed by applyEnabledState so the tooltip is still readable.
         configPanelController.getModelCombo().setVisible(visible);

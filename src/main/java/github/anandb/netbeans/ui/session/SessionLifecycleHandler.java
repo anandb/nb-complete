@@ -20,6 +20,7 @@ import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.contract.UpdateDispatcher;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.Session;
+import github.anandb.netbeans.model.Harness;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ConfigOptionConverter;
 import github.anandb.netbeans.model.ModeAgentMapping;
@@ -394,7 +395,8 @@ public class SessionLifecycleHandler implements SessionListener {
         // so it may clear the pending-preamble wait early (progress bar + buffered
         // messages) without touching turnEnded.
         ProcessControl proc = processService != null ? processService.get() : null;
-        boolean queueingAgent = proc != null && proc.getCapabilities().requiresMessageQueue();
+        Harness caps = proc == null ? null : proc.getCapabilities();
+        boolean queueingAgent = caps != null && caps.requiresMessageQueue();
         TurnEndDecision decision = TurnEndDecision.of(messageType, queueingAgent);
         boolean endOfTurn = decision.endOfTurn();
         boolean preambleReady = decision.preambleReady();

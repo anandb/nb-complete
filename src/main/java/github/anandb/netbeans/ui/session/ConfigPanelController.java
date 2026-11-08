@@ -383,7 +383,9 @@ public class ConfigPanelController {
 
     /** True when model switching must use the dedicated ACP session/set_model RPC (Hermes-style agents). */
     private boolean agentSupportsSessionSetModel() {
-        return PlatformBridge.processControl().getCapabilities().supportsSessionSetModel();
+        ProcessControl pc = PlatformBridge.processControl();
+        Harness caps = pc == null ? null : pc.getCapabilities();
+        return caps != null && caps.supportsSessionSetModel();
     }
 
     public void updateConfigControls(List<SessionConfigOption> options) {
@@ -565,24 +567,25 @@ public class ConfigPanelController {
                     refreshThinkingComboForOptions(options);
                 }
                 ProcessControl pc = PlatformBridge.processControl();
-                boolean modelSelectable = pc != null && pc.getCapabilities().supportsModelSelection();
+                Harness caps = pc == null ? null : pc.getCapabilities();
+                boolean modelSelectable = caps != null && caps.supportsModelSelection();
                 this.modelEnabled = modelSelectable;
-                if (!modelSelectable && pc != null) {
-                    modelCombo.setToolTipText(pc.getCapabilities().unsupportedModelSelectionMessage());
+                if (!modelSelectable && caps != null) {
+                    modelCombo.setToolTipText(caps.unsupportedModelSelectionMessage());
                 }
 
-                if (!modelSelectable && modelCombo.getItemCount() == 0 && pc != null) {
+                if (!modelSelectable && modelCombo.getItemCount() == 0 && caps != null) {
                     // Model selection is unavailable and no model options were
                     // reported: show the harness-specific placeholder (OpenClaw's
                     // "/acp" hint) so the disabled dropdown has readable width.
-                    String placeholder = pc.getCapabilities().unsupportedModelSelectionPlaceholder();
+                    String placeholder = caps.unsupportedModelSelectionPlaceholder();
                     if (!placeholder.isEmpty()) {
                         modelCombo.addItem(new ConfigItem(placeholder, ""));
                         modelCombo.setSelectedIndex(0);
                     }
                 }
 
-                boolean agentSelectable = pc != null && pc.getCapabilities().supportsAgentList();
+                boolean agentSelectable = caps != null && caps.supportsAgentList();
                 this.agentEnabled = agentSelectable;
 
                 this.thinkingEnabled = thinkingCombo.getItemCount() > 0;

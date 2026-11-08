@@ -23,6 +23,7 @@ import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 
 import github.anandb.netbeans.contract.ProcessControl;
+import github.anandb.netbeans.model.Harness;
 import github.anandb.netbeans.contract.RpcFailure;
 import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.contract.UsageStatsStore;
@@ -244,7 +245,8 @@ public class MessageSender {
     /** Holds the text until the current turn ends. A queueing harness cannot take a second
      *  prompt mid-turn, and a queued message cannot supersede a pending permission decision. */
     private boolean queueForTurnEnd(String text, ProcessControl proc) {
-        if (proc == null || !proc.getCapabilities().requiresMessageQueue()) {
+        Harness caps = proc == null ? null : proc.getCapabilities();
+        if (proc == null || caps == null || !caps.requiresMessageQueue()) {
             return false;
         }
         if (!text.isEmpty() && queueManager != null) {
@@ -348,7 +350,8 @@ public class MessageSender {
         // Editor Context — never for a slash command: the harness interprets the command
         // itself and an attached context breaks it (devin). Only plain prompts carry it,
         // and only when the agent injects context into prompts at all.
-        boolean injectsContext = sendProc != null && sendProc.getCapabilities().injectsEditorContext();
+        Harness caps = sendProc == null ? null : sendProc.getCapabilities();
+        boolean injectsContext = caps != null && caps.injectsEditorContext();
         boolean slashCommand = text.trim().startsWith("/");
         Map<String, Object> context = (slashCommand || !injectsContext)
                 ? null : EditorContextCapture.capture();
@@ -600,10 +603,11 @@ public class MessageSender {
         if (proc == null) {
             return false;
         }
-        if (proc.getCapabilities().supportsSessionSteer()) {
+        Harness caps = proc.getCapabilities();
+        if (caps != null && caps.supportsSessionSteer()) {
             return tryExtensionSteer(text, proc);
         }
-        if (proc.getCapabilities().supportsSlashSteer()) {
+        if (caps != null && caps.supportsSlashSteer()) {
             return trySlashSteer(text, proc);
         }
         if (proc.supportsSessionSteering()) {
