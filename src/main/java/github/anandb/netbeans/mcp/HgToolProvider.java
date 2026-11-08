@@ -102,7 +102,7 @@ public class HgToolProvider {
                         if (log.since() != null) {
                             command.add("--date=>" + log.since());
                         }
-                        return VcsToolSupport.run(log.repoDir(), "Hg", command.toArray(new String[0]));
+                        return VcsToolSupport.run(log.repoDir(), "Hg", command.toArray(String[]::new));
                     }
                 });
     }

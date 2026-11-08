@@ -523,7 +523,7 @@ public class TokenUsageDialog extends JDialog {
                 : UsageStatsFormat.thousands(report.totalTokens()) + " / "
                         + UsageStatsFormat.thousands(report.contextLimit())
                         + " (" + report.usedPercent() + "%)"});
-        appendLocalizedTable(sb, "LBL_ContextWindow", headerBg, altBg, rows.toArray(new String[0][]));
+        appendLocalizedTable(sb, "LBL_ContextWindow", headerBg, altBg, rows.toArray(String[][]::new));
 
         if (!report.providerManagesContext() && report.usedPercent() > 0) {
             sb.append("<table><tr><td style='border:0;padding:2px 1px;width:")

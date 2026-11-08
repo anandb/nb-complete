@@ -9,6 +9,7 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Base64;
+import org.openide.util.Utilities;
 
 /**
  * One file attached to an outgoing prompt: the display name, the MIME type,
@@ -25,7 +26,7 @@ public record AttachedFile(
 ) {
     public AttachedFile(File f) throws IOException {
         this(f.getName(), guessMimeType(f.getName()), Files.readAllBytes(f.toPath()), f.length(),
-             f.toURI().toString());
+             Utilities.toURI(f).toString());
     }
 
     /** True when the agent should receive this as an ACP image block. */

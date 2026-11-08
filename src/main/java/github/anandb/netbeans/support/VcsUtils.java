@@ -190,7 +190,7 @@ public class VcsUtils {
             }
             commitArgs.add("-m");
             commitArgs.add(stashMsg);
-            String wCommit = execGit(vcsRoot, null, null, commitArgs.toArray(new String[0]));
+            String wCommit = execGit(vcsRoot, null, null, commitArgs.toArray(String[]::new));
 
             // 5. Store stash
             execGit(vcsRoot, null, null, "git", "stash", "store", "-m", stashMsg, wCommit);

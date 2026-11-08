@@ -253,7 +253,7 @@ public final class TaskQueryProvider implements QueryProvider<TaskQuery, TaskIss
         }
         LOG.fine("push: repo {0} kind {1} matched {2}/{3} tasks, tagFilter={4}",
                 key.repoId(), key.kind(), issues.size(), s == null ? 0 : s.list(key.repoId()).size(), wanted);
-        TaskIssue[] arr = issues.toArray(new TaskIssue[0]);
+        TaskIssue[] arr = issues.toArray(TaskIssue[]::new);
         Runnable deliver = () -> {
             for (IssueContainer<TaskIssue> c : holders) {
                 c.restoreStarted();

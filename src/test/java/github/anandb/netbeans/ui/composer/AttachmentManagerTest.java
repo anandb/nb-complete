@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.openide.util.Utilities;
 
 class AttachmentManagerTest {
 
@@ -118,7 +119,7 @@ class AttachmentManagerTest {
         Map<String, Object> resource = (Map<String, Object>) block.get("resource");
         assertEquals("text/markdown", resource.get("mimeType"));
         assertEquals("# Title\n\nBody\n", resource.get("text"));
-        assertEquals(f.toFile().toURI().toString(), resource.get("uri"));
+        assertEquals(Utilities.toURI(f.toFile()).toString(), resource.get("uri"));
     }
 
     @Test

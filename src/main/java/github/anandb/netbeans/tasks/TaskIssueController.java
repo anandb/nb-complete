@@ -321,7 +321,7 @@ public final class TaskIssueController implements IssueController {
         });
         statusBox = new JComboBox<>(TaskStatus.values());
         statusBox.setRenderer(new TaskStatusRenderer());
-        priorityBox = new JComboBox<>(PRIORITIES.toArray(new String[0]));
+        priorityBox = new JComboBox<>(PRIORITIES.toArray(String[]::new));
         tagsEditor = new TagsEditor();
         tagsEditor.setAvailableTags(Set.of(
             "bug", "documentation", "duplicate",

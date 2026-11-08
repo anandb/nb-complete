@@ -239,7 +239,7 @@ public class FileCacheManager implements FileCacheQuery {
     }
 
     private void scanProject(Project project, Map<String, FileCacheQuery.CachedFile> target) {
-        ProjectInformation info = project.getLookup().lookup(ProjectInformation.class);
+        ProjectInformation info = ProjectUtils.getInformation(project);
         String projectName = info != null ? info.getDisplayName() : project.getProjectDirectory().getName();
         SourceGroup[] groups =
                 ProjectUtils.getSources(project).getSourceGroups(Sources.TYPE_GENERIC);

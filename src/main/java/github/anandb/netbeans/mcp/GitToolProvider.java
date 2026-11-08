@@ -96,7 +96,7 @@ public class GitToolProvider {
                         if (log.since() != null) {
                             command.add("--since=" + log.since());
                         }
-                        return VcsToolSupport.run(log.repoDir(), "Git", command.toArray(new String[0]));
+                        return VcsToolSupport.run(log.repoDir(), "Git", command.toArray(String[]::new));
                     }
                 });
     }

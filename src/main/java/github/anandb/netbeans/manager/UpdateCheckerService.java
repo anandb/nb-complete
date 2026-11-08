@@ -450,7 +450,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
                     title,
                     NotifyDescriptor.DEFAULT_OPTION,
                     NotifyDescriptor.INFORMATION_MESSAGE,
-                    options.toArray(new Object[0]),
+                    options.toArray(Object[]::new),
                     "Remind me Later"
             );
             Object result = DialogDisplayer.getDefault().notify(nd);
