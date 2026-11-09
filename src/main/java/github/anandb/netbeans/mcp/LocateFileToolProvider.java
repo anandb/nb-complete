@@ -2,6 +2,7 @@ package github.anandb.netbeans.mcp;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -92,7 +93,10 @@ final class LocateFileToolProvider {
             return Map.of("status", "error", "message", "FileCacheQuery not available", "fatal", true);
         }
 
-        Candidates candidates = collect(cache, query, directory);
+        // Put the project into the query itself: without it the matcher runs over every open
+        // project's files and discards the out-of-scope hits afterwards.
+        String projectName = directory == null ? null : cache.getProjectName(directory);
+        Candidates candidates = collect(cache, query, directory, projectName);
         boolean truncated = candidates.capped() || candidates.hits().size() > MAX_RESULTS;
         List<Map<String, Object>> matches = new ArrayList<>();
         int returned = Math.min(MAX_RESULTS, candidates.hits().size());
@@ -140,11 +144,15 @@ final class LocateFileToolProvider {
 
     /**
      * Matches, ranked: file-name hits first, then by project and relative path. When
-     * {@code directory} is set only files inside it are collected.
+     * {@code projectName} is known only that project's entries are matched; {@code directory}
+     * still narrows the result to a subdirectory of it.
      */
-    private static Candidates collect(FileCacheQuery cache, FileNameMatcher.Query query, String directory) {
+    private static Candidates collect(FileCacheQuery cache, FileNameMatcher.Query query,
+            String directory, String projectName) {
+        Collection<FileCacheQuery.CachedFile> source = projectName == null
+                ? cache.getAllFiles() : cache.getFiles(projectName);
         List<Hit> hits = new ArrayList<>();
-        for (FileCacheQuery.CachedFile file : cache.getAllFiles()) {
+        for (FileCacheQuery.CachedFile file : source) {
             if (hits.size() >= SCAN_CAP) {
                 return new Candidates(rank(hits), true);
             }

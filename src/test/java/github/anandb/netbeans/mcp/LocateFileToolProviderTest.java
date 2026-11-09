@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -229,6 +230,24 @@ class LocateFileToolProviderTest {
     }
 
     @Test
+    void queriesOnlyTheSessionProject() throws Exception {
+        when(sessionQuery.getCurrentSessionDirectory()).thenReturn("/work/nb/src/ui");
+        when(cache.getProjectName("/work/nb/src/ui")).thenReturn("nb");
+        StubCache other = new StubCache();
+        other.add("ChatOther.java", "other", "src/ChatOther.java", "/work/other");
+        other.install();
+        StubCache own = new StubCache();
+        own.add("ChatPanel.java", "nb", "src/ui/ChatPanel.java", "/work/nb");
+        when(cache.getFiles("nb")).thenReturn(own.entries());
+
+        Map<String, Object> result = execute("Chat");
+
+        assertEquals(1, result.get("count"), "only the session project is matched");
+        assertEquals("ChatPanel.java", ((Map<?, ?>) matches(result).get(0)).get("name"));
+        verify(cache, never()).getAllFiles();
+    }
+
+    @Test
     void searchesAllProjectsWhenTheSessionHasNoDirectory() throws Exception {
         StubCache stub = new StubCache();
         stub.add("ChatPanel.java", "nb", "src/ui/ChatPanel.java", "/work/nb");
@@ -320,6 +339,10 @@ class LocateFileToolProviderTest {
             files.add(new FileCacheQuery.CachedFile(
                     stub(nameExt, relativePath, projectRoot + "/" + relativePath),
                     project, relativePath));
+        }
+
+        List<FileCacheQuery.CachedFile> entries() {
+            return files;
         }
 
         void install() {

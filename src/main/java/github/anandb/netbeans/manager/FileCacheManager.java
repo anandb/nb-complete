@@ -32,6 +32,7 @@ import org.openide.util.lookup.ServiceProvider;
 
 import github.anandb.netbeans.contract.FileCacheQuery;
 import github.anandb.netbeans.contract.VcsIgnoreStrategy;
+import github.anandb.netbeans.support.FileAccessGuard;
 import github.anandb.netbeans.support.SlidingTask;
 
 import org.netbeans.api.project.SourceGroup;
@@ -59,6 +60,8 @@ public class FileCacheManager implements FileCacheQuery {
 
     /** Files keyed by absolute path for O(1) dedup across overlapping projects. */
     private final ConcurrentHashMap<String, FileCacheQuery.CachedFile> files = new ConcurrentHashMap<>();
+    /** Source roots per project name, rebuilt with the cache; resolves a directory to a project. */
+    private final Map<String, Set<File>> projectRoots = new ConcurrentHashMap<>();
     private volatile boolean ready;
     private final AtomicLong cacheVersion = new AtomicLong(0);
     private final List<Runnable> readyListeners = new CopyOnWriteArrayList<>();
@@ -158,6 +161,32 @@ public class FileCacheManager implements FileCacheQuery {
         return Collections.unmodifiableCollection(new ArrayList<>(files.values()));
     }
 
+    @Override
+    public Collection<CachedFile> getFiles(String projectName) {
+        List<CachedFile> scoped = new ArrayList<>();
+        for (CachedFile file : files.values()) {
+            if (file.projectName().equals(projectName)) {
+                scoped.add(file);
+            }
+        }
+        return scoped;
+    }
+
+    @Override
+    public String getProjectName(String directory) {
+        if (directory == null) {
+            return null;
+        }
+        for (Map.Entry<String, Set<File>> entry : projectRoots.entrySet()) {
+            for (File root : entry.getValue()) {
+                if (FileAccessGuard.isInsideProject(root.getAbsolutePath(), directory)) {
+                    return entry.getKey();
+                }
+            }
+        }
+        return null;
+    }
+
     /** Registers a listener that fires once when the cache first becomes ready. */
     @Override
     public void onReady(Runnable action) {
@@ -182,6 +211,7 @@ public class FileCacheManager implements FileCacheQuery {
         // Dispose old listeners
         disposeRootListeners();
         strategyCache.clear();
+        projectRoots.clear();
 
         // Scan into a staging map and publish it at the end: clearing the live map
         // would empty GoTo File for the whole scan.
@@ -251,6 +281,7 @@ public class FileCacheManager implements FileCacheQuery {
 
             VcsIgnoreStrategy strategy = detectStrategy(rootDir);
             strategyCache.put(rootDir, strategy);
+            projectRoots.computeIfAbsent(projectName, name -> ConcurrentHashMap.newKeySet()).add(rootDir);
 
             // Bulk scan
             Set<String> nonIgnored = strategy.listNonIgnoredFiles(rootDir);

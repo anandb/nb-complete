@@ -8,6 +8,7 @@ import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Map;
@@ -166,5 +167,36 @@ class FileCacheManagerTest {
         assertEquals(Set.of("Live.java"), remaining);
         assertTrue(manager.getAllFiles().stream()
                 .anyMatch(f -> f.fileObject().equals(live)));
+    }
+
+    @Test
+    void resolvesADirectoryToTheProjectWhoseRootContainsIt() throws Exception {
+        injectRoot("nb", new java.io.File("/work/nb"));
+
+        assertEquals("nb", manager.getProjectName("/work/nb/src/ui"));
+        assertNull(manager.getProjectName("/work/other"));
+        assertNull(manager.getProjectName(null));
+    }
+
+    @Test
+    void returnsOnlyTheRequestedProjectsFiles() throws Exception {
+        FileSystem fs = FileUtil.createMemoryFileSystem();
+        FileObject own = fs.getRoot().createData("Own.java");
+        FileObject other = fs.getRoot().createData("Other.java");
+        manager.publish(Map.of(
+                own.getPath(), new FileCacheQuery.CachedFile(own, "nb", "Own.java"),
+                other.getPath(), new FileCacheQuery.CachedFile(other, "other", "Other.java")),
+                Set.of());
+
+        assertEquals(1, manager.getFiles("nb").size());
+        assertEquals("Own.java", manager.getFiles("nb").iterator().next().relativePath());
+        assertTrue(manager.getFiles("missing").isEmpty());
+    }
+
+    @SuppressWarnings("unchecked")
+    private void injectRoot(String projectName, java.io.File root) throws Exception {
+        java.lang.reflect.Field field = FileCacheManager.class.getDeclaredField("projectRoots");
+        field.setAccessible(true);
+        ((Map<String, Set<java.io.File>>) field.get(manager)).put(projectName, Set.of(root));
     }
 }
