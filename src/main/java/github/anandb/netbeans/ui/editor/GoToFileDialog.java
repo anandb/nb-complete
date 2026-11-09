@@ -15,15 +15,10 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.nio.file.FileSystems;
-import java.nio.file.Path;
-import java.nio.file.PathMatcher;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.logging.Level;
 import github.anandb.netbeans.support.Logger;
-import java.util.regex.Pattern;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
@@ -51,6 +46,7 @@ import org.openide.loaders.DataObject;
 import org.openide.util.NbBundle;
 
 import github.anandb.netbeans.contract.FileCacheQuery;
+import github.anandb.netbeans.pattern.FileNameMatcher;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.UIBundle;
@@ -211,38 +207,19 @@ public class GoToFileDialog extends JDialog {
         }
     }
 
-    /** Detects glob metacharacters: *, ?, [, { */
-    private static final Pattern GLOB_CHARS = Pattern.compile("[*?\\[{]");
-
     private void performSearch() {
-        String query = searchField.getText().trim();
+        String text = searchField.getText().trim();
         listModel.clear();
 
-        if (query.isEmpty()) {
+        if (text.isEmpty()) {
             updateStatusLabel(null);
             return;
         }
 
-        // Build a PathMatcher if the query contains glob characters (case-insensitive).
-        // Act as if the term ends with a wildcard so matches also hit when the
-        // term occurs mid-string (e.g. *Test matches "MyTestFile.java").
-        // Only append * when the tail isn't already wildcard-closed by ? or *.
-        PathMatcher globMatcher = null;
-        if (GLOB_CHARS.matcher(query).find()) {
-            String globPattern = query.toLowerCase(Locale.ROOT);
-            char last = globPattern.charAt(globPattern.length() - 1);
-            if (last != '*' && last != '?') {
-                globPattern += "*";
-            }
-            try {
-                globMatcher = FileSystems.getDefault().getPathMatcher("glob:" + globPattern);
-            } catch (Exception e) {
-                LOG.log(Level.FINE, "Invalid glob pattern: {0}", query);
-            }
-        }
-
-        // 3-char minimum for plain text; glob patterns are always accepted
-        if (globMatcher == null && query.length() < 3) {
+        // Same matcher the locate_file tool uses, so both searches agree.
+        FileNameMatcher.Query query = FileNameMatcher.compile(text);
+        if (!query.usable()) {
+            // A plain query shorter than the minimum matches too much to be a search.
             statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_FilesFound", allFiles.size()));
             return;
         }
@@ -250,7 +227,7 @@ public class GoToFileDialog extends JDialog {
         int count = 0;
         for (FileCacheQuery.CachedFile cf : allFiles) {
             if (count >= MAX_RESULTS) break;
-            if (matches(cf, query, globMatcher)) {
+            if (query.matches(cf.fileObject().getNameExt(), cf.relativePath())) {
                 listModel.addElement(new FileItem(
                     cf.fileObject(), cf.projectName(), cf.relativePath()));
                 count++;
@@ -309,42 +286,6 @@ public class GoToFileDialog extends JDialog {
             }
         }
         return Math.max(nameFm.stringWidth(longestName), pathFm.stringWidth(longestPath));
-    }
-
-    /**
-     * Case-insensitive matching: prefix on filename, or substring in relative path.
-     * When a glob pattern is present, also matches against the relative path using
-     * bash-style globs ({@code *}, {@code **}, {@code ?}, {@code [...]}, {@code \{a,b\}}).
-     *
-     * <p>Runs once per cached file per debounced keystroke, so the plain-text paths avoid
-     * lowercasing every entry; only a glob query (rare) builds lowercased {@link Path}s.</p>
-     */
-    private static boolean matches(FileCacheQuery.CachedFile cf, String query,
-            PathMatcher globMatcher) {
-        String fileName = cf.fileObject().getNameExt();
-        if (fileName.regionMatches(true, 0, query, 0, query.length())) return true;
-        if (containsIgnoreCase(cf.relativePath(), query)) return true;
-
-        // Glob matching (only when pattern was parseable) — compare lowercased. The bare
-        // file name covers single-element globs (*.java, *Test*); the relative path covers
-        // multi-segment ones (**/main/**).
-        if (globMatcher != null) {
-            if (globMatcher.matches(Path.of(fileName.toLowerCase(Locale.ROOT)))) return true;
-            if (globMatcher.matches(Path.of(cf.relativePath().toLowerCase(Locale.ROOT)))) return true;
-        }
-
-        return false;
-    }
-
-    /** Case-insensitive {@code contains}, allocation-free. */
-    private static boolean containsIgnoreCase(String haystack, String needle) {
-        int last = haystack.length() - needle.length();
-        for (int i = 0; i <= last; i++) {
-            if (haystack.regionMatches(true, i, needle, 0, needle.length())) {
-                return true;
-            }
-        }
-        return false;
     }
 
     // --- Inner types ---
