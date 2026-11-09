@@ -65,6 +65,7 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.UsageStatsFormat;
 import github.anandb.netbeans.support.XmlUtils;
 import static github.anandb.netbeans.ui.components.UIUtils.MONO_STACK;
+import github.anandb.netbeans.ui.components.UIUtils;
 import github.anandb.netbeans.ui.rendering.FitEditorPane;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
@@ -718,7 +719,7 @@ public class TokenUsageDialog extends JDialog {
     private static String buildPlaceholderHtml(ColorTheme theme, String message) {
         String fg = theme.toHtmlHex(theme.foreground());
         return "<html><body style='margin:0;padding:8px;color:" + fg
-            + ";font-family:sans-serif;font-size:13px;'>"
+            + ";font-family:" + UIUtils.fontStackWithActual() + ";font-size:13px;'>"
             + XmlUtils.escapeHtml(message) + "</body></html>";
     }
 

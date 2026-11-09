@@ -337,8 +337,7 @@ public final class PermissionRequestPanel extends JPanel {
             contextRow.add(prefixLabel, BorderLayout.WEST);
 
             StartTruncatingLabel contextLabel = new StartTruncatingLabel(context);
-            Font baseFont = ThemeManager.getFont().deriveFont(Font.PLAIN);
-            contextLabel.setFont(new Font(Font.MONOSPACED, baseFont.getStyle(), baseFont.getSize()));
+            contextLabel.setFont(ThemeManager.getMonospaceFont().deriveFont(Font.PLAIN));
             contextLabel.setForeground(new Color(0xF44336));
             contextRow.add(contextLabel, BorderLayout.CENTER);
 

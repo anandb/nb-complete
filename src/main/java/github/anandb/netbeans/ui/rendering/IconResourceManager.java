@@ -2,18 +2,27 @@ package github.anandb.netbeans.ui.rendering;
 
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.net.URL;
+import java.util.logging.Level;
+
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.UIManager;
+import javax.swing.text.AttributeSet;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
+import org.netbeans.api.editor.mimelookup.MimeLookup;
+import org.netbeans.api.editor.mimelookup.MimePath;
+import org.netbeans.api.editor.settings.FontColorNames;
+import org.netbeans.api.editor.settings.FontColorSettings;
+import org.netbeans.editor.Coloring;
 import org.openide.util.ImageUtilities;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.ui.components.UIUtils;
@@ -140,30 +149,74 @@ public final class IconResourceManager {
         return new Font(family, base.getStyle(), base.getSize());
     }
 
+    /**
+     * The font for code: code blocks, tool output, the permission context line and the diff panes.
+     *
+     * <p>Order: the {@code beanbot.mono.font.family} override, then the IDE editor font from
+     * <em>Options &gt; Fonts &amp; Colors</em> (the user's own monospace choice, read from the
+     * editor's default colouring), then the JDK's logical {@code Monospaced} family. Whatever
+     * comes out is checked for real monospacing — a proportional family here would silently turn
+     * every diff into a sans-serif pane.</p>
+     */
     public static Font getMonospaceFont() {
         Font f = cachedMonospaceFont;
         if (f != null) return f;
 
-        Font editorFont = UIManager.getFont("EditorPane.font");
+        Font editorFont = editorCodeFont();
         int size = (editorFont != null) ? editorFont.getSize() : 13;
 
         String monoFamily = System.getProperty(UIUtils.MONO_FONT_FAMILY_PROPERTY);
         if (monoFamily != null && !monoFamily.isBlank()) {
-            cachedMonospaceFont = new Font(monoFamily, Font.PLAIN, size);
+            cachedMonospaceFont = monospacedOrFallback(new Font(monoFamily, Font.PLAIN, size), size);
             return cachedMonospaceFont;
         }
-
-        Font fira = new Font("Fira Code", Font.PLAIN, size);
-        if (fira.getFamily().equalsIgnoreCase("Fira Code")) {
-            cachedMonospaceFont = fira;
-            return fira;
+        if (editorFont != null) {
+            cachedMonospaceFont = monospacedOrFallback(editorFont.deriveFont(Font.PLAIN), size);
+            return cachedMonospaceFont;
         }
+        cachedMonospaceFont = new Font(Font.MONOSPACED, Font.PLAIN, size);
+        return cachedMonospaceFont;
+    }
 
-        f = (editorFont != null)
-                ? new Font(editorFont.getName(), editorFont.getStyle(), size)
+    /** The editor's default colouring font, or null when the editor settings are not available. */
+    private static Font editorCodeFont() {
+        try {
+            FontColorSettings settings = MimeLookup.getLookup(MimePath.get("text/x-java"))
+                    .lookup(FontColorSettings.class);
+            if (settings == null) {
+                settings = MimeLookup.getLookup(MimePath.EMPTY).lookup(FontColorSettings.class);
+            }
+            if (settings == null) {
+                return null;
+            }
+            AttributeSet colors = settings.getFontColors(FontColorNames.DEFAULT_COLORING);
+            if (colors == null) {
+                return null;
+            }
+            Font font = Coloring.fromAttributeSet(colors).getFont();
+            return font != null && font.getFamily() != null && !font.getFamily().isBlank() ? font : null;
+        } catch (RuntimeException | LinkageError ex) {
+            // Unit tests, or a runtime without the editor modules: the logical family covers it.
+            LOG.log(Level.FINE, "Editor font unavailable, using the logical monospace family", ex);
+            return null;
+        }
+    }
+
+    /** Guards against a proportional family (e.g. a user's proportional editor font). */
+    private static Font monospacedOrFallback(Font candidate, int size) {
+        return isMonospaced(candidate)
+                ? candidate
                 : new Font(Font.MONOSPACED, Font.PLAIN, size);
-        cachedMonospaceFont = f;
-        return f;
+    }
+
+    private static boolean isMonospaced(Font font) {
+        FontMetrics fm = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB)
+                .createGraphics().getFontMetrics(font);
+        int width = fm.charWidth('i');
+        return width > 0
+                && width == fm.charWidth('W')
+                && width == fm.charWidth('0')
+                && width == fm.charWidth(' ');
     }
 
     /**

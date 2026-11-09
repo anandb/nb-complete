@@ -85,7 +85,6 @@ import github.anandb.netbeans.support.ToolCallDiffParser.FileChange;
 import javax.swing.JScrollPane;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
-import github.anandb.netbeans.ui.rendering.IconResourceManager;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.components.UIUtils;
 import github.anandb.netbeans.ui.UIBundle;
@@ -818,7 +817,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
     }
 
     private static void applyDiffFont(JComponent diffView) {
-        Font diffFont = IconResourceManager.getDiffMonospaceFont();
+        Font diffFont = ThemeManager.getDiffMonospaceFont();
         setFontRecursive(diffView, diffFont);
         diffView.revalidate();
         diffView.repaint();
@@ -830,7 +829,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
      * user still sees the data instead of an empty error pane.
      */
     private static JComponent buildPlainTextFallback(String name, String baseContent, String stashContent) {
-        Font mono = IconResourceManager.getDiffMonospaceFont();
+        Font mono = ThemeManager.getDiffMonospaceFont();
         JTextArea baseArea = createReadOnlyTextArea(baseContent, mono);
         JTextArea modArea = createReadOnlyTextArea(stashContent, mono);
         JPanel basePane = wrapTextArea(name + " (base)", baseArea);

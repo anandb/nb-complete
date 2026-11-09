@@ -20,7 +20,7 @@ import org.openide.windows.TopComponent;
 
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
-import github.anandb.netbeans.ui.rendering.IconResourceManager;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
 
 /**
  * Applies the plugin's diff font — the same one the stash and permission diffs use — to the IDE's
@@ -211,7 +211,7 @@ public final class IdeDiffFontHook implements Runnable {
     }
 
     private static void applyFont(JTextComponent pane) {
-        Font target = IconResourceManager.getDiffMonospaceFont();
+        Font target = ThemeManager.getDiffMonospaceFont();
         if (target.equals(pane.getFont())) {
             return;
         }

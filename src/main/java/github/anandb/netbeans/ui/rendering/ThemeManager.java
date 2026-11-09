@@ -45,6 +45,11 @@ public class ThemeManager {
         return IconResourceManager.getMonospaceFont();
     }
 
+    /** The editor font one point smaller, clamped at 9 — for the diff panes. */
+    public static Font getDiffMonospaceFont() {
+        return IconResourceManager.getDiffMonospaceFont();
+    }
+
     public static boolean isDark() {
         return IconResourceManager.isDark();
     }
