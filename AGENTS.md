@@ -877,6 +877,10 @@ divider and the input area (it must borrow space from the thread only).
   to prevent layout tree rebuilds.
 - `HtmlContentPreparer` uses an LRU cache (256 entries) for markdown->HTML conversion. Content
   >32 KB bypasses the cache.
+- Welcome-screen accents are **drawn**, never typed: `WelcomeAccentIcons` paints the sparkle (Start
+  New Chat) and the chip glyphs with `Graphics2D`, tinted by the caller. An emoji codepoint is a
+  glyph the user's font may not have (Swing draws an empty box) and a colour-emoji font cannot be
+  rendered on Java 17, so `HardcodedFontTest` fails the build if a UI bundle string carries one.
 - Tool/activity header titles are fitted to the width they are given, never truncated at a fixed
   character count: `CollapsibleHeaderRenderer.elideMiddle` works in pixels and keeps the **tail**
   (a path's file name), so a long path reads `…/MessageBubble.java` instead of losing its name.
