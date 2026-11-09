@@ -97,21 +97,27 @@ public final class ColorRegistry {
 
     private static Color resolveFromProperty(JsonNode entry, boolean darkMode,
             Map<String, String> propertyOverrides) {
-        String propName = entry.has("property") ? entry.get("property").asText() : null;
-        String propDark = entry.has("propertyDark") ? entry.get("propertyDark").asText() : null;
-        String propLight = entry.has("propertyLight") ? entry.get("propertyLight").asText() : null;
-        String effective = null;
-        if (darkMode && propDark != null) {
-            effective = propDark;
-        } else if (!darkMode && propLight != null) {
-            effective = propLight;
-        } else if (propName != null) {
-            effective = propName;
+        // The theme-specific name wins; an entry may still carry one shared name that applies to
+        // both themes when the theme-specific value is absent (e.g. sunkenBackground).
+        String themed = text(entry, darkMode ? "propertyDark" : "propertyLight");
+        Color color = fromProperty(themed, propertyOverrides);
+        if (color != null) {
+            return color;
         }
-        if (effective == null) return null;
-        String value = System.getProperty(effective);
+        return fromProperty(text(entry, "property"), propertyOverrides);
+    }
+
+    private static String text(JsonNode entry, String field) {
+        return entry.has(field) ? entry.get(field).asText() : null;
+    }
+
+    private static Color fromProperty(String name, Map<String, String> propertyOverrides) {
+        if (name == null) {
+            return null;
+        }
+        String value = System.getProperty(name);
         if (value == null || value.isBlank()) {
-            value = propertyOverrides.get(effective);
+            value = propertyOverrides.get(name);
         }
         if (value != null && !value.isBlank()) {
             try {

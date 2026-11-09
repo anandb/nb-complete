@@ -69,6 +69,7 @@ public class BubbleThemeApplier {
         segments.setOpaque(false);
 
         if (bubblePanel instanceof RoundedPanel rp) {
+            // Both chat cards keep the default 1px hairline; no shadows anywhere.
             rp.setBaseColor(bgColor);
             rp.setOpaque(false);
         }

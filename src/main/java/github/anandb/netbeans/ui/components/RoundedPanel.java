@@ -53,6 +53,9 @@ public class RoundedPanel extends JPanel {
     private RoundRectangle2D.Float cachedAccentFor;
     private final RoundRectangle2D.Float accentRect = new RoundRectangle2D.Float();
     private static final int ACCENT_WIDTH = 4;
+    /** The accent is a capsule inset from the card edge, not a full-height stripe. */
+    private static final int ACCENT_INSET_X = 2;
+    private static final int ACCENT_INSET_Y = 10;
     private int cachedWidth = -1;
     private int cachedHeight = -1;
     /** Cached theme-derived border color; invalidated when theme changes. */
@@ -129,7 +132,9 @@ public class RoundedPanel extends JPanel {
         if (cachedAccentArea != null && cachedAccentFor == full) {
             return cachedAccentArea;
         }
-        accentRect.setRoundRect(full.x, full.y, ACCENT_WIDTH, full.height, radius, radius);
+        float insetY = Math.min(ACCENT_INSET_Y, Math.max(0f, (full.height - ACCENT_WIDTH) / 2f));
+        accentRect.setRoundRect(full.x + ACCENT_INSET_X, full.y + insetY,
+                ACCENT_WIDTH, full.height - 2 * insetY, ACCENT_WIDTH, ACCENT_WIDTH);
         Area area = new Area(accentRect);
         area.intersect(new Area(full));
         cachedAccentArea = area;

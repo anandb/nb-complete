@@ -455,7 +455,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         lastHadParamLabel = hasParamLabel;
 
         header.setBackground(newBg);
-        contentPanel.setBackground(null);
+        contentPanel.setBackground(theme.sunkenBackground());
         headerLabel.setForeground(newFg);
         if (paramLabel != null) {
             paramLabel.setForeground(newFg);

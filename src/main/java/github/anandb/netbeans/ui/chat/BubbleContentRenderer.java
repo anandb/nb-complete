@@ -50,8 +50,18 @@ class BubbleContentRenderer {
      *  content on the first render. */
     private List<CollapsibleToolPane.ToolSegment> pendingSegmentedContent;
     private int fontSizeOverride = -1;
+    /** True when the last render produced content that needs the whole thread width. */
+    private boolean hasWideContent;
+
+    /** A table or a code block cannot be read inside the assistant's reading-measure cap. */
+    boolean hasWideContent() {
+        return hasWideContent;
+    }
 
     public record CollapsibleState(boolean expanded) {}
+
+    /** Text inset inside the bubble padding; keeps user and assistant text on the same grid. */
+    private static final EmptyBorder CHAT_TEXT_INSETS = new EmptyBorder(6, 12, 6, 12);
 
     BubbleContentRenderer(JPanel segments, StringBuilder text, String role,
                           ArrayList<CollapsibleState> codeStates, BubbleStreamer streamer) {
@@ -146,7 +156,7 @@ class BubbleContentRenderer {
             } else {
                 segments.removeAll();
                 JTextArea pane = streamer.createWrappingTextArea(theme, userText);
-                pane.setBorder(new EmptyBorder(8, 16, 8, 16));
+                pane.setBorder(CHAT_TEXT_INSETS);
                 // Same size the HTML assistant bubbles get (HtmlContentPreparer):
                 // the preference, or its inherited default when unset.
                 int chatFontSize = PluginSettings.getChatFontSize();
@@ -171,6 +181,7 @@ class BubbleContentRenderer {
         }
         lastRenderedTextLength = currentLen;
         lastRenderedTextHash = currentHash;
+        hasWideContent = false;
 
         Matcher matcher = CodeFencePattern.matcher(text);
 
@@ -196,6 +207,9 @@ class BubbleContentRenderer {
                 codeStates.add(new CollapsibleState(defaultExpanded));
             }
 
+            if (isNotBlank(code)) {
+                hasWideContent = true;
+            }
             updateOrAddCodeSegment(lang, code, defaultExpanded, codeIdx, currentCompIdx++);
 
             lastEnd = matcher.end();
@@ -283,6 +297,7 @@ class BubbleContentRenderer {
         }
 
         FitEditorPane pane = FitEditorPane.createHtmlPane(styledHtml, bg, role, true);
+        pane.setBorder(CHAT_TEXT_INSETS);
         if (compIdx < segments.getComponentCount()) {
             segments.remove(compIdx);
             segments.add(pane, compIdx);
@@ -346,6 +361,7 @@ class BubbleContentRenderer {
             if (seg instanceof TableDetector.TextSegment ts) {
                 updateOrAddTextSegment(ts.text(), theme, currentIdx++, false);
             } else if (seg instanceof TableDetector.TableSegment tbl) {
+                hasWideContent = true;
                 updateOrAddTableSegment(tbl.markdown(), theme, currentIdx++);
             }
         }

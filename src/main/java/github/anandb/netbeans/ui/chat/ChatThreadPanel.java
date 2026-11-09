@@ -127,13 +127,17 @@ public class ChatThreadPanel extends JPanel {
     // --- Session state ---
     private String currentSessionId;
     private long lastUserTimestamp = -1L;
-    private int userMessageCount = 0;
     /** Max visible bubbles via PluginSettings.getMaxMessages(); 0 = unlimited. */
     private transient volatile List<Message> cachedMessages;
     /** Session-keyed buffer for loading; switch-session-safe. */
     private final transient Map<String, List<ProcessedMessage>> pendingMessagesBySession = new ConcurrentHashMap<>();
     /** Seen message IDs during loading, for stale-pin cleanup in flushSessionBuffer(). */
     private final transient Map<String, Set<String>> seenMessageIdsBySession = new ConcurrentHashMap<>();
+
+    // --- Message spacing ---
+    /** Tight within one speaker's run, open across a speaker change. */
+    private static final int SAME_GROUP_GAP = 4;
+    private static final int TURN_GAP = 16;
 
     // --- Permission state ---
     /** Client-property keys stored on permission result labels. */
@@ -307,9 +311,7 @@ public class ChatThreadPanel extends JPanel {
     }
 
     /** Removes a bubble that was drawn locally but never reached the server, e.g. the echo of
-     *  a failed send. Runs on the EDT; the spacer that follows the bubble is dropped with it.
-     *  A removed user bubble also rolls {@code userMessageCount} back, so the next user
-     *  message keeps its place in the avatar alternation. */
+     *  a failed send. Runs on the EDT; the spacer that follows the bubble is dropped with it. */
     public void removeMessageBubble(String messageId) {
         if (messageId == null) {
             return;
@@ -323,9 +325,6 @@ public class ChatThreadPanel extends JPanel {
                 if (next instanceof Box.Filler) {
                     messagesContainer.remove(i);
                 }
-                if ("user".equals(b.getRole()) && userMessageCount > 0) {
-                    userMessageCount--;
-                }
                 queuedBubbles.remove(messageId);
                 queuedMessageIds.remove(messageId);
                 messagesContainer.revalidate();
@@ -333,11 +332,6 @@ public class ChatThreadPanel extends JPanel {
                 return;
             }
         }
-    }
-
-    /** The running per-turn user message index (drives the avatar alternation); test seam. */
-    int getUserMessageCount() {
-        return userMessageCount;
     }
 
     public void addMessage(ProcessedMessage pm) {
@@ -562,12 +556,7 @@ public class ChatThreadPanel extends JPanel {
         // Tool/thought messages create individual bubbles immediately (not accumulated)
         if (type.isTool() || type.isThought()) {
             MessageBubble bubble = BubbleFactory.createToolThoughtBubble(type, text, messageId, toolTitle, streaming);
-
-            bubble.setVisible(visible);
-            Component strut = Box.createVerticalStrut(4);
-            strut.setVisible(visible);
-            messagesContainer.add(bubble);
-            messagesContainer.add(strut);
+            addBubbleWithGap(bubble, visible);
 
             // Non-streaming: run the same finalize step the streaming path gets,
             // so both agree on which bubbles survive. Streaming defers to
@@ -589,11 +578,6 @@ public class ChatThreadPanel extends JPanel {
             ToolThoughtCombiner.combine(messagesContainer, allBlocksExpanded, scrollController);
         }
 
-        // Reset turn state for new user message
-        if (type.isUser()) {
-            userMessageCount++;
-        }
-
         String sid = ensureCurrentSessionId();
 
         // Generate messageId for non-streaming assistant messages that lack one.
@@ -606,7 +590,7 @@ public class ChatThreadPanel extends JPanel {
             seenMessageIdsBySession.computeIfAbsent(sid, k -> ConcurrentHashMap.newKeySet()).add(messageId);
         }
 
-        MessageBubble bubble = BubbleFactory.createRoleBubble(type, text, messageId, toolTitle, streaming, userMessageCount, sid);
+        MessageBubble bubble = BubbleFactory.createRoleBubble(type, text, messageId, toolTitle, streaming, sid);
         bubble.setGeneratedMessageId(generatedId);
 
         if (lastUserTimestamp > 0 && !"user".equals(type.roleName())) {
@@ -622,11 +606,7 @@ public class ChatThreadPanel extends JPanel {
             queuedBubbles.put(messageId, bubble);
         }
 
-        bubble.setVisible(visible);
-        Component strut = Box.createVerticalStrut(4);
-        strut.setVisible(visible);
-        messagesContainer.add(bubble);
-        messagesContainer.add(strut);
+        addBubbleWithGap(bubble, visible);
         // Non-streaming: run the same finalize step as the streaming path.
         // Streaming: deferred-finalize handles layout/blanks at stopStreaming().
         if (!streaming) {
@@ -642,6 +622,39 @@ public class ChatThreadPanel extends JPanel {
         if (streaming) {
             streamingCoordinator.startStreaming(bubble);
         }
+    }
+
+    /**
+     * Adds the bubble and sizes the spacer that precedes it: {@link #SAME_GROUP_GAP} inside one
+     * speaker's run, {@link #TURN_GAP} across a speaker change. The spacer belongs to the
+     * previous bubble, so {@link #removeMessageBubble(String)} still removes the right component.
+     */
+    private void addBubbleWithGap(MessageBubble bubble, boolean visible) {
+        MessageBubble previous = findLastNonIgnorableBubble();
+        resizePreviousSpacer(previous == null || sameTurnGroup(previous.getRole(), bubble.getRole())
+                ? SAME_GROUP_GAP : TURN_GAP);
+        bubble.setVisible(visible);
+        Component strut = Box.createVerticalStrut(SAME_GROUP_GAP);
+        strut.setVisible(visible);
+        messagesContainer.add(bubble);
+        messagesContainer.add(strut);
+    }
+
+    private void resizePreviousSpacer(int height) {
+        int count = messagesContainer.getComponentCount();
+        if (count > 0 && messagesContainer.getComponent(count - 1) instanceof Box.Filler filler) {
+            Dimension size = new Dimension(0, height);
+            filler.changeShape(size, size, size);
+        }
+    }
+
+    /** Tool and thought bubbles both belong to the activity run of a turn. */
+    private static boolean sameTurnGroup(String a, String b) {
+        return a == null ? b == null : a.equals(b) || isActivityRole(a) && isActivityRole(b);
+    }
+
+    private static boolean isActivityRole(String role) {
+        return "tool".equals(role) || "thought".equals(role);
     }
 
     /**
@@ -1276,7 +1289,6 @@ public class ChatThreadPanel extends JPanel {
             startSessionHintShown = false;
             scrollController.unfixAllMouseWheel();
             lastUserTimestamp = -1L;
-            userMessageCount = 0;
             messagesContainer.revalidate();
         };
         // Inline on the EDT: a queued wipe would land after the caller's next
@@ -1483,7 +1495,6 @@ public class ChatThreadPanel extends JPanel {
             messagesContainer.putClientProperty(ScrollablePanel.TRACK_HEIGHT_IF_SHORTER, null);
             scrollController.unfixAllMouseWheel();
             lastUserTimestamp = -1L;
-            userMessageCount = 0;
 
             if (messages != null) {
                 // Convert to ProcessedMessage first, then render in chunks so a

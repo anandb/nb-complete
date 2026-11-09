@@ -1,7 +1,6 @@
 package github.anandb.netbeans.ui.chat;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -312,7 +311,8 @@ class BubbleActionBar {
 
     private void applyPinAccent(boolean apply) {
         if (bubble instanceof RoundedPanel rp) {
-            rp.setLeftAccent(apply ? new Color(0xCC, 0x33, 0x33, 255) : null);
+            // Accent, not error red: a pinned message is a saved state, not a failure.
+            rp.setLeftAccent(apply ? ThemeManager.getCurrentTheme().accent() : null);
         }
     }
 

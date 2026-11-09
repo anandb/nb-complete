@@ -71,6 +71,8 @@ public final class ColorTheme {
     private static final String PROP_USER_BUBBLE_DARK = "beanbot.color.bubbleUserBackgroundDark";
     private static final String PROP_ASSISTANT_BUBBLE_LIGHT = "beanbot.color.bubbleAssistant";
     private static final String PROP_ASSISTANT_BUBBLE_DARK = "beanbot.color.bubbleAssistantDark";
+    private static final String PROP_SUNKEN_LIGHT = "beanbot.color.sunkenBackgroundLight";
+    private static final String PROP_SUNKEN_DARK = "beanbot.color.sunkenBackgroundDark";
 
     private static Map<String, String> colorOverrides() {
         Map<String, String> overrides = new HashMap<>();
@@ -80,6 +82,8 @@ public final class ColorTheme {
                 PluginSettings.getAssistantBubbleBackgroundLight());
         putOverride(overrides, PROP_ASSISTANT_BUBBLE_DARK,
                 PluginSettings.getAssistantBubbleBackgroundDark());
+        putOverride(overrides, PROP_SUNKEN_LIGHT, PluginSettings.getChatBackgroundLight());
+        putOverride(overrides, PROP_SUNKEN_DARK, PluginSettings.getChatBackgroundDark());
         return overrides;
     }
 
@@ -101,22 +105,34 @@ public final class ColorTheme {
      * with the colour that takes effect when no override is stored.
      */
     public static Color configuredBubbleColor(boolean userBubble, boolean darkMode) {
+        Color color = defaultsRegistry(darkMode)
+                .get(userBubble ? ColorKey.bubble_user : ColorKey.bubble_assistant);
+        return color != null ? color : Color.LIGHT_GRAY;
+    }
+
+    /** The sunken background {@code colors.json} configures for the given theme. */
+    public static Color configuredChatBackground(boolean darkMode) {
+        Color color = defaultsRegistry(darkMode).get(ColorKey.sunken_background);
+        return color != null ? color : Color.LIGHT_GRAY;
+    }
+
+    private static ColorRegistry defaultsRegistry(boolean darkMode) {
         ColorRegistry registry = darkMode ? darkDefaults : lightDefaults;
-        if (registry == null) {
-            synchronized (DEFAULTS_LOCK) {
-                registry = darkMode ? darkDefaults : lightDefaults;
-                if (registry == null) {
-                    registry = ColorRegistry.fromJson(loadColorConfig(), darkMode);
-                    if (darkMode) {
-                        darkDefaults = registry;
-                    } else {
-                        lightDefaults = registry;
-                    }
+        if (registry != null) {
+            return registry;
+        }
+        synchronized (DEFAULTS_LOCK) {
+            registry = darkMode ? darkDefaults : lightDefaults;
+            if (registry == null) {
+                registry = ColorRegistry.fromJson(loadColorConfig(), darkMode);
+                if (darkMode) {
+                    darkDefaults = registry;
+                } else {
+                    lightDefaults = registry;
                 }
             }
+            return registry;
         }
-        Color color = registry.get(userBubble ? ColorKey.bubble_user : ColorKey.bubble_assistant);
-        return color != null ? color : Color.LIGHT_GRAY;
     }
 
     // ---- color accessors ----------------------------------------------------
@@ -166,10 +182,7 @@ public final class ColorTheme {
     public Color  permissionDenyBg()                             { return registry.get(ColorKey.permission_deny_bg); }
     public Color  permissionDenyBorder()                         { return registry.get(ColorKey.permission_deny_border); }
     public Color  activityAccent()                               { return registry.get(ColorKey.activity_accent); }
-    public Color  success()                                      { return registry.get(ColorKey.success); }
     public Color  scrollButtonColor()                            { return registry.get(ColorKey.scroll_button_color); }
-    public Color  headerForeground()                             { return registry.get(ColorKey.header_foreground); }
-    public Color  toolForeground()                               { return registry.get(ColorKey.tool_foreground); }
 
     // ---- CSS generation (delegated) -----------------------------------------
 

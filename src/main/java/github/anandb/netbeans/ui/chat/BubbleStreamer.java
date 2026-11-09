@@ -112,7 +112,7 @@ class BubbleStreamer {
         ta.setBackground(TRANSPARENT);
         ta.setForeground(theme.foreground());
         ta.setFont(ThemeManager.getFont());
-        ta.setBorder(new EmptyBorder(4, 20, 8, 6));
+        ta.setBorder(new EmptyBorder(6, 12, 6, 12));
         return ta;
     }
 

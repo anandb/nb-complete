@@ -59,7 +59,9 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
 
     @Override
     protected Color getDefaultHeaderBackground() {
-        return expanded ? ThemeManager.getCurrentTheme().base2() : ThemeManager.getCurrentTheme().thinkingHeaderBackground();
+        return expanded
+                ? ThemeManager.getCurrentTheme().base2()
+                : ThemeManager.getCurrentTheme().thinkingHeaderBackground();
     }
 
     @Override

@@ -28,6 +28,8 @@
   {
     "name": "sunkenBackground",
     "property": "beanbot.color.sunkenBackground",
+    "propertyLight": "beanbot.color.sunkenBackgroundLight",
+    "propertyDark": "beanbot.color.sunkenBackgroundDark",
     "key": "Panel.background",
     "keyDark": "Editor.background",
     "dark": "#1E1E1E",
@@ -37,8 +39,8 @@
     "name": "bubbleUser",
     "propertyLight": "beanbot.color.bubbleUserBackground",
     "propertyDark": "beanbot.color.bubbleUserBackgroundDark",
-    "dark": "#1E2126",
-    "light": "#E9E8E2"
+    "dark": "#2F3D4C",
+    "light": "#C9DDF2"
   },
   {
     "name": "bubbleAssistant",
@@ -51,8 +53,8 @@
     "name": "bubbleBorder",
     "property": "beanbot.color.bubbleBorder",
     "key": "Button.borderColor",
-    "dark": "#555555",
-    "light": "#C0B8A8"
+    "dark": "#4A4D50",
+    "light": "#C9C9C9"
   },
   {
     "name": "assistantForeground",
@@ -85,9 +87,8 @@
   {
     "name": "yellow",
     "property": "beanbot.color.yellow",
-    "key": "ComboBox.selectionBackground",
     "dark": "#D4A017",
-    "light": "#FFD700"
+    "light": "#B8860B"
   },
   {
     "name": "codeBackground",
@@ -106,13 +107,6 @@
     "property": "beanbot.color.codeSelection",
     "key": "TextArea.selectionBackground",
     "fallback": "#353739"
-  },
-  {
-    "name": "headerForeground",
-    "property": "beanbot.color.headerForeground",
-    "key": "Label.foreground",
-    "dark": "#E0E0E0",
-    "light": "#1A1A1A"
   },
   {
     "name": "errorBackground",
@@ -157,13 +151,6 @@
     "key": "Label.foreground",
     "dark": "#BBBFBF",
     "light": "#333333"
-  },
-  {
-    "name": "toolForeground",
-    "property": "beanbot.color.toolForeground",
-    "key": "Label.disabledForeground",
-    "dark": "#9CA3AF",
-    "light": "#777777"
   },
   {
     "name": "permissionBg",
@@ -312,11 +299,5 @@
     "property": "beanbot.color.scrollButtonColor",
     "dark": "#2962FF",
     "light": "#2962FF"
-  },
-  {
-    "name": "success",
-    "property": "beanbot.color.success",
-    "dark": "#3FB950",
-    "light": "#1A7F37"
   }
 ]

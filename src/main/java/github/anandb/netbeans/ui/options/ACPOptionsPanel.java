@@ -151,6 +151,8 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private ColorComboBox userBubbleDarkCombo;
     private ColorComboBox assistantBubbleLightCombo;
     private ColorComboBox assistantBubbleDarkCombo;
+    private ColorComboBox chatBackgroundLightCombo;
+    private ColorComboBox chatBackgroundDarkCombo;
     private JComboBox<String> chatFontFamilyCombo;
     private JPanel pendingRestartBar;
     private JPanel detailCards;
@@ -662,6 +664,12 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
                 ColorTheme.configuredBubbleColor(false, true));
         addColorRow(appearanceForm, ++row, "LBL_AssistantBubbleBackground",
                 assistantBubbleLightCombo, assistantBubbleDarkCombo);
+        chatBackgroundLightCombo = colorCombo("TT_ChatBackgroundLight",
+                ColorTheme.configuredChatBackground(false));
+        chatBackgroundDarkCombo = colorCombo("TT_ChatBackgroundDark",
+                ColorTheme.configuredChatBackground(true));
+        addColorRow(appearanceForm, ++row, "LBL_ChatBackground",
+                chatBackgroundLightCombo, chatBackgroundDarkCombo);
 
         JLabel chatFontFamilyLabel = new JLabel(scopedLabel("LBL_ChatFontFamily",
                 PluginSettings.Effect.SESSION_RELOAD));
@@ -792,15 +800,23 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         String userDark = selectedColorValue(userBubbleDarkCombo, userDarkTheme);
         String assistantLight = selectedColorValue(assistantBubbleLightCombo, assistantLightTheme);
         String assistantDark = selectedColorValue(assistantBubbleDarkCombo, assistantDarkTheme);
+        String chatLight = selectedColorValue(chatBackgroundLightCombo,
+                ColorTheme.configuredChatBackground(false));
+        String chatDark = selectedColorValue(chatBackgroundDarkCombo,
+                ColorTheme.configuredChatBackground(true));
         boolean changed = !userLight.equals(PluginSettings.getUserBubbleBackgroundLight())
                 || !userDark.equals(PluginSettings.getUserBubbleBackgroundDark())
                 || !assistantLight.equals(PluginSettings.getAssistantBubbleBackgroundLight())
                 || !assistantDark.equals(PluginSettings.getAssistantBubbleBackgroundDark())
+                || !chatLight.equals(PluginSettings.getChatBackgroundLight())
+                || !chatDark.equals(PluginSettings.getChatBackgroundDark())
                 || !selectedFontFamily().equals(PluginSettings.getChatFontFamily());
         PluginSettings.setUserBubbleBackgroundLight(userLight);
         PluginSettings.setUserBubbleBackgroundDark(userDark);
         PluginSettings.setAssistantBubbleBackgroundLight(assistantLight);
         PluginSettings.setAssistantBubbleBackgroundDark(assistantDark);
+        PluginSettings.setChatBackgroundLight(chatLight);
+        PluginSettings.setChatBackgroundDark(chatDark);
         PluginSettings.setChatFontFamily(selectedFontFamily());
         if (changed) {
             ThemeManager.reloadTheme();
@@ -1196,6 +1212,10 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
                 ColorTheme.configuredBubbleColor(false, false));
         selectColor(assistantBubbleDarkCombo, PluginSettings.getAssistantBubbleBackgroundDark(),
                 ColorTheme.configuredBubbleColor(false, true));
+        selectColor(chatBackgroundLightCombo, PluginSettings.getChatBackgroundLight(),
+                ColorTheme.configuredChatBackground(false));
+        selectColor(chatBackgroundDarkCombo, PluginSettings.getChatBackgroundDark(),
+                ColorTheme.configuredChatBackground(true));
         applyFontFamily(PluginSettings.getChatFontFamily());
 
         sortLinesCheckbox.setSelected(PluginSettings.isSortLinesEnabled());

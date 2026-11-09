@@ -98,6 +98,9 @@ public final class PreferenceKeys {
     public static final String USER_BUBBLE_DARK = "appearance.userBubbleDark";
     public static final String ASSISTANT_BUBBLE_LIGHT = "appearance.assistantBubbleLight";
     public static final String ASSISTANT_BUBBLE_DARK = "appearance.assistantBubbleDark";
+    /** Appearance override for the theme's sunken background (the chat panel surface). */
+    public static final String CHAT_BACKGROUND_LIGHT = "appearance.chatBackgroundLight";
+    public static final String CHAT_BACKGROUND_DARK = "appearance.chatBackgroundDark";
     public static final String CHAT_FONT_FAMILY = "appearance.chatFontFamily";
 
     /** Whether to show hidden sessions in the session list. */

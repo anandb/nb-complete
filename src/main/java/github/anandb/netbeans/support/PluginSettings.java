@@ -70,6 +70,8 @@ public final class PluginSettings {
     private static volatile String cachedUserBubbleDark = "";
     private static volatile String cachedAssistantBubbleLight = "";
     private static volatile String cachedAssistantBubbleDark = "";
+    private static volatile String cachedChatBackgroundLight = "";
+    private static volatile String cachedChatBackgroundDark = "";
     private static volatile String cachedChatFontFamily = "";
     /** Cached show hidden sessions toggle — volatile for cross-thread visibility. Defaults to false. */
     private static volatile boolean cachedShowHiddenSessions = false;
@@ -133,6 +135,8 @@ public final class PluginSettings {
         cachedUserBubbleDark = prefs.get(PreferenceKeys.USER_BUBBLE_DARK, "");
         cachedAssistantBubbleLight = prefs.get(PreferenceKeys.ASSISTANT_BUBBLE_LIGHT, "");
         cachedAssistantBubbleDark = prefs.get(PreferenceKeys.ASSISTANT_BUBBLE_DARK, "");
+        cachedChatBackgroundLight = prefs.get(PreferenceKeys.CHAT_BACKGROUND_LIGHT, "");
+        cachedChatBackgroundDark = prefs.get(PreferenceKeys.CHAT_BACKGROUND_DARK, "");
         cachedChatFontFamily = prefs.get(PreferenceKeys.CHAT_FONT_FAMILY, "");
         cachedShowHiddenSessions = prefs.getBoolean(PreferenceKeys.SHOW_HIDDEN_SESSIONS, false);
         cachedKeepOlderMessages = prefs.getBoolean(PreferenceKeys.KEEP_OLDER_MESSAGES, false);
@@ -327,6 +331,10 @@ public final class PluginSettings {
             cachedAssistantBubbleLight = prefs().get(PreferenceKeys.ASSISTANT_BUBBLE_LIGHT, "");
         } else if (PreferenceKeys.ASSISTANT_BUBBLE_DARK.equals(evt.getKey())) {
             cachedAssistantBubbleDark = prefs().get(PreferenceKeys.ASSISTANT_BUBBLE_DARK, "");
+        } else if (PreferenceKeys.CHAT_BACKGROUND_LIGHT.equals(evt.getKey())) {
+            cachedChatBackgroundLight = prefs().get(PreferenceKeys.CHAT_BACKGROUND_LIGHT, "");
+        } else if (PreferenceKeys.CHAT_BACKGROUND_DARK.equals(evt.getKey())) {
+            cachedChatBackgroundDark = prefs().get(PreferenceKeys.CHAT_BACKGROUND_DARK, "");
         } else if (PreferenceKeys.CHAT_FONT_FAMILY.equals(evt.getKey())) {
             cachedChatFontFamily = prefs().get(PreferenceKeys.CHAT_FONT_FAMILY, "");
         } else if (PreferenceKeys.SHOW_HIDDEN_SESSIONS.equals(evt.getKey())) {
@@ -622,6 +630,24 @@ public final class PluginSettings {
 
     public static void setAssistantBubbleBackgroundDark(String color) {
         cachedAssistantBubbleDark = putColor(PreferenceKeys.ASSISTANT_BUBBLE_DARK, color);
+    }
+
+    /** Sunken background override ({@code #rrggbb}) for the light theme; empty keeps the theme. */
+    public static String getChatBackgroundLight() {
+        return cachedChatBackgroundLight;
+    }
+
+    public static void setChatBackgroundLight(String color) {
+        cachedChatBackgroundLight = putColor(PreferenceKeys.CHAT_BACKGROUND_LIGHT, color);
+    }
+
+    /** Sunken background override ({@code #rrggbb}) for the dark theme; empty keeps the theme. */
+    public static String getChatBackgroundDark() {
+        return cachedChatBackgroundDark;
+    }
+
+    public static void setChatBackgroundDark(String color) {
+        cachedChatBackgroundDark = putColor(PreferenceKeys.CHAT_BACKGROUND_DARK, color);
     }
 
     /** Chat font family for all chat text; empty keeps the LAF / system-property choice. */

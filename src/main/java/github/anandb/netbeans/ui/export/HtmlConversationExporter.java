@@ -371,7 +371,7 @@ public final class HtmlConversationExporter {
         String accent = theme.toHtmlHex(theme.accent());
         String codeBg = theme.toHtmlHex(theme.codeBackground());
         String codeFg = theme.toHtmlHex(theme.codeForeground());
-        String linkColor = dark ? "#589DF6" : "#268BD2";
+        String linkColor = dark ? "#589DF6" : "#1F6FB2";
         String borderColor = dark ? "#3b3f44" : "#d0d0d0";
         String tableBg = theme.toHtmlHex(theme.tableBackground());
         String tableHeaderBg = theme.toHtmlHex(theme.tableHeaderBackground());

@@ -22,7 +22,6 @@ public enum ColorKey {
     bubble_border("bubbleBorder"),
     assistant_foreground("assistantForeground"),
     panel_header("panelHeader"),
-    header_foreground("headerForeground"),
     base1("base1"),
     base2("base2"),
     yellow("yellow"),
@@ -35,7 +34,6 @@ public enum ColorKey {
     code_header_border("codeHeaderBorder"),
     thinking_header_background("thinkingHeaderBackground"),
     thinking_header_foreground("thinkingHeaderForeground"),
-    tool_foreground("toolForeground"),
     permission_bg("permissionBg"),
     permission_border("permissionBorder"),
     permission_accent("permissionAccent"),
@@ -58,7 +56,6 @@ public enum ColorKey {
     permission_deny_bg("permissionDenyBg"),
     permission_deny_border("permissionDenyBorder"),
     activity_accent("activityAccent"),
-    success("success"),
     scroll_button_color("scrollButtonColor");
 
     /** The name as it appears in colors.json. */

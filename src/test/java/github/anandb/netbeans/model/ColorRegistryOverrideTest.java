@@ -20,11 +20,39 @@ class ColorRegistryOverrideTest {
 
     private static final String LIGHT_PROPERTY = "beanbot.test.color.light";
     private static final String DARK_PROPERTY = "beanbot.test.color.dark";
+    private static final String SHARED_PROPERTY = "beanbot.test.color.shared";
 
     @AfterEach
     void clearProperty() {
         System.clearProperty(LIGHT_PROPERTY);
         System.clearProperty(DARK_PROPERTY);
+        System.clearProperty(SHARED_PROPERTY);
+    }
+
+    @Test
+    void themePropertyWinsOverTheSharedProperty() throws Exception {
+        ColorRegistry registry = ColorRegistry.fromJson(sunkenConfig(), false, Map.of(
+                LIGHT_PROPERTY, "#111111",
+                SHARED_PROPERTY, "#222222"));
+
+        assertEquals(new Color(0x11, 0x11, 0x11), registry.get(ColorKey.sunken_background));
+    }
+
+    @Test
+    void lightOverrideDoesNotLeakIntoTheDarkTheme() throws Exception {
+        ColorRegistry registry = ColorRegistry.fromJson(sunkenConfig(), true,
+                Map.of(LIGHT_PROPERTY, "#111111"));
+
+        assertEquals(new Color(0x1e, 0x1e, 0x1e), registry.get(ColorKey.sunken_background),
+                "a light-only override must not colour the dark theme");
+    }
+
+    @Test
+    void sharedPropertyAppliesWhenTheThemeValueIsUnset() throws Exception {
+        ColorRegistry registry = ColorRegistry.fromJson(sunkenConfig(), false,
+                Map.of(SHARED_PROPERTY, "#222222"));
+
+        assertEquals(new Color(0x22, 0x22, 0x22), registry.get(ColorKey.sunken_background));
     }
 
     @Test
@@ -59,6 +87,20 @@ class ColorRegistryOverrideTest {
                 Map.of(LIGHT_PROPERTY, "  "));
 
         assertEquals(new Color(0xe9, 0xe8, 0xe2), registry.get(ColorKey.bubble_user));
+    }
+
+    private static JsonNode sunkenConfig() throws Exception {
+        String json = """
+                [{
+                  "name": "sunkenBackground",
+                  "property": "%s",
+                  "propertyLight": "%s",
+                  "propertyDark": "%s",
+                  "dark": "#1E1E1E",
+                  "fallback": "#ECECEC"
+                }]
+                """.formatted(SHARED_PROPERTY, LIGHT_PROPERTY, DARK_PROPERTY);
+        return MapperSupplier.get().readTree(json);
     }
 
     private static JsonNode config() throws Exception {

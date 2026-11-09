@@ -102,6 +102,13 @@
 - **Logging**: Use index-based placeholders (`{0}`). NO `warning()` method (use
   `LOG.log(Level.WARNING, ...)` or `severe/warn/info/fine`). Pass exceptions as the LAST argument.
 - **Theming**: Use `ThemeManager.getCurrentTheme()`. Dark mode icons require `_dark.svg` suffix.
+  The chat thread surface is `theme.sunkenBackground()`: the Appearance chat-background pickers
+  override that entry (system properties `beanbot.color.sunkenBackground` / `…Dark`). Do NOT add a
+  separate `chatBackground` key or point the thread at another colour.
+  Tool/thought headers: collapsed is `sunkenBackground()`, expanded is `base2()`; every segmented
+  block header (only visible while expanded) is also `base2()`, and the pane body is
+  `sunkenBackground()`. Do not swap the two, and keep the segmented and regular headers on the
+  same colour.
 - **Asynchrony / EDT**: Wrap all background thread UI updates in `SwingUtilities.invokeLater()`.
 - **No I/O on EDT**: NEVER perform I/O operations (file reads/writes, network calls, pipe writes) on the Event Dispatch Thread (EDT). This includes `Files.readString()`, `writer.flush()`, `sendRequest()`, `sendNotification()`, and similar blocking operations. Doing so can cause deadlocks when the pipe buffer is full or the server is slow to respond, freezing the entire UI. Always wrap I/O in `CompletableFuture.runAsync()` or use background threads. Example: `AcpProtocolClient.sendRequest()` and `sendNotification()` now use `CompletableFuture.runAsync()` to avoid EDT blocking.
 - **Regex in hot paths**: NEVER use `String.matches()` or `String.replaceAll()` in loops or
@@ -804,10 +811,6 @@ divider and the input area (it must borrow space from the thread only).
   `sweepStreamingBubbles()`, assigning SHA-256 IDs to assistant bubbles that lack one.
 - **Non-streaming messages**: messageId is generated in `addSingleBubble()` when
   `messageId == null && !streaming`.
-- The user message index (`userMessageCount`) increments per user message, decrements when
-  `removeMessageBubble()` drops a failed send's user echo, and resets on session create/load.
-  Same inputs always produce same hash (stable across reloads). It drives the avatar
-  alternation (`BubbleFactory.resolveAvatarPosition`), so a skipped decrement flips the side.
 - **One message id, one bubble, across interleaved blocks**: `processMessageSections` resolves an
   assistant chunk whose immediate predecessor is not mergeable to the bubble that already owns
   its message id (`findAssistantBubble`, bounded to the current turn), so text that continues
@@ -874,8 +877,27 @@ divider and the input area (it must borrow space from the thread only).
   to prevent layout tree rebuilds.
 - `HtmlContentPreparer` uses an LRU cache (256 entries) for markdown->HTML conversion. Content
   >32 KB bypasses the cache.
-- UI elements use `RoundedPanel(16)` for assistant/user bubbles, and `RoundedPanel(12)` for
-  tables/tool blocks.
+- Chat bubbles ride a width-capped row: `MessageBubble.AlignedRow` caps content at 72% of the
+  thread width (user, right-aligned, absolute 760px) or 88% (assistant, left-aligned, 920px).
+  BoxLayout's cross-axis alignment is cooperative between siblings, so the cap MUST stay in that
+  container — putting it on `getMaximumSize()` shifts the whole row instead of aligning it. A
+  bubble that renders a table or a code block drops the cap and uses the whole row
+  (`BubbleContentRenderer.hasWideContent()` → `AlignedRow.setFullWidth`), because capping either
+  forces the user to resize the sidebar. Corners
+  are `RoundedPanel(18)`; tables/tool blocks keep `RoundedPanel(12)`. Both chat cards are flat:
+  fill plus the theme's 1px hairline, no drop shadow. Do NOT paint either card the page colour —
+  on a near-white L&F page the bubble loses its boundary (reported after v1.30), and do not
+  reintroduce `setDropShadow` on chat bubbles (reported as not helping).
+  Pin/queue markers are the same left accent (`RoundedPanel.setLeftAccent`), painted as a 4px
+  capsule inset 2px from the edge and 10px from top/bottom: pinned uses `theme.accent()`, queued
+  the queue amber. Do NOT paint a full-height stripe — with the border off it reads as a damaged
+  card edge (reported after the v1.30 bubble refresh).
+  The user avatar is pinned LEFT (`BubbleFactory.resolveAvatarPosition`) — do NOT reintroduce the
+  LEFT/RIGHT alternation, and do not revive the removed `userMessageCount` index.
+- Message spacing: `ChatThreadPanel.addBubbleWithGap` sets a 4px gap inside one speaker's run and
+  16px across a speaker change (tool + thought share one activity group). The gap is applied by
+  resizing the *previous* bubble's trailing strut, so `removeMessageBubble` still drops the right
+  spacer.
 - `removeNotify()` in UI components MUST stop `javax.swing.Timer` instances and finalize
   streaming to prevent memory leaks.
 - `BaseCollapsiblePane` does NOT remove its MouseListeners (`toggleListener`, `copyButtonHoverListener`)

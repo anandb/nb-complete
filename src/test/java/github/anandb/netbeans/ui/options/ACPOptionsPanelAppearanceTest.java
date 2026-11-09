@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import java.awt.Color;
 import java.awt.Component;
 import java.lang.reflect.Field;
+import java.util.prefs.Preferences;
 
 import javax.swing.JComboBox;
 import javax.swing.SwingUtilities;
@@ -19,8 +20,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openide.awt.ColorComboBox;
 import org.openide.util.NbBundle;
+import org.openide.util.NbPreferences;
 
 import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.UiTestSupport;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
@@ -36,6 +39,8 @@ class ACPOptionsPanelAppearanceTest {
     private String userDark;
     private String assistantLight;
     private String assistantDark;
+    private String chatLight;
+    private String chatDark;
     private String fontFamily;
 
     @BeforeEach
@@ -45,6 +50,8 @@ class ACPOptionsPanelAppearanceTest {
         userDark = PluginSettings.getUserBubbleBackgroundDark();
         assistantLight = PluginSettings.getAssistantBubbleBackgroundLight();
         assistantDark = PluginSettings.getAssistantBubbleBackgroundDark();
+        chatLight = PluginSettings.getChatBackgroundLight();
+        chatDark = PluginSettings.getChatBackgroundDark();
         fontFamily = PluginSettings.getChatFontFamily();
     }
 
@@ -54,6 +61,8 @@ class ACPOptionsPanelAppearanceTest {
         PluginSettings.setUserBubbleBackgroundDark(userDark);
         PluginSettings.setAssistantBubbleBackgroundLight(assistantLight);
         PluginSettings.setAssistantBubbleBackgroundDark(assistantDark);
+        PluginSettings.setChatBackgroundLight(chatLight);
+        PluginSettings.setChatBackgroundDark(chatDark);
         PluginSettings.setChatFontFamily(fontFamily);
         // The setters do not reach the UI caches, so a later test would see this font/colour.
         github.anandb.netbeans.ui.rendering.ThemeManager.clearFontCache();
@@ -67,6 +76,8 @@ class ACPOptionsPanelAppearanceTest {
         PluginSettings.setUserBubbleBackgroundDark("#445566");
         PluginSettings.setAssistantBubbleBackgroundLight("#778899");
         PluginSettings.setAssistantBubbleBackgroundDark("#aabbcc");
+        PluginSettings.setChatBackgroundLight("#0d0e0f");
+        PluginSettings.setChatBackgroundDark("#101112");
         PluginSettings.setChatFontFamily("Segoe UI");
 
         ACPOptionsPanel panel = new ACPOptionsPanel(new ACPOptionsPanelController());
@@ -80,6 +91,10 @@ class ACPOptionsPanelAppearanceTest {
                 colorCombo(panel, "assistantBubbleLightCombo").getSelectedColor());
         assertEquals(new Color(0xaa, 0xbb, 0xcc),
                 colorCombo(panel, "assistantBubbleDarkCombo").getSelectedColor());
+        assertEquals(new Color(0x0d, 0x0e, 0x0f),
+                colorCombo(panel, "chatBackgroundLightCombo").getSelectedColor());
+        assertEquals(new Color(0x10, 0x11, 0x12),
+                colorCombo(panel, "chatBackgroundDarkCombo").getSelectedColor());
         assertEquals("Segoe UI", fontCombo(panel).getSelectedItem(),
                 "a stored family that is not installed must stay selected");
     }
@@ -93,6 +108,8 @@ class ACPOptionsPanelAppearanceTest {
         colorCombo(panel, "userBubbleDarkCombo").setSelectedColor(new Color(0x04, 0x05, 0x06));
         colorCombo(panel, "assistantBubbleLightCombo").setSelectedColor(new Color(0x07, 0x08, 0x09));
         colorCombo(panel, "assistantBubbleDarkCombo").setSelectedColor(new Color(0x0a, 0x0b, 0x0c));
+        colorCombo(panel, "chatBackgroundLightCombo").setSelectedColor(new Color(0x0d, 0x0e, 0x0f));
+        colorCombo(panel, "chatBackgroundDarkCombo").setSelectedColor(new Color(0x10, 0x11, 0x12));
         // Pick whatever family this machine has installed: the combo is not editable, so a
         // named family that happens to be missing here would silently leave "Inherited" (the
         // empty override) selected and the test would fail for the wrong reason.
@@ -106,7 +123,31 @@ class ACPOptionsPanelAppearanceTest {
         assertEquals("#040506", PluginSettings.getUserBubbleBackgroundDark());
         assertEquals("#070809", PluginSettings.getAssistantBubbleBackgroundLight());
         assertEquals("#0a0b0c", PluginSettings.getAssistantBubbleBackgroundDark());
+        assertEquals("#0d0e0f", PluginSettings.getChatBackgroundLight());
+        assertEquals("#101112", PluginSettings.getChatBackgroundDark());
         assertEquals(chosenFamily, PluginSettings.getChatFontFamily());
+    }
+
+    @Test
+    void appearanceOverridesLandOnTheirOwnPreferenceKeys() throws Exception {
+        ACPOptionsPanel panel = new ACPOptionsPanel(new ACPOptionsPanelController());
+        panel.load();
+
+        colorCombo(panel, "userBubbleLightCombo").setSelectedColor(new Color(0x01, 0x02, 0x03));
+        colorCombo(panel, "userBubbleDarkCombo").setSelectedColor(new Color(0x04, 0x05, 0x06));
+        colorCombo(panel, "assistantBubbleLightCombo").setSelectedColor(new Color(0x07, 0x08, 0x09));
+        colorCombo(panel, "assistantBubbleDarkCombo").setSelectedColor(new Color(0x0a, 0x0b, 0x0c));
+        colorCombo(panel, "chatBackgroundLightCombo").setSelectedColor(new Color(0x0d, 0x0e, 0x0f));
+        colorCombo(panel, "chatBackgroundDarkCombo").setSelectedColor(new Color(0x10, 0x11, 0x12));
+        panel.store();
+
+        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        assertEquals("#010203", prefs.get(PreferenceKeys.USER_BUBBLE_LIGHT, ""));
+        assertEquals("#040506", prefs.get(PreferenceKeys.USER_BUBBLE_DARK, ""));
+        assertEquals("#070809", prefs.get(PreferenceKeys.ASSISTANT_BUBBLE_LIGHT, ""));
+        assertEquals("#0a0b0c", prefs.get(PreferenceKeys.ASSISTANT_BUBBLE_DARK, ""));
+        assertEquals("#0d0e0f", prefs.get(PreferenceKeys.CHAT_BACKGROUND_LIGHT, ""));
+        assertEquals("#101112", prefs.get(PreferenceKeys.CHAT_BACKGROUND_DARK, ""));
     }
 
     @Test
@@ -115,11 +156,16 @@ class ACPOptionsPanelAppearanceTest {
         ACPOptionsPanel panel = new ACPOptionsPanel(new ACPOptionsPanelController());
         panel.load();
 
+        PluginSettings.setChatBackgroundDark("#101112");
         colorCombo(panel, "userBubbleLightCombo")
                 .setSelectedColor(ColorTheme.configuredBubbleColor(true, false));
+        colorCombo(panel, "chatBackgroundDarkCombo")
+                .setSelectedColor(ColorTheme.configuredChatBackground(true));
         panel.store();
 
         assertEquals("", PluginSettings.getUserBubbleBackgroundLight(),
+                "the Default entry means no override, not a stored value");
+        assertEquals("", PluginSettings.getChatBackgroundDark(),
                 "the Default entry means no override, not a stored value");
     }
 
@@ -135,6 +181,10 @@ class ACPOptionsPanelAppearanceTest {
                 colorCombo(panel, "assistantBubbleLightCombo").getSelectedColor());
         assertEquals(ColorTheme.configuredBubbleColor(false, true),
                 colorCombo(panel, "assistantBubbleDarkCombo").getSelectedColor());
+        assertEquals(ColorTheme.configuredChatBackground(false),
+                colorCombo(panel, "chatBackgroundLightCombo").getSelectedColor());
+        assertEquals(ColorTheme.configuredChatBackground(true),
+                colorCombo(panel, "chatBackgroundDarkCombo").getSelectedColor());
         assertNotEquals(ColorTheme.configuredBubbleColor(true, false),
                 ColorTheme.configuredBubbleColor(true, true),
                 "the light and dark defaults are distinct colours");
@@ -188,13 +238,17 @@ class ACPOptionsPanelAppearanceTest {
         assertSame(colorCombo(panel, "assistantBubbleLightCombo").getParent(),
                 colorCombo(panel, "assistantBubbleDarkCombo").getParent(),
                 "the light and dark pickers belong to the same row");
+        assertSame(colorCombo(panel, "chatBackgroundLightCombo").getParent(),
+                colorCombo(panel, "chatBackgroundDarkCombo").getParent(),
+                "the light and dark pickers belong to the same row");
     }
 
     @Test
     void fieldsBelongToTheAppearancePage() throws Exception {
         ACPOptionsPanel panel = new ACPOptionsPanel(new ACPOptionsPanelController());
         for (String name : new String[]{"userBubbleLightCombo", "userBubbleDarkCombo",
-                "assistantBubbleLightCombo", "assistantBubbleDarkCombo", "chatFontFamilyCombo"}) {
+                "assistantBubbleLightCombo", "assistantBubbleDarkCombo",
+                "chatBackgroundLightCombo", "chatBackgroundDarkCombo", "chatFontFamilyCombo"}) {
             assertTrue(SwingUtilities.isDescendingFrom(component(panel, name), panel),
                     name + " must be part of the panel");
         }

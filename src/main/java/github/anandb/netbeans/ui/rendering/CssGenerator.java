@@ -113,7 +113,8 @@ public final class CssGenerator {
             }
 
             String fg = registry.toHex(ColorKey.assistant_foreground);
-            String linkColor = registry.isDark() ? "#589DF6" : "#268BD2";
+            // Link text needs 4.5:1 on the card; the marker accent (#268BD2) is only ~3.4:1.
+            String linkColor = registry.isDark() ? "#589DF6" : "#1F6FB2";
             String preBg = registry.get(ColorKey.code_background) != null
                     ? registry.toHex(ColorKey.code_background) : "#1e1f22";
             String preFg = registry.get(ColorKey.code_foreground) != null

@@ -26,7 +26,7 @@ class ColorThemeTest {
         assertNotNull(theme.background());
         assertNotNull(theme.foreground());
         assertNotNull(theme.bubbleUser());
+        assertNotNull(theme.sunkenBackground());
         assertNotNull(theme.assistantForeground());
-        assertNotNull(theme.headerForeground());
     }
 }

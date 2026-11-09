@@ -47,10 +47,12 @@ public class MessageBubble extends JPanel implements Scrollable {
     private static final Logger LOG = Logger.from(MessageBubble.class);
     private static final long serialVersionUID = 1L;
 
-    /** Determines where the user avatar is positioned relative to the message bubble. */
-    public enum AvatarPosition { LEFT, RIGHT, NONE }
+    /** Whether the user avatar is shown beside the bubble. */
+    public enum AvatarPosition { LEFT, NONE }
 
     private JPanel bubble;
+    /** The row that applies the width cap; null for tool/thought bubbles. */
+    private AlignedRow alignedRow;
     private String toolTitle;
     private final ArrayList<BubbleContentRenderer.CollapsibleState> codeStates = new ArrayList<>();
     private final JPanel segments;
@@ -77,6 +79,16 @@ public class MessageBubble extends JPanel implements Scrollable {
     }
 
     private static final Dimension MAX_SIZE = new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE);
+
+    /** Corner radius: a card, not a pill (32 made short bubbles look like capsules). */
+    private static final int BUBBLE_RADIUS = 18;
+    /** Bubble padding; the text panes add their own inset on top of this. */
+    private static final int BUBBLE_PAD = 6;
+    /** A user message stays a compact block; prose keeps a readable measure. */
+    private static final float USER_WIDTH_RATIO = 0.72f;
+    private static final float ASSISTANT_WIDTH_RATIO = 0.88f;
+    private static final int USER_MAX_WIDTH_PX = 760;
+    private static final int ASSISTANT_MAX_WIDTH_PX = 920;
 
     /**
      * Cached preferred size: the thread's BoxLayout asks every bubble for its preferred and
@@ -157,17 +169,15 @@ public class MessageBubble extends JPanel implements Scrollable {
             this.bubble.setBorder(new EmptyBorder(2, 8, 2, 8));
         } else switch (role) {
             case "user" -> {
-                    RoundedPanel p = new RoundedPanel(32);
-                    p.setDropShadow(true);
+                    RoundedPanel p = new RoundedPanel(BUBBLE_RADIUS);
                     p.setLayout(new BorderLayout());
-                    p.setBorder(new EmptyBorder(16, 8, 16, 8));
+                    p.setBorder(new EmptyBorder(BUBBLE_PAD, BUBBLE_PAD, BUBBLE_PAD, BUBBLE_PAD));
                     this.bubble = p;
                 }
             case "assistant" -> {
-                    RoundedPanel p = new RoundedPanel(32);
-                    p.setDropShadow(true);
+                    RoundedPanel p = new RoundedPanel(BUBBLE_RADIUS);
                     p.setLayout(new BorderLayout());
-                    p.setBorder(new EmptyBorder(8, 10, 8, 10));
+                    p.setBorder(new EmptyBorder(BUBBLE_PAD, BUBBLE_PAD, BUBBLE_PAD, BUBBLE_PAD));
                     this.bubble = p;
                 }
             default -> this.bubble.setBorder(new EmptyBorder(2, 8, 2, 8));
@@ -240,13 +250,11 @@ public class MessageBubble extends JPanel implements Scrollable {
             JPanel avatarWrapper = UIUtils.createTransparentPanel(new BorderLayout());
             avatarWrapper.add(userLabel, BorderLayout.CENTER);
 
-            if (avatarPosition == AvatarPosition.LEFT) {
-                contentRow.add(avatarWrapper, BorderLayout.WEST);
-            } else {
-                contentRow.add(avatarWrapper, BorderLayout.EAST);
-            }
+            contentRow.add(avatarWrapper, BorderLayout.WEST);
             contentRow.add(bubble, BorderLayout.CENTER);
-            add(contentRow, UIUtils.createGbc(0, 0, 1.0, 0, fill, anchor, gbcInsets));
+            addCappedRow(contentRow, gbcInsets, anchor, fill);
+        } else if (isAssistant || "user".equals(role)) {
+            addCappedRow(bubble, gbcInsets, anchor, fill);
         } else {
             add(bubble, UIUtils.createGbc(0, 0, 1.0, 0, fill, anchor, gbcInsets));
         }
@@ -268,6 +276,18 @@ public class MessageBubble extends JPanel implements Scrollable {
             addHierarchyListener(this.hierarchyListener);
         }
 
+    }
+
+    /** Wraps chat content in the full-width row that applies the role's width cap. */
+    private void addCappedRow(Component content, Insets insets, int anchor, int fill) {
+        boolean user = "user".equals(role);
+        AlignedRow row = new AlignedRow(user ? USER_WIDTH_RATIO : ASSISTANT_WIDTH_RATIO,
+                user ? USER_MAX_WIDTH_PX : ASSISTANT_MAX_WIDTH_PX, user);
+        row.add(content);
+        // The initial content render runs before the row exists; adopt its verdict here.
+        row.setFullWidth(contentRenderer != null && contentRenderer.hasWideContent());
+        alignedRow = row;
+        add(row, UIUtils.createGbc(0, 0, 1.0, 0, fill, anchor, insets));
     }
 
     @Override
@@ -321,6 +341,20 @@ public class MessageBubble extends JPanel implements Scrollable {
 
     private void updateContent(ColorTheme theme, boolean expanded) {
         contentRenderer.updateContent(theme, expanded, toolTitle);
+        setWideContent(contentRenderer.hasWideContent());
+    }
+
+    /** A table or code block needs the whole thread width; the cap forces a sidebar resize. */
+    private void setWideContent(boolean wide) {
+        if (alignedRow != null && alignedRow.setFullWidth(wide)) {
+            revalidate();
+            repaint();
+        }
+    }
+
+    /** True when this bubble is using the full row because its content needs the width; test seam. */
+    boolean isWideContent() {
+        return alignedRow != null && alignedRow.isFullWidth();
     }
 
     /** Applies or removes a queued indicator on the bubble. */
@@ -522,4 +556,84 @@ public class MessageBubble extends JPanel implements Scrollable {
         return false;
     }
     //</editor-fold>
+
+    /**
+     * Full-width row that places its single child at the role's width cap, flush left or right.
+     * BoxLayout's cross-axis alignment is cooperative between siblings, so the cap cannot ride on
+     * {@code getMaximumSize()} there — an explicit container has to apply it.
+     */
+    static final class AlignedRow extends JPanel {
+        private static final long serialVersionUID = 1L;
+
+        private final float ratio;
+        private final int absoluteMax;
+        private final boolean alignRight;
+        private int lastCap = -1;
+        /** Wide content (a table) needs the whole row; the reading-measure cap would clip it. */
+        private boolean fullWidth;
+
+        AlignedRow(float ratio, int absoluteMax, boolean alignRight) {
+            super(null);
+            this.ratio = ratio;
+            this.absoluteMax = absoluteMax;
+            this.alignRight = alignRight;
+            setOpaque(false);
+            setAlignmentX(Component.LEFT_ALIGNMENT);
+        }
+
+        @Override
+        public void doLayout() {
+            if (getComponentCount() == 0) {
+                return;
+            }
+            Component child = getComponent(0);
+            int width = getWidth();
+            int cap = fullWidth ? width : Math.min(absoluteMax, Math.round(width * ratio));
+            int x = alignRight ? width - cap : 0;
+            child.setBounds(x, 0, cap, Math.max(1, getHeight()));
+            // The child re-wraps at its new width, so ask for the height after the width is set.
+            int height = child.getPreferredSize().height;
+            if (height != getHeight()) {
+                child.setBounds(x, 0, cap, height);
+            }
+            if (cap != lastCap) {
+                lastCap = cap;
+                // Height computed before the width was known; settle it on the next pass.
+                SwingUtilities.invokeLater(this::revalidate);
+            }
+        }
+
+        /** Returns true when the mode changed and the row needs another layout pass. */
+        boolean setFullWidth(boolean full) {
+            if (full == fullWidth) {
+                return false;
+            }
+            fullWidth = full;
+            lastCap = -1;
+            return true;
+        }
+
+        boolean isFullWidth() {
+            return fullWidth;
+        }
+
+        @Override
+        public Dimension getPreferredSize() {
+            if (getComponentCount() == 0) {
+                return new Dimension(0, 0);
+            }
+            Dimension pref = getComponent(0).getPreferredSize();
+            return new Dimension(pref.width, pref.height);
+        }
+
+        @Override
+        public Dimension getMinimumSize() {
+            return getPreferredSize();
+        }
+
+        @Override
+        public Dimension getMaximumSize() {
+            return MAX_SIZE;
+        }
+    }
 }

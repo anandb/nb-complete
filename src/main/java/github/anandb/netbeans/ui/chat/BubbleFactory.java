@@ -15,12 +15,9 @@ final class BubbleFactory {
 
     private BubbleFactory() {}
 
-    /** Resolve avatar position for a user message based on alternating count. */
-    static MessageBubble.AvatarPosition resolveAvatarPosition(String role, int userMessageCount) {
-        if ("user".equals(role)) {
-            return userMessageCount % 2 == 1 ? MessageBubble.AvatarPosition.LEFT : MessageBubble.AvatarPosition.RIGHT;
-        }
-        return MessageBubble.AvatarPosition.NONE;
+    /** The avatar keeps one column; alternating sides made consecutive user messages jitter. */
+    static MessageBubble.AvatarPosition resolveAvatarPosition(String role) {
+        return "user".equals(role) ? MessageBubble.AvatarPosition.LEFT : MessageBubble.AvatarPosition.NONE;
     }
 
     /** Create a bubble for tool/thought messages (no avatar, optional toolTitle). */
@@ -35,14 +32,8 @@ final class BubbleFactory {
 
     /** Create a bubble for user/assistant messages with avatar positioning. */
     static MessageBubble createRoleBubble(MessageType type, String text,
-            String messageId, String toolTitle, boolean streaming, int userMessageCount, String sessionId) {
-        MessageBubble.AvatarPosition avatarPos = resolveAvatarPosition(type.roleName(), userMessageCount);
+            String messageId, String toolTitle, boolean streaming, String sessionId) {
+        MessageBubble.AvatarPosition avatarPos = resolveAvatarPosition(type.roleName());
         return new MessageBubble(type, text, messageId, toolTitle, avatarPos, streaming, sessionId);
-    }
-
-    /** Overload without sessionId for callers that don't track it. */
-    static MessageBubble createRoleBubble(MessageType type, String text,
-            String messageId, String toolTitle, boolean streaming, int userMessageCount) {
-        return createRoleBubble(type, text, messageId, toolTitle, streaming, userMessageCount, null);
     }
 }
