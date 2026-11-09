@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
 
 /**
  * Case-insensitive matching over the file index, shared by "Navigate &gt; Jump to File" and the
- * {@code locate_file} MCP tool so both search the same way.
+ * {@code find_file} MCP tool so both search the same way.
  *
  * <p>A plain query matches a file-name prefix or any substring of the project-relative path. A
  * query containing glob characters ({@code *}, {@code ?}, {@code [}, <code>{</code>) is matched

@@ -216,7 +216,7 @@ public class GoToFileDialog extends JDialog {
             return;
         }
 
-        // Same matcher the locate_file tool uses, so both searches agree.
+        // Same matcher the find_file tool uses, so both searches agree.
         FileNameMatcher.Query query = FileNameMatcher.compile(text);
         if (!query.usable()) {
             // A plain query shorter than the minimum matches too much to be a search.

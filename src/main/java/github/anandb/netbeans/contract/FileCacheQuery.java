@@ -26,7 +26,7 @@ public interface FileCacheQuery {
 
     /**
      * Returns the cached files of one project. Callers that already know the project (for
-     * example {@code locate_file}, whose scope is the session's directory) use this instead of
+     * example {@code find_file}, whose scope is the session's directory) use this instead of
      * matching every open project's files and discarding the misses afterwards.
      *
      * @param projectName the project name stored on {@link CachedFile#projectName()}

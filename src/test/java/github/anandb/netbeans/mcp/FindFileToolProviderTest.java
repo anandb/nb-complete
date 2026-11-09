@@ -36,12 +36,12 @@ import github.anandb.netbeans.contract.FileCacheQuery;
 import github.anandb.netbeans.contract.SessionQuery;
 
 /**
- * locate_file is the file index behind Jump to File, exposed to the model: same matching rules,
+ * find_file is the file index behind Jump to File, exposed to the model: same matching rules,
  * capped at five matches, with the absolute path the other tools expect.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-class LocateFileToolProviderTest {
+class FindFileToolProviderTest {
 
     @Mock
     private McpTools mcpTools;
@@ -54,7 +54,7 @@ class LocateFileToolProviderTest {
 
     private MockedStatic<Lookup> lookupMock;
     private MockedStatic<FileUtil> fileUtilMock;
-    private ToolExecutor<LocateFileInput, Map<String, Object>> executor;
+    private ToolExecutor<FindFileInput, Map<String, Object>> executor;
 
     @BeforeEach
     void setUp() {
@@ -69,10 +69,10 @@ class LocateFileToolProviderTest {
 
         fileUtilMock = mockStatic(FileUtil.class);
 
-        LocateFileToolProvider provider = new LocateFileToolProvider();
+        FindFileToolProvider provider = new FindFileToolProvider();
         provider.registerTools(mcpTools);
         ArgumentCaptor<ToolExecutor> captor = ArgumentCaptor.forClass(ToolExecutor.class);
-        verify(mcpTools, times(1)).registerTool(eq("locate_file"), any(), any(), captor.capture());
+        verify(mcpTools, times(1)).registerTool(eq("find_file"), any(), any(), captor.capture());
         executor = captor.getValue();
     }
 
@@ -83,8 +83,8 @@ class LocateFileToolProviderTest {
     }
 
     @Test
-    void registersLocateFileWithItsInputRecord() {
-        assertEquals(LocateFileInput.class, executor.getArgClass());
+    void registersFindFileWithItsInputRecord() {
+        assertEquals(FindFileInput.class, executor.getArgClass());
     }
 
     @Test
@@ -276,7 +276,7 @@ class LocateFileToolProviderTest {
     }
 
     @Test
-    void aScopedSearchDropsFilesWithNoAbsolutePath() throws Exception {
+    void aVirtualFileIsOnlyReachableThroughTheWidenedSearch() throws Exception {
         when(sessionQuery.getCurrentSessionDirectory()).thenReturn("/work/nb");
         FileObject virtual = stub("Virtual.java", "src/Virtual.java", null);
         StubCache stub = new StubCache(virtual, "nb", "src/Virtual.java");
@@ -284,8 +284,44 @@ class LocateFileToolProviderTest {
 
         Map<String, Object> result = execute("Virtual");
 
-        assertEquals(0, result.get("count"), "a file with no path cannot be proven inside the scope");
+        // Containment cannot be proven for a file with no java.io.File, so the scoped pass drops
+        // it; the widened pass reports it, without a path.
+        assertEquals(1, result.get("count"));
+        assertEquals(Scope.PROJECTS, result.get("scope"));
+        assertEquals(Boolean.TRUE, result.get("widened"));
+        assertFalse(((Map<?, ?>) matches(result).get(0)).containsKey("path"));
+    }
+
+    @Test
+    void widensToAllProjectsWhenNothingMatchesInsideTheWorkingDirectory() throws Exception {
+        when(sessionQuery.getCurrentSessionDirectory()).thenReturn("/work/nb/docs");
+        StubCache stub = new StubCache();
+        stub.add("ChatPanel.java", "nb", "src/ui/ChatPanel.java", "/work/nb");
+        stub.add("ChatStore.java", "nb", "src/data/ChatStore.java", "/work/nb");
+        stub.install();
+
+        Map<String, Object> result = execute("Chat");
+
+        assertEquals(2, result.get("count"), "the projects search must rescue an empty scope");
+        assertEquals(Scope.PROJECTS, result.get("scope"));
+        assertEquals(Boolean.TRUE, result.get("widened"));
+        assertTrue(((String) result.get("message")).contains("/work/nb/docs"),
+                "the message must name the directory that matched nothing");
+    }
+
+    @Test
+    void doesNotWidenWhenTheScopeHasAMatch() throws Exception {
+        when(sessionQuery.getCurrentSessionDirectory()).thenReturn("/work/nb/src/ui");
+        StubCache stub = new StubCache();
+        stub.add("ChatPanel.java", "nb", "src/ui/ChatPanel.java", "/work/nb");
+        stub.add("ChatStore.java", "nb", "src/data/ChatStore.java", "/work/nb");
+        stub.install();
+
+        Map<String, Object> result = execute("Chat");
+
         assertEquals(Scope.SESSION, result.get("scope"));
+        assertNull(result.get("widened"));
+        assertNull(result.get("message"));
     }
 
     // --- helpers ---
@@ -304,7 +340,7 @@ class LocateFileToolProviderTest {
     }
 
     private Map<String, Object> execute(String query, String scope) throws Exception {
-        return executor.execute(new LocateFileInput(query, scope));
+        return executor.execute(new FindFileInput(query, scope));
     }
 
     private static List<?> matches(Map<String, Object> result) {

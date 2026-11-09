@@ -23,17 +23,18 @@ import github.anandb.netbeans.support.FileAccessGuard;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
 /**
- * MCP tool for locating files by name, over the same index as Navigate &gt; Jump to File
+ * MCP tool for finding a file path by name, over the same index as Navigate &gt; Jump to File
  * ({@link FileCacheQuery}, built by {@code FileCacheManager} from the open projects and their VCS
  * ignore rules). The matching rules live in {@link FileNameMatcher}, shared with the dialog, so
  * both searches return the same files for the same query.
  *
  * <p>Results are scoped to the session's working directory by default: the agent works in that
  * directory, and a file elsewhere in the project is usually the wrong hit. {@code scope=projects}
- * widens the search to every open project, and a session without a directory falls back to that
- * automatically.</p>
+ * widens the search to every open project, a session without a directory falls back to that
+ * automatically, and an empty scoped answer is retried across projects before it is reported —
+ * a directory the index cannot cover must not read as "no such file".</p>
  */
-final class LocateFileToolProvider {
+final class FindFileToolProvider {
 
     /** The tool returns at most this many matches; the description states it. */
     static final int MAX_RESULTS = 5;
@@ -52,26 +53,24 @@ final class LocateFileToolProvider {
 
     public void registerTools(McpTools mcpTools) {
         ObjectNode schema = ToolSchema.object()
-                .str("query", "File name, path fragment or glob (*Test*, **/main/**, *.java); "
-                        + "plain queries need 3 or more characters")
-                .str("scope", "session (default: only the session's working directory) "
-                        + "or projects (every open project)")
+                .str("query", "File name or path fragment; glob is allowed (*Test, **/main/**, *.java)")
+                .str("scope", "session (default) or projects")
                 .require("query")
                 .build();
 
         mcpTools.registerTool(
-                "locate_file",
-                ToolDescriptions.get("locate_file"),
+                "find_file",
+                ToolDescriptions.get("find_file"),
                 schema,
-                new ToolExecutor<LocateFileInput, Map<String, Object>>(LocateFileInput.class) {
+                new ToolExecutor<FindFileInput, Map<String, Object>>(FindFileInput.class) {
                     @Override
-                    public Map<String, Object> execute(LocateFileInput args) {
-                        return executeLocate(args);
+                    public Map<String, Object> execute(FindFileInput args) {
+                        return executeFindFile(args);
                     }
                 });
     }
 
-    private Map<String, Object> executeLocate(LocateFileInput args) {
+    private Map<String, Object> executeFindFile(FindFileInput args) {
         if (isBlank(args.query())) {
             return Map.of("status", "error", "message", "query is required");
         }
@@ -87,7 +86,7 @@ final class LocateFileToolProvider {
                     "scope must be one of: " + SCOPE_SESSION + ", " + SCOPE_PROJECTS);
         }
         // A session without a directory cannot narrow anything, so it searches the projects.
-        String directory = SCOPE_PROJECTS.equals(requestedScope) ? null : currentSessionDirectory();
+        String sessionDirectory = SCOPE_PROJECTS.equals(requestedScope) ? null : currentSessionDirectory();
         FileCacheQuery cache = Lookup.getDefault().lookup(FileCacheQuery.class);
         if (cache == null) {
             return Map.of("status", "error", "message", "FileCacheQuery not available", "fatal", true);
@@ -95,8 +94,20 @@ final class LocateFileToolProvider {
 
         // Put the project into the query itself: without it the matcher runs over every open
         // project's files and discards the out-of-scope hits afterwards.
-        String projectName = directory == null ? null : cache.getProjectName(directory);
+        String projectName = sessionDirectory == null ? null : cache.getProjectName(sessionDirectory);
+        String directory = sessionDirectory;
         Candidates candidates = collect(cache, query, directory, projectName);
+        boolean widened = false;
+        if (directory != null && candidates.hits().isEmpty()) {
+            // A directory the index does not cover (a container path, a folder outside every
+            // project) must not answer "no such file" when the file exists elsewhere.
+            Candidates acrossProjects = collect(cache, query, null, null);
+            if (!acrossProjects.hits().isEmpty()) {
+                candidates = acrossProjects;
+                directory = null;
+                widened = true;
+            }
+        }
         boolean truncated = candidates.capped() || candidates.hits().size() > MAX_RESULTS;
         List<Map<String, Object>> matches = new ArrayList<>();
         int returned = Math.min(MAX_RESULTS, candidates.hits().size());
@@ -116,10 +127,18 @@ final class LocateFileToolProvider {
         if (truncated) {
             result.put("truncated", true);
         }
+        List<String> notes = new ArrayList<>();
+        if (widened) {
+            result.put("widened", true);
+            notes.add("Nothing inside " + sessionDirectory + " matched; searched all open projects.");
+        }
         if (!cache.isReady()) {
             // A partial answer while the first index build runs; the agent can retry.
             result.put("indexing", true);
-            result.put("message", "The file index is still building; results may be incomplete.");
+            notes.add("The file index is still building; results may be incomplete.");
+        }
+        if (!notes.isEmpty()) {
+            result.put("message", String.join(" ", notes));
         }
         return result;
     }

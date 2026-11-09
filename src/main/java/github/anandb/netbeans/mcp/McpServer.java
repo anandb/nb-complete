@@ -62,8 +62,8 @@ public class McpServer {
         FindTypeToolProvider findTypeTools = new FindTypeToolProvider();
         findTypeTools.registerTools(mcpTools);
 
-        LocateFileToolProvider locateFileTools = new LocateFileToolProvider();
-        locateFileTools.registerTools(mcpTools);
+        FindFileToolProvider findFileTools = new FindFileToolProvider();
+        findFileTools.registerTools(mcpTools);
 
         StashDiffToolProvider stashDiffTool = new StashDiffToolProvider();
         stashDiffTool.registerTools(mcpTools);

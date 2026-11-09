@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 /**
- * One set of matching rules serves Jump to File and the locate_file tool, so the rules
+ * One set of matching rules serves Jump to File and the find_file tool, so the rules
  * themselves are pinned here rather than through the dialog.
  */
 class FileNameMatcherTest {
