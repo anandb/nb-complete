@@ -877,13 +877,22 @@ divider and the input area (it must borrow space from the thread only).
   to prevent layout tree rebuilds.
 - `HtmlContentPreparer` uses an LRU cache (256 entries) for markdown->HTML conversion. Content
   >32 KB bypasses the cache.
-- Chat bubbles ride a width-capped row: `MessageBubble.AlignedRow` caps content at 72% of the
-  thread width (user, right-aligned, absolute 760px) or 88% (assistant, left-aligned, 920px).
-  BoxLayout's cross-axis alignment is cooperative between siblings, so the cap MUST stay in that
-  container — putting it on `getMaximumSize()` shifts the whole row instead of aligning it. A
-  bubble that renders a table or a code block drops the cap and uses the whole row
-  (`BubbleContentRenderer.hasWideContent()` → `AlignedRow.setFullWidth`), because capping either
-  forces the user to resize the sidebar. Corners
+- Tool/activity header titles are fitted to the width they are given, never truncated at a fixed
+  character count: `CollapsibleHeaderRenderer.elideMiddle` works in pixels and keeps the **tail**
+  (a path's file name), so a long path reads `…/MessageBubble.java` instead of losing its name.
+  Elision runs from the containers' layout passes (`titlePanel.doLayout()`,
+  `ElidingHeaderLabel.fitText()` from the segment header's `doLayout`), because a resize listener
+  or a `setTitle`-time guess fires while the label still has no width — that stale, oversized
+  budget is what let the label be clipped at the pane edge. Do NOT reintroduce the old global
+  `ToolDataExtractor` title-length knob: the extractor only applies a 300-char safety cap.
+- Chat bubbles ride a width row: the assistant bubble has **no cap** and spans the whole
+  thread width — a long answer is prose and code, and capping it clipped content. The user bubble
+  stays a compact right-aligned block at 86% of the thread width, capped at 912 px (20% wider than
+  the old 72 % / 760 px measure). BoxLayout's cross-axis alignment is cooperative between siblings,
+  so the cap MUST stay in `MessageBubble.AlignedRow` — putting it on `getMaximumSize()` shifts the
+  whole row instead of aligning it. The assistant's row is created with
+  `AlignedRow.fullWidth()` — no cap, no wide-content escape hatch (a table or code block in a user
+  message is rendered by its wrapping `JTextArea`, ordered by the user's 86 % block). Corners
   are `RoundedPanel(18)`; tables/tool blocks keep `RoundedPanel(12)`. Both chat cards are flat:
   fill plus the theme's 1px hairline, no drop shadow. Do NOT paint either card the page colour —
   on a near-white L&F page the bubble loses its boundary (reported after v1.30), and do not
@@ -1176,6 +1185,12 @@ public void toggleVisibility() {
   `grep`/`search_project` for `class Foo` declarations and do NOT guess a path from a package name.
   It is Java-only; other languages still go through `search_project`. Follow a returned `path` with
   `open_pos` (no `focus`) to read the file.
+- **Locating files**: use `find_file` when you need the path of a file whose name — or part of its
+  path — you already know, before `list_directory`, `run_command` (`ls`/`find`/`glob`) or
+  `search_project`. It answers from the Jump to File index (open projects minus VCS-ignored files)
+  and returns an absolute `path` you can hand to `read_file`/`open_pos`; do NOT shell out to look
+  for a file. It is scoped to the session's working directory and says so in `scope`; pass
+  `scope: "projects"` to search every open project.
 - **Token auth**: `MessageServlet` verifies a per-instance token whenever `authRequired` is set.
   `Harness.acceptsMcpAuthToken()` (false for the PI family and Jcode, true for every other
   catalog entry) is the policy: those agents cannot carry a token on an MCP URL, so the embedded
