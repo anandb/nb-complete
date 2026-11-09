@@ -4,9 +4,9 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import github.anandb.netbeans.contract.EditorContextQuery;
-import github.anandb.netbeans.contract.ProjectQuery;
 import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.ProjectPaths;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 
@@ -18,7 +18,6 @@ import java.util.Map;
 import javax.swing.SwingUtilities;
 
 import org.netbeans.api.editor.EditorRegistry;
-import org.netbeans.api.project.Project;
 import org.netbeans.modules.editor.NbEditorUtilities;
 import org.openide.cookies.LineCookie;
 import org.openide.filesystems.FileObject;
@@ -78,27 +77,14 @@ public class EditorToolProvider {
                         // EditorRegistry.componentList() reads a CopyOnWriteArrayList
                         // and NbEditorUtilities.getFileObject() takes a Document (model
                         // object, not a Swing component) — both are safe off-EDT.
-                        ProjectQuery pq = Lookup.getDefault().lookup(ProjectQuery.class);
-                        Project[] projects = pq == null ? new Project[0] : pq.getAllOpenProjects();
                         List<String> paths = new ArrayList<>();
                         for (var editor : EditorRegistry.componentList()) {
                             FileObject fo = NbEditorUtilities.getFileObject(editor.getDocument());
                             if (fo == null) continue;
-                            File file = FileUtil.toFile(fo);
-                            String filePath = (file != null) ? file.getAbsolutePath() : fo.getPath();
+                            String filePath = ProjectPaths.nativePath(fo);
                             // Only include files inside open projects — phantom paths
                             // like /tmp/xxx (when no project is open) confuse the AI.
-                            boolean inProject = false;
-                            for (Project p : projects) {
-                                FileObject projectDirFO = p.getProjectDirectory();
-                                File projectDirFile = FileUtil.toFile(projectDirFO);
-                                String projectDir = (projectDirFile != null) ? projectDirFile.getAbsolutePath() : projectDirFO.getPath();
-                                if (filePath.startsWith(projectDir)) {
-                                    inProject = true;
-                                    break;
-                                }
-                            }
-                            if (inProject) {
+                            if (ProjectPathGuard.isInOpenProjectOrVirtual(filePath)) {
                                 paths.add(filePath);
                             }
                         }
@@ -127,21 +113,7 @@ public class EditorToolProvider {
                         }
                         try {
                             File requestedFile = new File(args.filePath()).getCanonicalFile();
-                            String canonicalRequested = requestedFile.getCanonicalPath();
-                            boolean inProject = false;
-                            ProjectQuery pq = Lookup.getDefault().lookup(ProjectQuery.class);
-                            Project[] openProjects = pq == null ? new Project[0] : pq.getAllOpenProjects();
-                            for (Project p : openProjects) {
-                                FileObject projectDirFO = p.getProjectDirectory();
-                                File projectDirFile = FileUtil.toFile(projectDirFO);
-                                if (projectDirFile == null) continue;
-                                String canonicalProject = projectDirFile.getCanonicalPath();
-                                if (canonicalRequested.startsWith(canonicalProject)) {
-                                    inProject = true;
-                                    break;
-                                }
-                            }
-                            if (!inProject) {
+                            if (!ProjectPathGuard.isInOpenProject(requestedFile.getCanonicalPath())) {
                                 return Map.of("status", "error", "message", "File is not in the current project");
                             }
                             FileObject fo = FileUtil.toFileObject(requestedFile);

@@ -24,7 +24,6 @@ import javax.xml.stream.XMLStreamReader;
 import org.openide.DialogDisplayer;
 import org.openide.NotifyDescriptor;
 import org.openide.modules.SpecificationVersion;
-import org.openide.util.Lookup;
 import org.openide.util.NbPreferences;
 import org.openide.util.RequestProcessor;
 import org.openide.util.lookup.ServiceProvider;
@@ -60,9 +59,6 @@ public class UpdateCheckerService implements UpdateCheckerControl {
      * ({@code -M1}), release candidates, snapshots and any other qualifier are skipped.
      */
 
-    /** Cached singleton — populated lazily from Lookup. */
-    private static volatile UpdateCheckerService instance;
-
     private volatile boolean running;
 
     /**
@@ -80,24 +76,6 @@ public class UpdateCheckerService implements UpdateCheckerControl {
 
     UpdateCheckerService(Supplier<UpdateCheckResult> updateCheck) {
         this.updateCheck = updateCheck == null ? this::checkForUpdates : updateCheck;
-    }
-
-    /**
-     * Returns the singleton registered via {@link ServiceProvider}.
-     * Falls back to a fresh instance if Lookup is not yet populated (should
-     * not happen under normal startup).
-     */
-    public static UpdateCheckerService getInstance() {
-        UpdateCheckerService ucs = instance;
-        if (ucs == null) {
-            ucs = Lookup.getDefault().lookup(UpdateCheckerService.class);
-            if (ucs == null) {
-                LOG.severe("UpdateCheckerService not found in Lookup — ServiceProvider registration missing?");
-                ucs = new UpdateCheckerService();
-            }
-            instance = ucs;
-        }
-        return ucs;
     }
 
     /**

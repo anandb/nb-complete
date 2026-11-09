@@ -18,7 +18,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -31,7 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
-import java.util.concurrent.TimeUnit;
 import java.util.prefs.PreferenceChangeListener;
 import java.util.regex.Matcher;
 
@@ -81,6 +79,7 @@ import github.anandb.netbeans.pattern.StashNamePattern;
 import github.anandb.netbeans.pattern.StashRefPattern;
 import github.anandb.netbeans.support.LanguageResolver;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.VcsUtils;
 import github.anandb.netbeans.support.ToolCallDiffParser.FileChange;
 import javax.swing.JScrollPane;
 import github.anandb.netbeans.support.PluginSettings;
@@ -227,7 +226,6 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
     // --- Git helpers ---
 
     private static final RequestProcessor GIT_RP = new RequestProcessor("StashDiff-git", 1);
-    private static final RequestProcessor READER_RP = new RequestProcessor("StashDiff-reader", 2);
     /** Lifecycle-managed pool for diff loading. Replaces the previous unmanaged
      *  {@code Executors.newFixedThreadPool(4)} to avoid starving
      *  {@code ForkJoinPool.commonPool} and to tie threads to the NetBeans
@@ -239,39 +237,11 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
     private static final Executor LOAD_EXECUTOR = r -> LOAD_RP.post(r);
 
     private static String runGit(File dir, String... cmd) throws Exception {
-        ProcessBuilder pb = new ProcessBuilder(cmd);
-        pb.directory(dir);
-        pb.redirectErrorStream(true);
-        Process proc = pb.start();
-        // Use StringBuffer (thread-safe) — reader appends on READER_RP, caller reads after waitFinished.
-        StringBuffer sb = new StringBuffer();
-        RequestProcessor.Task readerTask = READER_RP.post(() -> {
-            try (BufferedReader r = new BufferedReader(
-                    new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = r.readLine()) != null) sb.append(line).append('\n');
-            } catch (IOException e) {
-                // Expected when process is destroyed before all output is read
-            }
-        });
-        try {
-            boolean timedOut = !proc.waitFor(60, TimeUnit.SECONDS);
-            if (timedOut) {
-                proc.destroyForcibly();
-            }
-            // Always wait for reader before reading sb (destroyForcibly above closes stdout,
-            // unblocking readLine). Use 5s timeout to avoid data race on large output.
-            readerTask.waitFinished(5000);
-            if (timedOut) {
-                throw new RuntimeException("git command timed out after 60 seconds: " + String.join(" ", cmd));
-            }
-            return sb.toString();
-        } finally {
-            if (proc.isAlive()) {
-                proc.destroyForcibly();
-            }
-            readerTask.waitFinished(5000);
+        VcsUtils.CapturedCommand result = VcsUtils.runCaptured(dir, 60, cmd);
+        if (result.timedOut()) {
+            throw new RuntimeException("git command timed out after 60 seconds: " + String.join(" ", cmd));
         }
+        return result.output();
     }
 
     private static String stripFatal(String output) {
@@ -642,7 +612,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         // Layout: toolbar on top, file list left, diff right
         JPanel leftPanel = new JPanel(new BorderLayout());
         leftPanel.add(toolbar, BorderLayout.NORTH);
-        
+
         JScrollPane listScroll = new JScrollPane(fileList);
         listScroll.setBorder(BorderFactory.createEmptyBorder());
         leftPanel.add(listScroll, BorderLayout.CENTER);

@@ -1,18 +1,12 @@
 package github.anandb.netbeans.manager;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import github.anandb.netbeans.contract.VcsIgnoreStrategy;
 import github.anandb.netbeans.support.Logger;
-
-import org.openide.util.RequestProcessor;
+import github.anandb.netbeans.support.VcsUtils;
 
 /**
  * Git ignore strategy using {@code git ls-files} for bulk listing
@@ -23,9 +17,7 @@ import org.openide.util.RequestProcessor;
 public class GitIgnoreStrategy implements VcsIgnoreStrategy {
 
     private static final Logger LOG = Logger.from(GitIgnoreStrategy.class);
-    private static final long CMD_TIMEOUT_SEC = 30;
-    private static final RequestProcessor GIT_RP =
-            new RequestProcessor("GitIgnore-Reader", 1);
+    private static final int CMD_TIMEOUT_SEC = 30;
 
     @Override
     public boolean isAvailable(File projectRoot) {
@@ -49,77 +41,40 @@ public class GitIgnoreStrategy implements VcsIgnoreStrategy {
 
     @Override
     public Set<String> listNonIgnoredFiles(File projectRoot) {
+        File gitRoot = findGitRoot(projectRoot);
+        File workDir = gitRoot != null ? gitRoot : projectRoot;
         try {
-            File gitRoot = findGitRoot(projectRoot);
-            File workDir = gitRoot != null ? gitRoot : projectRoot;
             // git ls-files returns all tracked + untracked (non-ignored) files
-            ProcessBuilder pb = new ProcessBuilder(
-                "git", "ls-files", "--cached", "--others", "--exclude-standard",
-                "--", projectRoot.getAbsolutePath()
-            );
-            pb.directory(workDir);
-            pb.redirectErrorStream(true);
-            Process proc = pb.start();
-
-            Set<String> files = Collections.synchronizedSet(new LinkedHashSet<>());
-            RequestProcessor.Task readerTask = GIT_RP.post(() -> {
-                try (BufferedReader r = new BufferedReader(
-                        new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
-                    String line;
-                    while ((line = r.readLine()) != null) {
-                        files.add(line);
-                    }
-                } catch (Exception e) {
-                    // Expected when process is closed/destroyed
-                }
-            });
-
-            try {
-                boolean ok = proc.waitFor(CMD_TIMEOUT_SEC, TimeUnit.SECONDS);
-                if (!ok) {
-                    proc.destroyForcibly();
-                    LOG.log(Level.WARNING, "git ls-files timed out in {0}", projectRoot);
-                    return Collections.emptySet();
-                }
-                readerTask.waitFinished(1000);
-                int exitCode = proc.exitValue();
-                if (exitCode != 0) {
-                    LOG.log(Level.WARNING, "git ls-files failed (exit {0}) in {1}",
-                            new Object[]{exitCode, projectRoot});
-                    return Collections.emptySet();
-                }
-                return files;
-            } finally {
-                if (proc.isAlive()) {
-                    proc.destroyForcibly();
-                }
-                readerTask.waitFinished(1000);
+            VcsUtils.CapturedCommand result = VcsUtils.runCaptured(workDir, CMD_TIMEOUT_SEC,
+                    "git", "ls-files", "--cached", "--others", "--exclude-standard",
+                    "--", projectRoot.getAbsolutePath());
+            if (result.timedOut()) {
+                LOG.log(Level.WARNING, "git ls-files timed out in {0}", projectRoot);
+                return Set.of();
             }
+            if (result.exitCode() != 0) {
+                LOG.log(Level.WARNING, "git ls-files failed (exit {0}) in {1}",
+                        new Object[]{result.exitCode(), projectRoot});
+                return Set.of();
+            }
+            Set<String> files = new LinkedHashSet<>();
+            result.output().lines().filter(line -> !line.isEmpty()).forEach(files::add);
+            return files;
         } catch (Exception e) {
             LOG.log(Level.WARNING, "git ls-files failed in " + projectRoot, e);
-            return Collections.emptySet();
+            return Set.of();
         }
     }
 
     @Override
     public boolean isIgnored(File projectRoot, File file) {
+        File gitRoot = findGitRoot(projectRoot);
+        File workDir = gitRoot != null ? gitRoot : projectRoot;
         try {
-            File gitRoot = findGitRoot(projectRoot);
-            File workDir = gitRoot != null ? gitRoot : projectRoot;
-            ProcessBuilder pb = new ProcessBuilder(
-                "git", "check-ignore", "-q", file.getAbsolutePath()
-            );
-            pb.directory(workDir);
-            pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
-            pb.redirectError(ProcessBuilder.Redirect.DISCARD);
-            Process proc = pb.start();
-            boolean ok = proc.waitFor(CMD_TIMEOUT_SEC, TimeUnit.SECONDS);
-            if (!ok) {
-                proc.destroyForcibly();
-                return false; // don't ignore on timeout
-            }
+            VcsUtils.CapturedCommand result = VcsUtils.runCaptured(workDir, CMD_TIMEOUT_SEC,
+                    "git", "check-ignore", "-q", file.getAbsolutePath());
             // git check-ignore exits 0 if ignored, 1 if not
-            return proc.exitValue() == 0;
+            return !result.timedOut() && result.exitCode() == 0;
         } catch (Exception e) {
             LOG.log(Level.FINE, "git check-ignore failed for {0}", file);
             return false;

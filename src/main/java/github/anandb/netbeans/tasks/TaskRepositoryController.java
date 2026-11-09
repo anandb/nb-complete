@@ -7,7 +7,6 @@ import java.awt.Insets;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.io.File;
-import java.io.IOException;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
@@ -34,6 +33,7 @@ import javax.swing.text.Document;
 import javax.swing.text.JTextComponent;
 
 import github.anandb.netbeans.contract.TaskRepositoryControl;
+import github.anandb.netbeans.support.ProjectPaths;
 import github.anandb.netbeans.support.TasksMetadata;
 import github.anandb.netbeans.tasks.TasksModel.TaskRepository;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
@@ -94,7 +94,7 @@ public final class TaskRepositoryController implements RepositoryController {
         if (path.isEmpty()) {
             return false;
         }
-        String canonical = canonical(path);
+        String canonical = ProjectPaths.canonicalPath(path);
         String myId = repository.getRepositoryId();
 
         // Live store.
@@ -104,7 +104,7 @@ public final class TaskRepositoryController implements RepositoryController {
                 if (id.equals(myId)) {
                     continue; // editing this repository's own current path
                 }
-                if (canonical.equals(canonical(s.tasksPathOf(id)))) {
+                if (canonical.equals(ProjectPaths.canonicalPath(s.tasksPathOf(id)))) {
                     return true;
                 }
             }
@@ -115,21 +115,11 @@ public final class TaskRepositoryController implements RepositoryController {
             if (id.equals(myId)) {
                 continue;
             }
-            if (canonical.equals(canonical(TasksMetadata.tasksPathOf(id)))) {
+            if (canonical.equals(ProjectPaths.canonicalPath(TasksMetadata.tasksPathOf(id)))) {
                 return true;
             }
         }
         return false;
-    }
-
-    private static String canonical(String p) {
-        try {
-            return new File(p).getCanonicalPath();
-        } catch (IOException ex) {
-            // Best effort: resolve against CWD and collapse . / .. so duplicate
-            // detection still works when canonicalization fails.
-            return new File(p).getAbsoluteFile().toPath().normalize().toString();
-        }
     }
 
     @Override

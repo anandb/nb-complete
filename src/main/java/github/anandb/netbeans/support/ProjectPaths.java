@@ -1,6 +1,7 @@
 package github.anandb.netbeans.support;
 
 import java.io.File;
+import java.io.IOException;
 import org.netbeans.api.project.Project;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
@@ -49,5 +50,36 @@ public final class ProjectPaths {
             return path;
         }
         return "\\\\" + path.substring(2);
+    }
+
+    /**
+     * Relative slash-separated path of {@code file} under {@code root}, or {@code null}
+     * when the file is outside it. The comparison uses a separator boundary, so a sibling
+     * that only shares the root's string prefix is outside.
+     */
+    public static String relativeTo(File root, File file) {
+        if (root == null || file == null) {
+            return null;
+        }
+        String rootPath = root.getAbsolutePath();
+        String prefix = rootPath.endsWith(File.separator) ? rootPath : rootPath + File.separator;
+        String filePath = file.getAbsolutePath();
+        if (!filePath.startsWith(prefix)) {
+            return null;
+        }
+        return filePath.substring(prefix.length()).replace(File.separatorChar, '/');
+    }
+
+    /** Canonical path of {@code path}, falling back to the normalized absolute path. */
+    public static String canonicalPath(String path) {
+        if (path == null) {
+            return null;
+        }
+        File file = new File(path);
+        try {
+            return file.getCanonicalPath();
+        } catch (IOException ex) {
+            return file.getAbsoluteFile().toPath().normalize().toString();
+        }
     }
 }

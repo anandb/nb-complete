@@ -15,6 +15,7 @@ import java.util.regex.PatternSyntaxException;
 
 import github.anandb.netbeans.contract.VcsIgnoreStrategy;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.ProjectPaths;
 
 /**
  * Display-oriented ignore strategy backed by a project-root {@code .bbignore}.
@@ -63,7 +64,7 @@ public class BbIgnoreStrategy implements VcsIgnoreStrategy {
         if (projectRoot == null || file == null) {
             return false;
         }
-        String rel = relativize(projectRoot, file);
+        String rel = ProjectPaths.relativeTo(projectRoot, file);
         if (rel == null || rel.isEmpty()) {
             return false;
         }
@@ -76,7 +77,7 @@ public class BbIgnoreStrategy implements VcsIgnoreStrategy {
             return;
         }
         for (File child : children) {
-            String rel = relativize(root, child);
+            String rel = ProjectPaths.relativeTo(root, child);
             if (rel == null) {
                 continue;
             }
@@ -261,16 +262,5 @@ public class BbIgnoreStrategy implements VcsIgnoreStrategy {
             end--;
         }
         return line.substring(0, end);
-    }
-
-    private static String relativize(File root, File file) {
-        String rootPath = root.getAbsolutePath();
-        String filePath = file.getAbsolutePath();
-        String prefix = rootPath.endsWith(File.separator) ? rootPath : rootPath + File.separator;
-        if (!filePath.startsWith(prefix)) {
-            return null;
-        }
-        String rel = filePath.substring(prefix.length());
-        return rel.replace(File.separatorChar, '/');
     }
 }

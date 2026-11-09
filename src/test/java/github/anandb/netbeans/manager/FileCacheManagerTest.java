@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -21,6 +20,7 @@ import org.openide.filesystems.FileSystem;
 import org.openide.filesystems.FileUtil;
 
 import github.anandb.netbeans.contract.FileCacheQuery;
+import github.anandb.netbeans.support.ProjectPaths;
 
 class FileCacheManagerTest {
 
@@ -73,35 +73,16 @@ class FileCacheManagerTest {
     }
 
     @Test
-    void relativizeViaReflection() throws Exception {
-        // Test the private static relativize(File, File) method
-        java.lang.reflect.Method m = FileCacheManager.class
-                .getDeclaredMethod("relativize", java.io.File.class, java.io.File.class);
-        m.setAccessible(true);
-
+    void relativePathUsesSeparatorBoundaryAndSlashes() {
         java.io.File root = new java.io.File("/projects/myapp/src");
         java.io.File child = new java.io.File("/projects/myapp/src/main/Foo.java");
-        String result = (String) m.invoke(null, root, child);
-        assertNotNull(result);
-        assertFalse(result.isEmpty());
-    }
+        assertEquals("main/Foo.java", ProjectPaths.relativeTo(root, child));
 
-    @Test
-    void relativizeReturnsNullForFileOutsideRoot() throws Exception {
-        java.lang.reflect.Method m = FileCacheManager.class
-                .getDeclaredMethod("relativize", java.io.File.class, java.io.File.class);
-        m.setAccessible(true);
-
-        java.io.File root = new java.io.File("/projects/myapp");
-        java.io.File outside = new java.io.File("/other/path/Foo.java");
-        String result = (String) m.invoke(null, root, outside);
-        // Should return null since outside is not under root
-        // Actually the code uses startsWith so if paths don't share prefix, returns null
-        // But /other doesn't start with /projects, so it should be null
-        // Wait - let me check the actual logic...
-        // filePath.startsWith(rootPath) — if /other doesn't start with /projects, returns null
-        // But both start with /, so we need to check more carefully
-        // Actually /other/path/Foo.java does NOT start with /projects/myapp, so null
+        // A sibling sharing the root's string prefix is still outside.
+        assertNull(ProjectPaths.relativeTo(new java.io.File("/projects/myapp"),
+                new java.io.File("/projects/myapp2/Foo.java")));
+        assertNull(ProjectPaths.relativeTo(new java.io.File("/projects/myapp"),
+                new java.io.File("/other/path/Foo.java")));
     }
 
     @Test

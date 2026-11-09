@@ -1,7 +1,5 @@
 package github.anandb.netbeans.tasks;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -13,6 +11,7 @@ import org.netbeans.modules.bugtracking.spi.RepositoryInfo;
 
 import github.anandb.netbeans.contract.TaskRepositoryControl;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.ProjectPaths;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.TasksMetadata;
 import github.anandb.netbeans.tasks.TasksModel.TaskQuery;
@@ -90,7 +89,7 @@ public final class TasksConnector implements BugtrackingConnector {
             if (csvPath.isEmpty()) {
                 continue;
             }
-            String canonical = canonical(csvPath);
+            String canonical = ProjectPaths.canonicalPath(csvPath);
             // Skip repositories the framework already restored this session.
             if (mgr.getRepository(TasksModel.CONNECTOR_ID, id) != null) {
                 claimed.add(canonical);
@@ -114,17 +113,6 @@ public final class TasksConnector implements BugtrackingConnector {
             } catch (RuntimeException ex) {
                 LOG.warn("Failed to restore repository {0}: {1}", id, ex.getMessage());
             }
-        }
-    }
-
-    private static String canonical(String p) {
-        try {
-            return new File(p).getCanonicalPath();
-        } catch (IOException ex) {
-            // Best effort: resolve against CWD and collapse . / .. so two raw
-            // paths to the same file (e.g. "./tasks.txt" and "tasks.txt") still
-            // map to one key even when canonicalization fails.
-            return new File(p).getAbsoluteFile().toPath().normalize().toString();
         }
     }
 }

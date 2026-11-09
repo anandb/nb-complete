@@ -308,8 +308,6 @@ public class SessionManager implements SessionQuery, SessionControl,
 
     // -------------------------------------------------------------------------
 
-    private static volatile SessionManager INSTANCE;
-
     private static final Logger LOG = Logger.from(SessionManager.class);
 
     /** Stop-recovery timer; a named processor keeps it off the shared default pool. */
@@ -462,29 +460,6 @@ public class SessionManager implements SessionQuery, SessionControl,
     @Override
     public boolean isDescendantOfCurrent(String sessionId) {
         return cacheManager.isDescendantOfCurrent(sessionId, currentSessionId);
-    }
-
-    public static SessionManager getInstance() {
-        SessionManager sm = INSTANCE;
-        if (sm == null) {
-            synchronized (SessionManager.class) {
-                sm = INSTANCE;
-                if (sm == null) {
-                    // @ServiceProvider registers under SessionControl.class,
-                    // not SessionManager.class — look up the interface.
-                    SessionControl sc = Lookup.getDefault().lookup(SessionControl.class);
-                    if (sc instanceof SessionManager mgr) {
-                        sm = mgr;
-                    } else {
-                        // No registered instance (e.g. headless test env) — fall back
-                        // to direct construction.
-                        sm = new SessionManager();
-                    }
-                    INSTANCE = sm;
-                }
-            }
-        }
-        return sm;
     }
 
     @Override

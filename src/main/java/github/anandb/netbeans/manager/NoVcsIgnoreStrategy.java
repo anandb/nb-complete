@@ -6,6 +6,7 @@ import java.util.Set;
 
 import github.anandb.netbeans.contract.VcsIgnoreStrategy;
 import github.anandb.netbeans.pattern.SwapFilePattern;
+import github.anandb.netbeans.support.ProjectPaths;
 
 /**
  * Fallback strategy when no VCS is detected. Walks the filesystem and
@@ -59,22 +60,11 @@ public class NoVcsIgnoreStrategy implements VcsIgnoreStrategy {
                 walk(root, child, result);
             } else {
                 if (SwapFilePattern.matches(name)) continue;
-                String rel = relativize(root, child);
+                String rel = ProjectPaths.relativeTo(root, child);
                 if (rel != null) {
                     result.add(rel);
                 }
             }
         }
-    }
-
-    private static String relativize(File root, File file) {
-        String rootPath = root.getAbsolutePath();
-        String filePath = file.getAbsolutePath();
-        if (!filePath.startsWith(rootPath)) return null;
-        String rel = filePath.substring(rootPath.length());
-        if (rel.startsWith(File.separator)) {
-            rel = rel.substring(1);
-        }
-        return rel.replace(File.separatorChar, '/');
     }
 }

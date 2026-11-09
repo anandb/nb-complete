@@ -153,7 +153,7 @@ final class FindTypeToolProvider {
         if (hits == null) {
             return false;
         }
-        String projectRoot = absolutePath(projectDir);
+        String projectRoot = ProjectPathGuard.absolutePath(projectDir);
         for (ElementHandle<TypeElement> handle : hits) {
             String fqn;
             try {
@@ -236,11 +236,7 @@ final class FindTypeToolProvider {
             return null;
         }
         FileObject file = sourcePath.findResource(fqn.replace('.', '/') + ".java");
-        return file == null ? null : absolutePath(file);
+        return file == null ? null : ProjectPathGuard.absolutePath(file);
     }
 
-    private static String absolutePath(FileObject fileObject) {
-        File file = FileUtil.toFile(fileObject);
-        return file == null ? null : file.getAbsolutePath();
-    }
 }

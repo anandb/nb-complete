@@ -33,6 +33,7 @@ import org.openide.util.lookup.ServiceProvider;
 import github.anandb.netbeans.contract.FileCacheQuery;
 import github.anandb.netbeans.contract.VcsIgnoreStrategy;
 import github.anandb.netbeans.support.FileAccessGuard;
+import github.anandb.netbeans.support.ProjectPaths;
 import github.anandb.netbeans.support.SlidingTask;
 
 import org.netbeans.api.project.SourceGroup;
@@ -324,7 +325,7 @@ public class FileCacheManager implements FileCacheQuery {
             } else {
                 File f = FileUtil.toFile(child);
                 if (f == null) continue;
-                String relPath = relativize(rootDir, f);
+                String relPath = ProjectPaths.relativeTo(rootDir, f);
                 if (relPath != null) {
                     target.put(f.getAbsolutePath(),
                             new FileCacheQuery.CachedFile(child, projectName, relPath));
@@ -342,7 +343,7 @@ public class FileCacheManager implements FileCacheQuery {
                 File f = FileUtil.toFile(fo);
                 if (f == null) return;
                 if (!strategy.isIgnored(rootDir, f)) {
-                    String rel = relativize(rootDir, f);
+                    String rel = ProjectPaths.relativeTo(rootDir, f);
                     if (rel != null) {
                         files.put(f.getAbsolutePath(),
                                 new FileCacheQuery.CachedFile(fo, projectName, rel));
@@ -370,7 +371,7 @@ public class FileCacheManager implements FileCacheQuery {
                 // Add new path
                 File f = FileUtil.toFile(fo);
                 if (f != null && !strategy.isIgnored(rootDir, f)) {
-                    String rel = relativize(rootDir, f);
+                    String rel = ProjectPaths.relativeTo(rootDir, f);
                     if (rel != null) {
                         files.put(f.getAbsolutePath(),
                                 new FileCacheQuery.CachedFile(fo, projectName, rel));
@@ -407,16 +408,4 @@ public class FileCacheManager implements FileCacheQuery {
         });
     }
 
-    // --- Utilities ---
-
-    private static String relativize(File root, File file) {
-        String rootPath = root.getAbsolutePath();
-        String filePath = file.getAbsolutePath();
-        if (!filePath.startsWith(rootPath)) return null;
-        String rel = filePath.substring(rootPath.length());
-        if (rel.startsWith(File.separator)) {
-            rel = rel.substring(1);
-        }
-        return rel.replace(File.separatorChar, '/');
-    }
 }

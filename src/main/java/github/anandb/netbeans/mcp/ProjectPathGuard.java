@@ -8,7 +8,9 @@ import org.openide.util.Lookup;
 
 import github.anandb.netbeans.contract.ProjectQuery;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.ProjectPaths;
 import org.netbeans.api.project.Project;
+import org.openide.filesystems.FileObject;
 
 /**
  * Shared path-containment guard for MCP tools. Restricts filesystem-backed
@@ -74,6 +76,34 @@ final class ProjectPathGuard {
         }
         return null;
     }
+    /**
+     * Like {@link #isInOpenProject} but also accepts a project whose directory has no local
+     * file: the comparison falls back to the project's virtual path. Used only by tools that
+     * list editor tabs, never by file access.
+     */
+    static boolean isInOpenProjectOrVirtual(String path) {
+        if (path == null) {
+            return false;
+        }
+        ProjectQuery pq = Lookup.getDefault().lookup(ProjectQuery.class);
+        Project[] openProjects = pq == null ? new Project[0] : pq.getAllOpenProjects();
+        for (Project p : openProjects) {
+            String root = ProjectPaths.nativePath(p);
+            if (root != null
+                    && (path.equals(root) || path.startsWith(root + '/')
+                        || path.startsWith(root + File.separator))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Native absolute path of a local {@link FileObject}, or {@code null} for a non-local one. */
+    static String absolutePath(FileObject fileObject) {
+        File file = org.openide.filesystems.FileUtil.toFile(fileObject);
+        return file == null ? null : file.getAbsolutePath();
+    }
+
     /** Standard rejection response for paths outside the open projects. */
     static Map<String, Object> outsideProjectError(String path) {
         return Map.of("status", "error", "message", "Path is outside the open projects: " + path);

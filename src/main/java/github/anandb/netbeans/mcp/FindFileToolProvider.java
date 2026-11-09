@@ -1,6 +1,5 @@
 package github.anandb.netbeans.mcp;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -11,8 +10,6 @@ import java.util.Map;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import org.openide.filesystems.FileObject;
-import org.openide.filesystems.FileUtil;
 import org.openide.util.Lookup;
 
 import github.anandb.netbeans.contract.FileCacheQuery;
@@ -179,7 +176,7 @@ final class FindFileToolProvider {
             if (!query.matches(name, file.relativePath())) {
                 continue;
             }
-            String path = absolutePath(file.fileObject());
+            String path = ProjectPathGuard.absolutePath(file.fileObject());
             // A scoped search cannot vouch for a file with no java.io.File behind it.
             if (directory != null && (path == null || !FileAccessGuard.isInsideProject(directory, path))) {
                 continue;
@@ -207,11 +204,6 @@ final class FindFileToolProvider {
             match.put("path", hit.path());
         }
         return match;
-    }
-
-    private static String absolutePath(FileObject fileObject) {
-        File file = FileUtil.toFile(fileObject);
-        return file == null ? null : file.getAbsolutePath();
     }
 
     /**
