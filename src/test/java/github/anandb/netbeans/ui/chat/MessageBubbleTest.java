@@ -1,6 +1,7 @@
 package github.anandb.netbeans.ui.chat;
 
 import github.anandb.netbeans.model.MessageType;
+import java.awt.Component;
 import java.awt.Dimension;
 import javax.swing.JLabel;
 import org.junit.jupiter.api.Test;
@@ -101,7 +102,15 @@ class MessageBubbleTest {
         MessageBubble bubble = new MessageBubble(MessageType.agent_message_chunk,
                 "hello", null, null, MessageBubble.AvatarPosition.NONE);
 
-        MessageBubble.AlignedRow row = (MessageBubble.AlignedRow) bubble.getComponent(0);
+        // The action-button overlay shares the content's grid cell, so the row
+        // is not necessarily the first child.
+        MessageBubble.AlignedRow row = null;
+        for (Component c : bubble.getComponents()) {
+            if (c instanceof MessageBubble.AlignedRow r) {
+                row = r;
+            }
+        }
+        assertTrue(row != null, "assistant content must sit in a full-width row");
         row.setSize(800, 100);
         row.doLayout();
 
