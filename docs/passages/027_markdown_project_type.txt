@@ -6,10 +6,18 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-**Markdown Project** is a minimal project type for folders of plain text, notes, or documentation — no compiler or build system needed. To create one, choose `Tools > New Project > Other > Markdown Project`, or just run `touch .mdproject` inside any folder to make it loadable as a project. It renders a clean directory tree in the Projects tab, filters OS junk and editor swap files, and can be closed or deleted from the project node's right-click menu. It's a handy workspace for chatting about a folder of text files — and for managing configuration.
+**Markdown Project** is a minimal project type for any folder of text content — notes, snippets, plain text, or documentation. Despite the name it does not care about the file extension: every file in the folder is shown, so a folder of `.txt` notes or a mixed docs directory works just as well as one full of `.md` files. No compiler or build system is needed.
 
+Create one in whichever way suits the moment:
+
+* **File > New Project** and pick *Coding Assistant > Markdown Project* — creates a fresh folder.
+* **Open as Markdown Project** in the **File** menu or the **main toolbar** (next to *Open Project*) — converts a folder you already have, leaving its content untouched. It asks for the folder, so it works for any directory on disk. If the folder already belongs to a project of another type, that project is simply opened instead.
+* `touch .mdproject` in a terminal, for the shortest path.
+
+The project renders a clean directory tree in the Projects tab, filters OS junk and editor swap files, and can be closed or deleted from the project node's right-click menu. It is a handy workspace for chatting about a folder of text files — and for managing configuration.
+
+Turning **Enable Markdown Project Type** off under `Options > BeanBot > IDE Extensions > Features` removes the type entirely: the New Project entry, the File menu item and the toolbar button all disappear, and folders carrying a `.mdproject` marker stop being recognised.
 
 > [[Manage OpenCode Config in NetBeans]]
 > [[IDE Enhancements]]
 > [[Experiments]]
-

@@ -7,17 +7,18 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.text.MessageFormat;
-import java.time.LocalDate;
 import javax.swing.event.ChangeListener;
 import org.openide.WizardDescriptor;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
 import org.openide.util.NbBundle;
 
+import github.anandb.netbeans.project.mdproject.MdProjectMarker;
+
 /**
  * Wizard iterator for creating a new Markdown Project.
- * Registered in layer.xml under {@code Templates/Project/}.
+ * Its template entry is added to {@code Templates/Project/} by {@link MarkdownProjectTemplate}
+ * only while the Markdown project type is enabled.
  */
 public final class MdProjectWizardIterator implements WizardDescriptor.InstantiatingIterator<WizardDescriptor> {
 
@@ -40,14 +41,7 @@ public final class MdProjectWizardIterator implements WizardDescriptor.Instantia
             + "build/\n"
             + "\n"
             + "# IDE project files\n"
-            + "nbproject/private/\n";
-
-    private static final String MDPROJECT_CONTENT = ""
-            + "# Markdown Project\n"
-            + "# This marker file identifies the directory as a Markdown Project in NetBeans.\n"
-            + "\n"
-            + "name={0}\n"
-            + "created={1}\n";
+            + "nbproject/private/\\n";
 
     private WizardDescriptor wizard;
     private int index;
@@ -67,13 +61,9 @@ public final class MdProjectWizardIterator implements WizardDescriptor.Instantia
             throw new IOException("FileUtil.toFileObject returned null for: " + projectDir);
         }
 
-        // Create .mdproject marker file with project metadata
-        FileObject mdprojectFile = dir.createData(".mdproject");
-        try (OutputStream out = mdprojectFile.getOutputStream()) {
-            String content = MessageFormat.format(MDPROJECT_CONTENT,
-                    name, LocalDate.now().toString());
-            out.write(content.getBytes(StandardCharsets.UTF_8));
-        }
+        // One marker through the shared helper, so the wizard and the conversion action cannot
+        // drift on the name or skip the lost-race tolerance.
+        MdProjectMarker.ensure(dir);
 
         // Create .gitignore with sensible defaults
         FileObject gitignore = dir.getFileObject(".gitignore");

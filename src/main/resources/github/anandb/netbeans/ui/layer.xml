@@ -30,6 +30,14 @@
                 <attr name="displayName" bundlevalue="github.anandb.netbeans.ui.Bundle#CTL_AllowPermissionAction"/>
             </file>
         </folder>
+        <folder name="Project">
+            <file name="github-anandb-netbeans-ui-mdproject-UseAsMarkdownProjectAction.instance">
+                <attr name="instanceCreate" newvalue="github.anandb.netbeans.ui.mdproject.UseAsMarkdownProjectAction"/>
+                <attr name="displayName" bundlevalue="github.anandb.netbeans.ui.mdproject.Bundle#CTL_UseAsMarkdownProject"/>
+                <attr name="shortDescription" bundlevalue="github.anandb.netbeans.ui.mdproject.Bundle#CTL_UseAsMarkdownProjectTip"/>
+                <attr name="iconBase" stringvalue="github/anandb/netbeans/ui/icons/markdown_project.svg"/>
+            </file>
+        </folder>
         <folder name="Window">
             <file name="github-anandb-netbeans-ui-ToggleAssistantAction.instance">
                 <attr name="instanceCreate" methodvalue="org.openide.awt.Actions.alwaysEnabled"/>
@@ -45,6 +53,12 @@
         </folder>
     </folder>
     <folder name="Menu">
+        <folder name="File">
+            <file name="UseAsMarkdownProject.shadow">
+                <attr name="originalFile" stringvalue="Actions/Project/github-anandb-netbeans-ui-mdproject-UseAsMarkdownProjectAction.instance"/>
+                <attr name="position" intvalue="320"/>
+            </file>
+        </folder>
         <folder name="Window">
             <file name="Assistant.shadow">
                 <attr name="originalFile" stringvalue="Actions/Window/github-anandb-netbeans-ui-ToggleAssistantAction.instance"/>
@@ -76,6 +90,12 @@
         </file>
     </folder>
     <folder name="Toolbars">
+        <folder name="File">
+            <file name="github-anandb-netbeans-ui-mdproject-UseAsMarkdownProjectAction.shadow">
+                <attr name="originalFile" stringvalue="Actions/Project/github-anandb-netbeans-ui-mdproject-UseAsMarkdownProjectAction.instance"/>
+                <attr name="position" intvalue="350"/>
+            </file>
+        </folder>
         <folder name="Git">
             <file name="github-anandb-netbeans-ui-StashDiffAction.shadow">
                 <attr name="originalFile" stringvalue="Actions/Tools/github-anandb-netbeans-ui-StashDiffAction.instance"/>
@@ -95,21 +115,6 @@
                 <file name="github-anandb-netbeans-project-mdproject-MdProjectInformation.instance"/>
             </folder>
             <folder name="Customizer"/>
-        </folder>
-    </folder>
-    <folder name="Templates">
-        <folder name="Project">
-            <folder name="Coding Assistant">
-                <attr name="displayName" bundlevalue="github.anandb.netbeans.ui.Bundle#LBL_ProjectCategory"/>
-                <attr name="position" intvalue="9900"/>
-                <file name="github-anandb-netbeans-ui-mdproject-MdProjectWizardIterator.instance">
-                    <attr name="instantiatingIterator" newvalue="github.anandb.netbeans.ui.mdproject.MdProjectWizardIterator"/>
-                    <attr name="iconBase" stringvalue="github/anandb/netbeans/ui/icons/mdproject.svg"/>
-                    <attr name="displayName" bundlevalue="github.anandb.netbeans.ui.mdproject.Bundle#LBL_WizardName"/>
-                    <attr name="templateWizardURL" urlvalue="nbresloc:/github/anandb/netbeans/ui/mdproject/MdProjectDescription.html"/>
-                    <attr name="template" boolvalue="true"/>
-                </file>
-            </folder>
         </folder>
     </folder>
     <folder name="Editors">

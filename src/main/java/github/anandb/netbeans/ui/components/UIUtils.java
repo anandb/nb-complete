@@ -28,6 +28,7 @@ import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JToolTip;
 import javax.swing.JPanel;
 import javax.swing.border.Border;
@@ -145,6 +146,12 @@ public class UIUtils {
     }
 
     private UIUtils() {}
+
+    /** Standard toolbar-button tooltip placement: floats above the button, aligned to its left edge. */
+    public static Point tooltipAboveButton(MouseEvent event, JComponent c) {
+        Insets ins = c.getInsets();
+        return new Point(ins.left, -c.getHeight() - 8);
+    }
 
     public static JButton createToolbarButton(String iconName, String toolTip, ActionListener l) {
         return createToolbarButton(iconName, PluginSettings.getToolbarIconSize(), toolTip, l);

@@ -20,7 +20,7 @@ import github.anandb.netbeans.support.PluginSettings;
 @ServiceProvider(service = ProjectFactory.class)
 public final class MdProjectFactory implements ProjectFactory {
 
-    static final String MARKER = ".mdproject";
+    static final String MARKER = MdProjectMarker.NAME;
 
     @Override
     public boolean isProject(FileObject projectDirectory) {
@@ -29,7 +29,6 @@ public final class MdProjectFactory implements ProjectFactory {
         }
         return projectDirectory.getFileObject(MARKER) != null;
     }
-
     @Override
     public Project loadProject(FileObject dir, ProjectState state) throws IOException {
         if (!isProject(dir)) {
@@ -40,10 +39,6 @@ public final class MdProjectFactory implements ProjectFactory {
 
     @Override
     public void saveProject(Project project) throws IOException {
-        FileObject dir = project.getProjectDirectory();
-        if (dir.getFileObject(MARKER) == null) {
-            FileObject marker = dir.createData(MARKER);
-            marker.setAttribute("displayName", dir.getNameExt());
-        }
+        MdProjectMarker.ensure(project.getProjectDirectory());
     }
 }
