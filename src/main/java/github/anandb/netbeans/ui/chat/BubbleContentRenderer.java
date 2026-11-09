@@ -50,14 +50,6 @@ class BubbleContentRenderer {
      *  content on the first render. */
     private List<CollapsibleToolPane.ToolSegment> pendingSegmentedContent;
     private int fontSizeOverride = -1;
-    /** True when the last render produced content that needs the whole thread width. */
-    private boolean hasWideContent;
-
-    /** A table or a code block cannot be read inside the assistant's reading-measure cap. */
-    boolean hasWideContent() {
-        return hasWideContent;
-    }
-
     public record CollapsibleState(boolean expanded) {}
 
     /** Text inset inside the bubble padding; keeps user and assistant text on the same grid. */
@@ -181,7 +173,6 @@ class BubbleContentRenderer {
         }
         lastRenderedTextLength = currentLen;
         lastRenderedTextHash = currentHash;
-        hasWideContent = false;
 
         Matcher matcher = CodeFencePattern.matcher(text);
 
@@ -207,9 +198,6 @@ class BubbleContentRenderer {
                 codeStates.add(new CollapsibleState(defaultExpanded));
             }
 
-            if (isNotBlank(code)) {
-                hasWideContent = true;
-            }
             updateOrAddCodeSegment(lang, code, defaultExpanded, codeIdx, currentCompIdx++);
 
             lastEnd = matcher.end();
@@ -361,7 +349,6 @@ class BubbleContentRenderer {
             if (seg instanceof TableDetector.TextSegment ts) {
                 updateOrAddTextSegment(ts.text(), theme, currentIdx++, false);
             } else if (seg instanceof TableDetector.TableSegment tbl) {
-                hasWideContent = true;
                 updateOrAddTableSegment(tbl.markdown(), theme, currentIdx++);
             }
         }

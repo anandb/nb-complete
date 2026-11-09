@@ -87,7 +87,6 @@ class MessageBubbleTest {
                 raw, null, null, MessageBubble.AvatarPosition.NONE);
         assertEquals(raw, assistant.getRawText());
     }
-
     @Test
     void userBubbleRidesARightAlignedRow() {
         MessageBubble bubble = new MessageBubble(MessageType.user_message_chunk,
@@ -98,12 +97,17 @@ class MessageBubbleTest {
     }
 
     @Test
-    void assistantBubbleRidesALeftAlignedRow() {
+    void theAssistantBubbleSpansTheWholeThreadWidth() {
         MessageBubble bubble = new MessageBubble(MessageType.agent_message_chunk,
                 "hello", null, null, MessageBubble.AvatarPosition.NONE);
 
-        assertTrue(bubble.getComponent(0) instanceof MessageBubble.AlignedRow,
-                "assistant content must sit in the capped row");
+        MessageBubble.AlignedRow row = (MessageBubble.AlignedRow) bubble.getComponent(0);
+        row.setSize(800, 100);
+        row.doLayout();
+
+        // No reading-measure cap: the answer gets the whole row.
+        assertEquals(800, row.getComponent(0).getWidth());
+        assertEquals(0, row.getComponent(0).getX());
     }
 
     @Test
@@ -117,64 +121,25 @@ class MessageBubbleTest {
 
     @Test
     void alignedRowCapsAndRightAlignsAUserBubble() {
-        JLabel child = laidOutChild(new MessageBubble.AlignedRow(0.72f, 760, true), 800);
+        JLabel child = laidOutChild(new MessageBubble.AlignedRow(0.86f, 912, true), 800);
 
-        assertEquals(576, child.getWidth(), "72% of the row");
-        assertEquals(224, child.getX(), "flush with the right edge");
+        assertEquals(688, child.getWidth(), "86% of the row");
+        assertEquals(112, child.getX(), "flush with the right edge");
     }
 
     @Test
-    void alignedRowCapsAnAssistantBubbleOnTheLeft() {
-        JLabel child = laidOutChild(new MessageBubble.AlignedRow(0.88f, 920, false), 800);
+    void theUserCapStopsAt912Px() {
+        JLabel child = laidOutChild(new MessageBubble.AlignedRow(0.86f, 912, true), 2000);
 
-        assertEquals(704, child.getWidth(), "88% of the row");
-        assertEquals(0, child.getX(), "flush with the left edge");
+        assertEquals(912, child.getWidth(), "absolute cap wins on a wide panel");
     }
 
     @Test
-    void alignedRowHonoursTheReadingMeasureCap() {
-        JLabel child = laidOutChild(new MessageBubble.AlignedRow(0.72f, 760, true), 2000);
+    void aFullWidthRowUsesTheWholeRow() {
+        JLabel child = laidOutChild(MessageBubble.AlignedRow.fullWidth(), 800);
 
-        assertEquals(760, child.getWidth(), "absolute cap wins on a wide panel");
-    }
-
-    @Test
-    void aTableDropsTheReadingMeasureCap() {
-        MessageBubble bubble = new MessageBubble(MessageType.agent_message_chunk,
-                "| Tool | Status |\n|------|--------|\n| mvn  | green  |",
-                null, null, MessageBubble.AvatarPosition.NONE);
-
-        assertTrue(bubble.isWideContent(), "a table must use the whole row, not the 88% cap");
-    }
-
-    @Test
-    void aCodeBlockDropsTheReadingMeasureCap() {
-        MessageBubble bubble = new MessageBubble(MessageType.agent_message_chunk,
-                "Run this:\n\n```java\nint x = 1;\n```\n",
-                null, null, MessageBubble.AvatarPosition.NONE);
-
-        assertTrue(bubble.isWideContent(), "a code block must use the whole row, not the 88% cap");
-        assertTrue(((MessageBubble.AlignedRow) bubble.getComponent(0)).isFullWidth(),
-                "the row must release the cap, not only report wide content");
-    }
-
-    @Test
-    void proseKeepsTheReadingMeasureCap() {
-        MessageBubble bubble = new MessageBubble(MessageType.agent_message_chunk,
-                "plain prose", null, null, MessageBubble.AvatarPosition.NONE);
-
-        assertFalse(bubble.isWideContent());
-    }
-
-    @Test
-    void alignedRowFullWidthReleasesTheCap() {
-        MessageBubble.AlignedRow row = new MessageBubble.AlignedRow(0.88f, 920, false);
-        JLabel child = laidOutChild(row, 800);
-        assertEquals(704, child.getWidth());
-
-        assertTrue(row.setFullWidth(true), "the mode change must ask for a new layout pass");
-        row.doLayout();
-        assertEquals(800, child.getWidth(), "full-width content ignores the ratio");
+        assertEquals(800, child.getWidth(), "no ratio, no absolute cap");
+        assertEquals(0, child.getX());
     }
 
     @Test

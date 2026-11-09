@@ -84,11 +84,14 @@ public class MessageBubble extends JPanel implements Scrollable {
     private static final int BUBBLE_RADIUS = 18;
     /** Bubble padding; the text panes add their own inset on top of this. */
     private static final int BUBBLE_PAD = 6;
-    /** A user message stays a compact block; prose keeps a readable measure. */
-    private static final float USER_WIDTH_RATIO = 0.72f;
-    private static final float ASSISTANT_WIDTH_RATIO = 0.88f;
-    private static final int USER_MAX_WIDTH_PX = 760;
-    private static final int ASSISTANT_MAX_WIDTH_PX = 920;
+    /**
+     * A user message stays a compact block, right-aligned: 86% of the thread width, capped at
+     * 912 px (20% wider than the old 72 % / 760 px measure, which clipped long prompts). The
+     * assistant bubble has no cap — a long answer is prose and code the thread must give its whole
+     * width to.
+     */
+    private static final float USER_WIDTH_RATIO = 0.86f;
+    private static final int USER_MAX_WIDTH_PX = 912;
 
     /**
      * Cached preferred size: the thread's BoxLayout asks every bubble for its preferred and
@@ -278,14 +281,13 @@ public class MessageBubble extends JPanel implements Scrollable {
 
     }
 
-    /** Wraps chat content in the full-width row that applies the role's width cap. */
+    /** Wraps chat content in the role's row: the user's capped block, or the assistant's full width. */
     private void addCappedRow(Component content, Insets insets, int anchor, int fill) {
         boolean user = "user".equals(role);
-        AlignedRow row = new AlignedRow(user ? USER_WIDTH_RATIO : ASSISTANT_WIDTH_RATIO,
-                user ? USER_MAX_WIDTH_PX : ASSISTANT_MAX_WIDTH_PX, user);
+        AlignedRow row = user
+                ? new AlignedRow(USER_WIDTH_RATIO, USER_MAX_WIDTH_PX, true)
+                : AlignedRow.fullWidth();
         row.add(content);
-        // The initial content render runs before the row exists; adopt its verdict here.
-        row.setFullWidth(contentRenderer != null && contentRenderer.hasWideContent());
         alignedRow = row;
         add(row, UIUtils.createGbc(0, 0, 1.0, 0, fill, anchor, insets));
     }
@@ -341,20 +343,6 @@ public class MessageBubble extends JPanel implements Scrollable {
 
     private void updateContent(ColorTheme theme, boolean expanded) {
         contentRenderer.updateContent(theme, expanded, toolTitle);
-        setWideContent(contentRenderer.hasWideContent());
-    }
-
-    /** A table or code block needs the whole thread width; the cap forces a sidebar resize. */
-    private void setWideContent(boolean wide) {
-        if (alignedRow != null && alignedRow.setFullWidth(wide)) {
-            revalidate();
-            repaint();
-        }
-    }
-
-    /** True when this bubble is using the full row because its content needs the width; test seam. */
-    boolean isWideContent() {
-        return alignedRow != null && alignedRow.isFullWidth();
     }
 
     /** Applies or removes a queued indicator on the bubble. */
@@ -581,6 +569,13 @@ public class MessageBubble extends JPanel implements Scrollable {
             setAlignmentX(Component.LEFT_ALIGNMENT);
         }
 
+        /** A row with no cap: the assistant bubble, which spans the thread's whole width. */
+        static AlignedRow fullWidth() {
+            AlignedRow row = new AlignedRow(1f, Integer.MAX_VALUE, false);
+            row.fullWidth = true;
+            return row;
+        }
+
         @Override
         public void doLayout() {
             if (getComponentCount() == 0) {
@@ -601,20 +596,6 @@ public class MessageBubble extends JPanel implements Scrollable {
                 // Height computed before the width was known; settle it on the next pass.
                 SwingUtilities.invokeLater(this::revalidate);
             }
-        }
-
-        /** Returns true when the mode changed and the row needs another layout pass. */
-        boolean setFullWidth(boolean full) {
-            if (full == fullWidth) {
-                return false;
-            }
-            fullWidth = full;
-            lastCap = -1;
-            return true;
-        }
-
-        boolean isFullWidth() {
-            return fullWidth;
         }
 
         @Override
