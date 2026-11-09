@@ -1,8 +1,6 @@
 package github.anandb.netbeans.ui.chat;
 
-import java.awt.BorderLayout;
 import java.awt.Component;
-import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.IllegalComponentStateException;
@@ -48,6 +46,10 @@ class BubbleActionBar {
     private static final Logger LOG = Logger.from(BubbleActionBar.class);
 
     private static final String[] QUEUED_FRAMES = {"\u23F3", "\u23F4", "\u23F5", "\u23F6"};
+    private static final int ACTION_ICON_SIZE = 24;
+    /** Overlay position: the icons float clear of the bubble's bottom edge. */
+    private static final int OVERLAY_BOTTOM_INSET = 12;
+    private static final int OVERLAY_RIGHT_INSET = 20;
 
     private final JPanel bubble;
     private final String role;
@@ -122,7 +124,7 @@ class BubbleActionBar {
         final PinnedMessageControl pinStore = PlatformBridge.serviceSafe(PinnedMessageControl.class);
         this.pinned = (pinStore != null && pinStore.isPinned(sessionId, messageId));
 
-        pinBtn = UIUtils.createToolbarButton("pin.svg", 32,
+        pinBtn = UIUtils.createToolbarButton("pin.svg", ACTION_ICON_SIZE,
                 NbBundle.getMessage(UIBundle.class,
                         pinned ? "HINT_UnpinMessage" : "HINT_PinMessage"),
                 e -> flipPin(pinStore));
@@ -133,11 +135,11 @@ class BubbleActionBar {
         pinBtn.setVisible(pinned);
 
         if (pinned) {
-            pinBtn.setIcon(ThemeManager.getIcon("pinned.svg", 32));
+            pinBtn.setIcon(ThemeManager.getIcon("pinned.svg", ACTION_ICON_SIZE));
             applyPinAccent(true);
         }
 
-        copyBtn = UIUtils.createToolbarButton("copy.svg", 32,
+        copyBtn = UIUtils.createToolbarButton("copy.svg", ACTION_ICON_SIZE,
                 NbBundle.getMessage(UIBundle.class, "HINT_CopyAssistantMessage"),
                 e -> copyMessageToClipboard());
         copyBtn.setBorder(BorderFactory.createEmptyBorder());
@@ -147,28 +149,27 @@ class BubbleActionBar {
         copyBtn.setVisible(false);
         this.copyBtnIcon = copyBtn.getIcon();
 
-        // Reserve space with both buttons so layout never shifts.
-        Dimension pinSize = pinBtn.getPreferredSize();
-        Dimension copySize = copyBtn.getPreferredSize();
-        int actionsW = pinSize.width + copySize.width + 4;
-        int actionsH = Math.max(pinSize.height, copySize.height);
-        Dimension actionsSize = new Dimension(actionsW, actionsH);
-
-        JPanel actionsPlaceholder = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
-        actionsPlaceholder.setOpaque(false);
-        actionsPlaceholder.add(copyBtn);
-        actionsPlaceholder.add(pinBtn);
-        actionsPlaceholder.setPreferredSize(actionsSize);
-        actionsPlaceholder.setMinimumSize(actionsSize);
-        actionsPlaceholder.setMaximumSize(actionsSize);
-        this.actionsPlaceholder = actionsPlaceholder;
-        bubble.add(actionsPlaceholder, BorderLayout.SOUTH);
+        // Floating overlay: same GridBag cell as the bubble, anchored SOUTHEAST.
+        // The cell sizes to the bubble, so showing the buttons never grows it.
+        JPanel actionsOverlay = new JPanel(new FlowLayout(FlowLayout.RIGHT, 2, 0));
+        actionsOverlay.setOpaque(false);
+        actionsOverlay.add(copyBtn);
+        actionsOverlay.add(pinBtn);
+        this.actionsPlaceholder = actionsOverlay;
+        GridBagConstraints ogbc = new GridBagConstraints();
+        ogbc.gridx = 0;
+        ogbc.gridy = 0;
+        ogbc.weightx = 0;
+        ogbc.weighty = 0;
+        ogbc.anchor = GridBagConstraints.SOUTHEAST;
+        ogbc.insets = new Insets(0, 0, OVERLAY_BOTTOM_INSET, OVERLAY_RIGHT_INSET);
+        owner.add(actionsOverlay, ogbc);
 
         installHoverListeners();
     }
 
     private void setupCopyOnlyButton(ColorTheme theme) {
-        copyBtn = UIUtils.createToolbarButton("copy.svg", 32,
+        copyBtn = UIUtils.createToolbarButton("copy.svg", ACTION_ICON_SIZE,
                 NbBundle.getMessage(UIBundle.class, "HINT_CopyAssistantMessage"),
                 e -> copyMessageToClipboard());
         copyBtn.setBorder(BorderFactory.createEmptyBorder());
@@ -178,21 +179,25 @@ class BubbleActionBar {
         copyBtn.setVisible(false);
         this.copyBtnIcon = copyBtn.getIcon();
 
-        JPanel copyPlaceholder = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
-        copyPlaceholder.setOpaque(false);
-        Dimension btnSize = copyBtn.getPreferredSize();
-        copyPlaceholder.setPreferredSize(btnSize);
-        copyPlaceholder.setMinimumSize(btnSize);
-        copyPlaceholder.setMaximumSize(btnSize);
-        copyPlaceholder.add(copyBtn);
-        this.actionsPlaceholder = copyPlaceholder;
-        bubble.add(copyPlaceholder, BorderLayout.SOUTH);
+        JPanel copyOverlay = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        copyOverlay.setOpaque(false);
+        copyOverlay.add(copyBtn);
+        this.actionsPlaceholder = copyOverlay;
+        GridBagConstraints ogbc = new GridBagConstraints();
+        ogbc.gridx = 0;
+        ogbc.gridy = 0;
+        ogbc.weightx = 0;
+        ogbc.weighty = 0;
+        ogbc.anchor = GridBagConstraints.SOUTHEAST;
+        ogbc.insets = new Insets(0, 0, OVERLAY_BOTTOM_INSET, OVERLAY_RIGHT_INSET);
+        owner.add(copyOverlay, ogbc);
 
         installHoverListeners();
     }
 
     private void installHoverListeners() {
-        // Hover: show buttons after 400ms delay.
+        // Hover: show buttons after 400ms delay. Overlay floats above the
+        // bubble, so showing it never changes layout — repaint only.
         bubble.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
@@ -200,6 +205,10 @@ class BubbleActionBar {
                     showTimer = new Timer(400, evt -> {
                         if (isMouseInsideComponent(bubble)) {
                             copyBtn.setVisible(true);
+                            if (pinBtn != null && !pinned) {
+                                pinBtn.setVisible(true);
+                            }
+                            owner.repaint();
                             // Reset icon — a stale check icon may remain from a
                             // copy where the timer fired while the button was hidden.
                             if (copyRevertTimer != null && copyRevertTimer.isRunning()) {
@@ -256,6 +265,7 @@ class BubbleActionBar {
         if (pinBtn != null && !pinned) {
             pinBtn.setVisible(false);
         }
+        owner.repaint();
     }
 
     // -------------------------------------------------------------------------
@@ -272,7 +282,7 @@ class BubbleActionBar {
         Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, selection);
 
         Icon originalIcon = copyBtn.getIcon();
-        Icon checkIcon = ThemeManager.getIcon("check.svg", 14);
+        Icon checkIcon = ThemeManager.getIcon("check.svg", 12);
         copyBtn.setIcon(checkIcon);
 
         // Cancel any previous revert timer to avoid leaking timers on rapid clicks.
@@ -299,7 +309,7 @@ class BubbleActionBar {
         pinned = !pinned;
         store.setPinned(sid, messageId, pinned);
         pinBtn.setIcon(ThemeManager.getIcon(
-                pinned ? "pinned.svg" : "pin.svg", 32));
+                pinned ? "pinned.svg" : "pin.svg", ACTION_ICON_SIZE));
         pinBtn.setToolTipText(NbBundle.getMessage(UIBundle.class,
                 pinned ? "HINT_UnpinMessage" : "HINT_PinMessage"));
         pinBtn.getAccessibleContext().setAccessibleName(pinBtn.getToolTipText());
@@ -336,7 +346,7 @@ class BubbleActionBar {
         this.pinned = pinned;
         if (pinBtn != null) {
             pinBtn.setIcon(ThemeManager.getIcon(
-                    pinned ? "pinned.svg" : "pin.svg", 32));
+                    pinned ? "pinned.svg" : "pin.svg", ACTION_ICON_SIZE));
             pinBtn.setToolTipText(NbBundle.getMessage(UIBundle.class,
                     pinned ? "HINT_UnpinMessage" : "HINT_PinMessage"));
             pinBtn.getAccessibleContext().setAccessibleName(pinBtn.getToolTipText());
@@ -355,9 +365,9 @@ class BubbleActionBar {
         // If messageId was null at construction (streaming), pin button was never
         // created. Re-run setup to install copy+pin buttons now that we have an ID.
         if (oldId == null && messageId != null && pinBtn == null) {
-            // Remove the old copy-only placeholder before installing copy+pin.
+            // Remove the old copy-only overlay before installing copy+pin.
             if (actionsPlaceholder != null) {
-                bubble.remove(actionsPlaceholder);
+                owner.remove(actionsPlaceholder);
             }
             setupActionButtons(ThemeManager.getCurrentTheme());
             return;
