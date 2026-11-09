@@ -31,17 +31,14 @@ import static org.apache.commons.lang3.StringUtils.toRootLowerCase;
 public final class ToolDataExtractor {
     private static final Logger LOG = Logger.from(ToolDataExtractor.class);
 
-    /** Max chars for tool title before truncation.
-     *  Updated by UI panes based on their actual width and font metrics. */
-    private static volatile int maxTitleLength = 60;
-
-    public static int getMaxTitleLength() { return maxTitleLength; }
-
-    /** Set max tool-title characters, derived from pane width and font size.
-     *  Call from UI when pane is resized. */
-    public static void setMaxTitleLength(int max) {
-        maxTitleLength = Math.max(20, max);
-    }
+    /** A tool kind longer than this is not a kind: fall back to the generic label. */
+    private static final int MAX_KIND_CHARS = 40;
+    /**
+     * Safety cap for a tool title, so a pathological argument (a 4 KB command) cannot become a
+     * 4 KB label. It is NOT the display width: the header label elides to its real width with
+     * font metrics, which is why this is far longer than any header.
+     */
+    private static final int MAX_TITLE_CHARS = 300;
 
     /**
      * goose reports no {@code kind} on the initial tool_call; it puts the kind in the
@@ -146,15 +143,14 @@ public final class ToolDataExtractor {
             }
         }
 
-        int maxLen = getMaxTitleLength();
-        tag = tag.length() < maxLen ? tag : "Tool";
+        tag = tag.length() < MAX_KIND_CHARS ? tag : "Tool";
 
         // Some special handling - look for a better way
         if ("context".equals(tag) && identifier.startsWith("Compressed")) {
             identifier = toRootLowerCase(identifier);
         }
 
-        return tag + " " + abbreviateMiddle(defaultString(identifier), "...", maxLen);
+        return tag + " " + abbreviateMiddle(defaultString(identifier), "...", MAX_TITLE_CHARS);
     }
 
     /**

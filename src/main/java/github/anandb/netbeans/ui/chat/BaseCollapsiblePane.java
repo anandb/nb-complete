@@ -31,7 +31,6 @@ import org.openide.util.NbBundle;
 import org.apache.commons.lang3.StringUtils;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.pattern.ToolPrefixPattern;
-import github.anandb.netbeans.support.ToolDataExtractor;
 import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
@@ -61,6 +60,14 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
     protected final JButton groupToggleBtn;
     protected final Color defaultAccent;
     protected JLabel paramLabel;
+    /**
+     * The title's parameter as given, before any width elision. The header re-elides this whenever
+     * the pane resizes, so a wider sidebar shows more of the path instead of keeping the
+     * abbreviation it was built with.
+     */
+    private String fullParam;
+    /** The whole header text for a pane whose title carries no tag. */
+    private String fullHeaderText;
     protected boolean isThinking;
     protected boolean isSegmented;
     protected String combinedPlainText = "";
@@ -111,6 +118,13 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
             @Override
             public boolean contains(int x, int y) {
                 return false;
+            }
+
+            @Override
+            public void doLayout() {
+                super.doLayout();
+                // Only here is this panel's width real; eliding earlier guessed a smaller budget.
+                applyTitleElision();
             }
         };
         titlePanel.setOpaque(false);
@@ -346,6 +360,8 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
 
     protected final void setupTitleLabels(String rawTitle) {
         titlePanel.removeAll();
+        fullParam = null;
+        fullHeaderText = null;
         Icon icon = getHeaderIcon(rawTitle);
 
         headerLabel.setIcon(icon);
@@ -391,10 +407,13 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
                     };
                     paramLabel.addMouseListener(paramLabelToggleListener);
                 }
+                fullParam = param;
                 paramLabel.setText(" " + param);
+                paramLabel.setToolTipText(null);
                 titlePanel.add(paramLabel);
             }
         } else {
+            fullHeaderText = stripped;
             headerLabel.setText(stripped);
         }
     }
@@ -402,19 +421,41 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
     public void setTitle(String title) {
         this.isThinking = title.toUpperCase().contains("THINKING");
         setupTitleLabels(title);
-        updateMaxTitleLength();
+        applyTitleElision();
     }
 
-    protected void updateMaxTitleLength() {
-        int w = getWidth();
-        if (w <= 0) return;
-        FontMetrics fm = getFontMetrics(ThemeManager.getFont());
-        int avgCharWidth = fm.stringWidth("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz") / 52;
-        if (avgCharWidth <= 0) avgCharWidth = fm.stringWidth("M");
-        int usable = Math.max(50, w - 90);
-        int chars = usable / avgCharWidth;
-        ToolDataExtractor.setMaxTitleLength(2 * chars/3);
+    /**
+     * Fits the title to the width the header actually got. {@code setupTitleLabels} runs before the
+     * pane is laid out, so the first pass keeps the title whole and a resize re-runs this with the
+     * real width — a wide sidebar shows the full path instead of the abbreviation it was built with.
+     */
+    private void applyTitleElision() {
+        if (isThinking || titlePanel == null || titlePanel.getWidth() <= 0) {
+            return;
+        }
+        if (paramLabel != null && fullParam != null) {
+            FontMetrics fm = paramLabel.getFontMetrics(paramLabel.getFont());
+            int budget = titlePanel.getWidth() - headerLabel.getPreferredSize().width - 8;
+            String shown = CollapsibleHeaderRenderer.elideMiddle(fullParam, fm, budget);
+            if (!shown.equals(fullParam)) {
+                paramLabel.setToolTipText(fullParam);
+            }
+            if (!(" " + shown).equals(paramLabel.getText())) {
+                paramLabel.setText(" " + shown);
+            }
+        } else if (fullHeaderText != null) {
+            FontMetrics fm = headerLabel.getFontMetrics(headerLabel.getFont());
+            String shown = CollapsibleHeaderRenderer.elideMiddle(
+                    fullHeaderText, fm, titlePanel.getWidth() - 8);
+            if (!shown.equals(fullHeaderText)) {
+                headerLabel.setToolTipText(fullHeaderText);
+            }
+            if (!shown.equals(headerLabel.getText())) {
+                headerLabel.setText(shown);
+            }
+        }
     }
+
 
     protected void copyContentToClipboard() {
         String content = getContentToCopy();
@@ -489,6 +530,33 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         return CollapsibleHeaderRenderer.formatTitle(rawTitle);
     }
 
+    /**
+     * Header label that keeps its full text and fits it to the width it is given. The elision runs
+     * from the containers' layout passes ({@link CollapsibleHeaderRenderer#elideMiddle}), never
+     * from a resize listener: a listener fires before the label has a width, so the first guess
+     * sticks and the tail is clipped.
+     */
+    static final class ElidingHeaderLabel extends JLabel {
+        private static final long serialVersionUID = 1L;
+        private final String fullText;
+
+        ElidingHeaderLabel(String text, Icon icon) {
+            super(text, icon, LEFT);
+            this.fullText = text;
+        }
+
+        /** Fits the text to the current width; no-op until the label has one. */
+        void fitText() {
+            int iconRoom = getIcon() == null ? 0 : getIcon().getIconWidth() + getIconTextGap();
+            String shown = CollapsibleHeaderRenderer.elideMiddle(
+                    fullText, getFontMetrics(getFont()), getWidth() - iconRoom);
+            if (!shown.equals(getText())) {
+                setText(shown);
+                setToolTipText(shown.equals(fullText) ? null : fullText);
+            }
+        }
+    }
+
     protected static JTextArea createActivityTextArea(String text) {
         JTextArea textArea = new JTextArea(text) {
             @Override
@@ -527,7 +595,17 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
 
         if (title != null && !title.isEmpty()) {
             // Title bar sits directly on wrapper so it spans full width (no left border indent)
-            JPanel headerPanel = new JPanel(new BorderLayout());
+            final ElidingHeaderLabel[] titleRef = new ElidingHeaderLabel[1];
+            JPanel headerPanel = new JPanel(new BorderLayout()) {
+                @Override
+                public void doLayout() {
+                    super.doLayout();
+                    if (titleRef[0] != null) {
+                        // The label's width is only real now; eliding earlier guessed.
+                        titleRef[0].fitText();
+                    }
+                }
+            };
             headerPanel.setOpaque(true);
             headerPanel.setBackground(theme.base2());
             int leftPad = isThought ? 0 : 4;
@@ -540,7 +618,8 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
                     : ThemeManager.getIcon("tool.svg", 16);
 
             String displayTitle = formatInnerTitle(title);
-            JLabel titleLabel = new JLabel(displayTitle, icon, JLabel.LEFT);
+            ElidingHeaderLabel titleLabel = new ElidingHeaderLabel(displayTitle, icon);
+            titleRef[0] = titleLabel;
             titleLabel.setIconTextGap(8);
             titleLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
             titleLabel.setForeground(theme.foreground());

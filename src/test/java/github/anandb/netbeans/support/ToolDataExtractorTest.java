@@ -157,14 +157,28 @@ class ToolDataExtractorTest {
     }
 
     @Test
-    void testExtractToolTitleAbbreviatesLongIdentifier() {
-        String longIdent = "a".repeat(100);
+    void testExtractToolTitleKeepsAPathForTheHeaderToFit() {
+        String path = "/home/anand/workspace/nb-complete/src/main/java/github/anandb/netbeans/"
+                + "ui/chat/MessageBubble.java";
+
+        String result = ToolDataExtractor.extractToolTitle(
+                "tag", "<path>" + path + "</path>", null, null);
+
+        assertTrue(result.contains(path),
+                "the display layer elides to its real width; the extractor must not pre-abbreviate");
+    }
+
+    @Test
+    void testExtractToolTitleCapsAPathologicalIdentifier() {
+        String longIdent = "a".repeat(1000);
+
         String result = ToolDataExtractor.extractToolTitle(
             "tag",
             "<skill_content name=\"" + longIdent + "\">content</skill_content>",
             null, null
         );
-        assertTrue(result.length() < 120);
+
+        assertTrue(result.length() < 310, "the safety cap still applies: " + result.length());
         assertTrue(result.contains("..."));
     }
 

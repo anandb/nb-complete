@@ -2,6 +2,8 @@ package github.anandb.netbeans.ui.chat;
 
 import java.util.Locale;
 
+import java.awt.FontMetrics;
+
 import javax.swing.Icon;
 import org.openide.util.NbBundle;
 import org.apache.commons.lang3.StringUtils;
@@ -83,5 +85,66 @@ final class CollapsibleHeaderRenderer {
     static String thinkingLabel(boolean expanded) {
         String tp = NbBundle.getMessage(UIBundle.class, "LBL_ThinkingProcess");
         return expanded ? tp : tp + "...";
+    }
+
+    /**
+     * Shortens {@code text} to {@code maxWidth} pixels, keeping the end — for a path that is the
+     * file name, which is what identifies the call. A directory head is trimmed first
+     * ({@code /home/anand/workspace/n.../File.java}); text with no path separator is middle-elided.
+     *
+     * <p>Returned unchanged when it already fits, so a header never abbreviates text it has room
+     * for. A null or non-positive {@code maxWidth} also returns the text whole: the caller has not
+     * been laid out yet and must not guess.</p>
+     */
+    static String elideMiddle(String text, FontMetrics fm, int maxWidth) {
+        if (text == null || text.isEmpty() || fm == null || maxWidth <= 0) {
+            return text;
+        }
+        if (fm.stringWidth(text) <= maxWidth) {
+            return text;
+        }
+        String ellipsis = "\u2026";
+        int ellipsisWidth = fm.stringWidth(ellipsis);
+
+        int separator = Math.max(text.lastIndexOf('/'), text.lastIndexOf('\\'));
+        String tail = separator > 0 && separator < text.length() - 1 ? text.substring(separator) : "";
+        int tailWidth = tail.isEmpty() ? 0 : fm.stringWidth(tail);
+        if (!tail.isEmpty() && tailWidth + ellipsisWidth < maxWidth) {
+            String head = fitHead(text.substring(0, separator), fm, maxWidth - tailWidth - ellipsisWidth);
+            return head + ellipsis + tail;
+        }
+
+        // No useful tail: keep both ends of the whole string.
+        int half = Math.max(1, (maxWidth - ellipsisWidth) / 2);
+        String start = fitHead(text, fm, half);
+        String end = fitTail(text, fm, half);
+        if (start.length() + end.length() >= text.length()) {
+            return text;
+        }
+        return start + ellipsis + end;
+    }
+
+    /** Longest prefix of {@code text} that fits {@code width} pixels. */
+    private static String fitHead(String text, FontMetrics fm, int width) {
+        int total = 0;
+        for (int i = 0; i < text.length(); i++) {
+            total += fm.charWidth(text.charAt(i));
+            if (total > width) {
+                return text.substring(0, i);
+            }
+        }
+        return text;
+    }
+
+    /** Longest suffix of {@code text} that fits {@code width} pixels. */
+    private static String fitTail(String text, FontMetrics fm, int width) {
+        int total = 0;
+        for (int i = text.length() - 1; i >= 0; i--) {
+            total += fm.charWidth(text.charAt(i));
+            if (total > width) {
+                return text.substring(i + 1);
+            }
+        }
+        return text;
     }
 }
