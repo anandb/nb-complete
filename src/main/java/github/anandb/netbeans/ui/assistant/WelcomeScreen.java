@@ -20,6 +20,7 @@ import java.util.function.Consumer;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
+import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -194,16 +195,20 @@ public final class WelcomeScreen {
         chips.setAlignmentX(Component.LEFT_ALIGNMENT);
         chips.setBorder(BorderFactory.createEmptyBorder(0, GUTTER - 4, 0, GUTTER - 4));
 
-        addStarterChip(chips, theme, "BTN_StarterExplain", "LBL_PromptExplain", onStarterPrompt);
-        addStarterChip(chips, theme, "BTN_StarterFindBug", "LBL_PromptFindBug", onStarterPrompt);
-        addStarterChip(chips, theme, "BTN_StarterWriteTest", "LBL_PromptWriteTest", onStarterPrompt);
+        Color accentTint = theme.mutedForeground();
+        addStarterChip(chips, theme, WelcomeAccentIcons.bulb(accentTint, 14),
+            "BTN_StarterExplain", "LBL_PromptExplain", onStarterPrompt);
+        addStarterChip(chips, theme, WelcomeAccentIcons.magnifier(accentTint, 14),
+            "BTN_StarterFindBug", "LBL_PromptFindBug", onStarterPrompt);
+        addStarterChip(chips, theme, WelcomeAccentIcons.checkBox(accentTint, 14),
+            "BTN_StarterWriteTest", "LBL_PromptWriteTest", onStarterPrompt);
         container.add(chips);
     }
 
-    private static void addStarterChip(JPanel chips, ColorTheme theme, String labelKey, String promptKey,
-                                       Consumer<String> onStarterPrompt) {
+    private static void addStarterChip(JPanel chips, ColorTheme theme, Icon accent, String labelKey,
+                                       String promptKey, Consumer<String> onStarterPrompt) {
         String prompt = NbBundle.getMessage(UIBundle.class, promptKey);
-        JButton chip = createChipButton(NbBundle.getMessage(UIBundle.class, labelKey), theme);
+        JButton chip = createChipButton(NbBundle.getMessage(UIBundle.class, labelKey), accent, theme);
         chip.addActionListener(e -> onStarterPrompt.accept(prompt));
         chips.add(chip);
     }
@@ -274,6 +279,8 @@ public final class WelcomeScreen {
             }
         };
         btn.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
+        btn.setIcon(WelcomeAccentIcons.sparkle(foreground, 16));
+        btn.setIconTextGap(8);
         btn.setBackground(accent);
         btn.setForeground(foreground);
         btn.setOpaque(false);
@@ -301,8 +308,10 @@ public final class WelcomeScreen {
     }
 
     /** Quiet pill for an example prompt: secondary to the CTA, still obviously clickable. */
-    private static JButton createChipButton(String text, ColorTheme theme) {
+    private static JButton createChipButton(String text, Icon accent, ColorTheme theme) {
         JButton chip = new JButton(text);
+        chip.setIcon(accent);
+        chip.setIconTextGap(6);
         chip.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN, smallSize()));
         chip.setForeground(theme.foreground());
         chip.setBackground(theme.panelHeader() != null ? theme.panelHeader() : theme.background());
