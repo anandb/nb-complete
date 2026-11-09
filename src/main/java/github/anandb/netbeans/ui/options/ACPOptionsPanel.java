@@ -456,8 +456,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
                 scopedLabel("LBL_ProjectSwitchRestart", PluginSettings.Effect.IDE_RESTART));
         // The hint is part of the tooltip: the checkbox no longer prints a paragraph under it.
         projectSwitchRestartCheckbox.setToolTipText(wrapTooltip(
-                NbBundle.getMessage(UIBundle.class, "TT_ProjectSwitchRestart")
-                        + "\n" + NbBundle.getMessage(UIBundle.class, "HLP_ProjectSwitchRestart")));
+                NbBundle.getMessage(UIBundle.class, "TT_ProjectSwitchRestart")));
         projectSwitchRestartCheckbox.addActionListener(evt -> controller.changed());
         experimentalPanel.add(projectSwitchRestartCheckbox, UIUtils.createGbc(0, 0, 1.0, 0,
                 GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST, new Insets(0, 12, 5, 12)));
