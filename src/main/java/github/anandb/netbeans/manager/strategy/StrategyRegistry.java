@@ -457,6 +457,9 @@ public class StrategyRegistry implements UpdateDispatcher {
                 JsonNode ri = update.update().rawInput();
                 filePath = ri.has("path") ? ri.get("path").asText(null) : null;
             }
+            if (filePath == null && ToolDataExtractor.isEditToolCall(update, kind)) {
+                filePath = ToolDataExtractor.extractEditFilePath(update);
+            }
             String pathPrefix = isNotBlank(filePath) ? filePath + "\n\n" : "";
 
             text = data.setText(new StringBuilder()

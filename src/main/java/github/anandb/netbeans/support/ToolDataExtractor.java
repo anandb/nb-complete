@@ -215,7 +215,7 @@ public final class ToolDataExtractor {
         boolean genericEdit = ud != null && "edit".equalsIgnoreCase(defaultString(ud.kind()))
                 && "Editing files".equalsIgnoreCase(defaultString(ud.title()).strip());
         if (path == null && genericEdit) {
-            path = extractFirstDiffPath(ud.content());
+            path = extractEditFilePath(update);
         }
         // Fallback: extract from locations array (PI agent format)
         if (path == null && ud != null) {
@@ -225,6 +225,41 @@ public final class ToolDataExtractor {
         String toolName = ri != null && ri.has("tool") ? ri.get("tool").asText(null) : null;
 
         return firstNonBlank(path, title, toolName, "");
+    }
+
+    /** Returns the target path reported by an edit tool's arguments or diff content. */
+    public static String extractEditFilePath(SessionUpdate update) {
+        SessionUpdate.UpdateData ud = update != null ? update.update() : null;
+        JsonNode rawInput = ud != null ? ud.rawInput() : null;
+        String path = null;
+        if (rawInput != null && rawInput.isObject()) {
+            path = firstNonBlank(
+                    rawInput.path("path").asText(null),
+                    rawInput.path("filePath").asText(null),
+                    rawInput.path("file_path").asText(null),
+                    rawInput.path("filepath").asText(null),
+                    rawInput.path("fileName").asText(null));
+        }
+        if (path == null && ud != null) {
+            path = extractFirstDiffPath(ud.content());
+        }
+        if (path == null && ud != null) {
+            path = extractFirstLocationPath(ud);
+        }
+        if (path == null && ud != null) {
+            String detail = titleDetail(ud.title());
+            if (detail.contains("/") || detail.contains("\\")) {
+                path = detail;
+            }
+        }
+        return path;
+    }
+
+    /** True when the update identifies an edit tool, including goose's title-only kind. */
+    public static boolean isEditToolCall(SessionUpdate update, String kind) {
+        if ("edit".equalsIgnoreCase(defaultString(kind))) return true;
+        SessionUpdate.UpdateData ud = update != null ? update.update() : null;
+        return ud != null && "edit".equalsIgnoreCase(defaultString(titleKind(ud.title())));
     }
 
     private static String extractFirstDiffPath(JsonNode content) {
