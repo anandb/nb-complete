@@ -58,7 +58,7 @@ final class VcsToolSupport {
         if (isBlank(requestedDir)) {
             String projectRoot = ProjectPathGuard.firstOpenProjectRoot();
             if (projectRoot == null || VcsUtils.findRoot(projectRoot, markerDir) == null) {
-                return new ResolvedRepo(null, Map.of("status", "error", "message", notFoundMessage));
+                return new ResolvedRepo(null, ToolResults.error(notFoundMessage));
             }
             // git/hg accept a subdirectory of the VCS root. Default cwd is the
             // open project, not the walked-up repo root, so a nested NetBeans
@@ -69,7 +69,7 @@ final class VcsToolSupport {
             return new ResolvedRepo(null, outsideProjectError(requestedDir));
         }
         if (VcsUtils.findRoot(requestedDir, markerDir) == null) {
-            return new ResolvedRepo(null, Map.of("status", "error", "message", notFoundMessage));
+            return new ResolvedRepo(null, ToolResults.error(notFoundMessage));
         }
         return new ResolvedRepo(requestedDir, null);
     }
@@ -77,22 +77,21 @@ final class VcsToolSupport {
     static ResolvedCount maxCount(Integer requested, int defaultValue, int min, int max) {
         int value = requested == null ? defaultValue : requested;
         if (value < min || value > max) {
-            return new ResolvedCount(0, Map.of("status", "error", "message",
-                    "maxCount must be between " + min + " and " + max));
+            return new ResolvedCount(0, ToolResults.error("maxCount must be between " + min + " and " + max));
         }
         return new ResolvedCount(value, null);
     }
 
     static Map<String, Object> invalidSince(String since, Predicate<String> allowed) {
         if (since != null && !isSafeToken(since, allowed)) {
-            return Map.of("status", "error", "message", "Invalid since filter: " + since);
+            return ToolResults.error("Invalid since filter: " + since);
         }
         return null;
     }
 
     static Map<String, Object> invalidRevision(String target, Predicate<String> allowed) {
         if (!isSafeToken(target, allowed)) {
-            return Map.of("status", "error", "message", "Invalid diff target: " + target);
+            return ToolResults.error("Invalid diff target: " + target);
         }
         return null;
     }
@@ -105,7 +104,7 @@ final class VcsToolSupport {
 
     static ResolvedPath historyPath(String repoDir, String path) {
         if (isBlank(path)) {
-            return new ResolvedPath(null, Map.of("status", "error", "message", "path is required"));
+            return new ResolvedPath(null, ToolResults.required("path"));
         }
         File file = new File(path);
         String absolute = file.isAbsolute() ? path : new File(repoDir, path).getAbsolutePath();
@@ -119,8 +118,7 @@ final class VcsToolSupport {
                     .relativize(Path.of(canonicalFile)).toString();
             return new ResolvedPath(relative, null);
         } catch (Exception e) {
-            return new ResolvedPath(null, Map.of("status", "error", "message",
-                    "Could not resolve path: " + path));
+            return new ResolvedPath(null, ToolResults.error("Could not resolve path: " + path));
         }
     }
 
@@ -163,7 +161,7 @@ final class VcsToolSupport {
     static Map<String, Object> run(String repoDir, String vcsLabel, String... command) throws Exception {
         VcsUtils.CapturedCommand captured = VcsUtils.runCaptured(new File(repoDir), 30, command);
         if (captured.timedOut()) {
-            return Map.of("status", "error", "message", vcsLabel + " command timed out", "fatal", true);
+            return ToolResults.fatal(vcsLabel + " command timed out");
         }
         Map<String, Object> result = new HashMap<>();
         result.put("exitCode", captured.exitCode());

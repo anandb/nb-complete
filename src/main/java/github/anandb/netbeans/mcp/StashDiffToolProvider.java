@@ -40,38 +40,37 @@ public class StashDiffToolProvider {
                     public Map<String, Object> execute(StashDiffInput args) throws Exception {
                         StashDiffControl control = Lookup.getDefault().lookup(StashDiffControl.class);
                         if (control == null) {
-                            return Map.of("status", "error", "message", "StashDiffControl not available",
-                                    "fatal", true);
+                            return ToolResults.unavailable("StashDiffControl");
                         }
 
                         File repoDir;
                         if (args.repoDir() != null && !args.repoDir().isBlank()) {
                             repoDir = new File(args.repoDir().trim());
                             if (!repoDir.isDirectory()) {
-                                return Map.of("status", "error", "message", "Repository directory not found: " + args.repoDir());
+                                return ToolResults.error("Repository directory not found: " + args.repoDir());
                             }
                             if (!new File(repoDir, ".git").exists()) {
-                                return Map.of("status", "error", "message", "Not a Git repository (no .git directory): " + args.repoDir());
+                                return ToolResults.error("Not a Git repository (no .git directory): " + args.repoDir());
                             }
                         } else {
                             repoDir = findFirstGitRepo();
                             if (repoDir == null) {
-                                return Map.of("status", "error", "message", "No Git repository found in open projects. Specify repoDir explicitly.");
+                                return ToolResults.error("No Git repository found in open projects. Specify repoDir explicitly.");
                             }
                         }
 
                         if (args.stashIndex() == null) {
-                            return Map.of("status", "error", "message", "stashIndex is required");
+                            return ToolResults.required("stashIndex");
                         }
                         int stashIndex = args.stashIndex();
                         if (stashIndex < 0) {
-                            return Map.of("status", "error", "message", "stashIndex must be non-negative, got: " + stashIndex);
+                            return ToolResults.error("stashIndex must be non-negative, got: " + stashIndex);
                         }
 
                         // Validate stash exists before opening
                         String error = control.validateStash(repoDir, stashIndex);
                         if (error != null) {
-                            return Map.of("status", "error", "message", error);
+                            return ToolResults.error(error);
                         }
 
                         LOG.info("diff_stash tool called: stashIndex={0}, repoDir={1}", stashIndex, repoDir.getAbsolutePath());

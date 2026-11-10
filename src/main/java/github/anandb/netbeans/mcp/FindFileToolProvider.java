@@ -69,24 +69,22 @@ final class FindFileToolProvider {
 
     private Map<String, Object> executeFindFile(FindFileInput args) {
         if (isBlank(args.query())) {
-            return Map.of("status", "error", "message", "query is required");
+            return ToolResults.required("query");
         }
         FileNameMatcher.Query query = FileNameMatcher.compile(args.query());
         if (!query.usable()) {
-            return Map.of("status", "error", "message",
-                    "query must be at least " + FileNameMatcher.MIN_PLAIN_LENGTH
-                            + " characters, or a glob pattern");
+            return ToolResults.error("query must be at least " + FileNameMatcher.MIN_PLAIN_LENGTH
+                    + " characters, or a glob pattern");
         }
         String requestedScope = scope(args.scope());
         if (requestedScope == null) {
-            return Map.of("status", "error", "message",
-                    "scope must be one of: " + SCOPE_SESSION + ", " + SCOPE_PROJECTS);
+            return ToolResults.error("scope must be one of: " + SCOPE_SESSION + ", " + SCOPE_PROJECTS);
         }
         // A session without a directory cannot narrow anything, so it searches the projects.
         String sessionDirectory = SCOPE_PROJECTS.equals(requestedScope) ? null : currentSessionDirectory();
         FileCacheQuery cache = Lookup.getDefault().lookup(FileCacheQuery.class);
         if (cache == null) {
-            return Map.of("status", "error", "message", "FileCacheQuery not available", "fatal", true);
+            return ToolResults.unavailable("FileCacheQuery");
         }
 
         // Put the project into the query itself: without it the matcher runs over every open

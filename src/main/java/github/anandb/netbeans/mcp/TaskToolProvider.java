@@ -56,10 +56,10 @@ public class TaskToolProvider {
                 public Map<String, Object> execute(AddTaskInput args) throws Exception {
                     TaskRepositoryControl control = Lookup.getDefault().lookup(TaskRepositoryControl.class);
                     if (control == null) {
-                        return Map.of("status", "error", "message", "TaskRepositoryControl not available", "fatal", true);
+                        return ToolResults.unavailable("TaskRepositoryControl");
                     }
                     if (args.summary() == null || args.summary().isBlank()) {
-                        return Map.of("status", "error", "message", "summary is required");
+                        return ToolResults.required("summary");
                     }
                     String repoId = resolveRepository(control, args.repoId());
                     if (repoId == null) {
@@ -68,27 +68,22 @@ public class TaskToolProvider {
                     // Validate the repository is accessible
                     String tasksPath = control.tasksPathOf(repoId);
                     if (tasksPath == null || tasksPath.isBlank()) {
-                        return Map.of("status", "error", "message",
-                            "Repository '" + repoId + "' has no file path configured.");
+                        return ToolResults.error("Repository '" + repoId + "' has no file path configured.");
                     }
                     File tasksFile = new File(tasksPath);
                     if (!tasksFile.exists()) {
-                        return Map.of("status", "error", "message",
-                            "Repository file not found: " + tasksPath + ". Repository may not be open or configured correctly.");
+                        return ToolResults.error("Repository file not found: " + tasksPath + ". Repository may not be open or configured correctly.");
                     }
                     if (!tasksFile.canRead()) {
-                        return Map.of("status", "error", "message",
-                            "Repository file is not readable: " + tasksPath + ". Check file permissions.");
+                        return ToolResults.error("Repository file is not readable: " + tasksPath + ". Check file permissions.");
                     }
                     String priority = emptyIfNull(args.priority());
                     if (!priority.isEmpty() && !PriorityPattern.matches(priority)) {
-                        return Map.of("status", "error", "message",
-                            "Invalid priority '" + args.priority() + "'. Priority must be a single uppercase letter A-Z.");
+                        return ToolResults.error("Invalid priority '" + args.priority() + "'. Priority must be a single uppercase letter A-Z.");
                     }
                     String status = emptyIfNull(args.status());
                     if (!status.isEmpty() && !isValidStatus(status)) {
-                        return Map.of("status", "error", "message",
-                            "Invalid status '" + args.status() + "'. Status must be 'open' or 'closed'.");
+                        return ToolResults.error("Invalid status '" + args.status() + "'. Status must be 'open' or 'closed'.");
                     }
                     TaskInput input = new TaskInput(
                         status, priority,
@@ -133,8 +128,7 @@ public class TaskToolProvider {
                         task.tags(), task.projects(), task.dueDate(), task.estimate(), task.consumed());
                     boolean updated = control.update(repoId, closed);
                     if (!updated) {
-                        return Map.of("status", "error", "message",
-                            "Failed to close task '" + args.taskId() + "'.", "fatal", true);
+                        return ToolResults.fatal("Failed to close task '" + args.taskId() + "'.");
                     }
                     LOG.info("close_task tool called: repo={0} id={1}", repoId, task.id());
                     return Map.of("status", "ok", "id", task.id(),
@@ -174,15 +168,13 @@ public class TaskToolProvider {
                     String repoId = loaded.repoId();
                     TaskRecord task = loaded.task();
                     if (args.summary() != null && args.summary().isBlank()) {
-                        return Map.of("status", "error", "message", "summary cannot be blank");
+                        return ToolResults.error("summary cannot be blank");
                     }
                     if (args.priority() != null && !args.priority().matches("[A-Z]")) {
-                        return Map.of("status", "error", "message",
-                            "Invalid priority '" + args.priority() + "'. Priority must be a single uppercase letter A-Z.");
+                        return ToolResults.error("Invalid priority '" + args.priority() + "'. Priority must be a single uppercase letter A-Z.");
                     }
                     if (args.status() != null && !isValidStatus(args.status())) {
-                        return Map.of("status", "error", "message",
-                            "Invalid status '" + args.status() + "'. Status must be 'open' or 'closed'.");
+                        return ToolResults.error("Invalid status '" + args.status() + "'. Status must be 'open' or 'closed'.");
                     }
                     String summary = args.summary() != null ? args.summary().trim() : task.summary();
                     String status = args.status() != null ? args.status().trim() : task.status();
@@ -197,8 +189,7 @@ public class TaskToolProvider {
                         tags, projects, dueDate, estimate, consumed);
                     boolean ok = control.update(repoId, updated);
                     if (!ok) {
-                        return Map.of("status", "error", "message",
-                            "Failed to update task '" + args.taskId() + "'.", "fatal", true);
+                        return ToolResults.fatal("Failed to update task '" + args.taskId() + "'.");
                     }
                     LOG.info("update_task tool called: repo={0} id={1}", repoId, task.id());
                     return Map.of("status", "ok", "id", task.id(),
@@ -224,23 +215,21 @@ public class TaskToolProvider {
                 public Map<String, Object> execute(SearchTaskInput args) throws Exception {
                     TaskRepositoryControl control = Lookup.getDefault().lookup(TaskRepositoryControl.class);
                     if (control == null) {
-                        return Map.of("status", "error", "message", "TaskRepositoryControl not available", "fatal", true);
+                        return ToolResults.unavailable("TaskRepositoryControl");
                     }
                     if (args.query() == null || args.query().isBlank()) {
-                        return Map.of("status", "error", "message", "query is required");
+                        return ToolResults.required("query");
                     }
                     String needle = args.query().trim().toLowerCase(Locale.ROOT);
 
                     List<String> ids = control.repositoryIds();
                     if (ids.isEmpty()) {
-                        return Map.of("status", "error", "message",
-                            "No Beanbot Tasks repository configured. Add one in Tasks options first.");
+                        return ToolResults.error("No Beanbot Tasks repository configured. Add one in Tasks options first.");
                     }
                     List<String> scope = ids;
                     if (args.repoId() != null && !args.repoId().isBlank()) {
                         if (!ids.contains(args.repoId())) {
-                            return Map.of("status", "error", "message",
-                                "Unknown repository '" + args.repoId() + "'. Available: " + String.join(", ", ids));
+                            return ToolResults.error("Unknown repository '" + args.repoId() + "'. Available: " + String.join(", ", ids));
                         }
                         scope = List.of(args.repoId());
                     }
@@ -285,11 +274,11 @@ public class TaskToolProvider {
         TaskRepositoryControl control = Lookup.getDefault().lookup(TaskRepositoryControl.class);
         if (control == null) {
             return new LoadedTask(null, null, null,
-                    Map.of("status", "error", "message", "TaskRepositoryControl not available", "fatal", true));
+                    ToolResults.unavailable("TaskRepositoryControl"));
         }
         if (taskIdArg == null || taskIdArg.isBlank()) {
             return new LoadedTask(null, null, null,
-                    Map.of("status", "error", "message", "taskId is required"));
+                    ToolResults.required("taskId"));
         }
         String repoId = resolveRepository(control, repoIdArg);
         if (repoId == null) {
@@ -297,7 +286,7 @@ public class TaskToolProvider {
         }
         TaskRecord task = control.get(repoId, taskIdArg.trim());
         if (task == null) {
-            return new LoadedTask(control, repoId, null, Map.of("status", "error", "message",
+            return new LoadedTask(control, repoId, null, ToolResults.error(
                     "Task '" + taskIdArg + "' not found in '" + control.displayNameOf(repoId) + "'."));
         }
         return new LoadedTask(control, repoId, task, null);
@@ -322,15 +311,12 @@ public class TaskToolProvider {
     private static Map<String, Object> resolveError(TaskRepositoryControl control, String repoId) {
         List<String> ids = control.repositoryIds();
         if (ids.isEmpty()) {
-            return Map.of("status", "error", "message",
-                "No Beanbot Tasks repository configured. Add one in Tasks options first.");
+            return ToolResults.error("No Beanbot Tasks repository configured. Add one in Tasks options first.");
         }
         if (repoId == null || repoId.isBlank()) {
-            return Map.of("status", "error", "message",
-                "Multiple repositories exist; provide repoId. Available: " + String.join(", ", ids));
+            return ToolResults.error("Multiple repositories exist; provide repoId. Available: " + String.join(", ", ids));
         }
-        return Map.of("status", "error", "message",
-            "Unknown repository '" + repoId + "'. Available: " + String.join(", ", ids));
+        return ToolResults.error("Unknown repository '" + repoId + "'. Available: " + String.join(", ", ids));
     }
 
     /**

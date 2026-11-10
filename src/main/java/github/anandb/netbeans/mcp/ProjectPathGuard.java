@@ -106,6 +106,6 @@ final class ProjectPathGuard {
 
     /** Standard rejection response for paths outside the open projects. */
     static Map<String, Object> outsideProjectError(String path) {
-        return Map.of("status", "error", "message", "Path is outside the open projects: " + path);
+        return ToolResults.error("Path is outside the open projects: " + path);
     }
 }

@@ -69,41 +69,37 @@ final class FindTypeToolProvider {
     private Map<String, Object> executeFindType(FindTypeInput args) {
         String query = args.query();
         if (isBlank(query)) {
-            return Map.of("status", "error", "message", "query is required");
+            return ToolResults.required("query");
         }
         ClassIndex.NameKind kind = parseKind(args.kind());
         if (kind == null) {
-            return Map.of("status", "error",
-                    "message", "kind must be one of: camel, prefix, exact, regexp");
+            return ToolResults.error("kind must be one of: camel, prefix, exact, regexp");
         }
         if (kind == ClassIndex.NameKind.CASE_INSENSITIVE_REGEXP) {
             try {
                 Pattern.compile(query);
             } catch (PatternSyntaxException e) {
-                return Map.of("status", "error",
-                        "message", "query is not a valid regular expression: " + e.getDescription());
+                return ToolResults.error("query is not a valid regular expression: " + e.getDescription());
             }
         }
         Set<ClassIndex.SearchScope> scopes = parseScope(args.scope());
         if (scopes == null) {
-            return Map.of("status", "error",
-                    "message", "scope must be one of: all, project, dependencies");
+            return ToolResults.error("scope must be one of: all, project, dependencies");
         }
         int limit = clampLimit(args.limit());
 
         ProjectQuery projectQuery = Lookup.getDefault().lookup(ProjectQuery.class);
         if (projectQuery == null) {
-            return Map.of("status", "error", "message", "ProjectQuery not available", "fatal", true);
+            return ToolResults.unavailable("ProjectQuery");
         }
         Project[] projects = projectQuery.getAllOpenProjects();
         if (projects == null || projects.length == 0) {
-            return Map.of("status", "error", "message", "No project is open");
+            return ToolResults.error("No project is open");
         }
         if (!isBlank(args.projectPath())) {
             projects = restrictToProject(projects, args.projectPath());
             if (projects == null) {
-                return Map.of("status", "error",
-                        "message", "Not an open project: " + args.projectPath());
+                return ToolResults.error("Not an open project: " + args.projectPath());
             }
         }
 

@@ -77,7 +77,7 @@ public class FileSystemToolProvider {
      */
     private static Map<String, Object> validateExistingFile(String filePath, boolean write) {
         if (isBlank(filePath)) {
-            return Map.of("status", "error", "message", "filePath is required");
+            return ToolResults.required("filePath");
         }
         Map<String, Object> access = checkAccess(filePath, write);
         if (access != null) {
@@ -85,10 +85,10 @@ public class FileSystemToolProvider {
         }
         File file = new File(filePath);
         if (!file.exists()) {
-            return Map.of("status", "error", "message", "File not found: " + filePath);
+            return ToolResults.error("File not found: " + filePath);
         }
         if (!file.isFile()) {
-            return Map.of("status", "error", "message", "Not a file: " + filePath);
+            return ToolResults.error("Not a file: " + filePath);
         }
         return null;
     }
@@ -153,7 +153,7 @@ public class FileSystemToolProvider {
      */
     private static Map<String, Object> validateWritePath(String filePath) {
         if (isBlank(filePath)) {
-            return Map.of("status", "error", "message", "filePath is required");
+            return ToolResults.required("filePath");
         }
         return checkAccess(filePath, true);
     }
@@ -178,20 +178,17 @@ public class FileSystemToolProvider {
 
     /** Rejects writes while the file-access policy is read-only. */
     private static Map<String, Object> writeDeniedError(String path) {
-        return Map.of("status", "error", "message",
-                "Refusing to write " + path + ": BeanBot's file-access policy is read-only.");
+        return ToolResults.error("Refusing to write " + path + ": BeanBot's file-access policy is read-only.");
     }
 
     /** Rejects writes into VCS metadata or Maven wrapper configuration. */
     private static Map<String, Object> protectedWriteError(String path) {
-        return Map.of("status", "error", "message",
-                "Refusing to modify " + path + ": .git, .hg and .mvn directories are protected.");
+        return ToolResults.error("Refusing to modify " + path + ": .git, .hg and .mvn directories are protected.");
     }
 
     /** Rejects reads and writes of files that look like credentials. */
     private static Map<String, Object> secretFileError(String path) {
-        return Map.of("status", "error", "message",
-                "Refusing to access " + path + ": it looks like a secrets file.");
+        return ToolResults.error("Refusing to access " + path + ": it looks like a secrets file.");
     }
 
     private void registerWriteToFile(McpTools mcpTools) {
@@ -209,10 +206,10 @@ public class FileSystemToolProvider {
                     @Override
                     public Map<String, Object> execute(WriteToFileInput args) throws Exception {
                         if (isBlank(args.filePath())) {
-                            return Map.of("status", "error", "message", "filePath is required");
+                            return ToolResults.required("filePath");
                         }
                         if (args.content() == null) {
-                            return Map.of("status", "error", "message", "content is required");
+                            return ToolResults.required("content");
                         }
                         Map<String, Object> pathGuard = validateWritePath(args.filePath());
                         if (pathGuard != null) {
@@ -262,7 +259,7 @@ public class FileSystemToolProvider {
                     @Override
                     public Map<String, Object> execute(ReplaceLinesInput args) throws Exception {
                         if (isBlank(args.filePath())) {
-                            return Map.of("status", "error", "message", "filePath is required");
+                            return ToolResults.required("filePath");
                         }
                         Map<String, Object> pathGuard = validateWritePath(args.filePath());
                         if (pathGuard != null) {
@@ -273,7 +270,7 @@ public class FileSystemToolProvider {
                         int start = Math.max(1, args.startLine());
                         int end = Math.min(lines.size(), args.endLine());
                         if (start > end) {
-                            return Map.of("status", "error", "message", "startLine > endLine");
+                            return ToolResults.error("startLine > endLine");
                         }
                         String[] replacementLines = args.content().split("\n", -1);
                         lines.subList(start - 1, end).clear();
@@ -302,7 +299,7 @@ public class FileSystemToolProvider {
                     @Override
                     public Map<String, Object> execute(InsertInFileInput args) throws Exception {
                         if (isBlank(args.filePath())) {
-                            return Map.of("status", "error", "message", "filePath is required");
+                            return ToolResults.required("filePath");
                         }
                         Map<String, Object> pathGuard = validateWritePath(args.filePath());
                         if (pathGuard != null) {
@@ -338,7 +335,7 @@ public class FileSystemToolProvider {
                     @Override
                     public Map<String, Object> execute(DeleteLinesInput args) throws Exception {
                         if (isBlank(args.filePath())) {
-                            return Map.of("status", "error", "message", "filePath is required");
+                            return ToolResults.required("filePath");
                         }
                         Map<String, Object> pathGuard = validateWritePath(args.filePath());
                         if (pathGuard != null) {
@@ -346,8 +343,7 @@ public class FileSystemToolProvider {
                         }
                         File file = new File(args.filePath());
                         if (!file.exists()) {
-                            return Map.of("status", "error", "message",
-                                    "File not found: " + args.filePath());
+                            return ToolResults.error("File not found: " + args.filePath());
                         }
                         // Read raw bytes to detect original line separator
                         byte[] raw = Files.readAllBytes(file.toPath());
@@ -363,8 +359,7 @@ public class FileSystemToolProvider {
                         int start = Math.max(1, args.startLine());
                         int end = Math.min(lines.length, args.endLine());
                         if (start > end) {
-                            return Map.of("status", "error", "message",
-                                    "startLine (" + start + ") > endLine (" + end + ")");
+                            return ToolResults.error("startLine (" + start + ") > endLine (" + end + ")");
                         }
 
                         // Build new array excluding the deleted range
@@ -396,18 +391,18 @@ public class FileSystemToolProvider {
                     @Override
                     public Map<String, Object> execute(SearchProjectInput args) throws Exception {
                         if (isBlank(args.query())) {
-                            return Map.of("status", "error", "message", "query is required");
+                            return ToolResults.required("query");
                         }
                         Pattern pattern;
                         try {
                             pattern = Pattern.compile(args.query(), Pattern.CASE_INSENSITIVE);
                         } catch (PatternSyntaxException e) {
-                            return Map.of("status", "error", "message", "Invalid regex: " + e.getMessage());
+                            return ToolResults.error("Invalid regex: " + e.getMessage());
                         }
                         ProjectQuery pq = Lookup.getDefault().lookup(ProjectQuery.class);
                         Project[] projects = pq == null ? new Project[0] : pq.getAllOpenProjects();
                         if (projects.length == 0) {
-                            return Map.of("status", "error", "message", "No open projects");
+                            return ToolResults.error("No open projects");
                         }
                         String searchDir = args.directory();
                         String fileGlob = args.filePattern();
@@ -427,8 +422,7 @@ public class FileSystemToolProvider {
                             // Reject traversal escapes (e.g. "../../..") so the
                             // search cannot scan directories outside the project.
                             if (!searchRoot.startsWith(projectDir)) {
-                                return Map.of("status", "error", "message",
-                                        "directory escapes the project root: " + searchDir);
+                                return ToolResults.error("directory escapes the project root: " + searchDir);
                             }
                             if (!Files.isDirectory(searchRoot)) continue;
                             Files.walkFileTree(searchRoot, new SimpleFileVisitor<>() {
@@ -490,7 +484,7 @@ public class FileSystemToolProvider {
                     @Override
                     public Map<String, Object> execute(ListDirectoryInput args) throws Exception {
                         if (isBlank(args.dirPath())) {
-                            return Map.of("status", "error", "message", "dirPath is required");
+                            return ToolResults.required("dirPath");
                         }
                         Map<String, Object> access = checkAccess(args.dirPath(), false);
                         if (access != null) {
@@ -498,10 +492,10 @@ public class FileSystemToolProvider {
                         }
                         File dir = new File(args.dirPath());
                         if (!dir.exists()) {
-                            return Map.of("status", "error", "message", "Directory not found: " + args.dirPath());
+                            return ToolResults.error("Directory not found: " + args.dirPath());
                         }
                         if (!dir.isDirectory()) {
-                            return Map.of("status", "error", "message", "Not a directory: " + args.dirPath());
+                            return ToolResults.error("Not a directory: " + args.dirPath());
                         }
                         boolean recursive = args.recursive() != null && args.recursive();
                         List<Map<String, Object>> entries = new ArrayList<>();
@@ -563,7 +557,7 @@ public class FileSystemToolProvider {
                     @Override
                     public Map<String, Object> execute(RunCommandInput args) throws Exception {
                         if (isBlank(args.command())) {
-                            return Map.of("status", "error", "message", "command is required");
+                            return ToolResults.required("command");
                         }
                         String workDir = args.workingDirectory();
                         if (isBlank(workDir)) {
@@ -572,8 +566,7 @@ public class FileSystemToolProvider {
                             workDir = sq != null ? sq.getCurrentSessionDirectory() : null;
                         }
                         if (isBlank(workDir)) {
-                            return Map.of("status", "error", "message",
-                                    "No working directory specified and no active session");
+                            return ToolResults.error("No working directory specified and no active session");
                         }
                         // Validate working directory is under project root for security
                         if (!ProjectPathGuard.isInOpenProject(workDir)) {
@@ -583,11 +576,11 @@ public class FileSystemToolProvider {
                                 args.command(), PluginSettings.getRunCommandAllowlist(),
                                 PluginSettings.getRunCommandDenylist());
                         if (policyError != null) {
-                            return Map.of("status", "error", "message", policyError);
+                            return ToolResults.error(policyError);
                         }
                         File dir = new File(workDir);
                         if (!dir.exists() || !dir.isDirectory()) {
-                            return Map.of("status", "error", "message", "Invalid working directory: " + workDir);
+                            return ToolResults.error("Invalid working directory: " + workDir);
                         }
                         int timeout = args.timeoutSeconds() != null ? args.timeoutSeconds() : 120;
                         ProcessBuilder pb = new ProcessBuilder("bash", "-c", args.command());

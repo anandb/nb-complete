@@ -52,8 +52,7 @@ public class EditorToolProvider {
                     public Map<String, Object> execute(EmptyToolInput args) throws Exception {
                         EditorContextQuery query = Lookup.getDefault().lookup(EditorContextQuery.class);
                         if (query == null) {
-                            return Map.of("status", "error", "message", "Editor context service not available",
-                                    "fatal", true);
+                            return ToolResults.unavailable("Editor context service");
                         }
                         Map<String, Object>[] result = new Map[1];
                         SwingUtilities.invokeAndWait(() -> {
@@ -109,12 +108,12 @@ public class EditorToolProvider {
                     @Override
                     public Map<String, Object> execute(OpenFileInput args) throws Exception {
                         if (args.filePath() == null) {
-                            return Map.of("status", "error", "message", "No file path provided");
+                            return ToolResults.error("No file path provided");
                         }
                         try {
                             File requestedFile = new File(args.filePath()).getCanonicalFile();
                             if (!ProjectPathGuard.isInOpenProject(requestedFile.getCanonicalPath())) {
-                                return Map.of("status", "error", "message", "File is not in the current project");
+                                return ToolResults.error("File is not in the current project");
                             }
                             FileObject fo = FileUtil.toFileObject(requestedFile);
                             if (fo != null) {
@@ -144,9 +143,9 @@ public class EditorToolProvider {
                             }
                         } catch (Exception e) {
                             LOG.warn("Failed to resolve file at line on background thread: {0}", ExceptionUtils.getMessage(e));
-                            return Map.of("status", "error", "message", "Failed to open file", "fatal", true);
+                            return ToolResults.fatal("Failed to open file");
                         }
-                        return Map.of("status", "error", "message", "File or line not found");
+                        return ToolResults.error("File or line not found");
                     }
                 });
     }
@@ -166,7 +165,7 @@ public class EditorToolProvider {
                     @Override
                     public Map<String, Object> execute(RenameSessionInput args) throws Exception {
                         if (isBlank(args.title())) {
-                            return Map.of("status", "error", "message", "title is required");
+                            return ToolResults.required("title");
                         }
 
                         LOG.info("rename_session tool called: title=\"{0}\", sessionId={1}",
@@ -178,7 +177,7 @@ public class EditorToolProvider {
 
                         if (isBlank(sessionId)) {
                             LOG.warn("rename_session: no active session");
-                            return Map.of("status", "error", "message", "No active session");
+                            return ToolResults.error("No active session");
                         }
 
                         sc.renameSession(sessionId, title);
