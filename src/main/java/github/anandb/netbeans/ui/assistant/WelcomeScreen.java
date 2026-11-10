@@ -38,6 +38,7 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.ui.components.ScrollablePanel;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
+import github.anandb.netbeans.ui.editor.EditorContextCapture;
 import github.anandb.netbeans.ui.platform.SessionService;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.UIBundle;
@@ -197,20 +198,29 @@ public final class WelcomeScreen {
 
         Color accentTint = theme.mutedForeground();
         addStarterChip(chips, theme, WelcomeAccentIcons.bulb(accentTint, 14),
-            "BTN_StarterExplain", "LBL_PromptExplain", onStarterPrompt);
+            "BTN_StarterExplain", "LBL_PromptExplain", "LBL_PromptExplainProject", onStarterPrompt);
         addStarterChip(chips, theme, WelcomeAccentIcons.magnifier(accentTint, 14),
-            "BTN_StarterFindBug", "LBL_PromptFindBug", onStarterPrompt);
+            "BTN_StarterFindBug", "LBL_PromptFindBug", "LBL_PromptFindBugProject", onStarterPrompt);
         addStarterChip(chips, theme, WelcomeAccentIcons.checkBox(accentTint, 14),
-            "BTN_StarterWriteTest", "LBL_PromptWriteTest", onStarterPrompt);
+            "BTN_StarterWriteTest", "LBL_PromptWriteTest", "LBL_PromptWriteTestProject", onStarterPrompt);
+        addStarterChip(chips, theme, WelcomeAccentIcons.diff(accentTint, 14),
+            "BTN_StarterReview", "LBL_PromptReview", null, onStarterPrompt);
         container.add(chips);
     }
 
     private static void addStarterChip(JPanel chips, ColorTheme theme, Icon accent, String labelKey,
-                                       String promptKey, Consumer<String> onStarterPrompt) {
-        String prompt = NbBundle.getMessage(UIBundle.class, promptKey);
+                                       String promptKey, String projectPromptKey,
+                                       Consumer<String> onStarterPrompt) {
         JButton chip = createChipButton(NbBundle.getMessage(UIBundle.class, labelKey), accent, theme);
-        chip.addActionListener(e -> onStarterPrompt.accept(prompt));
+        chip.addActionListener(e -> onStarterPrompt.accept(starterPrompt(promptKey, projectPromptKey)));
         chips.add(chip);
+    }
+
+    /** A file-scoped prompt needs an open editor; without one the project-scoped prompt is used. */
+    private static String starterPrompt(String promptKey, String projectPromptKey) {
+        boolean hasFile = EditorContextCapture.capture() != null;
+        String key = hasFile || projectPromptKey == null ? promptKey : projectPromptKey;
+        return NbBundle.getMessage(UIBundle.class, key);
     }
 
     /** Small muted section heading ("Recent", "Try one of these"). */

@@ -82,6 +82,28 @@ final class WelcomeAccentIcons {
         };
     }
 
+    /** Opposed arrows: "review changes". */
+    static Icon diff(Color color, int size) {
+        return new Accent(color, size) {
+            @Override
+            void paint(Graphics2D g2, int s) {
+                g2.setStroke(stroke(s));
+                g2.draw(new Line2D.Double(s * 0.14, s * 0.32, s * 0.80, s * 0.32));
+                arrowHead(g2, s * 0.80, s * 0.32, 1, s);
+                g2.draw(new Line2D.Double(s * 0.86, s * 0.68, s * 0.20, s * 0.68));
+                arrowHead(g2, s * 0.20, s * 0.68, -1, s);
+            }
+        };
+    }
+
+    /** Two short strokes closing an arrow at {@code (x, y)}, pointing along {@code dir}. */
+    private static void arrowHead(Graphics2D g2, double x, double y, int dir, int size) {
+        double back = size * 0.18;
+        double wing = size * 0.14;
+        g2.draw(new Line2D.Double(x, y, x - dir * back, y - wing));
+        g2.draw(new Line2D.Double(x, y, x - dir * back, y + wing));
+    }
+
     /** A four-point star (the sparkle) centred on {@code (cx, cy)}. */
     private static Path2D fourPointStar(double cx, double cy, double r) {
         double waist = r * 0.22;

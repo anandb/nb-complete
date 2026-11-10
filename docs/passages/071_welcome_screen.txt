@@ -11,7 +11,7 @@ When the assistant panel is opened with no session selected, you'll see the welc
 * The BeanBot logo with a one-line greeting — **Welcome to BeanBot** on a fresh installation, **Welcome back** once you have sessions.
 * **Recent** — on a returning workspace, your most recent sessions as a clickable list. Picking one loads it (its folder is shown under the title). Archived sessions stay hidden unless *show archived* is on.
 * **✨ Start New Chat** — the primary action. It starts a session in the current project, or asks which project when several are open. This is the same as the toolbar's **New Session** (green plus) button.
-* **Try one of these** — three example prompts: **Explain this file**, **Find a bug**, and **Write a test**. Clicking one drafts the prompt in the input area and starts a new chat; the text stays in the composer so you send it yourself once the session is configured.
+* **Try one of these** — four example prompts that show what the assistant can do: **Explain code**, **Find bugs**, **Write & run tests**, and **Review changes**. The first three adapt to your editor: with a file open they act on that file, otherwise they work on the whole project. Clicking one drafts the full prompt in the input area and starts a new chat; the text stays in the composer so you send it yourself once the session is configured.
 
 The input area stays disabled while there is no session, so every conversation starts from this screen — either from **Start New Chat** or from one of the example prompts.
 
