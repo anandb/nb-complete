@@ -1255,9 +1255,9 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         loadedExecutablePath = getExecutablePath();
         loadedProcessArguments = argsField.getText();
         loadedMcpServerEnabled = mcpServerCheckbox.isSelected();
-        loadedHarnessId = PlatformBridge.prefStoreSafe().get(PreferenceKeys.ACP_HARNESS_ID, null);
+        loadedHarnessId = PlatformBridge.prefStoreSafe().get(PreferenceKeys.ACP_HARNESS_ID, "");
         loadedHarnessName =
-                PlatformBridge.prefStoreSafe().get(PreferenceKeys.ACP_HARNESS_DISPLAY_NAME, null);
+                PlatformBridge.prefStoreSafe().get(PreferenceKeys.ACP_HARNESS_DISPLAY_NAME, "");
         Object loadedSizeItem = toolbarIconCombo.getSelectedItem();
         loadedToolbarIconSize = loadedSizeItem != null
                 ? Integer.parseInt(loadedSizeItem.toString())
@@ -1645,12 +1645,12 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         if (!Objects.equals(argsToSave, loadedProcessArguments)) {
             PlatformBridge.prefStoreSafe().put(PreferenceKeys.PROCESS_ARGUMENTS, argsToSave);
         }
-        // Persist the chosen harness, not just the one the file name implies: a custom
-        // binary or a container launcher (docker/podman) cannot reveal the harness.
+        // Only an explicit choice overrides binary detection for later launches.
         String binName = BinaryResolver.binaryNameFromPath(pathToSave);
         HarnessSelection.Selection choice = (HarnessSelection.Selection) harnessCombo.getSelectedItem();
-        String harnessIdToSave = HarnessSelection.harnessId(choice, binName);
-        String harnessNameToSave = HarnessSelection.displayName(choice, binName);
+        boolean autoHarness = choice == null || choice.auto();
+        String harnessIdToSave = autoHarness ? "" : HarnessSelection.harnessId(choice, binName);
+        String harnessNameToSave = autoHarness ? "" : HarnessSelection.displayName(choice, binName);
         if (!Objects.equals(harnessIdToSave, loadedHarnessId)) {
             PlatformBridge.prefStoreSafe().put(PreferenceKeys.ACP_HARNESS_ID, harnessIdToSave);
         }
