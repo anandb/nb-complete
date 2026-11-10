@@ -479,6 +479,7 @@ public class MessageSender {
             restoreComposerText(messageText);
             restoreAttachments(payload.attachedFiles());
             sendGeneration.compareAndSet(gen, prevGen);
+            statusController.setInputEnabled(true);
             statusController.updateButtonState(true);
             if (!statusController.isRunWatchdogArmed()) {
                 statusController.armRunWatchdog();
@@ -492,6 +493,7 @@ public class MessageSender {
         statusController.stopThinking();
         statusController.disarmRunWatchdog();
         chatPanel.stopStreaming();
+        statusController.setInputEnabled(true);
         statusController.updateButtonState(false);
         if (onMessageDoneCallback != null) {
             onMessageDoneCallback.run();
@@ -953,6 +955,7 @@ public class MessageSender {
                                 null, null
                         ));
                         restoreComposerText(combinedText);
+                        statusController.setInputEnabled(true);
                         statusController.updateButtonState(false);
                         if (onMessageDoneCallback != null) {
                             onMessageDoneCallback.run();

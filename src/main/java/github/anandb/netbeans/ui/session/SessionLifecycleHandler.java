@@ -822,6 +822,7 @@ public class SessionLifecycleHandler implements SessionListener {
             statusController.setStatus("STATUS_Error", message);
             statusController.stopThinking();
             statusController.disarmRunWatchdog();
+            statusController.setComposerLocked(false);
             statusController.updateButtonState(false);
             statusController.setInputEnabled(true);
             turnEnded = true;
