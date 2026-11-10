@@ -25,8 +25,11 @@ class MessageTrimmerTest {
     private final MessageTrimmer trimmer = new MessageTrimmer(container, scroll);
 
     private MessageBubble bubble() {
-        return new MessageBubble(MessageType.agent_message_chunk, "x", null, null,
-                MessageBubble.AvatarPosition.NONE);
+        return bubble(MessageType.agent_message_chunk);
+    }
+
+    private MessageBubble bubble(MessageType type) {
+        return new MessageBubble(type, "x", null, null, MessageBubble.AvatarPosition.NONE);
     }
 
     private int bubbleCount() {
@@ -73,6 +76,43 @@ class MessageTrimmerTest {
 
         assertTrue(java.util.Arrays.stream(container.getComponents()).anyMatch(c -> c == pinned));
         assertEquals(3, bubbleCount(), "the cap counts only the two unpinned bubbles after one removal");
+    }
+
+    @Test
+    void toolAndThoughtBubblesDoNotConsumeTheCap() {
+        MessageBubble user = bubble(MessageType.user_message_chunk);
+        MessageBubble assistant = bubble();
+        container.add(user);
+        for (int i = 0; i < 5; i++) {
+            container.add(bubble(MessageType.tool_call));
+        }
+        container.add(assistant);
+
+        trimmer.trim(2, false);
+
+        assertEquals(7, bubbleCount(),
+                "five activity rows plus the two counted messages must all stay");
+    }
+
+    @Test
+    void activityRowsAreNotCountedAndMayRemainAtTheCut() {
+        MessageBubble oldAssistant = bubble();
+        MessageBubble oldTool = bubble(MessageType.tool_call);
+        MessageBubble user = bubble(MessageType.user_message_chunk);
+        MessageBubble newAssistant = bubble();
+        container.add(oldAssistant);
+        container.add(oldTool);
+        container.add(user);
+        container.add(newAssistant);
+
+        trimmer.trim(2, false);
+
+        assertTrue(java.util.Arrays.stream(container.getComponents()).noneMatch(
+                c -> c == oldAssistant), "the oldest counted message must go");
+        assertTrue(java.util.Arrays.stream(container.getComponents()).anyMatch(
+                c -> c == user || c == newAssistant),
+                "the retained messages must stay");
+        // Approximation is deliberate: the tool row at the boundary may remain.
     }
 
     @Test

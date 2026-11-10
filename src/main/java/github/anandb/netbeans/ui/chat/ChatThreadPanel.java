@@ -127,7 +127,7 @@ public class ChatThreadPanel extends JPanel {
     // --- Session state ---
     private String currentSessionId;
     private long lastUserTimestamp = -1L;
-    /** Max visible bubbles via PluginSettings.getMaxMessages(); 0 = unlimited. */
+    /** Max visible user/assistant messages via PluginSettings.getMaxMessages(); 0 = unlimited. */
     private transient volatile List<Message> cachedMessages;
     /** Session-keyed buffer for loading; switch-session-safe. */
     private final transient Map<String, List<ProcessedMessage>> pendingMessagesBySession = new ConcurrentHashMap<>();
@@ -568,7 +568,7 @@ public class ChatThreadPanel extends JPanel {
             }
 
             if (streaming) {
-                streamingCoordinator.startStreaming(bubble);
+                startStreamingWithCooldown(bubble);
             }
             return;
         }
@@ -620,8 +620,19 @@ public class ChatThreadPanel extends JPanel {
             scrollController.scrollToBottom(true);
         }
         if (streaming) {
-            streamingCoordinator.startStreaming(bubble);
+            startStreamingWithCooldown(bubble);
         }
+    }
+
+    /**
+     * Starts the stream and arms the bubble's own deferred finalization. A turn-end may already
+     * have run (a late SSE chunk arrives after the queue drained), so without this the bubble
+     * would keep its streaming {@code JTextArea} until the next turn. Appends restart the
+     * cooldown; a quiet stream converts to HTML.
+     */
+    private void startStreamingWithCooldown(MessageBubble bubble) {
+        streamingCoordinator.startStreaming(bubble);
+        bubble.scheduleStreamingCooldown(allBlocksExpanded);
     }
 
     /**

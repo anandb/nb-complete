@@ -86,7 +86,7 @@ The unfinished features live on their own page rather than in the General settin
 <thead><tr><th>Preference</th><th>Default</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td><strong>Session Idle Timeout (seconds)</strong></td><td>600</td><td>How long (0–3600, step 5) a request may sit idle — with no data arriving from the server — before it is failed. This is an <em>idle</em> timeout, not an absolute deadline, so long-running responses that keep streaming are never cut off.</td></tr>
-<tr><td><strong>Max Displayed Messages</strong></td><td>100</td><td>The maximum number of visible bubbles (10–200, step 5) kept in the chat panel before older ones are trimmed from the view to conserve memory. The full history remains on the server and can be reloaded.</td></tr>
+<tr><td><strong>Max Displayed Messages</strong></td><td>100</td><td>The maximum number of user and assistant messages (10–200, step 5) kept in the chat panel before older ones are trimmed from the view. Tool and thought rows do not count toward the limit, though rows met while trimming are removed with the oldest messages. The full history remains on the server and can be reloaded.</td></tr>
 </tbody>
 </table>
 

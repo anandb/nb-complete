@@ -215,6 +215,10 @@ class BubbleStreamer {
     }
 
     void finalizeStreaming(boolean expanded, boolean immediate) {
+        finalizeStreaming(expanded, immediate, TimingConstants.STREAM_FLUSH_MS);
+    }
+
+    void finalizeStreaming(boolean expanded, boolean immediate, int delayMs) {
         if (state == StreamingState.FINALIZED) {
             if (hasPendingTextUpdate) {
                 flushUpdate(true);
@@ -235,8 +239,10 @@ class BubbleStreamer {
         } else {
             state = StreamingState.DEFERRED_FINALIZING;
             if (deferredFinalizeTimer == null) {
-                deferredFinalizeTimer = new Timer(TimingConstants.STREAM_FLUSH_MS, e -> performFinalization());
+                deferredFinalizeTimer = new Timer(delayMs, e -> performFinalization());
                 deferredFinalizeTimer.setRepeats(false);
+            } else {
+                deferredFinalizeTimer.setDelay(delayMs);
             }
             deferredFinalizeTimer.restart();
         }

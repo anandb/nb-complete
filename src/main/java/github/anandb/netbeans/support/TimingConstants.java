@@ -12,6 +12,11 @@ public final class TimingConstants {
      *  Lower values produce smoother streaming but more EDT layout passes. */
     public static final int STREAM_FLUSH_MS = 80;
 
+    /** Quiet period before a newly created streaming bubble converts to HTML.
+     *  Longer than the flush cadence so a slow tail of deltas still lands in the
+     *  streaming text area instead of forcing an early rebuild. */
+    public static final int STREAM_BUBBLE_FINALIZE_MS = 200;
+
     /** Maximum characters inserted per streaming flush tick. Large deltas
      *  arriving between ticks are drip-fed across multiple ticks for a smooth
      *  typewriter effect instead of a single blocky dump. */

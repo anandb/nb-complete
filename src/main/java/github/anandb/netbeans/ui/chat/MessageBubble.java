@@ -25,6 +25,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 
 import github.anandb.netbeans.model.MessageType;
+import github.anandb.netbeans.support.TimingConstants;
 import github.anandb.netbeans.support.ToolDataExtractor;
 import org.openide.util.NbBundle;
 
@@ -397,6 +398,11 @@ public class MessageBubble extends JPanel implements Scrollable {
      */
     void forceFinalize(boolean expanded) {
         streamer.forceFinalize(expanded);
+    }
+
+    /** Arms the safety-net cooldown for a newly created streaming bubble. */
+    void scheduleStreamingCooldown(boolean expanded) {
+        streamer.finalizeStreaming(expanded, false, TimingConstants.STREAM_BUBBLE_FINALIZE_MS);
     }
 
     /**
