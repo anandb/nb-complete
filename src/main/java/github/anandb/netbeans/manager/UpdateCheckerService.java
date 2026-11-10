@@ -44,6 +44,31 @@ import github.anandb.netbeans.support.PreferenceKeys;
 public class UpdateCheckerService implements UpdateCheckerControl {
     private static final Logger LOG = Logger.from(UpdateCheckerService.class);
 
+    interface UpdateUi {
+        void whenReady(Runnable action);
+
+        Object notify(NotifyDescriptor descriptor);
+
+        void openUrl(String url);
+    }
+
+    private static final UpdateUi DEFAULT_UI = new UpdateUi() {
+        @Override
+        public void whenReady(Runnable action) {
+            WindowManager.getDefault().invokeWhenUIReady(action);
+        }
+
+        @Override
+        public Object notify(NotifyDescriptor descriptor) {
+            return DialogDisplayer.getDefault().notify(descriptor);
+        }
+
+        @Override
+        public void openUrl(String url) {
+            BrowserUtils.openOrCopyUrl(url, null, null);
+        }
+    };
+
     // HTTP_CLIENT removed to prevent capturing ProxySelector at class load time
 
     /** Delay before the first update check after IDE startup. */
@@ -68,14 +93,20 @@ public class UpdateCheckerService implements UpdateCheckerControl {
      */
     private final RequestProcessor.Task checkCycleTask = RP.create(this::runCheckCycle);
     private final Supplier<UpdateCheckResult> updateCheck;
+    private final UpdateUi updateUi;
     private CompletableFuture<UpdateCheckResult> manualCheckInFlight;
 
     public UpdateCheckerService() {
-        this(null);
+        this(null, DEFAULT_UI);
     }
 
     UpdateCheckerService(Supplier<UpdateCheckResult> updateCheck) {
+        this(updateCheck, DEFAULT_UI);
+    }
+
+    UpdateCheckerService(Supplier<UpdateCheckResult> updateCheck, UpdateUi updateUi) {
         this.updateCheck = updateCheck == null ? this::checkForUpdates : updateCheck;
+        this.updateUi = updateUi;
     }
 
     /**
@@ -410,7 +441,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
         // Only show the message box once the IDE is fully loaded — showing it
         // during startup would cancel/close the dialog. The scheduling of the
         // check cycle can happen anytime; it's the dialog that must wait.
-        WindowManager.getDefault().invokeWhenUIReady(() -> {
+        updateUi.whenReady(() -> {
             String title = "Coding Assistant Update Available";
             String body = "A new version of Coding Assistant (" + latestVersion
                     + ") is available.\n\nCurrent: " + AgentUtils.getVersion()
@@ -431,13 +462,13 @@ public class UpdateCheckerService implements UpdateCheckerControl {
                     options.toArray(Object[]::new),
                     "Remind me Later"
             );
-            Object result = DialogDisplayer.getDefault().notify(nd);
+            Object result = updateUi.notify(nd);
             if ("Download Now".equals(result)) {
-                BrowserUtils.openOrCopyUrl(downloadUrl, null, null);
+                updateUi.openUrl(downloadUrl);
             } else if ("Skip this Version".equals(result)) {
                 prefs().put(PreferenceKeys.SKIPPED_UPDATE_VERSION, latestVersion);
             } else if ("View Release Notes".equals(result)) {
-                BrowserUtils.openOrCopyUrl(notesUrl, null, null);
+                updateUi.openUrl(notesUrl);
             }
             // "Remind me Later" — just dismiss, next cycle prompts again
         });

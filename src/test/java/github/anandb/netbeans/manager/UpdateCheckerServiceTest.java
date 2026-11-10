@@ -1,10 +1,16 @@
 package github.anandb.netbeans.manager;
 
+import com.sun.net.httpserver.HttpServer;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
+import org.openide.NotifyDescriptor;
 import org.openide.util.NbPreferences;
 
 import github.anandb.netbeans.contract.UpdateCheckerControl.UpdateCheckResult;
@@ -19,6 +25,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class UpdateCheckerServiceTest {
+
+    private static final String UPDATE_VERSION = "9999.0.0";
 
     @Test
     void testIsNewerVersion() {
@@ -195,6 +203,178 @@ class UpdateCheckerServiceTest {
                 """;
 
         assertNull(UpdateCheckerService.parseLatestVersion(hostile));
+    }
+
+    @Test
+    void installOrUpgradeKeepsFutureScheduleAndResetsExpiredSchedule() {
+        var prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        String previous = prefs.get(PreferenceKeys.NEXT_UPDATE_CHECK_TIME, null);
+        try {
+            long future = System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1);
+            prefs.putLong(PreferenceKeys.NEXT_UPDATE_CHECK_TIME, future);
+            new UpdateCheckerService(() -> UpdateCheckResult.NO_UPDATE).onInstallOrUpgrade();
+            assertEquals(future, prefs.getLong(PreferenceKeys.NEXT_UPDATE_CHECK_TIME, 0L));
+
+            prefs.putLong(PreferenceKeys.NEXT_UPDATE_CHECK_TIME, 1L);
+            long before = System.currentTimeMillis();
+            new UpdateCheckerService(() -> UpdateCheckResult.NO_UPDATE).onInstallOrUpgrade();
+            long scheduled = prefs.getLong(PreferenceKeys.NEXT_UPDATE_CHECK_TIME, 0L);
+            assertTrue(scheduled >= before);
+            assertTrue(scheduled <= System.currentTimeMillis());
+        } finally {
+            restore(prefs, PreferenceKeys.NEXT_UPDATE_CHECK_TIME, previous);
+        }
+    }
+
+    @Test
+    void checkForUpdatesHandlesCurrentSkippedFailedAndAvailableResults() throws Exception {
+        var prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        String previousUrl = System.getProperty(PreferenceKeys.UPDATE_URL_PROP);
+        String previousSkipped = prefs.get(PreferenceKeys.SKIPPED_UPDATE_VERSION, null);
+        String manifest = "<metadata><versioning><release>" + UPDATE_VERSION
+                + "</release></versioning></metadata>";
+        RecordingUpdateUi ui = new RecordingUpdateUi("Remind me Later");
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/metadata", exchange -> {
+            byte[] body = manifest.getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.createContext("/missing", exchange -> {
+            exchange.sendResponseHeaders(404, -1);
+            exchange.close();
+        });
+        server.createContext("/malformed", exchange -> {
+            byte[] body = "not xml".getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.createContext("/current", exchange -> {
+            byte[] body = "<metadata><versioning><release>0.0.0</release></versioning></metadata>"
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.start();
+        String base = "http://127.0.0.1:" + server.getAddress().getPort();
+        try {
+            UpdateCheckerService service = new UpdateCheckerService(null, ui);
+
+            System.setProperty(PreferenceKeys.UPDATE_URL_PROP, base + "/missing");
+            assertEquals(UpdateCheckResult.CHECK_FAILED, service.checkNow().get(5, TimeUnit.SECONDS));
+            System.setProperty(PreferenceKeys.UPDATE_URL_PROP, base + "/malformed");
+            assertEquals(UpdateCheckResult.CHECK_FAILED, service.checkNow().get(5, TimeUnit.SECONDS));
+            System.setProperty(PreferenceKeys.UPDATE_URL_PROP, base + "/current");
+            assertEquals(UpdateCheckResult.NO_UPDATE, service.checkNow().get(5, TimeUnit.SECONDS));
+            System.setProperty(PreferenceKeys.UPDATE_URL_PROP, "not a valid URI");
+            assertEquals(UpdateCheckResult.CHECK_FAILED, service.checkNow().get(5, TimeUnit.SECONDS));
+
+            System.setProperty(PreferenceKeys.UPDATE_URL_PROP, base + "/metadata");
+            prefs.put(PreferenceKeys.SKIPPED_UPDATE_VERSION, UPDATE_VERSION);
+            assertEquals(UpdateCheckResult.UPDATE_SKIPPED, service.checkNow().get(5, TimeUnit.SECONDS));
+
+            prefs.remove(PreferenceKeys.SKIPPED_UPDATE_VERSION);
+            assertEquals(UpdateCheckResult.UPDATE_AVAILABLE, service.checkNow().get(5, TimeUnit.SECONDS));
+            assertEquals(1, ui.notifications.size());
+        } finally {
+            server.stop(0);
+            restoreSystemProperty(PreferenceKeys.UPDATE_URL_PROP, previousUrl);
+            restore(prefs, PreferenceKeys.SKIPPED_UPDATE_VERSION, previousSkipped);
+        }
+    }
+
+    @Test
+    void notificationActionsOpenLinksStoreSkippedVersionAndAllowDismissal() throws Exception {
+        var prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        String previousUrl = System.getProperty(PreferenceKeys.UPDATE_URL_PROP);
+        String previousSkipped = prefs.get(PreferenceKeys.SKIPPED_UPDATE_VERSION, null);
+        String manifest = "<metadata><versioning><release>" + UPDATE_VERSION
+                + "</release></versioning></metadata>";
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/metadata", exchange -> {
+            byte[] body = manifest.getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.start();
+        System.setProperty(PreferenceKeys.UPDATE_URL_PROP,
+                "http://127.0.0.1:" + server.getAddress().getPort() + "/metadata");
+        try {
+            for (String result : List.of("Download Now", "Skip this Version",
+                    "View Release Notes", "Remind me Later")) {
+                RecordingUpdateUi ui = new RecordingUpdateUi(result);
+                UpdateCheckerService service = new UpdateCheckerService(null, ui);
+                assertEquals(UpdateCheckResult.UPDATE_AVAILABLE,
+                        service.checkNow().get(5, TimeUnit.SECONDS));
+                assertEquals(1, ui.notifications.size());
+                assertEquals(4, ui.lastDescriptor.getOptions().length);
+                if ("Download Now".equals(result)) {
+                    assertEquals(List.of("https://repo1.maven.org/maven2/io/github/anandb/beanbot/"
+                            + UPDATE_VERSION + "/beanbot-" + UPDATE_VERSION
+                            + ".nbm"), ui.openedUrls);
+                } else if ("View Release Notes".equals(result)) {
+                    assertEquals(List.of("https://github.com/anandb/nb-complete/blob/main/CHANGELOG.md"),
+                            ui.openedUrls);
+                } else if ("Skip this Version".equals(result)) {
+                    assertEquals(UPDATE_VERSION, prefs.get(PreferenceKeys.SKIPPED_UPDATE_VERSION, null));
+                } else {
+                    assertTrue(ui.openedUrls.isEmpty());
+                }
+                prefs.remove(PreferenceKeys.SKIPPED_UPDATE_VERSION);
+            }
+        } finally {
+            server.stop(0);
+            restoreSystemProperty(PreferenceKeys.UPDATE_URL_PROP, previousUrl);
+            restore(prefs, PreferenceKeys.SKIPPED_UPDATE_VERSION, previousSkipped);
+        }
+    }
+
+    private static void restore(java.util.prefs.Preferences prefs, String key, String value) {
+        if (value == null) {
+            prefs.remove(key);
+        } else {
+            prefs.put(key, value);
+        }
+    }
+
+    private static void restoreSystemProperty(String key, String value) {
+        if (value == null) {
+            System.clearProperty(key);
+        } else {
+            System.setProperty(key, value);
+        }
+    }
+
+    private static final class RecordingUpdateUi implements UpdateCheckerService.UpdateUi {
+        private final String result;
+        private final List<NotifyDescriptor> notifications = new ArrayList<>();
+        private final List<String> openedUrls = new ArrayList<>();
+        private NotifyDescriptor lastDescriptor;
+
+        private RecordingUpdateUi(String result) {
+            this.result = result;
+        }
+
+        @Override
+        public void whenReady(Runnable action) {
+            action.run();
+        }
+
+        @Override
+        public Object notify(NotifyDescriptor descriptor) {
+            lastDescriptor = descriptor;
+            notifications.add(descriptor);
+            return result;
+        }
+
+        @Override
+        public void openUrl(String url) {
+            openedUrls.add(url);
+        }
     }
 
     @Test
