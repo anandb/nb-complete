@@ -240,6 +240,9 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         if (result.timedOut()) {
             throw new RuntimeException("git command timed out after 60 seconds: " + String.join(" ", cmd));
         }
+        if (result.truncated()) {
+            throw new IOException("git command output exceeded the capture limit: " + String.join(" ", cmd));
+        }
         return result.output();
     }
 

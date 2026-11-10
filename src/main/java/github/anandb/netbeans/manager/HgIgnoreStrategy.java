@@ -47,6 +47,10 @@ public class HgIgnoreStrategy implements VcsIgnoreStrategy {
             // hg files lists versioned (non-ignored) files relative to repo root
             VcsUtils.CapturedCommand result = VcsUtils.runCaptured(workDir, CMD_TIMEOUT_SEC,
                     "hg", "files");
+            if (result.truncated()) {
+                LOG.log(Level.WARNING, "hg files output exceeded the capture limit in {0}", projectRoot);
+                return Set.of();
+            }
             if (result.timedOut()) {
                 LOG.log(Level.WARNING, "hg files timed out in {0}", projectRoot);
                 return Set.of();

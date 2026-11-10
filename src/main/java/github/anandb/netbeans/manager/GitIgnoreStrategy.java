@@ -48,6 +48,10 @@ public class GitIgnoreStrategy implements VcsIgnoreStrategy {
             VcsUtils.CapturedCommand result = VcsUtils.runCaptured(workDir, CMD_TIMEOUT_SEC,
                     "git", "ls-files", "--cached", "--others", "--exclude-standard",
                     "--", projectRoot.getAbsolutePath());
+            if (result.truncated()) {
+                LOG.log(Level.WARNING, "git ls-files output exceeded the capture limit in {0}", projectRoot);
+                return Set.of();
+            }
             if (result.timedOut()) {
                 LOG.log(Level.WARNING, "git ls-files timed out in {0}", projectRoot);
                 return Set.of();
