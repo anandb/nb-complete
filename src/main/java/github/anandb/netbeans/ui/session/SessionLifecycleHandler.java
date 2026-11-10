@@ -66,7 +66,6 @@ public class SessionLifecycleHandler implements SessionListener {
     private final JButton hideBtn;
     private final JButton newSessionBtn;
     private final JButton renameSessionBtn;
-    private final JButton toggleOptionsBtn;
     private final ConfigPanelController configPanelController;
     private final PlaceholderTextArea inputArea;
     private final StatusController statusController;
@@ -118,7 +117,6 @@ public class SessionLifecycleHandler implements SessionListener {
             JButton hideBtn,
             JButton newSessionBtn,
             JButton renameSessionBtn,
-            JButton toggleOptionsBtn,
             ConfigPanelController configPanelController,
             PlaceholderTextArea inputArea,
             StatusController statusController,
@@ -134,7 +132,6 @@ public class SessionLifecycleHandler implements SessionListener {
         this.hideBtn = hideBtn;
         this.newSessionBtn = newSessionBtn;
         this.renameSessionBtn = renameSessionBtn;
-        this.toggleOptionsBtn = toggleOptionsBtn;
         this.configPanelController = configPanelController;
         this.inputArea = inputArea;
         this.statusController = statusController;

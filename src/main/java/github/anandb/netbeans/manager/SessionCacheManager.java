@@ -9,7 +9,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import github.anandb.netbeans.model.Session;
-import github.anandb.netbeans.support.Logger;
 
 /**
  * Manages session cache and parent-child hierarchy lookups.
@@ -17,7 +16,6 @@ import github.anandb.netbeans.support.Logger;
  */
 final class SessionCacheManager {
 
-    private static final Logger LOG = Logger.from(SessionCacheManager.class);
 
     private List<Session> cachedSessions = new CopyOnWriteArrayList<>();
     private final Map<String, Session> sessionCacheMap = new ConcurrentHashMap<>();

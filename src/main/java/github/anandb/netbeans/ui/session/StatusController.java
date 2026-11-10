@@ -108,10 +108,6 @@ public class StatusController {
         return stopBtn;
     }
 
-    public Timer getThinkingTimer() {
-        return thinkingTimer;
-    }
-
     public Timer getStatusResetTimer() {
         return statusResetTimer;
     }
@@ -206,10 +202,6 @@ public class StatusController {
         return t != null ? t : "";
     }
 
-    public void setTooltip(String key, Object... args) {
-        statusLabel.setToolTipText(NbBundle.getMessage(UIBundle.class, key, args));
-    }
-
     // -- Thinking animation --
 
     public void startThinking() {
@@ -242,10 +234,6 @@ public class StatusController {
     public void stopThinking() {
         animatedStatus = false;
         thinkingTimer.stop();
-    }
-
-    public boolean isAnimated() {
-        return animatedStatus;
     }
 
     public void scheduleReset() {

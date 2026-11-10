@@ -166,11 +166,6 @@ class BinaryResolverTest {
         assertEquals("; rm -rf /", cmd[cmd.length - 1]);
     }
 
-    @Test
-    void isInPathHandlesBlank() {
-        assertFalse(BinaryResolver.isInPath("definitely-not-a-real-binary-xyz123"));
-    }
-
     /**
      * Regression: Windows native names carry a {@code .exe}/{@code .cmd}
      * suffix while catalog names are extension-less. Every name produced here

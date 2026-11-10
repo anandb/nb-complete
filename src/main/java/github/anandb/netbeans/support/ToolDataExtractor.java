@@ -242,11 +242,6 @@ public final class ToolDataExtractor {
         return mcp.find() ? text.substring(mcp.end()) : text;
     }
 
-    private static String extractPathFromRawInputJson(SessionUpdate.UpdateData ud) {
-        // No longer needed - rawInput is now a JsonNode
-        return null;
-    }
-
     private static String extractFirstLocationPath(SessionUpdate.UpdateData ud) {
         JsonNode locations = ud.locations();
         if (locations != null && locations.isArray() && locations.size() > 0) {

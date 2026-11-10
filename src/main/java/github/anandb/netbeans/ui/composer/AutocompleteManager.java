@@ -20,14 +20,12 @@ import javax.swing.DefaultListModel;
 import javax.swing.JList;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
-import javax.swing.JViewport;
 import javax.swing.ListSelectionModel;
 import javax.swing.UIManager;
 
 import github.anandb.netbeans.contract.SlashCommandInterceptor;
 import github.anandb.netbeans.model.ModelRecords.CommandInfo;
 import github.anandb.netbeans.model.SessionUpdate;
-import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.ProcessService;
@@ -55,7 +53,6 @@ public class AutocompleteManager {
     }
     // -------------------------------------------------------------------------
 
-    private static final Logger LOG = Logger.from(AutocompleteManager.class);
     private String lastPrefix;
 
     private final ProcessService processService = PlatformBridge.processServiceSafe();
@@ -64,7 +61,6 @@ public class AutocompleteManager {
     private final Runnable sendMessageAction;
     private final JPopupMenu autocompletePopup;
     private final JList<SessionUpdate.AvailableCommand> commandList;
-    private final JViewport viewport;
     private final Set<String> excludedCommands;
 
     public AutocompleteManager(PlaceholderTextArea inputArea, Runnable sendMessageAction) {
@@ -87,7 +83,6 @@ public class AutocompleteManager {
         JScrollPane scrollPane = new JScrollPane(commandList);
         scrollPane.setBorder(null);
         scrollPane.setPreferredSize(new Dimension(750, 200));
-        viewport = scrollPane.getViewport();
         autocompletePopup.add(scrollPane);
 
         commandList.setFixedCellHeight(22);

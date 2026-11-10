@@ -21,7 +21,6 @@ public final class AcpSessionInfo {
     private static final Logger LOG = Logger.from(AcpSessionInfo.class);
 
     private volatile String harnessName;
-    private volatile String harnessVersion;
 
     private AcpSessionInfo() {}
 
@@ -30,12 +29,8 @@ public final class AcpSessionInfo {
     /** Store harness info from initialize response. */
     public void setHarnessInfo(String name, String version) {
         this.harnessName = name;
-        this.harnessVersion = version;
         LOG.fine("Harness info set: {0} v{1}", new Object[]{name, version});
     }
-
-    /** The reported harness version, or null before the initialize response. */
-    public String getHarnessVersion() { return harnessVersion; }
 
     /** Short harness identifier for filenames (e.g. "pi-acp"). */
     public String getHarnessId() {

@@ -100,11 +100,6 @@ class ChipEditor extends JPanel {
         refresh();
     }
 
-    /** Sets the placeholder shown in the text box / combo prompt. */
-    void setPlaceholder(String placeholder) {
-        this.placeholder = placeholder == null ? "" : placeholder;
-    }
-
     // ── Public API ────────────────────────────────────────────────────────
 
     /** Populate the suggestions dropdown (e.g. from repository vocabulary), sorted alphabetically. */

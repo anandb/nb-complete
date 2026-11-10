@@ -25,7 +25,6 @@ import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 
 import github.anandb.netbeans.model.MessageType;
-import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.ToolDataExtractor;
 import org.openide.util.NbBundle;
 
@@ -44,19 +43,15 @@ import github.anandb.netbeans.ui.components.RoundedPanel;
 // toolbar) are extracted to ui/spec/.
 public class MessageBubble extends JPanel implements Scrollable {
 
-    private static final Logger LOG = Logger.from(MessageBubble.class);
     private static final long serialVersionUID = 1L;
 
     /** Whether the user avatar is shown beside the bubble. */
     public enum AvatarPosition { LEFT, NONE }
 
     private JPanel bubble;
-    /** The row that applies the width cap; null for tool/thought bubbles. */
-    private AlignedRow alignedRow;
     private String toolTitle;
     private final ArrayList<BubbleContentRenderer.CollapsibleState> codeStates = new ArrayList<>();
     private final JPanel segments;
-    private final MessageType type;
     private String messageId;
     /** True when {@link #messageId} is our content hash, not a harness id: two
      *  messages with equal text share it, so it must never drive merging. */
@@ -69,9 +64,6 @@ public class MessageBubble extends JPanel implements Scrollable {
     private final transient BubbleThemeApplier themeApplier;
     private final transient BubbleActionBar actionBar;
     private transient HierarchyListener hierarchyListener;
-
-    /** Session ID — passed through from ChatThreadPanel for pin state persistence. */
-    private final String sessionId;
 
     @Override
     public float getAlignmentX() {
@@ -135,7 +127,6 @@ public class MessageBubble extends JPanel implements Scrollable {
     public MessageBubble(MessageType type, String text, String messageId,
             String toolTitle, AvatarPosition avatarPosition,
             boolean streaming, String sessionId) {
-        this.type = type;
         this.role = type.roleName();
         this.messageId = messageId;
         // User bubbles may carry <metadata> context blocks. Strip complete
@@ -145,7 +136,6 @@ public class MessageBubble extends JPanel implements Scrollable {
         this.text = new StringBuilder("user".equals(type.roleName())
                 ? ToolDataExtractor.stripMetadata(text) : text);
         this.toolTitle = toolTitle;
-        this.sessionId = sessionId;
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
         setLayout(new GridBagLayout());
@@ -288,7 +278,6 @@ public class MessageBubble extends JPanel implements Scrollable {
                 ? new AlignedRow(USER_WIDTH_RATIO, USER_MAX_WIDTH_PX, true)
                 : AlignedRow.fullWidth();
         row.add(content);
-        alignedRow = row;
         add(row, UIUtils.createGbc(0, 0, 1.0, 0, fill, anchor, insets));
     }
 

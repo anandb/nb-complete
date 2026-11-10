@@ -41,6 +41,7 @@
 
 ### Housekeeping
 - Test builds are versioned `0.9.0-M9` (below the published `1.x` line on purpose), and unused `DbLifecycle`/`H2UsageStatsStore` helpers were removed.
+- Unreferenced members were removed: `ToolContextExtractor.truncatePath` (a no-op), the unused single-arg `truncateCommand`, `BinaryResolver.isInPath`, `AcpSessionInfo.getHarnessVersion`, `ModeAgentMapping`'s mode accessors, the dead `ui/` accessors and 13 unused `UIUtils` border constants, six unused `LOG` fields plus write-only bubble/queue/mini-assistant fields, and the unused `List<Message>` export overloads. Tests that pinned only the removed members were dropped or retargeted at the live two-arg API.
 
 ## v1.30.0 (Changes since v1.29.1)
 

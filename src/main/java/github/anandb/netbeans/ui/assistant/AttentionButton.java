@@ -22,10 +22,6 @@ public class AttentionButton extends JButton {
     private int yOffset = 0;
     private float highlightAlpha = 0.0f;
 
-    public void setOffset(int x, int y) {
-        setOffsetAndHighlight(x, y, 0.0f);
-    }
-
     public void setOffsetAndHighlight(int x, int y, float alpha) {
         if (this.xOffset != x || this.yOffset != y || this.highlightAlpha != alpha) {
             this.xOffset = x;
@@ -33,18 +29,6 @@ public class AttentionButton extends JButton {
             this.highlightAlpha = alpha;
             repaint();
         }
-    }
-
-    public int getXOffset() {
-        return xOffset;
-    }
-
-    public int getYOffset() {
-        return yOffset;
-    }
-
-    public float getHighlightAlpha() {
-        return highlightAlpha;
     }
 
     @Override

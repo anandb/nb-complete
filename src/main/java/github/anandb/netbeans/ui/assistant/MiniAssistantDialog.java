@@ -31,9 +31,7 @@ import java.awt.event.WindowEvent;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletableFuture;
 
 import javax.swing.BorderFactory;
@@ -130,8 +128,6 @@ public class MiniAssistantDialog extends JDialog {
     private String displayedMessageId;
     private String displayedText;
 
-    private int wordCount;
-    private final Map<String, Integer> wordsByMessageId = new ConcurrentHashMap<>();
 
     /** Hosts the bubble shown in the response pane so a sent prompt can grey the old answer. */
     private final ResponseHost responseHost = new ResponseHost();
@@ -470,8 +466,6 @@ public class MiniAssistantDialog extends JDialog {
     }
 
     private void showSpinner() {
-        wordCount = 0;
-        wordsByMessageId.clear();
         isAutoTrackingLatest = true;
         currentBubbleIndex = -1;
         // A turn is starting (Enter/send here, or a message sent from the main panel): the
@@ -698,7 +692,6 @@ public class MiniAssistantDialog extends JDialog {
     public void onProcessingChanged(boolean processing) {
         SwingUtilities.invokeLater(() -> {
             this.isProcessing = processing;
-            String sessionId = PlatformBridge.sessionControl().getCurrentSessionId();
             if (processing) {
                 maxTokenCountThisTurn = 0;
                 displayedMessageId = null;

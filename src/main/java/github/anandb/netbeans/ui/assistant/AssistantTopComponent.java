@@ -317,7 +317,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         sessionDropdownHandler = new SessionDropdownHandler(sessionDropdown, inputArea);
         sessionLifecycleHandler = new SessionLifecycleHandler(
             chatPanel, sessionDropdown, hideBtn, newSessionBtn, renameSessionBtn,
-            toggleOptionsBtn, configPanelController, inputArea, statusController, planPanel,
+            configPanelController, inputArea, statusController, planPanel,
             this::showProjectPickerPopup, this::updateTabName, this::updateCwdLabel,
             sessionActiveCallback,
             this::setOptionsPanelVisible,
@@ -452,7 +452,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         componentLifecycleHandler = new ComponentLifecycleHandler(
             chatPanel, statusController, sessionLifecycleHandler,
-            configPanelController, inputArea, sessionDropdown, toggleOptionsBtn,
+            configPanelController, inputArea, sessionDropdown,
             restartServerBtn, AssistantTopComponent.this
         );
         inputHandler = new InputHandler(inputArea, autocompleteManager, messageSender, messageHistory);

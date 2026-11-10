@@ -861,21 +861,4 @@ public final class BinaryResolver {
         }
         return p;
     }
-
-    /**
-     * Checks whether the given command name exists and is executable on the system PATH.
-     */
-    public static boolean isInPath(String command) {
-        String pathEnv = System.getenv("PATH");
-        if (isBlank(pathEnv)) {
-            return false;
-        }
-        for (String p : PathSeparatorPattern.split(pathEnv)) {
-            File f = new File(p, command);
-            if (f.exists() && f.canExecute()) {
-                return true;
-            }
-        }
-        return false;
-    }
 }

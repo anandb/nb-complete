@@ -18,9 +18,7 @@ import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
-import javax.swing.JMenuItem;
 import javax.swing.JPanel;
-import javax.swing.JPopupMenu;
 import javax.swing.JTextArea;
 import javax.swing.KeyStroke;
 import javax.swing.Popup;
@@ -202,19 +200,5 @@ final class PreambleDialog extends JDialog {
         }
         StringSelection selection = new StringSelection(combined.toString());
         Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, selection);
-    }
-
-
-    private JPopupMenu createPopupMenu() {
-        JPopupMenu menu = new JPopupMenu();
-        JMenuItem clearItem = new JMenuItem(
-                NbBundle.getMessage(UIBundle.class, "LBL_PreambleClear"));
-        clearItem.addActionListener(e -> preambleArea.setText(""));
-        menu.add(clearItem);
-        JMenuItem resetItem = new JMenuItem(
-                NbBundle.getMessage(UIBundle.class, "LBL_PreambleReset"));
-        resetItem.addActionListener(e -> preambleArea.setText(PluginSettings.getDefaultPreamble()));
-        menu.add(resetItem);
-        return menu;
     }
 }

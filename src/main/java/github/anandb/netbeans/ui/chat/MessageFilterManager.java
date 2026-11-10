@@ -46,8 +46,6 @@ public final class MessageFilterManager {
 
     private MessageFilterManager() {}
 
-    static String[] getMessageTypes() { return MESSAGE_TYPES.clone(); }
-
     /** Return filter types shown in the UI menu. When combine is on, "activity"
      *  replaces separate "tool" and "thought" entries. */
     public static String[] getEffectiveMessageTypes() {

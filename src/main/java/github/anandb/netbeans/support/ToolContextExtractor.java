@@ -56,20 +56,20 @@ public final class ToolContextExtractor {
         // Fallback: try locations array (ACP format)
         String locPath = extractFirstLocationPath(toolCall);
         if (locPath != null) {
-            return truncatePath(locPath);
+            return locPath;
         }
 
         // Fallback: Cursor write/edit permission — path on content[] blocks
         String contentPath = extractFirstContentPath(toolCall);
         if (contentPath != null) {
-            return truncatePath(contentPath);
+            return contentPath;
         }
 
         // Fallback: try patterns array (ACP format)
         String pattern = extractFirstPattern(toolCall);
         if (isNotBlank(pattern)) {
             if (pattern.contains("/") || pattern.contains(File.separator) || pattern.startsWith(".")) {
-                return truncatePath(pattern);
+                return pattern;
             }
             return truncateCommand(pattern, commandMaxLength);
         }
@@ -91,16 +91,16 @@ public final class ToolContextExtractor {
      */
     private static String extractContextFromArgs(JsonNode args, int commandMaxLength) {
         if (args.has("filePath")) {
-            return truncatePath(args.get("filePath").asText());
+            return args.get("filePath").asText();
         }
         if (args.has("filepath")) {
-            return truncatePath(args.get("filepath").asText());
+            return args.get("filepath").asText();
         }
         if (args.has("file_path")) {
-            return truncatePath(args.get("file_path").asText());
+            return args.get("file_path").asText();
         }
         if (args.has("path")) {
-            return truncatePath(args.get("path").asText());
+            return args.get("path").asText();
         }
         if (args.has("command")) {
             return truncateCommand(args.get("command").asText(), commandMaxLength);
@@ -202,13 +202,6 @@ public final class ToolContextExtractor {
     }
 
     /**
-     * Truncates a long file path for display, keeping the end of the path (filename).
-     */
-    public static String truncatePath(String path) {
-        return path;
-    }
-
-    /**
      * Truncates a shell command for display, keeping the first {@code maxLength} chars.
      */
     public static String truncateCommand(String command, int maxLength) {
@@ -219,12 +212,5 @@ public final class ToolContextExtractor {
             return command.substring(0, maxLength);
         }
         return command.substring(0, maxLength - 3) + "...";
-    }
-
-    /**
-     * Truncates a shell command for display, keeping the first ~80 chars.
-     */
-    public static String truncateCommand(String command) {
-        return truncateCommand(command, 80);
     }
 }

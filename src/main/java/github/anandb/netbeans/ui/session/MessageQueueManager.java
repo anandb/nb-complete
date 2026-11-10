@@ -45,12 +45,10 @@ public final class MessageQueueManager {
     private final Queue<String> queuedMessages = new ConcurrentLinkedQueue<>();
     private final JButton queueBtn;
     private final Icon baseIcon;
-    private final int iconSize;
     private Timer wobbleTimer;
     private Timer wobbleAnimTimer;
     private boolean wobbling;
     private Timer flashTimer;
-    private boolean flashing;
     private Runnable sendNowCallback;
     /** When false (agents that steer mid-turn), queueing is disabled and the
      *  button stays hidden. See {@code AssistantTopComponent.applyHarnessCapabilities}. */
@@ -58,7 +56,6 @@ public final class MessageQueueManager {
 
     public MessageQueueManager() {
         int iconSize = Math.max(PluginSettings.getToolbarIconSize(), 32);
-        this.iconSize = iconSize;
         baseIcon = ThemeManager.getIcon("queue.svg", iconSize);
         queueBtn = UIUtils.createToolbarButton("queue.svg", iconSize,
                 NbBundle.getMessage(UIBundle.class, "HINT_MessageQueue", 0), null);
@@ -115,16 +112,6 @@ public final class MessageQueueManager {
     /** Returns the accent color used for queued bubble indicators. */
     public static Color getAccentColor() {
         return ACCENT_COLOR;
-    }
-
-    /** Returns the current queue size. */
-    int size() {
-        return queuedMessages.size();
-    }
-
-    /** Returns true if the queue is empty. */
-    boolean isEmpty() {
-        return queuedMessages.isEmpty();
     }
 
     /**
@@ -310,7 +297,6 @@ public final class MessageQueueManager {
     private void triggerFlash() {
         runOnEdt(() -> {
             stopFlash();
-            flashing = true;
             long start = System.currentTimeMillis();
             flashTimer = new Timer(30, null) {
                 @Override
@@ -335,7 +321,6 @@ public final class MessageQueueManager {
 
     private void stopFlash() {
         assert SwingUtilities.isEventDispatchThread();
-        flashing = false;
         if (flashTimer != null) {
             flashTimer.stop();
             flashTimer = null;

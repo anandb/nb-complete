@@ -13,7 +13,6 @@ import java.util.Map;
 public final class ModeAgentMapping {
 
     private static volatile Map<String, AvailableMode> liveModes = Collections.emptyMap();
-    private static volatile String currentModeId;
 
     private ModeAgentMapping() {}
 
@@ -25,7 +24,6 @@ public final class ModeAgentMapping {
     public static void populate(ModesInfo modes) {
         if (modes == null || modes.availableModes() == null) {
             liveModes = Collections.emptyMap();
-            currentModeId = null;
             return;
         }
         Map<String, AvailableMode> byId = new LinkedHashMap<>();
@@ -35,7 +33,6 @@ public final class ModeAgentMapping {
             }
         }
         liveModes = byId;
-        currentModeId = modes.currentModeId();
     }
 
     /** All modes advertised by the server in the latest handshake. */
@@ -43,18 +40,4 @@ public final class ModeAgentMapping {
         return List.copyOf(liveModes.values());
     }
 
-    /** The server-selected current mode, or null if none was reported. */
-    public static String getCurrentModeId() {
-        return currentModeId;
-    }
-
-    /** Returns the advertised mode with the given id, or null if unknown. */
-    public static AvailableMode getMode(String modeId) {
-        return modeId == null ? null : liveModes.get(modeId);
-    }
-
-    /** True if the mode id was advertised by the server in the latest handshake. */
-    public static boolean isValidMode(String modeId) {
-        return modeId != null && liveModes.containsKey(modeId);
-    }
 }

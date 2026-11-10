@@ -565,18 +565,5 @@ public class UIUtils {
     public static final Border EMPTY_BORDER = new EmptyBorder(0, 0, 0, 0);
     public static final Border CODE_WRAPPER_BORDER = new EmptyBorder(8, 20, 8, 6);
     public static final Border COPY_BUTTON_BORDER = new EmptyBorder(2, 4, 2, 4);
-    public static final Border COPY_PLACEHOLDER_BORDER = new EmptyBorder(1, 2, 1, 2);
-    public static final Border PERMISSION_CONTENT_BORDER = new EmptyBorder(12, 16, 12, 16);
-    public static final Border PERMISSION_SMALL_BORDER = new EmptyBorder(6, 12, 6, 12);
-    public static final Border SCROLL_BUTTON_BORDER = new EmptyBorder(4, 4, 4, 4);
-    public static final Border AUTOCOMPLETE_BORDER = new EmptyBorder(2, 5, 2, 5);
-    public static final Border PERMISSION_BUBBLE_BORDER = new EmptyBorder(8, 8, 8, 8);
-    public static final Border GROUP_TOGGLE_BORDER = new EmptyBorder(0, 4, 0, 4);
-    public static final Border COLLAPSIBLE_HEADER_INNER_BORDER = new EmptyBorder(5, 4, 5, 10);
-    public static final Border COLLAPSIBLE_CODE_HEADER_INNER_BORDER = new EmptyBorder(6, 8, 6, 3);
-    public static final Border COLLAPSIBLE_CODE_BODY_BORDER = new EmptyBorder(8, 20, 8, 6);
-    public static final Border WELCOME_TITLE_BORDER = new EmptyBorder(20, 12, 10, 12);
-    public static final Border WELCOME_SUBTITLE_BORDER = new EmptyBorder(0, 12, 20, 12);
-    public static final Border WELCOME_BUTTON_BORDER = new EmptyBorder(12, 16, 12, 16);
     // -------------------------------------------------------------------------
 }

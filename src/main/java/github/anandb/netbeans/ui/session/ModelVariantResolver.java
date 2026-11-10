@@ -24,7 +24,6 @@ final class ModelVariantResolver {
     private final SessionService sessionService = PlatformBridge.sessionServiceSafe();
 
     private final LinkedHashMap<String, List<ConfigItem>> modelVariants = new LinkedHashMap<>();
-    private String currentConfigModelId = null;
     private String lastSelectedModelId;
 
     ModelVariantResolver() {
@@ -43,7 +42,6 @@ final class ModelVariantResolver {
      * individually selectable model and keeps its full display name.
      */
     void parseModelVariants(SessionConfigOption opt, Set<String> variantTokens) {
-        this.currentConfigModelId = opt.currentValue();
         modelVariants.clear();
         for (SessionConfigSelectOption o : opt.options()) {
             String value = o.value();
@@ -76,11 +74,6 @@ final class ModelVariantResolver {
     /** Returns the parsed model variants map. */
     LinkedHashMap<String, List<ConfigItem>> getModelVariants() {
         return modelVariants;
-    }
-
-    /** Returns the current config model ID. */
-    String getCurrentConfigModelId() {
-        return currentConfigModelId;
     }
 
     /** Returns the last selected model ID. */

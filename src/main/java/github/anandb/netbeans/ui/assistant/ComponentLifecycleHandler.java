@@ -68,7 +68,6 @@ public class ComponentLifecycleHandler {
     private final ConfigPanelController configPanelController;
     private final PlaceholderTextArea inputArea;
     private final JComboBox<SessionItem> sessionDropdown;
-    private final JButton toggleOptionsBtn;
     private final JButton restartServerBtn;
     private final AssistantTopComponent topComponent;
     private final KeyEventDispatcher pageKeyDispatcher;
@@ -87,7 +86,6 @@ public class ComponentLifecycleHandler {
             ConfigPanelController configPanelController,
             PlaceholderTextArea inputArea,
             JComboBox<SessionItem> sessionDropdown,
-            JButton toggleOptionsBtn,
             JButton restartServerBtn,
             AssistantTopComponent topComponent) {
         this.chatPanel = chatPanel;
@@ -96,7 +94,6 @@ public class ComponentLifecycleHandler {
         this.configPanelController = configPanelController;
         this.inputArea = inputArea;
         this.sessionDropdown = sessionDropdown;
-        this.toggleOptionsBtn = toggleOptionsBtn;
         this.restartServerBtn = restartServerBtn;
         this.topComponent = topComponent;
 

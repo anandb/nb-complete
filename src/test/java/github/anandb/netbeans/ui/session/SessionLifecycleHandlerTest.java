@@ -171,7 +171,7 @@ class SessionLifecycleHandlerTest {
         planPanel = new PlanPanel();
         return new SessionLifecycleHandler(
                 chatPanel, sessionDropdown, hideBtn, newSessionBtn, renameSessionBtn,
-                toggleOptionsBtn, configPanelController, inputArea, statusController,
+                configPanelController, inputArea, statusController,
                 planPanel,
                 projectPickerShower, tabNameUpdater, cwdLabelUpdater,
                 sessionStateHandler, optionsPanelToggler, pendingUiCleanup);

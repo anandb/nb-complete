@@ -53,8 +53,8 @@
     "name": "bubbleBorder",
     "property": "beanbot.color.bubbleBorder",
     "key": "Button.borderColor",
-    "dark": "#4A4D50",
-    "light": "#C9C9C9"
+    "dark": "#3B3E41",
+    "light": "#B4B4B4"
   },
   {
     "name": "assistantForeground",

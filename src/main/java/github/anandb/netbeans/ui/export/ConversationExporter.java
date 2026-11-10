@@ -14,7 +14,6 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 
 import javax.swing.JFileChooser;
 
-import github.anandb.netbeans.model.Message;
 import github.anandb.netbeans.pattern.TitleSanitizePattern;
 import github.anandb.netbeans.support.Logger;
 import javax.swing.JPanel;
@@ -46,32 +45,6 @@ public final class ConversationExporter {
     private static final RequestProcessor EXPORT_RP = new RequestProcessor("ACP-Export", 1);
 
     private ConversationExporter() { }
-
-    /**
-     * Build a Markdown representation from the model message list (all messages,
-     * not just currently-rendered bubbles). Falls back to the UI-based export
-     * when messages is null.
-     */
-    static String generateMarkdown(List<Message> messages, String sessionTitle) {
-        if (messages == null || messages.isEmpty()) {
-            return "";
-        }
-        StringBuilder sb = new StringBuilder();
-        sb.append("---\n");
-        sb.append("title: \"").append(escYaml(sessionTitle != null ? sessionTitle : "Conversation")).append("\"\n");
-        sb.append("date: ").append(LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)).append("\n");
-        sb.append("---\n\n");
-        sb.append("# Conversation\n\n");
-
-        String[] lastRole = {null};
-        for (Message m : messages) {
-            String displayRole = m.extractRole();
-            String text = m.extractText();
-            if (text.isBlank()) continue;
-            appendMarkdownContent(sb, displayRole, text, null, lastRole);
-        }
-        return sb.toString();
-    }
 
     @SuppressWarnings("unchecked")
     public static String generateMarkdown(JPanel messagesContainer, String sessionTitle) {

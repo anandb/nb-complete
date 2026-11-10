@@ -21,7 +21,6 @@ import com.vladsch.flexmark.html.HtmlRenderer;
 import com.vladsch.flexmark.parser.Parser;
 import com.vladsch.flexmark.util.data.MutableDataSet;
 
-import github.anandb.netbeans.model.Message;
 import github.anandb.netbeans.pattern.TitleSanitizePattern;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
@@ -202,30 +201,6 @@ public final class HtmlConversationExporter {
     // ---- Main entry point -----------------------------------------------------
 
     // ---- Main entry points ----------------------------------------------------
-
-    /**
-     * Build a self-contained HTML page from the model message list (all messages,
-     * not just currently-rendered bubbles). Falls back to the UI-based export
-     * when messages is null.
-     */
-    static String generateHtml(List<Message> messages, String sessionTitle) {
-        if (messages == null || messages.isEmpty()) return "";
-        PageSetup setup = initPage(sessionTitle);
-
-        for (Message m : messages) {
-            String role = m.extractRole();
-            String text = m.extractText();
-            if (text.isBlank()) continue;
-
-            switch (role) {
-                case "user" -> setup.body().append(buildUserHtml(text, setup.dark()));
-                case "thought" -> setup.body().append(buildThoughtHtml(text, setup.theme()));
-                case "tool" -> setup.body().append(buildToolHtml(text, "Tool", setup.dark()));
-                default -> setup.body().append(buildAssistantHtml(text, setup.theme()));
-            }
-        }
-        return finishPage(setup);
-    }
 
     /**
      * Build a self-contained HTML page from all visible bubbles in the chat panel.

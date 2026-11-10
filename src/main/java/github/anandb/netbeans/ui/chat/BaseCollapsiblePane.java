@@ -268,10 +268,6 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         inBatch = batch;
     }
 
-    public static boolean isBatchMode() {
-        return inBatch;
-    }
-
     private Dimension cachedPreferredSize;
     private Dimension cachedMaxSize;
 

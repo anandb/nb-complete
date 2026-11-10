@@ -69,11 +69,6 @@ public class RoundedPanel extends JPanel {
         setAlignmentX(Component.LEFT_ALIGNMENT);
     }
 
-    public void setRadius(int radius) {
-        this.radius = radius;
-        invalidateShape();
-    }
-
     public final void setBaseColor(Color color) {
         this.baseColor = color;
     }
@@ -85,10 +80,6 @@ public class RoundedPanel extends JPanel {
     public final void setBorderColor(Color borderColor) {
         this.borderColor = borderColor;
         invalidateResolvedBorder();
-    }
-
-    public final void setBorderStrokeWidth(float width) {
-        this.borderStrokeWidth = width;
     }
 
     public final void setLeftAccent(Color accent) {

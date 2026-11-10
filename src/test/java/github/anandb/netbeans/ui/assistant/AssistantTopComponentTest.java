@@ -14,56 +14,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import github.anandb.netbeans.support.ToolContextExtractor;
 
 /**
- * Unit tests for ToolContextExtractor:
- * truncatePath, truncateCommand, and extractToolContext.
+ * Unit tests for ToolContextExtractor: truncateCommand and extractToolContext.
  */
 class AssistantTopComponentTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
-
-    // -----------------------------------------------------------------------
-    // truncatePath
-    // -----------------------------------------------------------------------
-
-    @Test
-    void testTruncatePathNull() {
-        assertNull(ToolContextExtractor.truncatePath(null));
-    }
-
-    @Test
-    void testTruncatePathEmpty() {
-        assertEquals("", ToolContextExtractor.truncatePath(""));
-    }
-
-    @Test
-    void testTruncatePathShort() {
-        String shortPath = "/home/user/file.txt";
-        assertSame(shortPath, ToolContextExtractor.truncatePath(shortPath));
-    }
-
-    @Test
-    void testTruncatePathAtBoundary() {
-        String path = "a".repeat(65);
-        assertEquals(path, ToolContextExtractor.truncatePath(path));
-    }
-
-    @Test
-    void testTruncatePathJustOverBoundary() {
-        String path = "a".repeat(66);
-        assertEquals(path, ToolContextExtractor.truncatePath(path));
-    }
-
-    @Test
-    void testTruncatePathLong() {
-        String path = "a".repeat(100);
-        assertEquals(path, ToolContextExtractor.truncatePath(path));
-    }
-
-    @Test
-    void testTruncatePathWithSpaces() {
-        String path = "/home/user/projects/my important document.txt";
-        assertEquals(path, ToolContextExtractor.truncatePath(path));
-    }
 
     // -----------------------------------------------------------------------
     // truncateCommand
@@ -71,31 +26,31 @@ class AssistantTopComponentTest {
 
     @Test
     void testTruncateCommandNull() {
-        assertNull(ToolContextExtractor.truncateCommand(null));
+        assertNull(ToolContextExtractor.truncateCommand(null, 80));
     }
 
     @Test
     void testTruncateCommandEmpty() {
-        assertEquals("", ToolContextExtractor.truncateCommand(""));
+        assertEquals("", ToolContextExtractor.truncateCommand("", 80));
     }
 
     @Test
     void testTruncateCommandShort() {
         String cmd = "ls -la";
-        assertSame(cmd, ToolContextExtractor.truncateCommand(cmd));
+        assertSame(cmd, ToolContextExtractor.truncateCommand(cmd, 80));
     }
 
     @Test
     void testTruncateCommandAtBoundary() {
         String cmd = "a".repeat(80);
-        assertEquals(cmd, ToolContextExtractor.truncateCommand(cmd));
+        assertEquals(cmd, ToolContextExtractor.truncateCommand(cmd, 80));
     }
 
     @Test
     void testTruncateCommandJustOverBoundary() {
         // 81 chars → first 77 chars + "..."
         String cmd = "a".repeat(81);
-        String result = ToolContextExtractor.truncateCommand(cmd);
+        String result = ToolContextExtractor.truncateCommand(cmd, 80);
         assertEquals(80, result.length());
         assertTrue(result.endsWith("..."));
         assertEquals(cmd.substring(0, 77), result.substring(0, 77));
@@ -104,7 +59,7 @@ class AssistantTopComponentTest {
     @Test
     void testTruncateCommandLong() {
         String cmd = "a".repeat(100);
-        String result = ToolContextExtractor.truncateCommand(cmd);
+        String result = ToolContextExtractor.truncateCommand(cmd, 80);
         assertEquals(80, result.length());
         assertTrue(result.endsWith("..."));
         assertEquals(cmd.substring(0, 77), result.substring(0, 77));
@@ -113,7 +68,7 @@ class AssistantTopComponentTest {
     @Test
     void testTruncateCommandWithSpecialChars() {
         String cmd = "echo 'hello world' | grep hello && npm test -- --coverage";
-        assertEquals(cmd, ToolContextExtractor.truncateCommand(cmd));
+        assertEquals(cmd, ToolContextExtractor.truncateCommand(cmd, 80));
     }
 
     // -----------------------------------------------------------------------

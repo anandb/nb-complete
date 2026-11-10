@@ -14,11 +14,6 @@ final class TagsEditor extends ChipEditor {
         super("@", "Tag", Set.of());
     }
 
-    /** Current selection as a comma-separated string (legacy API). */
-    String getTags() {
-        return getChips();
-    }
-
     /** Current selection as a set of bare values (legacy API). */
     Set<String> getSelectedTags() {
         return getSelected();

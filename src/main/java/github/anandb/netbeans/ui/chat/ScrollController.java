@@ -23,17 +23,15 @@ import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
 
-import github.anandb.netbeans.support.Logger;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 
 public class ScrollController implements KeyEventDispatcher {
-    private static final Logger LOG = Logger.from(ScrollController.class);
 
     private static final Color SCROLL_BTN_COLOR_A;
     private static final Color SCROLL_BTN_COLOR_B;
-    
+
     static {
         Color base = ThemeManager.getCurrentTheme().scrollButtonColor();
         SCROLL_BTN_COLOR_A = new Color(base.getRed(), base.getGreen(), base.getBlue(), 200);

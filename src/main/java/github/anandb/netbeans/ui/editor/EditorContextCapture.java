@@ -15,12 +15,10 @@ import org.netbeans.modules.editor.NbEditorUtilities;
 import org.openide.filesystems.FileObject;
 import org.openide.text.NbDocument;
 
-import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.ProjectPaths;
 
 public final class EditorContextCapture {
 
-    private static final Logger LOG = Logger.from(EditorContextCapture.class);
 
     private EditorContextCapture() {}
 
