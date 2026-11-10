@@ -104,7 +104,7 @@ public final class ShortcutUtils {
      * NetBeans key notation: D=Ctrl, S=Shift, A=Alt, M=Meta.
      * Format: modifiers-key (e.g. "DA-J" = Ctrl+Alt+J, "D-L" = Ctrl+L).
      */
-    private static String parseShortcutFilename(String name) {
+    static String parseShortcutFilename(String name) {
         int lastDash = name.lastIndexOf('-');
         if (lastDash <= 0 || lastDash >= name.length() - 1) return "";
 
@@ -138,7 +138,7 @@ public final class ShortcutUtils {
     }
 
     /** Convert a NetBeans key name (from shortcut filename) to a human-readable label. */
-    private static String formatNetBeansKeyName(String key) {
+    static String formatNetBeansKeyName(String key) {
         switch (key) {
             case "DELETE": return "Delete";
             case "INSERT": return "Insert";

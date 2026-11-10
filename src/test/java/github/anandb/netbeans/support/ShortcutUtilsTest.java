@@ -36,4 +36,34 @@ class ShortcutUtilsTest {
         String res = ShortcutUtils.resolveShortcut("invalid.action.id.for.testing");
         assertEquals("", res);
     }
+
+    @Test
+    void parsesNetBeansShortcutNamesAndModifiers() {
+        boolean mac = org.openide.util.Utilities.isMac();
+        String modifier = mac ? "Cmd + Option + Shift + " : "Ctrl + Alt + Shift + ";
+        assertEquals(modifier + "J", ShortcutUtils.parseShortcutFilename("DAS-J"));
+        assertEquals("", ShortcutUtils.parseShortcutFilename("plain"));
+        assertEquals("", ShortcutUtils.parseShortcutFilename("D-"));
+        assertEquals("Q", ShortcutUtils.parseShortcutFilename("X-Q"));
+    }
+
+    @Test
+    void formatsAllNetBeansSpecialKeyNames() {
+        boolean mac = org.openide.util.Utilities.isMac();
+        String[][] keys = {
+            {"DELETE", "Delete"}, {"INSERT", "Insert"}, {"ENTER", "Enter"}, {"PAGE_UP", "Page Up"},
+            {"PAGE_DOWN", "Page Down"}, {"HOME", "Home"}, {"END", "End"}, {"ESCAPE", "Escape"},
+            {"TAB", "Tab"}, {"SPACE", "Space"}, {"BACK_SPACE", "Backspace"}, {"UP", "↑"},
+            {"DOWN", "↓"}, {"LEFT", "←"}, {"RIGHT", "→"}, {"F12", "F12"}, {"X", "X"},
+            {"unknown", "Unknown"}
+        };
+        for (String[] key : keys) {
+            assertEquals(key[1], ShortcutUtils.formatNetBeansKeyName(key[0]), key[0]);
+        }
+        String allModifiers = mac ? "Ctrl + Cmd + Option + Shift + A" : "Ctrl + Meta + Alt + Shift + A";
+        assertEquals(allModifiers, ShortcutUtils.formatKeyStroke(
+                KeyStroke.getKeyStroke(KeyEvent.VK_A, InputEvent.CTRL_DOWN_MASK | InputEvent.META_DOWN_MASK
+                        | InputEvent.ALT_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK)));
+        assertEquals("x", ShortcutUtils.formatKeyStroke(KeyStroke.getKeyStroke('x')));
+    }
 }

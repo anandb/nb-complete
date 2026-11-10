@@ -147,5 +147,21 @@ class TaskTxtCodecTest {
     void emptyContentYieldsNoTasks() {
         assertTrue(TaskTxtCodec.parse("").isEmpty());
         assertTrue(TaskTxtCodec.parse("   \n  \n").isEmpty());
+        assertTrue(TaskTxtCodec.parse(null).isEmpty());
+    }
+
+    @Test
+    void parsesMalformedDatesPrioritiesAndNumericTokensSafely() {
+        List<TaskRecord> parsed = TaskTxtCodec.parse("(not-priority) 2026-02-30 Bad date estimate:no consumed:-1 id: \n"
+                + "x 2026-08-05 Closed one date priority (A) due:2026-08-10\n"
+                + "(a) 2026-08-01 lower priority\n");
+        assertEquals(3, parsed.size());
+        assertEquals("(not-priority) 2026-02-30 Bad date", parsed.get(0).summary());
+        assertEquals(0, parsed.get(0).estimate());
+        assertEquals(-1, parsed.get(0).consumed());
+        assertTrue(parsed.get(1).isFinished());
+        assertEquals("2026-08-05", parsed.get(1).completedAt());
+        assertEquals("2026-08-05", parsed.get(1).createdAt());
+        assertEquals("A", parsed.get(2).priority());
     }
 }

@@ -116,6 +116,9 @@ public final class ToolContextExtractor {
         Iterator<Map.Entry<String, JsonNode>> fields = args.fields();
         while (fields.hasNext()) {
             Map.Entry<String, JsonNode> entry = fields.next();
+            if ("title".equals(entry.getKey())) {
+                continue;
+            }
             if (entry.getValue().isTextual()) {
                 String val = entry.getValue().asText();
                 if (val.length() > 5 && val.length() < 120) {

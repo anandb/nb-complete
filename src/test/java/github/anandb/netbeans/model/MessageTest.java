@@ -73,4 +73,34 @@ class MessageTest {
                 null, null, null, new Message.Annotations(List.of("assistant"), null));
         assertEquals("", part.getDisplayText());
     }
+
+    @Test
+    void extractsRoleAndTextFromLegacyMessages() {
+        Message user = new Message("u", "user", new Message.Prompt("  hello  ", null), null, null);
+        Message thought = new Message("t", "assistant", null,
+                new Message.Completion("reasoning", null, null, null), "thinking");
+        Message assistant = new Message("a", "assistant", null,
+                new Message.Completion("answer", null, null, null), null);
+        assertEquals("user", user.extractRole());
+        assertEquals("thought", thought.extractRole());
+        assertEquals("assistant", assistant.extractRole());
+        assertEquals("hello", user.extractText());
+        assertEquals("reasoning", thought.extractText());
+    }
+
+    @Test
+    void concatenatesVisiblePartsAndToolCalls() {
+        Message.ContentPart first = new Message.ContentPart("text", "one", null, null, null, null,
+                null, null, null, null);
+        Message.ContentPart second = new Message.ContentPart("text", "two", null, null, null, null,
+                null, null, null, null);
+        Message user = new Message("u", "user", new Message.Prompt(null, List.of(first, second)), null, null);
+        Message assistant = new Message("a", "assistant", null,
+                new Message.Completion(null, List.of(first, second),
+                        List.of(new Message.ToolCall("id", "search", null, null)),
+                        null), null);
+        assertEquals("one\ntwo", user.extractText());
+        assertEquals("one\n\ntwo\n\n[Tool Call: search]", assistant.extractText());
+        assertEquals("", new Message("empty", "user", null, null, null).extractText());
+    }
 }

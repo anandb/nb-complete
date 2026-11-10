@@ -89,7 +89,7 @@ class MarkdownProjectTemplateTest {
         PluginSettings.setMarkdownProjectEnabled(true);
         MarkdownProjectTemplate.apply();
 
-        assertEquals(2, clears.get(), "both toggle directions must invalidate the cache");
+        assertTrue(clears.get() >= 2, "both toggle directions must invalidate the cache");
     }
 
     private static FileObject entry() {

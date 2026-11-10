@@ -93,20 +93,34 @@ public class UpdateCheckerService implements UpdateCheckerControl {
      */
     private final RequestProcessor.Task checkCycleTask = RP.create(this::runCheckCycle);
     private final Supplier<UpdateCheckResult> updateCheck;
+    private final Supplier<String> currentVersion;
     private final UpdateUi updateUi;
+    private final HttpClient httpClient;
     private CompletableFuture<UpdateCheckResult> manualCheckInFlight;
 
     public UpdateCheckerService() {
-        this(null, DEFAULT_UI);
+        this(null, DEFAULT_UI, null);
     }
 
     UpdateCheckerService(Supplier<UpdateCheckResult> updateCheck) {
-        this(updateCheck, DEFAULT_UI);
+        this(updateCheck, DEFAULT_UI, null);
     }
 
     UpdateCheckerService(Supplier<UpdateCheckResult> updateCheck, UpdateUi updateUi) {
+        this(updateCheck, updateUi, null);
+    }
+
+    UpdateCheckerService(Supplier<UpdateCheckResult> updateCheck, UpdateUi updateUi,
+            HttpClient httpClient) {
+        this(updateCheck, updateUi, httpClient, AgentUtils::getVersion);
+    }
+
+    UpdateCheckerService(Supplier<UpdateCheckResult> updateCheck, UpdateUi updateUi,
+            HttpClient httpClient, Supplier<String> currentVersion) {
         this.updateCheck = updateCheck == null ? this::checkForUpdates : updateCheck;
         this.updateUi = updateUi;
+        this.httpClient = httpClient;
+        this.currentVersion = currentVersion;
     }
 
     /**
@@ -223,7 +237,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
         }
     }
 
-    private UpdateCheckResult checkForUpdates() {
+    UpdateCheckResult checkForUpdates() {
         String updateUrl = AppLinks.updateUrl();
         LOG.fine("Checking for updates from {0}", updateUrl);
 
@@ -234,7 +248,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
                 System.getProperty("os.arch", "unknown"),
                 System.getProperty("netbeans.version", "unknown"),
                 System.getProperty("java.version", "unknown"),
-                AgentUtils.getVersion()
+                currentVersion.get()
             );
 
             HttpRequest request = HttpRequest.newBuilder()
@@ -244,10 +258,10 @@ public class UpdateCheckerService implements UpdateCheckerControl {
                     .GET()
                     .build();
 
-            HttpClient client = HttpClient.newBuilder()
+            HttpClient client = httpClient == null ? HttpClient.newBuilder()
                     .connectTimeout(Duration.ofSeconds(15))
                     .proxy(ProxySelector.getDefault())
-                    .build();
+                    .build() : httpClient;
 
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != 200) {
@@ -264,7 +278,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
                 return UpdateCheckResult.CHECK_FAILED;
             }
 
-            String currentVersionStr = AgentUtils.getVersion();
+            String currentVersionStr = currentVersion.get();
 
             if (isNewerVersion(latestVersion, currentVersionStr)) {
                 String skipped = prefs().get(PreferenceKeys.SKIPPED_UPDATE_VERSION, "");
@@ -444,7 +458,7 @@ public class UpdateCheckerService implements UpdateCheckerControl {
         updateUi.whenReady(() -> {
             String title = "Coding Assistant Update Available";
             String body = "A new version of Coding Assistant (" + latestVersion
-                    + ") is available.\n\nCurrent: " + AgentUtils.getVersion()
+                    + ") is available.\n\nCurrent: " + currentVersion.get()
                     + "\nLatest: " + latestVersion
                     + "\n\nAfter downloading the .nbm file, go to "
                     + "Tools > Plugins > Downloaded and click \"Add Plugins\" "

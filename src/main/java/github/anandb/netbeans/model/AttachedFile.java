@@ -89,7 +89,8 @@ public record AttachedFile(
                 return false;
             }
         }
-        for (int trim = 0; trim <= 3 && limit - trim >= 0; trim++) {
+        int maxTrim = limit == data.length ? 0 : 3;
+        for (int trim = 0; trim <= maxTrim && limit - trim >= 0; trim++) {
             CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder()
                     .onMalformedInput(CodingErrorAction.REPORT)
                     .onUnmappableCharacter(CodingErrorAction.REPORT);

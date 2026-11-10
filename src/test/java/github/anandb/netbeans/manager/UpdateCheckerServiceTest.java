@@ -1,13 +1,28 @@
 package github.anandb.netbeans.manager;
 
-import com.sun.net.httpserver.HttpServer;
-import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
+import java.io.IOException;
+import java.net.Authenticator;
+import java.net.CookieHandler;
+import java.net.ProxySelector;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpHeaders;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiPredicate;
+import java.util.concurrent.Executor;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLParameters;
+import javax.net.ssl.SSLSession;
 
 import org.junit.jupiter.api.Test;
 import org.openide.NotifyDescriptor;
@@ -234,53 +249,31 @@ class UpdateCheckerServiceTest {
         String manifest = "<metadata><versioning><release>" + UPDATE_VERSION
                 + "</release></versioning></metadata>";
         RecordingUpdateUi ui = new RecordingUpdateUi("Remind me Later");
-        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/metadata", exchange -> {
-            byte[] body = manifest.getBytes(StandardCharsets.UTF_8);
-            exchange.sendResponseHeaders(200, body.length);
-            exchange.getResponseBody().write(body);
-            exchange.close();
-        });
-        server.createContext("/missing", exchange -> {
-            exchange.sendResponseHeaders(404, -1);
-            exchange.close();
-        });
-        server.createContext("/malformed", exchange -> {
-            byte[] body = "not xml".getBytes(StandardCharsets.UTF_8);
-            exchange.sendResponseHeaders(200, body.length);
-            exchange.getResponseBody().write(body);
-            exchange.close();
-        });
-        server.createContext("/current", exchange -> {
-            byte[] body = "<metadata><versioning><release>0.0.0</release></versioning></metadata>"
-                    .getBytes(StandardCharsets.UTF_8);
-            exchange.sendResponseHeaders(200, body.length);
-            exchange.getResponseBody().write(body);
-            exchange.close();
-        });
-        server.start();
-        String base = "http://127.0.0.1:" + server.getAddress().getPort();
+        RecordingHttpClient client = new RecordingHttpClient();
+        UpdateCheckerService service = new UpdateCheckerService(null, ui, client, () -> "0.9.0");
         try {
-            UpdateCheckerService service = new UpdateCheckerService(null, ui);
+            System.setProperty(PreferenceKeys.UPDATE_URL_PROP, "https://example.test/metadata");
+            client.respond(404, "");
+            assertEquals(UpdateCheckResult.CHECK_FAILED, service.checkForUpdates());
 
-            System.setProperty(PreferenceKeys.UPDATE_URL_PROP, base + "/missing");
-            assertEquals(UpdateCheckResult.CHECK_FAILED, service.checkNow().get(5, TimeUnit.SECONDS));
-            System.setProperty(PreferenceKeys.UPDATE_URL_PROP, base + "/malformed");
-            assertEquals(UpdateCheckResult.CHECK_FAILED, service.checkNow().get(5, TimeUnit.SECONDS));
-            System.setProperty(PreferenceKeys.UPDATE_URL_PROP, base + "/current");
-            assertEquals(UpdateCheckResult.NO_UPDATE, service.checkNow().get(5, TimeUnit.SECONDS));
+            client.respond(200, "not xml");
+            assertEquals(UpdateCheckResult.CHECK_FAILED, service.checkForUpdates());
+
+            client.respond(200, "<metadata><versioning><release>0.0.0</release></versioning></metadata>");
+            assertEquals(UpdateCheckResult.NO_UPDATE, service.checkForUpdates());
+
             System.setProperty(PreferenceKeys.UPDATE_URL_PROP, "not a valid URI");
-            assertEquals(UpdateCheckResult.CHECK_FAILED, service.checkNow().get(5, TimeUnit.SECONDS));
+            assertEquals(UpdateCheckResult.CHECK_FAILED, service.checkForUpdates());
 
-            System.setProperty(PreferenceKeys.UPDATE_URL_PROP, base + "/metadata");
+            System.setProperty(PreferenceKeys.UPDATE_URL_PROP, "https://example.test/metadata");
+            client.respond(200, manifest);
             prefs.put(PreferenceKeys.SKIPPED_UPDATE_VERSION, UPDATE_VERSION);
-            assertEquals(UpdateCheckResult.UPDATE_SKIPPED, service.checkNow().get(5, TimeUnit.SECONDS));
+            assertEquals(UpdateCheckResult.UPDATE_SKIPPED, service.checkForUpdates());
 
             prefs.remove(PreferenceKeys.SKIPPED_UPDATE_VERSION);
-            assertEquals(UpdateCheckResult.UPDATE_AVAILABLE, service.checkNow().get(5, TimeUnit.SECONDS));
+            assertEquals(UpdateCheckResult.UPDATE_AVAILABLE, service.checkForUpdates());
             assertEquals(1, ui.notifications.size());
         } finally {
-            server.stop(0);
             restoreSystemProperty(PreferenceKeys.UPDATE_URL_PROP, previousUrl);
             restore(prefs, PreferenceKeys.SKIPPED_UPDATE_VERSION, previousSkipped);
         }
@@ -293,23 +286,16 @@ class UpdateCheckerServiceTest {
         String previousSkipped = prefs.get(PreferenceKeys.SKIPPED_UPDATE_VERSION, null);
         String manifest = "<metadata><versioning><release>" + UPDATE_VERSION
                 + "</release></versioning></metadata>";
-        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/metadata", exchange -> {
-            byte[] body = manifest.getBytes(StandardCharsets.UTF_8);
-            exchange.sendResponseHeaders(200, body.length);
-            exchange.getResponseBody().write(body);
-            exchange.close();
-        });
-        server.start();
-        System.setProperty(PreferenceKeys.UPDATE_URL_PROP,
-                "http://127.0.0.1:" + server.getAddress().getPort() + "/metadata");
+        System.setProperty(PreferenceKeys.UPDATE_URL_PROP, "https://example.test/metadata");
         try {
             for (String result : List.of("Download Now", "Skip this Version",
                     "View Release Notes", "Remind me Later")) {
                 RecordingUpdateUi ui = new RecordingUpdateUi(result);
-                UpdateCheckerService service = new UpdateCheckerService(null, ui);
-                assertEquals(UpdateCheckResult.UPDATE_AVAILABLE,
-                        service.checkNow().get(5, TimeUnit.SECONDS));
+                RecordingHttpClient client = new RecordingHttpClient();
+                client.respond(200, manifest);
+                UpdateCheckerService service = new UpdateCheckerService(
+                        null, ui, client, () -> "0.9.0");
+                assertEquals(UpdateCheckResult.UPDATE_AVAILABLE, service.checkForUpdates());
                 assertEquals(1, ui.notifications.size());
                 assertEquals(4, ui.lastDescriptor.getOptions().length);
                 if ("Download Now".equals(result)) {
@@ -327,7 +313,6 @@ class UpdateCheckerServiceTest {
                 prefs.remove(PreferenceKeys.SKIPPED_UPDATE_VERSION);
             }
         } finally {
-            server.stop(0);
             restoreSystemProperty(PreferenceKeys.UPDATE_URL_PROP, previousUrl);
             restore(prefs, PreferenceKeys.SKIPPED_UPDATE_VERSION, previousSkipped);
         }
@@ -374,6 +359,109 @@ class UpdateCheckerServiceTest {
         @Override
         public void openUrl(String url) {
             openedUrls.add(url);
+        }
+    }
+
+    private static final class RecordingHttpClient extends HttpClient {
+        private int statusCode;
+        private String body;
+
+        private void respond(int statusCode, String body) {
+            this.statusCode = statusCode;
+            this.body = body;
+        }
+
+        @Override
+        public Optional<CookieHandler> cookieHandler() {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<Duration> connectTimeout() {
+            return Optional.empty();
+        }
+
+        @Override
+        public Redirect followRedirects() {
+            return Redirect.NEVER;
+        }
+
+        @Override
+        public Optional<ProxySelector> proxy() {
+            return Optional.empty();
+        }
+
+        @Override
+        public SSLContext sslContext() {
+            return null;
+        }
+
+        @Override
+        public SSLParameters sslParameters() {
+            return new SSLParameters();
+        }
+
+        @Override
+        public Optional<Authenticator> authenticator() {
+            return Optional.empty();
+        }
+
+        @Override
+        public Version version() {
+            return Version.HTTP_1_1;
+        }
+
+        @Override
+        public Optional<Executor> executor() {
+            return Optional.empty();
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T> HttpResponse<T> send(HttpRequest request, HttpResponse.BodyHandler<T> handler)
+                throws IOException {
+            return (HttpResponse<T>) new RecordingHttpResponse(request, statusCode, body);
+        }
+
+        @Override
+        public <T> CompletableFuture<HttpResponse<T>> sendAsync(HttpRequest request,
+                HttpResponse.BodyHandler<T> handler) {
+            return CompletableFuture.failedFuture(new UnsupportedOperationException());
+        }
+
+        @Override
+        public <T> CompletableFuture<HttpResponse<T>> sendAsync(HttpRequest request,
+                HttpResponse.BodyHandler<T> handler, HttpResponse.PushPromiseHandler<T> pushHandler) {
+            return CompletableFuture.failedFuture(new UnsupportedOperationException());
+        }
+    }
+
+    private record RecordingHttpResponse(HttpRequest request, int statusCode, String body)
+            implements HttpResponse<String> {
+        @Override
+        public Optional<HttpResponse<String>> previousResponse() {
+            return Optional.empty();
+        }
+
+        @Override
+        public HttpHeaders headers() {
+            BiPredicate<String, String> acceptAll = (name, value) -> true;
+            return HttpHeaders.of(Map.of(), acceptAll);
+        }
+
+        @Override
+        public Optional<SSLSession> sslSession() {
+            return Optional.empty();
+        }
+
+        @Override
+        public URI uri() {
+            return request.uri();
+        }
+
+        @Override
+        public HttpClient.Version version() {
+            return HttpClient.Version.HTTP_1_1;
         }
     }
 

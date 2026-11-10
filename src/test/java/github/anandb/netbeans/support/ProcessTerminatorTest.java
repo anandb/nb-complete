@@ -5,6 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 import org.junit.jupiter.api.Test;
 
@@ -59,5 +62,44 @@ class ProcessTerminatorTest {
         assertFalse(proc.isAlive());
         // The SIGTERM wait is 3s; a forced kill must therefore take at least that long.
         assertTrue(elapsedMs >= 2_000, "expected the SIGTERM grace period, took " + elapsedMs + "ms");
+    }
+
+    @Test
+    void windowsPathFallsBackToForciblyDestroyingProcessWhenTaskkillIsUnavailable() {
+        assumeFalse(WINDOWS, "this exercises the Windows branch from a non-Windows JVM");
+        String previous = System.getProperty("os.name");
+        FakeProcess proc = new FakeProcess();
+        try {
+            System.setProperty("os.name", "Windows");
+            ProcessTerminator.terminate(proc);
+        } finally {
+            if (previous == null) {
+                System.clearProperty("os.name");
+            } else {
+                System.setProperty("os.name", previous);
+            }
+        }
+        assertTrue(proc.forciblyDestroyed);
+    }
+
+    private static final class FakeProcess extends Process {
+        private boolean alive = true;
+        private boolean forciblyDestroyed;
+
+        @Override public OutputStream getOutputStream() { return OutputStream.nullOutputStream(); }
+        @Override public InputStream getInputStream() { return InputStream.nullInputStream(); }
+        @Override public InputStream getErrorStream() { return InputStream.nullInputStream(); }
+        @Override public int waitFor() { return alive ? 1 : 0; }
+        @Override public boolean waitFor(long timeout, TimeUnit unit) { return false; }
+        @Override public Stream<ProcessHandle> descendants() { return Stream.empty(); }
+        @Override public int exitValue() { return alive ? 1 : 0; }
+        @Override public void destroy() { }
+        @Override public Process destroyForcibly() {
+            forciblyDestroyed = true;
+            alive = false;
+            return this;
+        }
+        @Override public boolean isAlive() { return alive; }
+        @Override public long pid() { return 123; }
     }
 }
