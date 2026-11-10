@@ -35,6 +35,8 @@ import github.anandb.netbeans.ui.UIBundle;
 // bridge to AttachmentManager. Stays imperative; the input area + preview
 // components it touches are bound by InputAreaSpec.
 public class ImagePasteTransferHandler extends TransferHandler {
+    private static final int WAYLAND_CLIPBOARD_ATTEMPTS = 3;
+    private static final long WAYLAND_CLIPBOARD_RETRY_DELAY_MS = 500;
 
     private static final long serialVersionUID = 1L;
 
@@ -161,13 +163,34 @@ public class ImagePasteTransferHandler extends TransferHandler {
                 reportError(NbBundle.getMessage(UIBundle.class, "ERR_WlPasteNotFound"));
                 return;
             }
-            AttachedFile attachedFile = fetchWaylandClipboardImage();
+            AttachedFile attachedFile = fetchWaylandClipboardImageWithRetry();
             if (attachedFile != null) {
                 SwingUtilities.invokeLater(() -> callback.onAttachmentAdded(attachedFile));
             }
         } catch (Exception e) {
             reportError(NbBundle.getMessage(UIBundle.class, "ERR_ReadClipboard", ExceptionUtils.getMessage(e)));
         }
+    }
+
+    private AttachedFile fetchWaylandClipboardImageWithRetry() throws Exception {
+        Exception lastFailure = null;
+        for (int attempt = 1; attempt <= WAYLAND_CLIPBOARD_ATTEMPTS; attempt++) {
+            try {
+                AttachedFile attachedFile = fetchWaylandClipboardImage();
+                if (attachedFile != null) {
+                    return attachedFile;
+                }
+            } catch (Exception e) {
+                lastFailure = e;
+            }
+            if (attempt < WAYLAND_CLIPBOARD_ATTEMPTS) {
+                Thread.sleep(WAYLAND_CLIPBOARD_RETRY_DELAY_MS);
+            }
+        }
+        if (lastFailure != null) {
+            throw lastFailure;
+        }
+        return null;
     }
 
     private void reportError(String message) {

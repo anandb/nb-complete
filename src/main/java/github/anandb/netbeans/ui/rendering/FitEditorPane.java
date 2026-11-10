@@ -25,7 +25,9 @@ import javax.swing.text.Document;
 import javax.swing.text.View;
 
 import org.openide.cookies.OpenCookie;
+import org.openide.cookies.LineCookie;
 import org.openide.loaders.DataObject;
+import org.openide.text.Line;
 import org.openide.util.RequestProcessor;
 import org.openide.util.NbBundle;
 import org.openide.filesystems.FileObject;
@@ -256,9 +258,9 @@ public class FitEditorPane extends JTextPane {
                 return;
             }
             URL url = event.getURL();
-            File file = localFileForLink(event.getDescription(), url);
-            if (file != null) {
-                LINK_RP.post(() -> openLocalFile(file));
+            LocalFileLink link = localFileForLink(event.getDescription(), url);
+            if (link != null) {
+                LINK_RP.post(() -> openLocalFile(link));
             } else if (url != null && isWebUrl(url)) {
                 HtmlBrowser.URLDisplayer.getDefault().showURL(url);
             }
@@ -267,28 +269,35 @@ public class FitEditorPane extends JTextPane {
         return pane;
     }
 
-    private static File localFileForLink(String description, URL url) {
+    private record LocalFileLink(File file, Integer line) {
+    }
+
+    private record LinkPath(String path, Integer line) {
+    }
+
+    private static LocalFileLink localFileForLink(String description, URL url) {
         try {
             if (url != null && "file".equalsIgnoreCase(url.getProtocol())) {
-                return fileFromUri(url.toURI());
+                return localFileFromUri(url.toURI());
             }
             if (description == null) {
                 return null;
             }
             if (description.startsWith("/")) {
                 try {
-                    return Path.of(URI.create(description).getPath()).toFile();
+                    URI uri = URI.create(description);
+                    return localFileFromPath(uri.getPath(), uri.getFragment());
                 } catch (IllegalArgumentException ex) {
-                    return new File(description);
+                    return localFileFromPath(description, null);
                 }
             }
             File path = new File(description);
             if (path.isAbsolute()) {
-                return path;
+                return localFileFromPath(description, null);
             }
             URI uri = URI.create(description);
             if ("file".equalsIgnoreCase(uri.getScheme())) {
-                return fileFromUri(uri);
+                return localFileFromUri(uri);
             }
             return null;
         } catch (Exception ex) {
@@ -297,18 +306,65 @@ public class FitEditorPane extends JTextPane {
         }
     }
 
-    private static File fileFromUri(URI uri) throws java.net.URISyntaxException {
-        URI withoutFragment = new URI(uri.getScheme(), uri.getAuthority(), uri.getPath(), uri.getQuery(), null);
-        return new File(withoutFragment);
+    private static LocalFileLink localFileFromUri(URI uri) throws java.net.URISyntaxException {
+        LinkPath linkPath = stripLineSuffix(uri.getPath(), uri.getFragment());
+        URI fileUri = new URI(uri.getScheme(), uri.getAuthority(), linkPath.path(), uri.getQuery(), null);
+        return new LocalFileLink(new File(fileUri), linkPath.line());
+    }
+
+    private static LocalFileLink localFileFromPath(String path, String fragment) {
+        LinkPath linkPath = stripLineSuffix(path, fragment);
+        return new LocalFileLink(Path.of(linkPath.path()).toFile(), linkPath.line());
+    }
+
+    private static LinkPath stripLineSuffix(String path, String fragment) {
+        Integer line = lineFromFragment(fragment);
+        String filePath = path;
+        int colon = path.lastIndexOf(':');
+        if (colon > 0 && colon < path.length() - 1 && hasOnlyDigits(path, colon + 1)) {
+            Integer suffixLine = positiveLine(path, colon + 1, path.length());
+            if (suffixLine != null) {
+                line = suffixLine;
+                filePath = path.substring(0, colon);
+            }
+        }
+        return new LinkPath(filePath, line);
+    }
+
+    private static Integer lineFromFragment(String fragment) {
+        if (fragment == null || fragment.length() < 2
+                || (fragment.charAt(0) != 'L' && fragment.charAt(0) != 'l')
+                || !hasOnlyDigits(fragment, 1)) {
+            return null;
+        }
+        return positiveLine(fragment, 1, fragment.length());
+    }
+
+    private static boolean hasOnlyDigits(String value, int start) {
+        for (int i = start; i < value.length(); i++) {
+            if (!Character.isDigit(value.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static Integer positiveLine(String value, int start, int end) {
+        try {
+            int line = Integer.parseInt(value.substring(start, end));
+            return line > 0 ? line : null;
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 
     private static boolean isWebUrl(URL url) {
         return "http".equalsIgnoreCase(url.getProtocol()) || "https".equalsIgnoreCase(url.getProtocol());
     }
 
-    private static void openLocalFile(File file) {
+    private static void openLocalFile(LocalFileLink link) {
         try {
-            File canonical = file.getCanonicalFile();
+            File canonical = link.file().getCanonicalFile();
             if (!isInOpenProject(canonical)) {
                 LOG.fine("Chat file link is outside the open projects: {0}", canonical);
                 return;
@@ -319,7 +375,23 @@ public class FitEditorPane extends JTextPane {
                 LOG.fine("Chat file link does not resolve to a file: {0}", normalized);
                 return;
             }
-            OpenCookie openCookie = DataObject.find(fileObject).getLookup().lookup(OpenCookie.class);
+            DataObject dataObject = DataObject.find(fileObject);
+            if (link.line() != null) {
+                LineCookie lineCookie = dataObject.getLookup().lookup(LineCookie.class);
+                if (lineCookie != null) {
+                    Line line = lineCookie.getLineSet().getOriginal(link.line() - 1);
+                    javax.swing.SwingUtilities.invokeLater(() -> {
+                        try {
+                            line.show(Line.ShowOpenType.OPEN, Line.ShowVisibilityType.NONE);
+                        } catch (Exception ex) {
+                            LOG.warn("Failed to navigate to chat file link line: {0}",
+                                    ExceptionUtils.getMessage(ex));
+                        }
+                    });
+                    return;
+                }
+            }
+            OpenCookie openCookie = dataObject.getLookup().lookup(OpenCookie.class);
             if (openCookie == null) {
                 LOG.fine("No editor opener is registered for chat file link: {0}", normalized);
                 return;
