@@ -183,6 +183,18 @@ class ToolDataExtractorTest {
     }
 
     @Test
+    void codexGenericEditTitleUsesPathFromDiffContent() throws Exception {
+        String path = "/home/project/src/App.java";
+        SessionUpdate update = claudeToolCall("Editing files", "edit", "{}",
+                "[{\"type\":\"diff\",\"path\":\"" + path + "\"}]");
+
+        String title = ToolDataExtractor.extractToolTitle("edit:call-1", null,
+                new MessageClassification(MessageType.tool_call, "edit"), update);
+
+        assertEquals("edit " + path, title);
+    }
+
+    @Test
     void claudeEmptyEditIsDetailLess() throws Exception {
         assertTrue(ToolDataExtractor.isDetailLessToolCall(claudeToolCall("Edit", "edit", "{}", null)));
     }

@@ -212,6 +212,11 @@ public final class ToolDataExtractor {
                 ri.has("filePath") ? ri.get("filePath").asText(null) : null
             );
         }
+        boolean genericEdit = ud != null && "edit".equalsIgnoreCase(defaultString(ud.kind()))
+                && "Editing files".equalsIgnoreCase(defaultString(ud.title()).strip());
+        if (path == null && genericEdit) {
+            path = extractFirstDiffPath(ud.content());
+        }
         // Fallback: extract from locations array (PI agent format)
         if (path == null && ud != null) {
             path = extractFirstLocationPath(ud);
@@ -220,6 +225,18 @@ public final class ToolDataExtractor {
         String toolName = ri != null && ri.has("tool") ? ri.get("tool").asText(null) : null;
 
         return firstNonBlank(path, title, toolName, "");
+    }
+
+    private static String extractFirstDiffPath(JsonNode content) {
+        if (content == null || !content.isArray()) return null;
+        for (JsonNode item : content) {
+            JsonNode path = item.path("path");
+            if ("diff".equals(item.path("type").asText()) && path.isTextual()
+                    && isNotBlank(path.asText())) {
+                return path.asText();
+            }
+        }
+        return null;
     }
 
     /** The kind goose puts in its title prefix, or null when the title carries none. */
