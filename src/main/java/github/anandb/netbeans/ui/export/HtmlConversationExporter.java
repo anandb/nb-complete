@@ -173,7 +173,7 @@ public final class HtmlConversationExporter {
     /** Loads an SVG file from the classpath and returns a base64 data URL. */
     private static String svgToDataUrl(String resourcePath) {
         try (InputStream in = HtmlConversationExporter.class
-                .getResourceAsStream(resourcePath)) {
+                .getResourceAsStream("/github/anandb/netbeans/ui/" + resourcePath)) {
             if (in == null) {
                 LOG.log(Level.WARNING, "SVG icon not found: {0}", resourcePath);
                 return "";
