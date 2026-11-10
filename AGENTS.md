@@ -12,6 +12,7 @@
 ## Build Commands
 - If a workflow helper fails and the user explicitly directs a direct Bash workflow, follow that
   instruction and continue with the project commands below.
+- **Code coverage target**: 96% project-wide. Use the JaCoCo report when checking coverage.
 - Build: `./mvnw package` (runs checks & tests — locally add the random-order profile per the rule
   below) | Clean: `./mvnw clean` | Quick: `./mvnw package -DskipTests`
 - **Always run tests with `-P random-test-order` locally**: any command you run that executes
