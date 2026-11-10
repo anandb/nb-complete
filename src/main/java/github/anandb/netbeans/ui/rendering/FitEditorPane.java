@@ -8,8 +8,12 @@ import java.awt.Insets;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
+import java.io.File;
 import java.io.StringReader;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URL;
+import java.nio.file.Path;
 
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
@@ -20,7 +24,16 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 import javax.swing.text.View;
 
+import org.openide.cookies.OpenCookie;
+import org.openide.loaders.DataObject;
+import org.openide.util.RequestProcessor;
 import org.openide.util.NbBundle;
+import org.openide.filesystems.FileObject;
+import org.openide.filesystems.FileUtil;
+import org.openide.awt.HtmlBrowser;
+import org.openide.util.Lookup;
+import org.netbeans.api.project.Project;
+import github.anandb.netbeans.contract.ProjectQuery;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.ui.UIBundle;
 
@@ -31,6 +44,7 @@ public class FitEditorPane extends JTextPane {
     private static final long serialVersionUID = 1L;
     private static final Logger LOG = Logger.from(FitEditorPane.class);
     private static final Color TRANSPARENT = new Color(0, 0, 0, 0);
+    private static final RequestProcessor LINK_RP = new RequestProcessor("chat-file-link", 1, true);
 
     private volatile int lastComputedHeight = 0;
     private volatile int lastComputedWidth = 0;
@@ -237,8 +251,100 @@ public class FitEditorPane extends JTextPane {
         pane.setBorder(new EmptyBorder(4, 20, 8, 6));
         pane.setAlignmentX(Component.LEFT_ALIGNMENT);
         pane.setAlignmentY(Component.CENTER_ALIGNMENT);
+        pane.addHyperlinkListener(event -> {
+            if (event.getEventType() != javax.swing.event.HyperlinkEvent.EventType.ACTIVATED) {
+                return;
+            }
+            URL url = event.getURL();
+            File file = localFileForLink(event.getDescription(), url);
+            if (file != null) {
+                LINK_RP.post(() -> openLocalFile(file));
+            } else if (url != null && isWebUrl(url)) {
+                HtmlBrowser.URLDisplayer.getDefault().showURL(url);
+            }
+        });
         pane.setText(styledHtml);
         return pane;
+    }
+
+    private static File localFileForLink(String description, URL url) {
+        try {
+            if (url != null && "file".equalsIgnoreCase(url.getProtocol())) {
+                return fileFromUri(url.toURI());
+            }
+            if (description == null) {
+                return null;
+            }
+            if (description.startsWith("/")) {
+                try {
+                    return Path.of(URI.create(description).getPath()).toFile();
+                } catch (IllegalArgumentException ex) {
+                    return new File(description);
+                }
+            }
+            File path = new File(description);
+            if (path.isAbsolute()) {
+                return path;
+            }
+            URI uri = URI.create(description);
+            if ("file".equalsIgnoreCase(uri.getScheme())) {
+                return fileFromUri(uri);
+            }
+            return null;
+        } catch (Exception ex) {
+            LOG.fine("Unable to resolve chat hyperlink: {0}", ExceptionUtils.getMessage(ex));
+            return null;
+        }
+    }
+
+    private static File fileFromUri(URI uri) throws java.net.URISyntaxException {
+        URI withoutFragment = new URI(uri.getScheme(), uri.getAuthority(), uri.getPath(), uri.getQuery(), null);
+        return new File(withoutFragment);
+    }
+
+    private static boolean isWebUrl(URL url) {
+        return "http".equalsIgnoreCase(url.getProtocol()) || "https".equalsIgnoreCase(url.getProtocol());
+    }
+
+    private static void openLocalFile(File file) {
+        try {
+            File canonical = file.getCanonicalFile();
+            if (!isInOpenProject(canonical)) {
+                LOG.fine("Chat file link is outside the open projects: {0}", canonical);
+                return;
+            }
+            Path normalized = FileUtil.normalizeFile(canonical).toPath();
+            FileObject fileObject = FileUtil.toFileObject(normalized.toFile());
+            if (fileObject == null || fileObject.isFolder()) {
+                LOG.fine("Chat file link does not resolve to a file: {0}", normalized);
+                return;
+            }
+            OpenCookie openCookie = DataObject.find(fileObject).getLookup().lookup(OpenCookie.class);
+            if (openCookie == null) {
+                LOG.fine("No editor opener is registered for chat file link: {0}", normalized);
+                return;
+            }
+            javax.swing.SwingUtilities.invokeLater(openCookie::open);
+        } catch (Exception ex) {
+            LOG.warn("Failed to open chat file link: {0}", ExceptionUtils.getMessage(ex));
+        }
+    }
+
+    private static boolean isInOpenProject(File file) throws IOException {
+        ProjectQuery projectQuery = Lookup.getDefault().lookup(ProjectQuery.class);
+        Project[] projects = projectQuery == null ? new Project[0] : projectQuery.getAllOpenProjects();
+        String target = file.getCanonicalPath();
+        for (Project project : projects) {
+            File projectDirectory = FileUtil.toFile(project.getProjectDirectory());
+            if (projectDirectory == null) {
+                continue;
+            }
+            String root = projectDirectory.getCanonicalPath();
+            if (target.equals(root) || target.startsWith(root + File.separator)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
