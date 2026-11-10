@@ -9,6 +9,8 @@ import java.text.NumberFormat;
 import java.util.Locale;
 
 import javax.swing.JComponent;
+import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
 
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
@@ -41,6 +43,7 @@ public final class ContextUsageMeter extends JComponent {
     private static final double UNKNOWN_FRACTION = -1.0;
 
     private volatile double fraction = UNKNOWN_FRACTION;
+    private Runnable compactAction = () -> { };
 
     @Override
     public Dimension getPreferredSize() {
@@ -65,6 +68,15 @@ public final class ContextUsageMeter extends JComponent {
         // cannot NPE.
         initAccessibleContext();
         setRequestFocusEnabled(false);
+        JPopupMenu popup = new JPopupMenu();
+        JMenuItem compactItem = new JMenuItem(NbBundle.getMessage(UIBundle.class, "LBL_CompactContext"));
+        compactItem.addActionListener(event -> compactAction.run());
+        popup.add(compactItem);
+        setComponentPopupMenu(popup);
+    }
+
+    public void setCompactAction(Runnable action) {
+        compactAction = action != null ? action : () -> { };
     }
 
     private void initAccessibleContext() {

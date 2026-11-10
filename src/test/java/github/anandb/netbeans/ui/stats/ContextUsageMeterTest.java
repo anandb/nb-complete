@@ -1,11 +1,14 @@
 package github.anandb.netbeans.ui.stats;
 
+import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
 import javax.swing.SwingUtilities;
 
 import org.junit.jupiter.api.Test;
 import org.openide.util.NbBundle;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import github.anandb.netbeans.ui.UIBundle;
 
@@ -102,5 +105,20 @@ class ContextUsageMeterTest {
         assertEquals(72, m.getPreferredSize().width);
         assertEquals(m.getPreferredSize(), m.getMinimumSize());
         assertEquals(m.getPreferredSize(), m.getMaximumSize());
+    }
+
+    @Test
+    void compactContextMenuRunsConfiguredAction() {
+        ContextUsageMeter meter = new ContextUsageMeter();
+        boolean[] invoked = {false};
+        meter.setCompactAction(() -> invoked[0] = true);
+
+        JPopupMenu popup = meter.getComponentPopupMenu();
+        assertNotNull(popup);
+        JMenuItem compact = (JMenuItem) popup.getComponent(0);
+        assertEquals("Compact", compact.getText());
+        compact.doClick();
+
+        assertTrue(invoked[0]);
     }
 }

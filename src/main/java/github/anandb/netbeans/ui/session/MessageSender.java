@@ -157,6 +157,15 @@ public class MessageSender {
 
     /** Sends (or intercepts) the current message text. */
     public void sendMessage() {
+        sendMessage(inputArea.getText(), false);
+    }
+
+    /** Sends a command without placing it in or clearing the user's composer draft. */
+    public void sendCompactCommand() {
+        sendMessage("/compact", true);
+    }
+
+    private void sendMessage(String text, boolean preserveComposer) {
         if (!verifyPlatformServices()) {
             return;
         }
@@ -175,7 +184,6 @@ public class MessageSender {
             return;
         }
 
-        String text = inputArea.getText(); // Don't trim user input spaces
         if (text.isEmpty() && attachmentManager.getAttachments().isEmpty()) {
             return;
         }
@@ -185,6 +193,9 @@ public class MessageSender {
 
         SlashRouting slash = interceptSlashCommand(text);
         if (slash.handled()) {
+            if (!preserveComposer) {
+                inputArea.setText("");
+            }
             return;
         }
 
@@ -200,14 +211,14 @@ public class MessageSender {
         if (midTurn && !slash.forwarded() && !isPermissionPending() && trySteer(text, proc)) {
             return;
         }
-        if (midTurn && queueForTurnEnd(text, proc)) {
+        if (midTurn && queueForTurnEnd(text, proc, preserveComposer)) {
             return;
         }
         if (blockedByPendingPermission()) {
             return;
         }
 
-        dispatchPrompt(sessionId, text, slash, midTurn, turnEnded);
+        dispatchPrompt(sessionId, text, slash, midTurn, turnEnded, preserveComposer);
     }
 
 
@@ -244,7 +255,7 @@ public class MessageSender {
 
     /** Holds the text until the current turn ends. A queueing harness cannot take a second
      *  prompt mid-turn, and a queued message cannot supersede a pending permission decision. */
-    private boolean queueForTurnEnd(String text, ProcessControl proc) {
+    private boolean queueForTurnEnd(String text, ProcessControl proc, boolean preserveComposer) {
         Harness caps = proc == null ? null : proc.getCapabilities();
         if (proc == null || caps == null || !caps.requiresMessageQueue()) {
             return false;
@@ -254,11 +265,15 @@ public class MessageSender {
             // Bubble is NOT drawn here — it is drawn later in sendQueuedMessage(), when the
             // combined text is actually posted. This keeps the panel free of half-visible
             // queued echoes.
-            inputArea.setText("");
-            // Attachments are dropped, not queued: queued messages merge into ONE prompt
-            // (see MessageQueueManager.flushAll), so per-message file blocks would be ambiguous.
-            attachmentManager.clear();
-            paperclipUpdater.run();
+            if (!preserveComposer) {
+                inputArea.setText("");
+            }
+            // Queued user sends drop attachments because messages merge into one prompt;
+            // implicit commands leave the current composer attachments untouched.
+            if (!preserveComposer) {
+                attachmentManager.clear();
+                paperclipUpdater.run();
+            }
         }
         return true;
     }
@@ -278,21 +293,23 @@ public class MessageSender {
 
     /** Issues session/prompt for an accepted send and wires its completion handlers. */
     private void dispatchPrompt(String sessionId, String text, SlashRouting slash,
-            boolean midTurn, boolean turnEnded) {
+            boolean midTurn, boolean turnEnded, boolean preserveComposer) {
         ProcessControl sendProc = processService.get();
         // Accepted, so the forwarded command's own echo is safe to draw now.
         if (slash.forwardedEcho() != null) {
             drawSlashEcho(slash.forwardedEcho());
         }
-        beginSending();
+        beginSending(preserveComposer);
         PromptPayload payload = buildPromptPayload(sendProc, text, slash);
-        beginTurn(turnEnded);
-        sendPrompt(sendProc, sessionId, text, payload, midTurn);
+        beginTurn(turnEnded, !isCompactCommand(text));
+        sendPrompt(sendProc, sessionId, text, payload, midTurn, preserveComposer);
     }
 
     /** Switches the panel into Sending/Stop and arms the stall watchdog. */
-    private void beginSending() {
-        inputArea.setText("");
+    private void beginSending(boolean preserveComposer) {
+        if (!preserveComposer) {
+            inputArea.setText("");
+        }
         statusController.setStatus("STATUS_Sending");
         statusController.startThinking();
         statusController.updateButtonState(true);
@@ -333,8 +350,10 @@ public class MessageSender {
     }
 
     /** Turn-start bookkeeping: the auto-backup and the permission epoch. */
-    private void beginTurn(boolean turnEnded) {
-        backupUncommittedChanges();
+    private void beginTurn(boolean turnEnded, boolean shouldBackupChanges) {
+        if (shouldBackupChanges) {
+            backupUncommittedChanges();
+        }
         // Advance the permission epoch only when starting a new turn. Mid-turn
         // steering sends (OpenCode v1) must NOT advance: a permission request
         // captured on the reader thread between two steering sends would be
@@ -344,9 +363,17 @@ public class MessageSender {
         }
     }
 
+    private boolean isCompactCommand(String text) {
+        String command = text.trim();
+        if (!command.regionMatches(true, 0, "/compact", 0, 8)) {
+            return false;
+        }
+        return command.length() == 8 || Character.isWhitespace(command.charAt(8));
+    }
+
     /** Issues the prompt and routes its completion and failure back to the EDT handlers. */
     private void sendPrompt(ProcessControl sendProc, String sessionId, String text,
-            PromptPayload payload, boolean midTurn) {
+            PromptPayload payload, boolean midTurn, boolean preserveComposer) {
         // Editor Context — never for a slash command: the harness interprets the command
         // itself and an attached context breaks it (devin). Only plain prompts carry it,
         // and only when the agent injects context into prompts at all.
@@ -371,7 +398,9 @@ public class MessageSender {
                     SwingUtilities.invokeLater(() -> onPromptCompleted(gen, result));
                 })
                 .exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() -> onPromptFailed(gen, prevGen, steeringSend, text, ex, payload));
+                    String restoreText = preserveComposer ? "" : text;
+                    SwingUtilities.invokeLater(() -> onPromptFailed(
+                            gen, prevGen, steeringSend, restoreText, ex, payload));
                     return null;
                 });
     }

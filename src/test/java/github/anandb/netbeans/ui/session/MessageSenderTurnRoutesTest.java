@@ -121,6 +121,73 @@ class MessageSenderTurnRoutesTest {
     }
 
     @Test
+    void compactCommandSendsWithoutClearingComposerDraft() throws Exception {
+        session(true);
+        input.append("keep this draft");
+
+        sender.sendCompactCommand();
+
+        verify(proc).sendMessage(SESSION, "/compact", null, java.util.List.of());
+        assertEquals("keep this draft", input.toString());
+        verify(inputArea, never()).setText("");
+    }
+
+    @Test
+    void compactCommandQueuesMidTurnAndPreservesDraftAndAttachments() throws Exception {
+        session(false);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.GOOSE);
+        when(proc.getActiveRunId(SESSION)).thenReturn(null);
+        input.append("keep this draft");
+        attachments.add(new AttachedFile("draft.txt", "text/plain", new byte[] {1}, 1,
+                "file:///draft.txt"));
+
+        sender.sendCompactCommand();
+
+        verify(queue).enqueue("/compact");
+        verify(proc, never()).sendMessage(anyString(), anyString(), any(), any());
+        assertEquals("keep this draft", input.toString());
+        assertEquals(1, attachments.size());
+    }
+
+    @Test
+    void compactCommandFailureDoesNotPutCommandInComposer() throws Exception {
+        session(true);
+        CompletableFuture<JsonNode> pending = new CompletableFuture<>();
+        when(proc.sendMessage(anyString(), anyString(), any(), any())).thenReturn(pending);
+
+        sender.sendCompactCommand();
+        pending.completeExceptionally(new RuntimeException("compact failed"));
+        drainEdt();
+
+        assertEquals("", input.toString());
+    }
+
+    @Test
+    void compactCommandRespectsComposerLock() throws Exception {
+        session(true);
+        input.append("keep this draft");
+        when(statusController.isComposerLocked()).thenReturn(true);
+
+        sender.sendCompactCommand();
+
+        verify(proc, never()).sendMessage(anyString(), anyString(), any(), any());
+        assertEquals("keep this draft", input.toString());
+    }
+
+    @Test
+    void compactCommandWithNoSessionDoesNotSendOrChangeDraft() throws Exception {
+        SessionControl session = mock(SessionControl.class);
+        when(session.getCurrentSessionId()).thenReturn(null);
+        inject("sessionService", (SessionService) () -> session);
+        input.append("keep this draft");
+
+        sender.sendCompactCommand();
+
+        verify(proc, never()).sendMessage(anyString(), anyString(), any(), any());
+        assertEquals("keep this draft", input.toString());
+    }
+
+    @Test
     void aSteerableHarnessSteersInsteadOfQueueingOrSending() throws Exception {
         session(false);
         when(proc.getCapabilities()).thenReturn(HarnessCatalog.GOOSE);
