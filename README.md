@@ -254,5 +254,4 @@ This software is released under the Apache License, Version 2.0. Further details
 ## Support
 
 If you find BeanBot useful, consider [sponsoring](https://www.buymeacoffee.com/anandb) the project to support its continued development and maintenance.
-
 BeanBot is free and open source. Donations are entirely optional, and using the project does not require payment.
