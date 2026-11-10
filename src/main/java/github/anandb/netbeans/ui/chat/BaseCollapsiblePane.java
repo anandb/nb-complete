@@ -577,7 +577,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         textArea.setEditable(false);
         textArea.setOpaque(false);
         textArea.setBackground(null);
-        textArea.setFont(ThemeManager.getFont().deriveFont(ThemeManager.getFont().getSize() - 1f));
+        textArea.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN, ThemeManager.getFont().getSize() - 1f));
         textArea.setBorder(BorderFactory.createEmptyBorder(8, 20, 8, 6));
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);

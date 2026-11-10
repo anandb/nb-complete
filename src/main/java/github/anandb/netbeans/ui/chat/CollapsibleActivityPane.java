@@ -10,7 +10,6 @@ import javax.swing.Icon;
 import javax.swing.JTextArea;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
-import github.anandb.netbeans.ui.rendering.MarkdownStyledRenderer;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 
@@ -105,10 +104,8 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
     }
 
     public void setSegmentedContent(List<CollapsibleToolPane.ToolSegment> blocks) {
-        ColorTheme theme = ThemeManager.getCurrentTheme();
         String plainText = buildSegmentedContent(blocks,
-                block -> isNotBlank(block.text())
-                        ? MarkdownStyledRenderer.render(block.text(), theme) : null,
+                block -> isNotBlank(block.text()) ? createActivityTextArea(block.text()) : null,
                 true, true);
         combinedPlainTextBuilder.setLength(0);
         combinedPlainTextBuilder.append(plainText);
