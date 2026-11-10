@@ -6,9 +6,7 @@ import java.awt.Component;
 import java.awt.Font;
 import java.util.List;
 
-import javax.swing.BoxLayout;
 import javax.swing.Icon;
-import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
@@ -108,30 +106,9 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
      * via {@link JTextArea}.
      */
     public void setSegmentedContent(List<ToolSegment> blocks) {
-        isSegmented = true;
-        contentPanel.removeAll();
-
-        StringBuilder plainText = new StringBuilder();
-        JPanel multiPanel = new JPanel();
-        multiPanel.setLayout(new BoxLayout(multiPanel, BoxLayout.Y_AXIS));
-        multiPanel.setOpaque(false);
-        multiPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        ColorTheme theme = ThemeManager.getCurrentTheme();
-
-        for (int i = 0; i < blocks.size(); i++) {
-            ToolSegment block = blocks.get(i);
-            if (i > 0) {
-                plainText.append("\n\n");
-            }
-            multiPanel.add(createSegmentPane(block.text(), block.isThought(), block.title(), theme, createActivityTextArea(block.text()), null));
-            plainText.append(block.text());
-        }
-        // Build combined plain text for copy button
-        combinedPlainText = plainText.toString();
-        contentPanel.add(multiPanel, BorderLayout.CENTER);
-        // Do NOT revalidate here — the pane may not yet be in a validated
-        // container. Let the caller’s revalidate (e.g. messagesContainer)
-        // lay everything out with proper widths.
+        // The caller revalidates (e.g. messagesContainer); the pane may not be
+        // in a validated container yet.
+        combinedPlainText = buildSegmentedContent(blocks,
+                block -> createActivityTextArea(block.text()), false, false);
     }
 }

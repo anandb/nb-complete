@@ -6,9 +6,7 @@ import java.awt.Component;
 import java.util.List;
 
 import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
 import javax.swing.Icon;
-import javax.swing.JPanel;
 import javax.swing.JTextArea;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
@@ -107,34 +105,13 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
     }
 
     public void setSegmentedContent(List<CollapsibleToolPane.ToolSegment> blocks) {
-        isSegmented = true;
-        contentPanel.removeAll();
-
-        combinedPlainTextBuilder.setLength(0);
-        JPanel multiPanel = new JPanel();
-        multiPanel.setLayout(new BoxLayout(multiPanel, BoxLayout.Y_AXIS));
-        multiPanel.setOpaque(false);
-        multiPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-
         ColorTheme theme = ThemeManager.getCurrentTheme();
-
-        for (int i = 0; i < blocks.size(); i++) {
-            CollapsibleToolPane.ToolSegment block = blocks.get(i);
-            if (i > 0) {
-                combinedPlainTextBuilder.append("\n\n");
-            }
-            Component bodyComp = (isNotBlank(block.text()))
-                    ? MarkdownStyledRenderer.render(block.text(), theme)
-                    : null;
-            JPanel segPane = createSegmentPane(block.text(), block.isThought(), block.title(), theme, bodyComp, this::toggle);
-            multiPanel.add(segPane);
-            combinedPlainTextBuilder.append(block.text() != null ? block.text() : "");
-        }
-        contentPanel.add(multiPanel, BorderLayout.CENTER);
-
-        // When expanded and segmented, hide the main header so segment headers
-        // act as the toggle surface. Restored on collapse.
-        header.setVisible(!(expanded && isSegmented));
+        String plainText = buildSegmentedContent(blocks,
+                block -> isNotBlank(block.text())
+                        ? MarkdownStyledRenderer.render(block.text(), theme) : null,
+                true, true);
+        combinedPlainTextBuilder.setLength(0);
+        combinedPlainTextBuilder.append(plainText);
     }
 
     @Override

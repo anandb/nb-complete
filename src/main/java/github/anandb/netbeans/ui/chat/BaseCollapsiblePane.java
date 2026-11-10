@@ -12,10 +12,13 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 
 import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
 import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -579,6 +582,42 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);
         return textArea;
+    }
+
+    /**
+     * Replaces the content area with one segment pane per block and returns the plain text
+     * joined by blank lines. The caller supplies the body component for a segment.
+     *
+     * @param toggleSegments          make each segment header toggle this pane
+     * @param hideHeaderWhenExpanded  hide the pane header while it is expanded
+     */
+    protected final String buildSegmentedContent(List<CollapsibleToolPane.ToolSegment> blocks,
+            Function<CollapsibleToolPane.ToolSegment, Component> bodyFactory,
+            boolean toggleSegments, boolean hideHeaderWhenExpanded) {
+        isSegmented = true;
+        contentPanel.removeAll();
+
+        JPanel multiPanel = new JPanel();
+        multiPanel.setLayout(new BoxLayout(multiPanel, BoxLayout.Y_AXIS));
+        multiPanel.setOpaque(false);
+        multiPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        ColorTheme theme = ThemeManager.getCurrentTheme();
+        StringBuilder plainText = new StringBuilder();
+        for (int i = 0; i < blocks.size(); i++) {
+            CollapsibleToolPane.ToolSegment block = blocks.get(i);
+            if (i > 0) {
+                plainText.append("\n\n");
+            }
+            multiPanel.add(createSegmentPane(block.text(), block.isThought(), block.title(), theme,
+                    bodyFactory.apply(block), toggleSegments ? this::toggle : null));
+            plainText.append(block.text() != null ? block.text() : "");
+        }
+        contentPanel.add(multiPanel, BorderLayout.CENTER);
+        if (hideHeaderWhenExpanded) {
+            header.setVisible(!(expanded && isSegmented));
+        }
+        return plainText.toString();
     }
 
     protected static JPanel createSegmentPane(String text, boolean isThought, String title,
