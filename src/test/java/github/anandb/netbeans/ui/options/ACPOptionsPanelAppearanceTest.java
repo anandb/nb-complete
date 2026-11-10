@@ -129,6 +129,40 @@ class ACPOptionsPanelAppearanceTest {
     }
 
     @Test
+    void appearanceOnlySaveLeavesProcessSettingsUntouched() throws Exception {
+        Preferences prefs = NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
+        String pathBefore = prefs.get(PreferenceKeys.ACP_EXECUTABLE_PATH, null);
+        String argsBefore = prefs.get(PreferenceKeys.PROCESS_ARGUMENTS, null);
+        boolean mcpBefore = PluginSettings.isMcpServerEnabled();
+        int iconSizeBefore = PluginSettings.getToolbarIconSize();
+        boolean wslBefore = PluginSettings.isUseWsl();
+        int mcpPortBefore = PluginSettings.getMcpServerPort();
+        boolean projectSwitchBefore = PluginSettings.isProjectSwitchRestartConfigured();
+
+        ACPOptionsPanel panel = new ACPOptionsPanel(new ACPOptionsPanelController());
+        panel.load();
+        JComboBox<String> fonts = fontCombo(panel);
+        assumeTrue(fonts.getItemCount() > 1, "no installed font families to choose from");
+        fonts.setSelectedIndex(1);
+        panel.store();
+
+        assertEquals(pathBefore, prefs.get(PreferenceKeys.ACP_EXECUTABLE_PATH, null),
+                "an appearance-only save must not write the binary path");
+        assertEquals(argsBefore, prefs.get(PreferenceKeys.PROCESS_ARGUMENTS, null),
+                "an appearance-only save must not write process arguments");
+        assertEquals(mcpBefore, PluginSettings.isMcpServerEnabled(),
+                "an appearance-only save must not toggle the MCP server");
+        assertEquals(iconSizeBefore, PluginSettings.getToolbarIconSize(),
+                "an appearance-only save must not write the toolbar icon size");
+        assertEquals(wslBefore, PluginSettings.isUseWsl(),
+                "an appearance-only save must not toggle WSL");
+        assertEquals(mcpPortBefore, PluginSettings.getMcpServerPort(),
+                "an appearance-only save must not write the MCP port");
+        assertEquals(projectSwitchBefore, PluginSettings.isProjectSwitchRestartConfigured(),
+                "an appearance-only save must not rewrite the project-switch restart option");
+    }
+
+    @Test
     void appearanceOverridesLandOnTheirOwnPreferenceKeys() throws Exception {
         ACPOptionsPanel panel = new ACPOptionsPanel(new ACPOptionsPanelController());
         panel.load();

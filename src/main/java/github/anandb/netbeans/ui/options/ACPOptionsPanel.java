@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.prefs.Preferences;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -175,6 +176,16 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private JSpinner lineHeightCorrectionSpinner;
 
     private boolean userEditedPath;
+    /** Values shown by {@link #load()}; an untouched restart-scoped setting is never rewritten. */
+    private String loadedExecutablePath;
+    private String loadedProcessArguments;
+    private boolean loadedMcpServerEnabled;
+    private String loadedHarnessId;
+    private String loadedHarnessName;
+    private int loadedToolbarIconSize;
+    private boolean loadedUseWsl;
+    private int loadedMcpServerPort;
+    private boolean loadedProjectSwitchRestart;
     private String preambleText;
     private String previousIconPath;
     /** Maps raw path → display label (e.g. "/usr/local/bin/opencode" → "/usr/local/bin/opencode (WSL)"). */
@@ -1240,6 +1251,21 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         mcpPortSpinner.setValue(PluginSettings.getMcpServerPort());
         useWslCheckbox.setSelected(PluginSettings.isUseWsl());
         updateGeminiModelHint();
+
+        loadedExecutablePath = getExecutablePath();
+        loadedProcessArguments = argsField.getText();
+        loadedMcpServerEnabled = mcpServerCheckbox.isSelected();
+        loadedHarnessId = PlatformBridge.prefStoreSafe().get(PreferenceKeys.ACP_HARNESS_ID, null);
+        loadedHarnessName =
+                PlatformBridge.prefStoreSafe().get(PreferenceKeys.ACP_HARNESS_DISPLAY_NAME, null);
+        Object loadedSizeItem = toolbarIconCombo.getSelectedItem();
+        loadedToolbarIconSize = loadedSizeItem != null
+                ? Integer.parseInt(loadedSizeItem.toString())
+                : PluginSettings.getToolbarIconSize();
+        loadedUseWsl = useWslCheckbox.isSelected();
+        loadedMcpServerPort = (Integer) mcpPortSpinner.getValue();
+        loadedProjectSwitchRestart = projectSwitchRestartCheckbox.isSelected();
+
         // Reopening Options (including after Cancel) must still show what is outstanding.
         refreshPendingRestartBar();
     }
@@ -1610,16 +1636,27 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
 
     public void store() {
         String pathToSave = getExecutablePath();
-        PlatformBridge.prefStoreSafe().put(PreferenceKeys.ACP_EXECUTABLE_PATH, pathToSave);
-        PlatformBridge.prefStoreSafe().put(PreferenceKeys.PROCESS_ARGUMENTS, argsField.getText());
+        String argsToSave = argsField.getText();
+        // Persist process settings only when they changed: an Appearance-only save must not
+        // rewrite the binary path/args, which would fire the restart notification.
+        if (!Objects.equals(pathToSave, loadedExecutablePath)) {
+            PlatformBridge.prefStoreSafe().put(PreferenceKeys.ACP_EXECUTABLE_PATH, pathToSave);
+        }
+        if (!Objects.equals(argsToSave, loadedProcessArguments)) {
+            PlatformBridge.prefStoreSafe().put(PreferenceKeys.PROCESS_ARGUMENTS, argsToSave);
+        }
         // Persist the chosen harness, not just the one the file name implies: a custom
         // binary or a container launcher (docker/podman) cannot reveal the harness.
         String binName = BinaryResolver.binaryNameFromPath(pathToSave);
         HarnessSelection.Selection choice = (HarnessSelection.Selection) harnessCombo.getSelectedItem();
-        PlatformBridge.prefStoreSafe().put(
-                PreferenceKeys.ACP_HARNESS_ID, HarnessSelection.harnessId(choice, binName));
-        PlatformBridge.prefStoreSafe().put(
-                PreferenceKeys.ACP_HARNESS_DISPLAY_NAME, HarnessSelection.displayName(choice, binName));
+        String harnessIdToSave = HarnessSelection.harnessId(choice, binName);
+        String harnessNameToSave = HarnessSelection.displayName(choice, binName);
+        if (!Objects.equals(harnessIdToSave, loadedHarnessId)) {
+            PlatformBridge.prefStoreSafe().put(PreferenceKeys.ACP_HARNESS_ID, harnessIdToSave);
+        }
+        if (!Objects.equals(harnessNameToSave, loadedHarnessName)) {
+            PlatformBridge.prefStoreSafe().put(PreferenceKeys.ACP_HARNESS_DISPLAY_NAME, harnessNameToSave);
+        }
         if (PluginSettings.isPreambleTooLong(preambleText)) {
             // One preference value is capped at 8192 chars. Keep the previously
             // stored preamble and explain, instead of letting put() throw out of store().
@@ -1639,8 +1676,12 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         PluginSettings.setCustomUserIcon(iconPathField.getText());
 
         String selectedSize = (String) toolbarIconCombo.getSelectedItem();
+        int sizeToSave = loadedToolbarIconSize;
         if (selectedSize != null) {
-            PluginSettings.setToolbarIconSize(Integer.parseInt(selectedSize));
+            sizeToSave = Integer.parseInt(selectedSize);
+            if (sizeToSave != loadedToolbarIconSize) {
+                PluginSettings.setToolbarIconSize(sizeToSave);
+            }
         }
 
         String selectedChatFont = (String) chatFontCombo.getSelectedItem();
@@ -1661,12 +1702,24 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         PluginSettings.setAcpFsPolicy((AcpFsPolicy) fsPolicyCombo.getSelectedItem());
         PluginSettings.setRunCommandAllowlist(runCommandAllowlist);
         PluginSettings.setRunCommandDenylist(runCommandDenylist);
-        PluginSettings.setProjectSwitchRestartEnabled(projectSwitchRestartCheckbox.isSelected());
+        boolean projectSwitchToSave = projectSwitchRestartCheckbox.isSelected();
+        if (projectSwitchToSave != loadedProjectSwitchRestart) {
+            PluginSettings.setProjectSwitchRestartEnabled(projectSwitchToSave);
+        }
         PluginSettings.setMarkdownProjectEnabled(markdownProjectCheckbox.isSelected());
         PluginSettings.setDiffIdeFontEnabled(diffIdeFontCheckbox.isSelected());
-        PluginSettings.setMcpServerEnabled(mcpServerCheckbox.isSelected());
-        PluginSettings.setMcpServerPort((Integer) mcpPortSpinner.getValue());
-        PluginSettings.setUseWsl(useWslCheckbox.isSelected());
+        boolean mcpEnabledToSave = mcpServerCheckbox.isSelected();
+        if (mcpEnabledToSave != loadedMcpServerEnabled) {
+            PluginSettings.setMcpServerEnabled(mcpEnabledToSave);
+        }
+        int mcpPortToSave = (Integer) mcpPortSpinner.getValue();
+        if (mcpPortToSave != loadedMcpServerPort) {
+            PluginSettings.setMcpServerPort(mcpPortToSave);
+        }
+        boolean useWslToSave = useWslCheckbox.isSelected();
+        if (useWslToSave != loadedUseWsl) {
+            PluginSettings.setUseWsl(useWslToSave);
+        }
 
         String newIconPath = iconPathField.getText();
         String oldPath = previousIconPath != null ? previousIconPath : "";
@@ -1691,6 +1744,15 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         // Recompute here: every restart-scoped value has been stored by now, and the
         // comparison against the startup snapshot is what decides the bar.
         refreshPendingRestartBar();
+        loadedExecutablePath = pathToSave;
+        loadedProcessArguments = argsToSave;
+        loadedMcpServerEnabled = mcpEnabledToSave;
+        loadedHarnessId = harnessIdToSave;
+        loadedHarnessName = harnessNameToSave;
+        loadedToolbarIconSize = sizeToSave;
+        loadedMcpServerPort = mcpPortToSave;
+        loadedUseWsl = useWslToSave;
+        loadedProjectSwitchRestart = projectSwitchToSave;
     }
 
     /**
