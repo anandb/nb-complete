@@ -74,7 +74,7 @@ public class MessageBubble extends JPanel implements Scrollable {
     private static final Dimension MAX_SIZE = new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE);
 
     /** Corner radius: a card, not a pill (32 made short bubbles look like capsules). */
-    private static final int BUBBLE_RADIUS = 18;
+    private static final int BUBBLE_RADIUS = 22;
     /** Bubble padding; the text panes add their own inset on top of this. */
     private static final int BUBBLE_PAD = 6;
     /**

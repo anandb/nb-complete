@@ -6,6 +6,7 @@ import java.awt.Component;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 
@@ -16,6 +17,7 @@ import javax.swing.border.EmptyBorder;
 import org.openide.util.RequestProcessor;
 
 import github.anandb.netbeans.pattern.CodeFencePattern;
+import github.anandb.netbeans.pattern.EmbeddedImageLinkPattern;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
 
@@ -34,7 +36,6 @@ import github.anandb.netbeans.ui.components.RoundedPanel;
 class BubbleContentRenderer {
 
     private static final Logger LOG = Logger.from(BubbleContentRenderer.class);
-
     private final JPanel segments;
     private final StringBuilder text;
     private final String role;
@@ -52,8 +53,10 @@ class BubbleContentRenderer {
     private int fontSizeOverride = -1;
     public record CollapsibleState(boolean expanded) {}
 
-    /** Text inset inside the bubble padding; keeps user and assistant text on the same grid. */
+    /** Text inset inside the bubble padding for rendered assistant HTML. */
     private static final EmptyBorder CHAT_TEXT_INSETS = new EmptyBorder(6, 12, 6, 12);
+    /** Matches the extra vertical paragraph spacing in rendered assistant HTML. */
+    private static final EmptyBorder USER_CHAT_TEXT_INSETS = new EmptyBorder(14, 12, 14, 12);
 
     BubbleContentRenderer(JPanel segments, StringBuilder text, String role,
                           ArrayList<CollapsibleState> codeStates, BubbleStreamer streamer) {
@@ -140,7 +143,7 @@ class BubbleContentRenderer {
             }
             lastRenderedTextLength = userLen;
             lastRenderedTextHash = userHash;
-            String userText = text.toString();
+            String userText = imageAttachmentMetadata(text.toString());
             if (segments.getComponentCount() > 0 && segments.getComponent(0) instanceof JTextArea ta) {
                 if (!userText.equals(ta.getText())) {
                     ta.setText(userText);
@@ -148,7 +151,7 @@ class BubbleContentRenderer {
             } else {
                 segments.removeAll();
                 JTextArea pane = streamer.createWrappingTextArea(theme, userText);
-                pane.setBorder(CHAT_TEXT_INSETS);
+                pane.setBorder(USER_CHAT_TEXT_INSETS);
                 // Same size the HTML assistant bubbles get (HtmlContentPreparer):
                 // the preference, or its inherited default when unset.
                 int chatFontSize = PluginSettings.getChatFontSize();
@@ -216,6 +219,23 @@ class BubbleContentRenderer {
         }
 
         segments.revalidate();
+    }
+
+    static String imageAttachmentMetadata(String content) {
+        Matcher matcher = EmbeddedImageLinkPattern.matcher(content);
+        if (!matcher.find()) {
+            return content;
+        }
+        StringBuffer display = new StringBuffer(Math.min(content.length(), 256));
+        do {
+            String label = matcher.group(1).trim();
+            String mimeType = matcher.group(2).toLowerCase(Locale.ROOT);
+            String metadata = label.isEmpty() || "@image".equalsIgnoreCase(label)
+                    ? mimeType : label + " (" + mimeType + ")";
+            matcher.appendReplacement(display, Matcher.quoteReplacement("[Image: " + metadata + "]"));
+        } while (matcher.find());
+        matcher.appendTail(display);
+        return display.toString();
     }
 
     void setSegmentedToolContent(List<CollapsibleToolPane.ToolSegment> blocks) {
