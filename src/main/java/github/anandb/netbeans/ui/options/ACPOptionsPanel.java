@@ -1648,9 +1648,8 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         // Only an explicit choice overrides binary detection for later launches.
         String binName = BinaryResolver.binaryNameFromPath(pathToSave);
         HarnessSelection.Selection choice = (HarnessSelection.Selection) harnessCombo.getSelectedItem();
-        boolean autoHarness = choice == null || choice.auto();
-        String harnessIdToSave = autoHarness ? "" : HarnessSelection.harnessId(choice, binName);
-        String harnessNameToSave = autoHarness ? "" : HarnessSelection.displayName(choice, binName);
+        String harnessIdToSave = HarnessSelection.harnessId(choice, binName);
+        String harnessNameToSave = HarnessSelection.displayName(choice, binName);
         if (!Objects.equals(harnessIdToSave, loadedHarnessId)) {
             PlatformBridge.prefStoreSafe().put(PreferenceKeys.ACP_HARNESS_ID, harnessIdToSave);
         }
