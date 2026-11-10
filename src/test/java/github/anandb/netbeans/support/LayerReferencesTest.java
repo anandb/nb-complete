@@ -16,6 +16,8 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
+import github.anandb.netbeans.ui.options.ACPOptionsPanelController;
+
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -73,13 +75,30 @@ class LayerReferencesTest {
         URL generated = LayerReferencesTest.class.getResource("/META-INF/generated-layer.xml");
         Assumptions.assumeTrue(generated != null,
                 "generated-layer.xml not found on the classpath — run through Maven to check it");
-        String xml;
-        try (InputStream in = generated.openStream()) {
-            xml = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        }
-        List<String> missing = missingBundleKeys(xml);
+        List<String> missing = missingBundleKeys(readGeneratedLayer());
         assertTrue(missing.isEmpty(),
                 "annotation-generated layer entries name missing bundle keys: " + missing);
+    }
+
+    /**
+     * {@code OptionsDisplayer.open(id)} looks the panel up by its registration id, so a constant
+     * that drifts from the generated entry makes the button log "Unknown categoryId" and do
+     * nothing. Only the layer ties the two together.
+     */
+    @Test
+    void theOptionsCategoryOpenedByTheUiIsRegistered() throws IOException {
+        Assumptions.assumeTrue(LayerReferencesTest.class.getResource("/META-INF/generated-layer.xml") != null,
+                "generated-layer.xml not found on the classpath — run through Maven to check it");
+        String id = ACPOptionsPanelController.OPTIONS_CATEGORY_ID;
+        assertTrue(readGeneratedLayer().contains("name=\"" + id + ".instance\""),
+                "OptionsDisplayer.open(\"" + id + "\") has no OptionsDialog/" + id + ".instance entry");
+    }
+
+    private static String readGeneratedLayer() throws IOException {
+        URL generated = LayerReferencesTest.class.getResource("/META-INF/generated-layer.xml");
+        try (InputStream in = generated.openStream()) {
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        }
     }
 
     private static List<String> missingBundleKeys(String xml) throws IOException {

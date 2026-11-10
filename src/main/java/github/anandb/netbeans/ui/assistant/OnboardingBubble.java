@@ -38,6 +38,7 @@ import org.openide.util.NbBundle;
 import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.BrowserUtils;
+import github.anandb.netbeans.ui.options.ACPOptionsPanelController;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.rendering.IconResourceManager;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
@@ -193,7 +194,7 @@ public class OnboardingBubble extends JPanel {
         manualSetupBtn.setIcon(ThemeManager.getIcon("settings.svg", 16));
         manualSetupBtn.setIconTextGap(6);
         manualSetupBtn.addActionListener(e -> OptionsDisplayer.getDefault()
-                .open("github-anandb-netbeans-ui-ACPOptionsPanelController"));
+                .open(ACPOptionsPanelController.OPTIONS_CATEGORY_ID));
         buttonsPanel.add(manualSetupBtn);
         if (dismissCallback != null) {
             JButton closeBtn = new JButton(NbBundle.getMessage(

@@ -123,6 +123,8 @@ public class ChatThreadPanel extends JPanel {
     /** True while the "start a session" hint bubble is shown; reset by clearMessages(). */
     private volatile boolean startSessionHintShown;
     private volatile boolean sessionLoading = false;
+    /** Thread content the dismissable harness chooser replaced; Close puts it back. */
+    private transient Component[] onboardingStash;
 
     // --- Session state ---
     private String currentSessionId;
@@ -1005,6 +1007,13 @@ public class ChatThreadPanel extends JPanel {
             OnboardingBubble.SelectionCallback selectionCallback,
             Runnable dismissCallback) {
         SwingUtilities.invokeLater(() -> {
+            // Keep the thread the chooser replaces so Close can put it back; a
+            // non-dismissable chooser (first install) has nothing to return to.
+            if (dismissCallback == null) {
+                onboardingStash = null;
+            } else if (onboardingStash == null) {
+                stashThreadForOnboarding();
+            }
             // Clear the thread so this is the only bubble shown.
             messagesContainer.removeAll();
             startSessionHintShown = false;
@@ -1014,6 +1023,42 @@ public class ChatThreadPanel extends JPanel {
             messagesContainer.revalidate();
             scrollController.scrollToTop();
         });
+    }
+
+    /** Remembers the thread the harness chooser replaces, for {@link #restoreThreadAfterOnboarding}. */
+    public void stashThreadForOnboarding() {
+        // Finalize the open turn and stop its flush timer; the bubbles stay, they
+        // are detached and re-added by the restore, not rebuilt.
+        stopStreaming();
+        streamingCoordinator.cleanup();
+        Component[] content = messagesContainer.getComponents();
+        onboardingStash = content.length == 0 ? null : content;
+    }
+
+    /**
+     * Puts back the thread removed for a dismissable harness chooser. Close must not
+     * depend on a session reload: the reload resumes the already-loaded session, which
+     * replays no history, so the chooser stayed on screen.
+     */
+    public void restoreThreadAfterOnboarding() {
+        Runnable restore = () -> {
+            Component[] content = onboardingStash;
+            onboardingStash = null;
+            messagesContainer.removeAll();
+            if (content != null) {
+                for (Component c : content) {
+                    messagesContainer.add(c);
+                }
+            }
+            messagesContainer.revalidate();
+            messagesContainer.repaint();
+            scrollController.scrollToBottom(true);
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            restore.run();
+        } else {
+            SwingUtilities.invokeLater(restore);
+        }
     }
 
     /** Shows the global opencode configuration prompt as a sidebar bubble. */

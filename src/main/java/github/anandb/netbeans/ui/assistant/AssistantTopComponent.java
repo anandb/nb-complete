@@ -1200,16 +1200,16 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         componentLifecycleHandler.promptRestartServer(null);
     }
 
-    /** Dismisses the manual harness-chooser (Close button) and restores the
-     *  normal chat view: reloads the current session, or shows the book/
-     *  session list when none is active. */
+    /** Dismisses the manual harness-chooser (Close button) and puts the chat thread back
+     *  exactly as it was, without a session reload: reloading the loaded session resumes it
+     *  and replays no history, so the chooser used to stay on screen. */
     void dismissHarnessChooser() {
         showHarnessChooser(null);
-        String currentId = sessionService.get().getCurrentSessionId();
-        if (currentId != null) {
-            sessionService.get().loadSession(currentId);
+        if (sessionService.get().getCurrentSessionId() != null) {
+            statusController.setStatus("STATUS_Ready");
         } else {
-            sessionService.get().refreshSessions();
+            statusController.setStatus(projectContext.getAllOpenProjects().length == 0
+                    ? "STATUS_OpenProject" : "STATUS_NewChat");
         }
     }
 
@@ -1241,6 +1241,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
      */
     void showHarnessChooser(java.util.List<BinaryResolver.FoundBinary> foundBinaries) {
         boolean notFound = foundBinaries != null;
+        boolean wasNotFound = binaryNotFound;
         // Publish the volatile flag synchronously so any concurrently queued
         // EDT task (e.g. updateNewSessionBtnState) sees the new value instead
         // of a stale "binary available" state.
@@ -1271,8 +1272,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 // A Close button is offered only when a harness is already
                 // configured (help-menu launch) — the first-install view must
                 // be non-dismissable.
+                // Freeze the turn before the bubble takes the thread; the bubble
+                // stashes the thread itself so Close can restore it.
                 chatPanel.stopStreaming();
-                chatPanel.clearMessages();
                 Runnable dismiss = available
                         ? () -> dismissHarnessChooser()
                         : null;
@@ -1283,6 +1285,11 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                 statusController.setStatus(foundBinaries.isEmpty()
                         ? "STATUS_BinaryNotFound" : "STATUS_ChooseAgent");
             } else {
+                // Only a chooser that was on screen has a thread to put back; a plain
+                // server restart calls this with the flag already false.
+                if (wasNotFound) {
+                    chatPanel.restoreThreadAfterOnboarding();
+                }
                 // Restore normal session-aware state. Do not touch the status
                 // bar — the caller (e.g. restartServer success) manages it.
                 boolean hasSession = sessionService.get().getCurrentSessionId() != null;
