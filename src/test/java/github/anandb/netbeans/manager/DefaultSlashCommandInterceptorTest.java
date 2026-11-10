@@ -14,6 +14,7 @@ import org.openide.util.Lookup;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import javax.swing.SwingUtilities;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -214,6 +215,26 @@ class DefaultSlashCommandInterceptorTest {
 
         // The model renames through its own tool; only session/list can see it.
         verify(sessionControl).refreshSessions();
+    }
+
+    @Test
+    void titleWithoutArgsCompletesCallbackWhenSendingPromptThrows() throws Exception {
+        SessionControl sessionControl = mock(SessionControl.class);
+        when(sessionControl.getCurrentSessionId()).thenReturn("test-session-id");
+        ProcessControl processControl = mock(ProcessControl.class);
+        when(processControl.sendMessage(anyString(), anyString(), any()))
+                .thenThrow(new IllegalStateException("send failed"));
+
+        Lookup context = mock(Lookup.class);
+        when(context.lookup(SessionControl.class)).thenReturn(sessionControl);
+        when(context.lookup(ProcessControl.class)).thenReturn(processControl);
+
+        assertTrue(interceptor.intercept("/title", context).get());
+        SwingUtilities.invokeAndWait(() -> {});
+
+        verify(callback).displayToolMessage("title", "Updating title...");
+        verify(callback).onAsyncSendStarted();
+        verify(callback).onAsyncSendCompleted();
     }
 
     @Test

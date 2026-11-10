@@ -9,17 +9,28 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.Map;
 import java.util.Set;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.lang.reflect.Method;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.openide.filesystems.FileObject;
+import org.openide.filesystems.FileAttributeEvent;
+import org.openide.filesystems.FileChangeListener;
+import org.openide.filesystems.FileEvent;
+import org.openide.filesystems.FileRenameEvent;
 import org.openide.filesystems.FileSystem;
 import org.openide.filesystems.FileUtil;
+import org.junit.jupiter.api.io.TempDir;
 
 import github.anandb.netbeans.contract.FileCacheQuery;
+import github.anandb.netbeans.contract.VcsIgnoreStrategy;
 import github.anandb.netbeans.support.ProjectPaths;
 
 class FileCacheManagerTest {
@@ -172,6 +183,78 @@ class FileCacheManagerTest {
         assertEquals(1, manager.getFiles("nb").size());
         assertEquals("Own.java", manager.getFiles("nb").iterator().next().relativePath());
         assertTrue(manager.getFiles("missing").isEmpty());
+    }
+
+    @Test
+    void recursiveListenerAddsDeletesRenamesAndIgnoresFiles(@TempDir Path rootPath) throws Exception {
+        Files.createFile(rootPath.resolve("created.java"));
+        Files.createFile(rootPath.resolve("ignored.java"));
+        Files.createFile(rootPath.resolve("renamed.java"));
+        Files.createFile(rootPath.resolve("kept.java"));
+        FileUtil.refreshFor(rootPath.toFile());
+        FileObject root = FileUtil.toFileObject(rootPath.toFile());
+        assertNotNull(root);
+        FileObject created = root.getFileObject("created.java");
+        FileObject ignored = root.getFileObject("ignored.java");
+        FileObject renamed = root.getFileObject("renamed.java");
+        FileObject kept = root.getFileObject("kept.java");
+        FileObject stale = mock(FileObject.class);
+        when(stale.isValid()).thenReturn(false);
+
+        java.io.File rootDir = rootPath.toFile();
+        manager.publish(Map.of(
+                "stale", new FileCacheQuery.CachedFile(stale, "p", "stale.java"),
+                kept.getPath(), new FileCacheQuery.CachedFile(kept, "p", "kept.java")), Set.of());
+        VcsIgnoreStrategy strategy = new VcsIgnoreStrategy() {
+            @Override
+            public boolean isAvailable(java.io.File projectRoot) {
+                return true;
+            }
+
+            @Override
+            public Set<String> listNonIgnoredFiles(java.io.File projectRoot) {
+                return Set.of();
+            }
+
+            @Override
+            public boolean isIgnored(java.io.File projectRoot, java.io.File file) {
+                return file.getName().equals("ignored.java");
+            }
+        };
+        Method install = FileCacheManager.class.getDeclaredMethod("installListener",
+                FileObject.class, java.io.File.class, String.class, VcsIgnoreStrategy.class);
+        install.setAccessible(true);
+        install.invoke(manager, root, rootDir, "p", strategy);
+        FileChangeListener listener = rootListener(rootDir);
+
+        listener.fileDataCreated(new FileEvent(created));
+        assertTrue(manager.getAllFiles().stream()
+                .anyMatch(file -> file.relativePath().equals("created.java")));
+        listener.fileDataCreated(new FileEvent(ignored));
+        FileObject virtual = FileUtil.createMemoryFileSystem().getRoot().createData("virtual.java");
+        listener.fileDataCreated(new FileEvent(virtual));
+        assertEquals(3, manager.getAllFiles().size());
+
+        listener.fileDeleted(new FileEvent(created));
+        listener.fileDeleted(new FileEvent(ignored));
+        listener.fileDeleted(new FileEvent(virtual));
+        assertEquals(2, manager.getAllFiles().size());
+
+        listener.fileRenamed(new FileRenameEvent(renamed, "old", "java"));
+        listener.fileRenamed(new FileRenameEvent(ignored, "old", "java"));
+        listener.fileRenamed(new FileRenameEvent(virtual, "old", "java"));
+        assertEquals(Set.of("kept.java", "renamed.java"), manager.getAllFiles().stream()
+                .map(FileCacheQuery.CachedFile::relativePath).collect(Collectors.toSet()));
+        listener.fileFolderCreated(new FileEvent(root));
+        listener.fileChanged(new FileEvent(renamed));
+        listener.fileAttributeChanged(new FileAttributeEvent(renamed, "attr", null, "value"));
+    }
+
+    @SuppressWarnings("unchecked")
+    private FileChangeListener rootListener(java.io.File root) throws Exception {
+        java.lang.reflect.Field field = FileCacheManager.class.getDeclaredField("rootListeners");
+        field.setAccessible(true);
+        return ((Map<java.io.File, FileChangeListener>) field.get(manager)).get(root);
     }
 
     @SuppressWarnings("unchecked")
