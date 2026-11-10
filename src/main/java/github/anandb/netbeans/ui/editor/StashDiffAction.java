@@ -131,8 +131,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
 
             @Override
             public Point getToolTipLocation(MouseEvent event) {
-                Insets ins = getInsets();
-                return new Point(ins.left, -getHeight() - 8);
+                return UIUtils.tooltipAboveButton(event, this);
             }
 
             @Override

@@ -80,6 +80,15 @@ final class SessionRpcClient {
         return processManager.sendRequest("session/delete", params, 30, TimeUnit.SECONDS);
     }
 
+    /**
+     * The {@code mcpServers} value for a session request: the editor tool servers when the
+     * harness accepts them and the caller wants them, otherwise an empty list.
+     */
+    private Object mcpServers(boolean editorMcp) {
+        return editorMcp && caps().sendsMcpServerConfig()
+                ? processManager.getToolExecutor().getServerConfig() : List.of();
+    }
+
     /** Standard {@code session/fork}; the caller gates on the advertised capability. */
     CompletableFuture<JsonNode> forkSession(String sessionId, String cwd) {
         Map<String, Object> params = new HashMap<>();
@@ -87,8 +96,7 @@ final class SessionRpcClient {
         if (cwd != null) {
             params.put("cwd", cwd);
         }
-        params.put("mcpServers", caps().sendsMcpServerConfig()
-                ? processManager.getToolExecutor().getServerConfig() : List.of());
+        params.put("mcpServers", mcpServers(true));
         return processManager.sendRequest("session/fork", params, 2, TimeUnit.MINUTES);
     }
 
@@ -107,16 +115,14 @@ final class SessionRpcClient {
         Map<String, Object> params = new HashMap<>();
         params.put("sessionId", sessionId);
         params.put("cwd", cwd);
-        params.put("mcpServers", editorMcp && caps().sendsMcpServerConfig()
-                ? processManager.getToolExecutor().getServerConfig() : List.of());
+        params.put("mcpServers", mcpServers(editorMcp));
         return processManager.sendRequest("session/resume", params, 2, TimeUnit.MINUTES);
     }
 
     CompletableFuture<JsonNode> createSession(String cwd) {
         Map<String, Object> params = new HashMap<>();
         params.put("cwd", cwd);
-        params.put("mcpServers", caps().sendsMcpServerConfig()
-                ? processManager.getToolExecutor().getServerConfig() : List.of());
+        params.put("mcpServers", mcpServers(true));
         return processManager.sendRequest("session/new", params, 60, TimeUnit.SECONDS);
     }
 
@@ -136,11 +142,7 @@ final class SessionRpcClient {
         if (cwd != null) {
             params.put("cwd", cwd);
         }
-        if (editorMcp && caps().sendsMcpServerConfig()) {
-            params.put("mcpServers", processManager.getToolExecutor().getServerConfig());
-        } else {
-            params.put("mcpServers", List.of());
-        }
+        params.put("mcpServers", mcpServers(editorMcp));
         return processManager.sendRequest("session/load", params, 2, TimeUnit.MINUTES);
     }
 

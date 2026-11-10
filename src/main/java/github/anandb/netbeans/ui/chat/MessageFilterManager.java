@@ -1,5 +1,7 @@
 package github.anandb.netbeans.ui.chat;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
 
@@ -53,6 +55,20 @@ public final class MessageFilterManager {
             return new String[]{"activity", "assistant", "user"};
         }
         return MESSAGE_TYPES.clone();
+    }
+
+    /** Visible tool/thought segments for a combined bubble under the current filters. */
+    public static List<CollapsibleToolPane.ToolSegment> visibleSegments(
+            List<CollapsibleToolPane.ToolSegment> segments) {
+        boolean toolHidden = isTypeHidden("tool");
+        boolean thoughtHidden = isTypeHidden("thought");
+        List<CollapsibleToolPane.ToolSegment> visible = new ArrayList<>();
+        for (CollapsibleToolPane.ToolSegment seg : segments) {
+            if (seg.isThought() ? !thoughtHidden : !toolHidden) {
+                visible.add(seg);
+            }
+        }
+        return visible;
     }
 
     public static boolean isTypeHidden(String type) {

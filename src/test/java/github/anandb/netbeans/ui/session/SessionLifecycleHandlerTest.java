@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import javax.swing.JButton;
-import javax.swing.JComponent;
 import javax.swing.SwingUtilities;
 
 import org.junit.jupiter.api.AfterEach;
@@ -162,7 +161,6 @@ class SessionLifecycleHandlerTest {
     }
 
     private SessionLifecycleHandler newHandler() {
-        Consumer<JComponent> projectPickerShower = c -> { };
         Consumer<String> tabNameUpdater = s -> { };
         Consumer<String> cwdLabelUpdater = s -> { };
         Consumer<Boolean> sessionStateHandler = b -> { };
@@ -173,7 +171,7 @@ class SessionLifecycleHandlerTest {
                 chatPanel, sessionDropdown, hideBtn, newSessionBtn, renameSessionBtn,
                 configPanelController, inputArea, statusController,
                 planPanel,
-                projectPickerShower, tabNameUpdater, cwdLabelUpdater,
+                c -> { }, tabNameUpdater, cwdLabelUpdater,
                 sessionStateHandler, optionsPanelToggler, pendingUiCleanup);
     }
 

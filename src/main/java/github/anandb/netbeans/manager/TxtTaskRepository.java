@@ -144,7 +144,7 @@ public final class TxtTaskRepository implements TaskRepositoryControl {
         }
         String now = Instant.now().toString();
         String status = orEmpty(input == null ? null : input.status());
-        String completedAt = TaskRecord.isFinishedStatus(status) ? now : "";
+        String completedAt = TaskRecord.nextCompletedAt(false, "", status, now);
         TaskRecord task = new TaskRecord(
             createTaskId(),
             status,
@@ -204,18 +204,13 @@ public final class TxtTaskRepository implements TaskRepositoryControl {
             for (int i = 0; i < s.cache.size(); i++) {
                 if (s.cache.get(i).id().equals(task.id())) {
                     TaskRecord prev = s.cache.get(i);
-                    String completedAt = prev.completedAt();
-                    boolean wasFinished = prev.isFinished();
-                    boolean nowFinished = task.isFinished();
-                    if (nowFinished && !wasFinished) {
-                        completedAt = Instant.now().toString();
-                    } else if (!nowFinished) {
-                        completedAt = "";
-                    }
+                    String now = Instant.now().toString();
+                    String completedAt = TaskRecord.nextCompletedAt(
+                            prev.isFinished(), prev.completedAt(), task.status(), now);
                     TaskRecord updated = new TaskRecord(task.id(), task.status(), task.priority(),
                         task.summary(), task.tags(), task.projects(), task.dueDate(),
                         task.estimate(), task.consumed(), task.createdAt(), completedAt,
-                        Instant.now().toString());
+                        now);
                     s.cache.set(i, updated);
                     s.gen++;
                     existed = true;

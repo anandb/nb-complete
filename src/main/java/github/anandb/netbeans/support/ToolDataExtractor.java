@@ -183,7 +183,7 @@ public final class ToolDataExtractor {
     }
 
     /** Concatenates the display text of a tool-call content structure. */
-    private static String contentText(JsonNode content) {
+    public static String contentText(JsonNode content) {
         if (content == null) return null;
         if (content.isTextual()) return content.asText();
         if (content.has("text")) return content.get("text").asText();

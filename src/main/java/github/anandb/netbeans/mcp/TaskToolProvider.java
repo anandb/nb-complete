@@ -187,8 +187,9 @@ public class TaskToolProvider {
                     String summary = args.summary() != null ? args.summary().trim() : task.summary();
                     String status = args.status() != null ? args.status().trim() : task.status();
                     String priority = args.priority() != null ? args.priority() : task.priority();
-                    List<String> tags = args.tags() != null ? splitCsv(args.tags()) : task.tags();
-                    List<String> projects = args.projects() != null ? splitCsv(args.projects()) : task.projects();
+                    List<String> tags = args.tags() != null ? TaskInput.splitCsv(args.tags()) : task.tags();
+                    List<String> projects = args.projects() != null
+                            ? TaskInput.splitCsv(args.projects()) : task.projects();
                     String dueDate = args.dueDate() != null ? args.dueDate().trim() : task.dueDate();
                     int estimate = args.estimate() != null ? args.estimate() : task.estimate();
                     int consumed = args.consumed() != null ? args.consumed() : task.consumed();
@@ -204,21 +205,6 @@ public class TaskToolProvider {
                         "message", "Task '" + task.id() + "' updated in '" + control.displayNameOf(repoId) + "'.");
                 }
             });
-    }
-
-    /** Splits a comma-separated MCP string into a trimmed list; blank clears. */
-    private static List<String> splitCsv(String s) {
-        if (s == null || s.isBlank()) {
-            return List.of();
-        }
-        List<String> out = new ArrayList<>();
-        for (String part : s.split(",")) {
-            String v = part.trim();
-            if (!v.isEmpty()) {
-                out.add(v);
-            }
-        }
-        return List.copyOf(out);
     }
 
     private void registerSearchTask(McpTools mcpTools) {

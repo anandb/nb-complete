@@ -161,9 +161,7 @@ public class UIUtils {
         JButton btn = new JButton() {
             @Override
             public Point getToolTipLocation(MouseEvent event) {
-                // Show tooltip above the button
-                Insets ins = getInsets();
-                return new Point(ins.left, -getHeight() - 8);
+                return tooltipAboveButton(event, this);
             }
         };
         Icon icon = ThemeManager.getIcon(iconName, iconSize);

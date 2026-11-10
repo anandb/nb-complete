@@ -128,16 +128,14 @@ public class ConfigPanelController {
         modeCombo = new UIUtils.WrappingComboBox<>() {
             @Override
             public Point getToolTipLocation(MouseEvent event) {
-                Insets ins = getInsets();
-                return new Point(ins.left, -getHeight() - 8);
+                return UIUtils.tooltipAboveButton(event, this);
             }
         };
         modelCombo = new UIUtils.WrappingComboBox<>();
         thinkingCombo = new UIUtils.WrappingComboBox<>() {
             @Override
             public Point getToolTipLocation(MouseEvent event) {
-                Insets ins = getInsets();
-                return new Point(ins.left, -getHeight() - 8);
+                return UIUtils.tooltipAboveButton(event, this);
             }
         };
         thinkingCombo.setPrototypeDisplayValue(new ConfigItem("High (Slow)", "High (Slow)"));
@@ -395,15 +393,7 @@ public class ConfigPanelController {
     public void applyPreSelectedConfigValues(String sessionId, List<SessionConfigOption> configOptions) {
         if (configOptions == null) return;
         for (SessionConfigOption opt : configOptions) {
-            JComboBox<ConfigItem> combo = null;
-            if ("mode".equals(opt.category())) {
-                combo = modeCombo;
-            } else if ("model".equals(opt.category())) {
-                combo = modelCombo;
-            } else if (opt.category() != null
-                    && (opt.category().contains("thinking") || opt.category().contains("thought"))) {
-                combo = thinkingCombo;
-            }
+            JComboBox<ConfigItem> combo = resolveComboTarget(opt.category());
 
             if (combo != null && combo.getSelectedItem() instanceof ConfigItem selectedItem) {
                 String selectedValue = selectedItem.value();

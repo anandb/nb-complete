@@ -4,7 +4,6 @@ import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Insets;
 import java.awt.Point;
 import java.awt.RenderingHints;
 import java.awt.event.MouseEvent;
@@ -101,9 +100,7 @@ public final class PulsingToggleButton extends JToggleButton {
 
     @Override
     public Point getToolTipLocation(MouseEvent event) {
-        // Same above-the-button placement as the other header buttons.
-        Insets ins = getInsets();
-        return new Point(ins.left, -getHeight() - 8);
+        return UIUtils.tooltipAboveButton(event, this);
     }
 
     @Override

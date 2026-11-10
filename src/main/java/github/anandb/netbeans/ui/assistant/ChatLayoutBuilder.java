@@ -47,7 +47,6 @@ import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.PermissionAutoAllow;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
-import github.anandb.netbeans.support.ProjectPaths;
 import github.anandb.netbeans.support.UserGuideOpener;
 
 import github.anandb.netbeans.contract.UpdateCheckerControl;
@@ -57,11 +56,11 @@ import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.support.BrowserUtils;
 import javax.swing.JComponent;
 import javax.swing.Timer;
-import org.netbeans.api.project.Project;
 import github.anandb.netbeans.ui.chat.MessageFilterManager;
 import github.anandb.netbeans.ui.chat.ChatThreadPanel;
 import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
 import github.anandb.netbeans.ui.session.ConfigPanelController;
+import github.anandb.netbeans.ui.session.SessionArchive;
 import github.anandb.netbeans.ui.permission.PermissionRequestPanel;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.rendering.RaisedIcon;
@@ -216,12 +215,7 @@ public final class ChatLayoutBuilder {
                                 topComponent.setStatus("STATUS_ServiceUnavailable");
                                 return;
                             }
-                            boolean newHidden = !hidden;
-                            archSc.setHidden(sessionId, newHidden);
-                            archSc.refreshSessions();
-                            if (newHidden && !isShowingHidden()) {
-                                MiniAssistantDialog.closeIfVisible();
-                            }
+                            SessionArchive.toggle(archSc, sessionId);
                         });
                         add(archive);
 
@@ -288,13 +282,7 @@ public final class ChatLayoutBuilder {
             }
             String sid = sc.getCurrentSessionId();
             if (sid != null) {
-                boolean currentlyHidden = sc.isHidden(sid);
-                boolean newHidden = !currentlyHidden;
-                sc.setHidden(sid, newHidden);
-                sc.refreshSessions();
-                if (newHidden && !isShowingHidden()) {
-                    MiniAssistantDialog.closeIfVisible();
-                }
+                SessionArchive.toggle(sc, sid);
             } else {
                 btn.setEnabled(true);
             }
@@ -808,20 +796,7 @@ public final class ChatLayoutBuilder {
     JButton getHideBtn() { return hideBtn; }
 
     private void fireNewSession() {
-        var bridge = PlatformBridge.get();
-        if (bridge == null) return;
-        Project[] projects = bridge.projectContext().getAllOpenProjects();
-        if (projects == null || projects.length == 0) {
-            return;
-        }
-        if (projects.length == 1) {
-            var sc = PlatformBridge.sessionControl();
-            if (sc != null) {
-                sc.createNewSession(ProjectPaths.nativePath(projects[0]));
-            }
-        } else {
-            topComponent.showProjectPickerPopup(newSessionBtn);
-        }
+        topComponent.startNewSession(newSessionBtn);
     }
 
     JButton getNewSessionBtn() { return newSessionBtn; }

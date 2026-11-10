@@ -4,7 +4,6 @@ import java.awt.Component;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -14,7 +13,6 @@ import java.util.logging.Level;
 
 import javax.swing.JPanel;
 
-import org.openide.util.NbBundle;
 
 import com.vladsch.flexmark.ext.tables.TablesExtension;
 import com.vladsch.flexmark.html.HtmlRenderer;
@@ -27,10 +25,10 @@ import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.XmlUtils;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import github.anandb.netbeans.ui.chat.MessageBubble;
+import github.anandb.netbeans.ui.rendering.CssTemplates;
 import github.anandb.netbeans.ui.chat.CollapsibleToolPane;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
-import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.components.UIUtils;
 
 /**
@@ -92,19 +90,10 @@ public final class HtmlConversationExporter {
         if (template != null) {
             return template;
         }
-        try (InputStream in = HtmlConversationExporter.class
-                .getResourceAsStream("export-style.css.template")) {
-            if (in == null) {
-                throw new IllegalStateException(NbBundle.getMessage(
-                        UIBundle.class, "ERR_ExportCssTemplateNotFound"));
-            }
-            template = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-            cachedCssTemplate = template;
-            return template;
-        } catch (IOException e) {
-            throw new IllegalStateException(NbBundle.getMessage(
-                    UIBundle.class, "ERR_LoadExportCssTemplateFailed"), e);
-        }
+        template = CssTemplates.load(HtmlConversationExporter.class, "export-style.css.template",
+                "ERR_ExportCssTemplateNotFound", "ERR_LoadExportCssTemplateFailed");
+        cachedCssTemplate = template;
+        return template;
     }
 
     // ---- SVG icon cache (loaded once from classpath) --------------------------

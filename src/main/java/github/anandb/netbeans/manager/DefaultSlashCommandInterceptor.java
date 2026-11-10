@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import javax.swing.SwingUtilities;
 
 import github.anandb.netbeans.contract.ProcessControl;
@@ -41,16 +43,26 @@ public class DefaultSlashCommandInterceptor implements SlashCommandInterceptor {
     }
 
     private void registerDefaultCommands() {
-        commands.put("/agent", new CommandInfo(this::handleAgents, "Select agent or mode"));
-        commands.put("/agents", new CommandInfo(this::handleAgents, "Select agent or mode"));
-        commands.put("/archive", new CommandInfo(this::handleArchive, "Archive/unarchive session"));
-        commands.put("/level", new CommandInfo(this::handleLevel, "Select thinking level"));
-        commands.put("/levels", new CommandInfo(this::handleLevel, "Select thinking level"));
-        commands.put("/model", new CommandInfo(this::handleModels, "Select model"));
-        commands.put("/models", new CommandInfo(this::handleModels, "Select model"));
-        commands.put("/new", new CommandInfo(this::handleNew, "Create new session"));
-        commands.put("/session", new CommandInfo(this::handleSession, "Select session"));
-        commands.put("/sessions", new CommandInfo(this::handleSession, "Select session"));
+        commands.put("/agent", new CommandInfo(popupHandler(SlashCommandCallback::popupAgentCombo),
+                "Select agent or mode"));
+        commands.put("/agents", new CommandInfo(popupHandler(SlashCommandCallback::popupAgentCombo),
+                "Select agent or mode"));
+        commands.put("/archive", new CommandInfo(popupHandler(SlashCommandCallback::popupArchiveSession),
+                "Archive/unarchive session"));
+        commands.put("/level", new CommandInfo(popupHandler(SlashCommandCallback::popupThinkingCombo),
+                "Select thinking level"));
+        commands.put("/levels", new CommandInfo(popupHandler(SlashCommandCallback::popupThinkingCombo),
+                "Select thinking level"));
+        commands.put("/model", new CommandInfo(popupHandler(SlashCommandCallback::popupModelCombo),
+                "Select model"));
+        commands.put("/models", new CommandInfo(popupHandler(SlashCommandCallback::popupModelCombo),
+                "Select model"));
+        commands.put("/new", new CommandInfo(popupHandler(SlashCommandCallback::popupNewSession),
+                "Create new session"));
+        commands.put("/session", new CommandInfo(popupHandler(SlashCommandCallback::popupSessionCombo),
+                "Select session"));
+        commands.put("/sessions", new CommandInfo(popupHandler(SlashCommandCallback::popupSessionCombo),
+                "Select session"));
         commands.put("/title", new CommandInfo(this::handleTitle, "Generate session title"));
 
         // /compact is passed verbatim to the server (no local interception)
@@ -91,57 +103,17 @@ public class DefaultSlashCommandInterceptor implements SlashCommandInterceptor {
         return CompletableFuture.completedFuture(false);
     }
 
-    private CompletableFuture<Boolean> handleModels(String args, Lookup context) {
-        SlashCommandCallback cb = callback;
-        if (cb != null) {
-            cb.popupModelCombo();
-        }
-
-        return CompletableFuture.completedFuture(true);
+    /** Handler that opens one callback-owned popup and consumes the command. */
+    private BiFunction<String, Lookup, CompletableFuture<Boolean>> popupHandler(
+            Consumer<SlashCommandCallback> action) {
+        return (args, context) -> popup(action);
     }
 
-    private CompletableFuture<Boolean> handleAgents(String args, Lookup context) {
+    private CompletableFuture<Boolean> popup(Consumer<SlashCommandCallback> action) {
         SlashCommandCallback cb = callback;
         if (cb != null) {
-            cb.popupAgentCombo();
+            action.accept(cb);
         }
-
-        return CompletableFuture.completedFuture(true);
-    }
-
-    private CompletableFuture<Boolean> handleLevel(String args, Lookup context) {
-        SlashCommandCallback cb = callback;
-        if (cb != null) {
-            cb.popupThinkingCombo();
-        }
-
-        return CompletableFuture.completedFuture(true);
-    }
-
-    private CompletableFuture<Boolean> handleSession(String args, Lookup context) {
-        SlashCommandCallback cb = callback;
-        if (cb != null) {
-            cb.popupSessionCombo();
-        }
-
-        return CompletableFuture.completedFuture(true);
-    }
-
-    private CompletableFuture<Boolean> handleArchive(String args, Lookup context) {
-        SlashCommandCallback cb = callback;
-        if (cb != null) {
-            cb.popupArchiveSession();
-        }
-
-        return CompletableFuture.completedFuture(true);
-    }
-
-    private CompletableFuture<Boolean> handleNew(String args, Lookup context) {
-        SlashCommandCallback cb = callback;
-        if (cb != null) {
-            cb.popupNewSession();
-        }
-
         return CompletableFuture.completedFuture(true);
     }
 

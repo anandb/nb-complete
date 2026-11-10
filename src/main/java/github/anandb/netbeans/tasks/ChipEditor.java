@@ -19,6 +19,8 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 
+import github.anandb.netbeans.contract.TaskInput;
+
 /**
  * Chip-based multi-select editor. Selected values are shown as removable pills;
  * a combobox of predefined suggestions adds a value on selection, and a
@@ -134,14 +136,7 @@ class ChipEditor extends JPanel {
     /** Replace the current selection from a comma-separated string. */
     void setChips(String values) {
         selected.clear();
-        if (values != null) {
-            for (String t : values.split(",")) {
-                String v = t.trim();
-                if (!v.isEmpty()) {
-                    selected.add(v);
-                }
-            }
-        }
+        selected.addAll(TaskInput.splitCsv(values));
         refresh();
     }
 

@@ -29,8 +29,6 @@ import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.model.TurnEndDecision;
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.support.ProjectPaths;
-import org.netbeans.api.project.Project;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.chat.ChatThreadPanel;
@@ -73,7 +71,7 @@ public class SessionLifecycleHandler implements SessionListener {
     private final PlanPanel planPanel;
 
     // Callbacks to AssistantTopComponent for operations kept there
-    private final Consumer<JComponent> projectPickerShower;
+    private final Consumer<JComponent> newSessionStarter;
     private final Consumer<String> tabNameUpdater;
     private final Consumer<String> cwdLabelUpdater;
     private final Consumer<Boolean> sessionStateHandler;
@@ -121,7 +119,7 @@ public class SessionLifecycleHandler implements SessionListener {
             PlaceholderTextArea inputArea,
             StatusController statusController,
             PlanPanel planPanel,
-            Consumer<JComponent> projectPickerShower,
+            Consumer<JComponent> newSessionStarter,
             Consumer<String> tabNameUpdater,
             Consumer<String> cwdLabelUpdater,
             Consumer<Boolean> sessionStateHandler,
@@ -136,7 +134,7 @@ public class SessionLifecycleHandler implements SessionListener {
         this.inputArea = inputArea;
         this.statusController = statusController;
         this.planPanel = planPanel;
-        this.projectPickerShower = projectPickerShower;
+        this.newSessionStarter = newSessionStarter;
         this.tabNameUpdater = tabNameUpdater;
         this.cwdLabelUpdater = cwdLabelUpdater;
         this.sessionStateHandler = sessionStateHandler;
@@ -144,17 +142,23 @@ public class SessionLifecycleHandler implements SessionListener {
         this.pendingUiCleanup = pendingUiCleanup;
     }
 
+    /**
+     * Runs {@code action} on the EDT unless the user has switched away from {@code sessionId}.
+     * A late callback for a session that is no longer current is dropped.
+     */
+    private void runForSession(String sessionId, Runnable action) {
+        SwingUtilities.invokeLater(() -> {
+            String currentId = sessionService.get().getCurrentSessionId();
+            if (sessionId != null && !sessionId.equals(currentId)) {
+                return;
+            }
+            action.run();
+        });
+    }
+
     /** Starts a chat from the welcome screen: one project binds directly, several ask which one. */
     private void startNewChat() {
-        Project[] projects = projectContext.getAllOpenProjects();
-        if (projects == null || projects.length == 0) {
-            return;
-        }
-        if (projects.length == 1) {
-            sessionService.get().createNewSession(ProjectPaths.nativePath(projects[0]));
-        } else {
-            projectPickerShower.accept(sessionDropdown);
-        }
+        newSessionStarter.accept(sessionDropdown);
     }
 
     /** An example prompt has no session to land in yet: draft it in the composer, then start
@@ -319,15 +323,7 @@ public class SessionLifecycleHandler implements SessionListener {
             @Override
             public void updatePlan(List<PlanEntry> entries) {
                 String planSessionId = update.params() != null ? update.params().sessionId() : null;
-                SwingUtilities.invokeLater(() -> {
-                    // Same race guard as displayMessage: never show a late plan
-                    // for a session the user has already switched away from.
-                    String currentId = sessionService.get().getCurrentSessionId();
-                    if (planSessionId != null && !planSessionId.equals(currentId)) {
-                        return;
-                    }
-                    planPanel.setEntries(planSessionId, entries);
-                });
+                runForSession(planSessionId, () -> planPanel.setEntries(planSessionId, entries));
             }
 
             @Override
@@ -336,15 +332,8 @@ public class SessionLifecycleHandler implements SessionListener {
                     return;
                 }
                 String noticeSessionId = update.params() != null ? update.params().sessionId() : null;
-                SwingUtilities.invokeLater(() -> {
-                    // A late notice for a session the user has left must not
-                    // overwrite the current session's status.
-                    String currentId = sessionService.get().getCurrentSessionId();
-                    if (noticeSessionId != null && !noticeSessionId.equals(currentId)) {
-                        return;
-                    }
-                    statusController.showStatusNotice(message, STATUS_NOTICE_MS);
-                });
+                runForSession(noticeSessionId,
+                        () -> statusController.showStatusNotice(message, STATUS_NOTICE_MS));
             }
 
             @Override
@@ -650,31 +639,14 @@ public class SessionLifecycleHandler implements SessionListener {
 
     @Override
     public void onPreambleStarted(String sessionId) {
-        SwingUtilities.invokeLater(() -> {
-            // Same race guard as displayMessage: never post the marker into a
-            // session the user has already switched away from.
-            String currentId = sessionService.get().getCurrentSessionId();
-            if (sessionId != null && !sessionId.equals(currentId)) {
-                return;
-            }
-            chatPanel.addMessage(ProcessedMessage.createInfo(
-                    NbBundle.getMessage(UIBundle.class, "INFO_PostingPreamble")));
-        });
+        runForSession(sessionId, () -> chatPanel.addMessage(ProcessedMessage.createInfo(
+                NbBundle.getMessage(UIBundle.class, "INFO_PostingPreamble"))));
     }
 
     @Override
     public void onPreambleSkipped(String sessionId) {
-        SwingUtilities.invokeLater(() -> {
-            // Same race guard as displayMessage: the skip usually fires on a
-            // non-EDT callback, so the user may have switched sessions before
-            // this runnable executes. Never show the marker in the wrong thread.
-            String currentId = sessionService.get().getCurrentSessionId();
-            if (sessionId != null && !sessionId.equals(currentId)) {
-                return;
-            }
-            chatPanel.addMessage(ProcessedMessage.createInfo(
-                    NbBundle.getMessage(UIBundle.class, "INFO_SessionReady")));
-        });
+        runForSession(sessionId, () -> chatPanel.addMessage(ProcessedMessage.createInfo(
+                NbBundle.getMessage(UIBundle.class, "INFO_SessionReady"))));
     }
 
     @Override

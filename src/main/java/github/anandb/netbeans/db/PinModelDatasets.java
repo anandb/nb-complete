@@ -270,9 +270,7 @@ final class PinModelDatasets {
     /** Rewrites one session's pin rows in a transaction; used by the stale-pin cleanup. */
     void replacePins(Db db, String sessionId, Set<String> pinned) throws SQLException {
         Connection conn = db.connection();
-        boolean autoCommit = conn.getAutoCommit();
-        conn.setAutoCommit(false);
-        try {
+        DbLifecycle.inTransaction(conn, () -> {
             try (PreparedStatement delete = conn.prepareStatement(Sql.get("delete_session_pins"))) {
                 delete.setString(1, sessionId);
                 delete.executeUpdate();
@@ -287,21 +285,13 @@ final class PinModelDatasets {
                 }
                 insert.executeBatch();
             }
-            conn.commit();
-        } catch (SQLException e) {
-            conn.rollback();
-            throw e;
-        } finally {
-            conn.setAutoCommit(autoCommit);
-        }
+        });
     }
 
     /** Rewrites one harness's model rows in a transaction, preserving list order. */
     void replaceModels(Db db, String harnessId, List<TimedModel> list) throws SQLException {
         Connection conn = db.connection();
-        boolean autoCommit = conn.getAutoCommit();
-        conn.setAutoCommit(false);
-        try {
+        DbLifecycle.inTransaction(conn, () -> {
             try (PreparedStatement delete = conn.prepareStatement(Sql.get("delete_harness_models"))) {
                 delete.setString(1, harnessId);
                 delete.executeUpdate();
@@ -320,13 +310,7 @@ final class PinModelDatasets {
                 }
                 insert.executeBatch();
             }
-            conn.commit();
-        } catch (SQLException e) {
-            conn.rollback();
-            throw e;
-        } finally {
-            conn.setAutoCommit(autoCommit);
-        }
+        });
     }
     /** Minimal seam over the facade: executor connection plus the lifecycle runner. */
     interface Db {

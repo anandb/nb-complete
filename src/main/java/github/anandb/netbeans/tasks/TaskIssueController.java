@@ -122,7 +122,7 @@ public final class TaskIssueController implements IssueController {
         String now = Instant.now().truncatedTo(ChronoUnit.MINUTES).toString();
         String statusVal = status();
         if (provider.isNew(issue)) {
-            String completedAt = TaskRecord.isFinishedStatus(statusVal) ? now : "";
+            String completedAt = TaskRecord.nextCompletedAt(false, "", statusVal, now);
             TaskRecord saved = new TaskRecord(
                 cur.id(), statusVal, priority(), summary(),
                 List.copyOf(tags()), List.copyOf(projects()), dueDate(),
@@ -132,14 +132,8 @@ public final class TaskIssueController implements IssueController {
             }
             issue.setRecord(saved);
         } else {
-            String completedAt = cur.completedAt();
-            boolean wasFinished = cur.isFinished();
-            boolean nowFinished = TaskRecord.isFinishedStatus(statusVal);
-            if (nowFinished && !wasFinished) {
-                completedAt = now;
-            } else if (!nowFinished) {
-                completedAt = "";
-            }
+            String completedAt = TaskRecord.nextCompletedAt(
+                    cur.isFinished(), cur.completedAt(), statusVal, now);
             TaskRecord updated = new TaskRecord(
                 cur.id(), statusVal, priority(), summary(),
                 List.copyOf(tags()), List.copyOf(projects()), dueDate(),

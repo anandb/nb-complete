@@ -111,61 +111,50 @@ final class UsageQueries {
                 avgTokens, medianTokens, tokens[0], tokens[1], tokens[2]);
     }
 
-    private static long countScope(Connection conn, String column, long cutoff, String projectFilter) throws SQLException {
-        Sql.Statement statement = Sql.render("count_scope_rows", Map.of(
-                "scope", scopeSlot(cutoff, projectFilter),
-                "column", Sql.Slot.of(column)));
+    @FunctionalInterface
+    private interface RowReader<T> {
+        T read(ResultSet rs) throws SQLException;
+    }
+
+    /** Runs a rendered statement, binding its slots, and reads the first row. */
+    private static <T> T queryOne(Connection conn, Sql.Statement statement,
+            RowReader<T> reader, T fallback) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(statement.sql())) {
             bind(ps, 1, statement);
             try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? rs.getLong(1) : 0;
+                return rs.next() ? reader.read(rs) : fallback;
             }
         }
     }
 
+    private static long countScope(Connection conn, String column, long cutoff, String projectFilter) throws SQLException {
+        Sql.Statement statement = Sql.render("count_scope_rows", Map.of(
+                "scope", scopeSlot(cutoff, projectFilter),
+                "column", Sql.Slot.of(column)));
+        return queryOne(conn, statement, rs -> rs.getLong(1), 0L);
+    }
+
     private static long countMessages(Connection conn, long cutoff, String projectFilter) throws SQLException {
         Sql.Statement statement = windowQuery("count_messages", cutoff, projectFilter);
-        try (PreparedStatement ps = conn.prepareStatement(statement.sql())) {
-            bind(ps, 1, statement);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? rs.getLong(1) : 0;
-            }
-        }
+        return queryOne(conn, statement, rs -> rs.getLong(1), 0L);
     }
 
     private static long countDays(Connection conn, long cutoff, String projectFilter) throws SQLException {
         Sql.Statement statement = Sql.render("count_days", Map.of(
                 "scope", scopeSlot(cutoff, projectFilter),
                 "dayExpr", Sql.Slot.of("FLOOR(captured_at / " + DAY_MILLIS + ".0)")));
-        try (PreparedStatement ps = conn.prepareStatement(statement.sql())) {
-            bind(ps, 1, statement);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? rs.getLong(1) : 0;
-            }
-        }
+        return queryOne(conn, statement, rs -> rs.getLong(1), 0L);
     }
 
     private static double sumCost(Connection conn, long cutoff, String projectFilter) throws SQLException {
         Sql.Statement statement = windowQuery("sum_cost", cutoff, projectFilter);
-        try (PreparedStatement ps = conn.prepareStatement(statement.sql())) {
-            bind(ps, 1, statement);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? rs.getDouble(1) : 0;
-            }
-        }
+        return queryOne(conn, statement, rs -> rs.getDouble(1), 0d);
     }
 
     private static long[] sumTokens(Connection conn, long cutoff, String projectFilter) throws SQLException {
         Sql.Statement statement = windowQuery("sum_tokens", cutoff, projectFilter);
-        try (PreparedStatement ps = conn.prepareStatement(statement.sql())) {
-            bind(ps, 1, statement);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return new long[]{rs.getLong(1), rs.getLong(2), rs.getLong(3)};
-                }
-                return new long[3];
-            }
-        }
+        return queryOne(conn, statement,
+                rs -> new long[]{rs.getLong(1), rs.getLong(2), rs.getLong(3)}, new long[3]);
     }
 
     /**

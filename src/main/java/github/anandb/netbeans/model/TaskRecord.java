@@ -43,6 +43,18 @@ public record TaskRecord(
         return isFinishedStatus(status);
     }
 
+    /**
+     * The completion stamp after a status change: stamp {@code now} when the task
+     * enters the finished set, clear it on reopen, and keep it while it stays finished.
+     */
+    public static String nextCompletedAt(boolean wasFinished, String currentCompletedAt,
+            String newStatus, String now) {
+        if (!isFinishedStatus(newStatus)) {
+            return "";
+        }
+        return wasFinished ? currentCompletedAt : now;
+    }
+
     /** Creates a copy with all mutable display fields replaced. */
     public TaskRecord withDetails(String status, String priority, String summary,
             List<String> tags, List<String> projects, String dueDate,

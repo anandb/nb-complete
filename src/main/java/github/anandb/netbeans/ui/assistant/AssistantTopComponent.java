@@ -318,7 +318,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         sessionLifecycleHandler = new SessionLifecycleHandler(
             chatPanel, sessionDropdown, hideBtn, newSessionBtn, renameSessionBtn,
             configPanelController, inputArea, statusController, planPanel,
-            this::showProjectPickerPopup, this::updateTabName, this::updateCwdLabel,
+            this::startNewSession, this::updateTabName, this::updateCwdLabel,
             sessionActiveCallback,
             this::setOptionsPanelVisible,
             this::dismissPendingPermissionUi
@@ -724,15 +724,23 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     public void createNewSession() {
+        startNewSession(newSessionBtn);
+    }
+
+    /**
+     * Starts a chat: one open project binds directly, several ask which one.
+     *
+     * @param pickerAnchor component the project picker is anchored to
+     */
+    public void startNewSession(JComponent pickerAnchor) {
         Project[] projects = projectContext.getAllOpenProjects();
         if (projects == null || projects.length == 0) {
             return;
         }
         if (projects.length == 1) {
-            sessionService.get()
-                .createNewSession(ProjectPaths.nativePath(projects[0]));
+            sessionService.get().createNewSession(ProjectPaths.nativePath(projects[0]));
         } else {
-            componentLifecycleHandler.showProjectPickerPopup(newSessionBtn);
+            componentLifecycleHandler.showProjectPickerPopup(pickerAnchor);
         }
     }
 

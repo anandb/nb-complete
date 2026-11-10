@@ -3,9 +3,10 @@ package github.anandb.netbeans.ui.assistant;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Point;
-import java.awt.Insets;
 import java.awt.event.MouseEvent;
 import javax.swing.JButton;
+
+import github.anandb.netbeans.ui.components.UIUtils;
 
 import java.awt.Color;
 import java.awt.RenderingHints;
@@ -33,8 +34,7 @@ public class AttentionButton extends JButton {
 
     @Override
     public Point getToolTipLocation(MouseEvent event) {
-        Insets ins = getInsets();
-        return new Point(ins.left, -getHeight() - 8);
+        return UIUtils.tooltipAboveButton(event, this);
     }
 
     @Override

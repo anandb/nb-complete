@@ -324,13 +324,24 @@ public class FileCacheManager implements FileCacheQuery {
                 walkFileSystem(child, projectName, rootDir, target);
             } else {
                 File f = FileUtil.toFile(child);
-                if (f == null) continue;
-                String relPath = ProjectPaths.relativeTo(rootDir, f);
-                if (relPath != null) {
-                    target.put(f.getAbsolutePath(),
-                            new FileCacheQuery.CachedFile(child, projectName, relPath));
+                if (f != null) {
+                    addCachedFile(child, f, projectName, rootDir, target, false);
                 }
             }
+        }
+    }
+
+    /** Adds one file to {@code target} when it lies under {@code rootDir}; bumps the version when asked. */
+    private void addCachedFile(FileObject fileObject, File file, String projectName, File rootDir,
+            Map<String, FileCacheQuery.CachedFile> target, boolean bumpVersion) {
+        String rel = ProjectPaths.relativeTo(rootDir, file);
+        if (rel == null) {
+            return;
+        }
+        target.put(file.getAbsolutePath(),
+                new FileCacheQuery.CachedFile(fileObject, projectName, rel));
+        if (bumpVersion) {
+            cacheVersion.incrementAndGet();
         }
     }
 
@@ -343,12 +354,7 @@ public class FileCacheManager implements FileCacheQuery {
                 File f = FileUtil.toFile(fo);
                 if (f == null) return;
                 if (!strategy.isIgnored(rootDir, f)) {
-                    String rel = ProjectPaths.relativeTo(rootDir, f);
-                    if (rel != null) {
-                        files.put(f.getAbsolutePath(),
-                                new FileCacheQuery.CachedFile(fo, projectName, rel));
-                        cacheVersion.incrementAndGet();
-                    }
+                    addCachedFile(fo, f, projectName, rootDir, files, true);
                 }
             }
 
@@ -371,12 +377,7 @@ public class FileCacheManager implements FileCacheQuery {
                 // Add new path
                 File f = FileUtil.toFile(fo);
                 if (f != null && !strategy.isIgnored(rootDir, f)) {
-                    String rel = ProjectPaths.relativeTo(rootDir, f);
-                    if (rel != null) {
-                        files.put(f.getAbsolutePath(),
-                                new FileCacheQuery.CachedFile(fo, projectName, rel));
-                        cacheVersion.incrementAndGet();
-                    }
+                    addCachedFile(fo, f, projectName, rootDir, files, true);
                 }
             }
 

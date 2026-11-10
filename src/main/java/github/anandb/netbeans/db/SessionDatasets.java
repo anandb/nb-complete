@@ -291,33 +291,27 @@ final class SessionDatasets {
     private void upsertSessionMetaBatch(Db db, String bucket, Map<String, SessionMetadata> updates,
             boolean fillFromStored) throws SQLException {
         Connection conn = db.connection();
-        boolean autoCommit = conn.getAutoCommit();
-        conn.setAutoCommit(false);
-        try (PreparedStatement ps = conn.prepareStatement(Sql.get("merge_session_meta"))) {
-            Map<String, Long> ordinals = storedOrdinals(db, bucket);
-            long highest = 0L;
-            for (long value : ordinals.values()) {
-                highest = Math.max(highest, value);
-            }
-            for (Map.Entry<String, SessionMetadata> entry : updates.entrySet()) {
-                SessionMetadata meta = fillFromStored
-                        ? fillBlanksFromStored(db, bucket, entry.getKey(), entry.getValue())
-                        : entry.getValue();
-                Long ordinal = ordinals.get(entry.getKey());
-                if (ordinal == null) {
-                    ordinal = ++highest;
+        DbLifecycle.inTransaction(conn, () -> {
+            try (PreparedStatement ps = conn.prepareStatement(Sql.get("merge_session_meta"))) {
+                Map<String, Long> ordinals = storedOrdinals(db, bucket);
+                long highest = 0L;
+                for (long value : ordinals.values()) {
+                    highest = Math.max(highest, value);
                 }
-                bindSessionMeta(ps, bucket, entry.getKey(), meta, ordinal);
-                ps.addBatch();
+                for (Map.Entry<String, SessionMetadata> entry : updates.entrySet()) {
+                    SessionMetadata meta = fillFromStored
+                            ? fillBlanksFromStored(db, bucket, entry.getKey(), entry.getValue())
+                            : entry.getValue();
+                    Long ordinal = ordinals.get(entry.getKey());
+                    if (ordinal == null) {
+                        ordinal = ++highest;
+                    }
+                    bindSessionMeta(ps, bucket, entry.getKey(), meta, ordinal);
+                    ps.addBatch();
+                }
+                ps.executeBatch();
             }
-            ps.executeBatch();
-            conn.commit();
-        } catch (SQLException ex) {
-            conn.rollback();
-            throw ex;
-        } finally {
-            conn.setAutoCommit(autoCommit);
-        }
+        });
     }
 
     /** Binds one {@code merge_session_meta} row. */

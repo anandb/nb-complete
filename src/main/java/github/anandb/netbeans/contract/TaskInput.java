@@ -26,15 +26,16 @@ public record TaskInput(
 
     /** Tags as a list, splitting on commas (used by the store). */
     public List<String> tagsList() {
-        return split(tags);
+        return splitCsv(tags);
     }
 
     /** Projects as a list, splitting on commas (used by the store). */
     public List<String> projectsList() {
-        return split(projects);
+        return splitCsv(projects);
     }
 
-    private static List<String> split(String s) {
+    /** Splits a comma-separated list into trimmed, non-empty values. */
+    public static List<String> splitCsv(String s) {
         if (s == null || s.isBlank()) {
             return List.of();
         }

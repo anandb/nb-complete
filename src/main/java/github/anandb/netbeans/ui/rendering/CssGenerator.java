@@ -3,15 +3,10 @@ package github.anandb.netbeans.ui.rendering;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import java.awt.Color;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 
 import github.anandb.netbeans.model.ColorKey;
 import github.anandb.netbeans.model.ColorRegistry;
-import org.openide.util.NbBundle;
-import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.components.UIUtils;
 
 /**
@@ -31,16 +26,10 @@ public final class CssGenerator {
         if (template != null) {
             return template;
         }
-        try (InputStream in = CssGenerator.class.getResourceAsStream("chat-style.css.template")) {
-            if (in == null) {
-                throw new IllegalStateException(NbBundle.getMessage(UIBundle.class, "ERR_CssTemplateNotFound"));
-            }
-            template = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-            cachedCssTemplate = template;
-            return template;
-        } catch (IOException e) {
-            throw new IllegalStateException(NbBundle.getMessage(UIBundle.class, "ERR_LoadCssTemplateFailed"), e);
-        }
+        template = CssTemplates.load(CssGenerator.class, "chat-style.css.template",
+                "ERR_CssTemplateNotFound", "ERR_LoadCssTemplateFailed");
+        cachedCssTemplate = template;
+        return template;
     }
 
     /** Invalidates the cached template (called on theme switch). */

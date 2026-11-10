@@ -56,9 +56,6 @@ import github.anandb.netbeans.model.UsageRecords.GroupTotals;
 import github.anandb.netbeans.model.UsageRecords.ToolTotals;
 import github.anandb.netbeans.model.UsageRecords.UsageSummary;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import github.anandb.netbeans.support.Logger;
@@ -66,6 +63,7 @@ import github.anandb.netbeans.support.UsageStatsFormat;
 import github.anandb.netbeans.support.XmlUtils;
 import static github.anandb.netbeans.ui.components.UIUtils.MONO_STACK;
 import github.anandb.netbeans.ui.components.UIUtils;
+import github.anandb.netbeans.ui.rendering.CssTemplates;
 import github.anandb.netbeans.ui.rendering.FitEditorPane;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
@@ -410,19 +408,10 @@ public class TokenUsageDialog extends JDialog {
         if (template != null) {
             return template;
         }
-        try (InputStream in = TokenUsageDialog.class
-                .getResourceAsStream("token-usage-style.css.template")) {
-            if (in == null) {
-                throw new IllegalStateException(NbBundle.getMessage(
-                        UIBundle.class, "ERR_TokenUsageCssTemplateNotFound"));
-            }
-            template = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-            cachedCssTemplate = template;
-            return template;
-        } catch (IOException e) {
-            throw new IllegalStateException(NbBundle.getMessage(
-                    UIBundle.class, "ERR_LoadTokenUsageCssTemplateFailed"), e);
-        }
+        template = CssTemplates.load(TokenUsageDialog.class, "token-usage-style.css.template",
+                "ERR_TokenUsageCssTemplateNotFound", "ERR_LoadTokenUsageCssTemplateFailed");
+        cachedCssTemplate = template;
+        return template;
     }
 
     /**

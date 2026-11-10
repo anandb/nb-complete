@@ -156,14 +156,8 @@ public final class ToolThoughtCombiner {
 
         // Filter segments by current type visibility so the combined pane
         // only contains what the user wants to see.
-        boolean toolHidden = MessageFilterManager.isTypeHidden("tool");
-        boolean thoughtHidden = MessageFilterManager.isTypeHidden("thought");
-        List<CollapsibleToolPane.ToolSegment> visibleSegments = new ArrayList<>();
-        for (CollapsibleToolPane.ToolSegment seg : allSegments) {
-            if ((seg.isThought() && !thoughtHidden) || (!seg.isThought() && !toolHidden)) {
-                visibleSegments.add(seg);
-            }
-        }
+        List<CollapsibleToolPane.ToolSegment> visibleSegments =
+                MessageFilterManager.visibleSegments(allSegments);
 
         if (visibleSegments.isEmpty()) {
             // All segments hidden — remove individual bubbles but create no combined pane
@@ -197,7 +191,7 @@ public final class ToolThoughtCombiner {
         // Store ALL segments (unfiltered) for later re-filtering by applyTypeFilters()
         combined.putClientProperty("nb-complete.segments", allSegments);
 
-        boolean combinedVisible = !(toolHidden && thoughtHidden);
+        boolean combinedVisible = !visibleSegments.isEmpty();
         combined.setVisible(combinedVisible);
         Component strut = Box.createVerticalStrut(4);
         strut.setVisible(combinedVisible);

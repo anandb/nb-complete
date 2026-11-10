@@ -37,6 +37,7 @@ import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
 import github.anandb.netbeans.ui.session.StatusController;
 import github.anandb.netbeans.ui.session.ConfigPanelController;
 import github.anandb.netbeans.ui.session.SessionLifecycleHandler;
+import github.anandb.netbeans.ui.session.SessionArchive;
 import github.anandb.netbeans.ui.platform.ProjectContext;
 import github.anandb.netbeans.ui.platform.ProcessService;
 import github.anandb.netbeans.ui.platform.SessionService;
@@ -219,33 +220,14 @@ public class ComponentLifecycleHandler {
 
             @Override
             public void popupNewSession() {
-                SwingUtilities.invokeLater(() -> {
-                    Project[] projects = projectContext.getAllOpenProjects();
-                    if (projects == null || projects.length == 0) {
-                        return;
-                    }
-                    if (projects.length == 1) {
-                        sessionService.get().createNewSession(
-                                ProjectPaths.nativePath(projects[0]));
-                    } else {
-                        showProjectPickerPopup(inputArea);
-                    }
-                });
+                SwingUtilities.invokeLater(() -> topComponent.startNewSession(inputArea));
             }
 
             @Override
             public void popupArchiveSession() {
                 var sc = PlatformBridge.sessionControl();
-                if (sc == null) return;
-                String sid = sc.getCurrentSessionId();
-                if (sid != null) {
-                    boolean currentlyHidden = sc.isHidden(sid);
-                    boolean newHidden = !currentlyHidden;
-                    sc.setHidden(sid, newHidden);
-                    sc.refreshSessions();
-                    if (newHidden && !ChatLayoutBuilder.isShowingHidden()) {
-                        MiniAssistantDialog.closeIfVisible();
-                    }
+                if (sc != null) {
+                    SessionArchive.toggle(sc, sc.getCurrentSessionId());
                 }
             }
 

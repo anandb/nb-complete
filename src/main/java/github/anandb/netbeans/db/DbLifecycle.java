@@ -456,4 +456,24 @@ final class DbLifecycle {
             }
         }
     }
+
+    /** Runs {@code work} in one transaction on {@code conn}, rolling back on failure. */
+    static void inTransaction(Connection conn, SqlWork work) throws SQLException {
+        boolean autoCommit = conn.getAutoCommit();
+        conn.setAutoCommit(false);
+        try {
+            work.run();
+            conn.commit();
+        } catch (SQLException e) {
+            conn.rollback();
+            throw e;
+        } finally {
+            conn.setAutoCommit(autoCommit);
+        }
+    }
+
+    @FunctionalInterface
+    interface SqlWork {
+        void run() throws SQLException;
+    }
 }

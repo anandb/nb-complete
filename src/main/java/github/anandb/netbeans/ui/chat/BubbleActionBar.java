@@ -308,6 +308,13 @@ class BubbleActionBar {
         }
         pinned = !pinned;
         store.setPinned(sid, messageId, pinned);
+        applyPinVisual();
+        owner.revalidate();
+        owner.repaint();
+    }
+
+    /** Applies the icon, tooltip and accent for the current {@link #pinned} state. */
+    private void applyPinVisual() {
         pinBtn.setIcon(ThemeManager.getIcon(
                 pinned ? "pinned.svg" : "pin.svg", ACTION_ICON_SIZE));
         pinBtn.setToolTipText(NbBundle.getMessage(UIBundle.class,
@@ -315,8 +322,6 @@ class BubbleActionBar {
         pinBtn.getAccessibleContext().setAccessibleName(pinBtn.getToolTipText());
         pinBtn.getAccessibleContext().setAccessibleDescription(pinBtn.getToolTipText());
         applyPinAccent(pinned);
-        owner.revalidate();
-        owner.repaint();
     }
 
     private void applyPinAccent(boolean apply) {
@@ -345,14 +350,10 @@ class BubbleActionBar {
     void setPinned(boolean pinned) {
         this.pinned = pinned;
         if (pinBtn != null) {
-            pinBtn.setIcon(ThemeManager.getIcon(
-                    pinned ? "pinned.svg" : "pin.svg", ACTION_ICON_SIZE));
-            pinBtn.setToolTipText(NbBundle.getMessage(UIBundle.class,
-                    pinned ? "HINT_UnpinMessage" : "HINT_PinMessage"));
-            pinBtn.getAccessibleContext().setAccessibleName(pinBtn.getToolTipText());
-            pinBtn.getAccessibleContext().setAccessibleDescription(pinBtn.getToolTipText());
+            applyPinVisual();
+        } else {
+            applyPinAccent(pinned);
         }
-        applyPinAccent(pinned);
     }
 
     /**

@@ -415,25 +415,6 @@ public class StrategyRegistry implements UpdateDispatcher {
         return result;
     }
 
-    /** Extracts text from tool-call-style nested content structures. */
-    private static String extractContentText(JsonNode content) {
-        if (content == null) return null;
-        StringBuilder sb = new StringBuilder();
-        if (content.isArray()) {
-            for (JsonNode part : content) {
-                if (part.has("content")) {
-                    JsonNode inner = part.get("content");
-                    if (inner.has("text")) sb.append(inner.get("text").asText());
-                } else if (part.has("type") && "text".equals(part.get("type").asText())) {
-                    if (part.has("text")) sb.append(part.get("text").asText());
-                }
-            }
-        } else if (content.has("text")) {
-            sb.append(content.get("text").asText());
-        }
-        return sb.toString();
-    }
-
     /** Detects plan tool calls by inspecting the output structure. */
     static boolean isPlanToolCall(SessionUpdate update) {
         if (!"completed".equals(update.status())) return false;
@@ -483,7 +464,7 @@ public class StrategyRegistry implements UpdateDispatcher {
                     .append(isNotBlank(effectiveCommand) ? "$ " : "")
                     .append(abbreviate(effectiveCommand, 80))
                     .append(isNotBlank(effectiveCommand) ? "\n\n" : "")
-                    .append(firstNonNull(extractContentText(update.content()), ""))
+                    .append(firstNonNull(ToolDataExtractor.contentText(update.content()), ""))
                     .toString());
             m = ToolDataExtractor.classify(update.update().type(), text, kind, update.update().title());
             String extractedTitle = ToolDataExtractor.extractToolTitle(defaultString(messageId), text, m, update);

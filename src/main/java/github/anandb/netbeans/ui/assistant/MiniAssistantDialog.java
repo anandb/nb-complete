@@ -33,6 +33,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -186,7 +188,9 @@ public class MiniAssistantDialog extends JDialog {
         inputArea.setLineWrap(true);
         inputArea.setWrapStyleWord(true);
 
-        Set<String> miniExcluded = Set.of("model", "models", "level", "sessions", "agents");
+        Set<String> miniExcluded = DISALLOWED_MINI_COMMANDS.stream()
+                .map(command -> command.substring(1))
+                .collect(Collectors.toUnmodifiableSet());
         autocompleteManager = new AutocompleteManager(inputArea, this::sendMessage, miniExcluded);
 
         inputArea.addKeyListener(new KeyAdapter() {
@@ -591,33 +595,18 @@ public class MiniAssistantDialog extends JDialog {
     }
 
     private List<MessageBubble> getAllResponseBubbles() {
-        if (!SwingUtilities.isEventDispatchThread()) {
-            try {
-                List<MessageBubble>[] result = new List[]{List.of()};
-                SwingUtilities.invokeAndWait(() -> result[0] = getAllResponseBubbles());
-                return result[0];
-            } catch (InterruptedException | InvocationTargetException ex) {
-                return List.of();
-            }
-        }
-        AssistantTopComponent tc = AssistantTopComponent.findInstance();
-        if (tc == null || tc.getChatThreadPanel() == null) return List.of();
-
-        List<MessageBubble> bubbles = new ArrayList<>();
-        Component[] comps = tc.getChatThreadPanel().getMessagesContainer().getComponents();
-        for (Component c : comps) {
-            if (c instanceof MessageBubble mb && !"user".equals(mb.getRole())) {
-                bubbles.add(mb);
-            }
-        }
-        return bubbles;
+        return responseBubbles(mb -> !"user".equals(mb.getRole()));
     }
 
     private List<MessageBubble> getAssistantBubbles() {
+        return responseBubbles(mb -> "assistant".equals(mb.getRole()));
+    }
+
+    private List<MessageBubble> responseBubbles(Predicate<MessageBubble> filter) {
         if (!SwingUtilities.isEventDispatchThread()) {
             try {
                 List<MessageBubble>[] result = new List[]{List.of()};
-                SwingUtilities.invokeAndWait(() -> result[0] = getAssistantBubbles());
+                SwingUtilities.invokeAndWait(() -> result[0] = responseBubbles(filter));
                 return result[0];
             } catch (InterruptedException | InvocationTargetException ex) {
                 return List.of();
@@ -629,7 +618,7 @@ public class MiniAssistantDialog extends JDialog {
         List<MessageBubble> bubbles = new ArrayList<>();
         Component[] comps = tc.getChatThreadPanel().getMessagesContainer().getComponents();
         for (Component c : comps) {
-            if (c instanceof MessageBubble mb && "assistant".equals(mb.getRole())) {
+            if (c instanceof MessageBubble mb && filter.test(mb)) {
                 bubbles.add(mb);
             }
         }

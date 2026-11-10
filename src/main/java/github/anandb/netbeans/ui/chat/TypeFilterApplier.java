@@ -1,7 +1,6 @@
 package github.anandb.netbeans.ui.chat;
 
 import java.awt.Component;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import javax.swing.JPanel;
@@ -30,9 +29,6 @@ public final class TypeFilterApplier {
             return;
         }
         SwingUtilities.invokeLater(() -> {
-            boolean toolHidden = MessageFilterManager.isTypeHidden("tool");
-            boolean thoughtHidden = MessageFilterManager.isTypeHidden("thought");
-
             Component[] comps = messagesContainer.getComponents();
             for (int i = 0; i < comps.length; i++) {
                 if (comps[i] instanceof MessageBubble bubble) {
@@ -41,13 +37,8 @@ public final class TypeFilterApplier {
                         List<CollapsibleToolPane.ToolSegment> allSegments =
                                 (List<CollapsibleToolPane.ToolSegment>) bubble.getClientProperty("nb-complete.segments");
                         if (allSegments != null) {
-                            List<CollapsibleToolPane.ToolSegment> visibleSegments = new ArrayList<>();
-                            for (CollapsibleToolPane.ToolSegment seg : allSegments) {
-                                if ((seg.isThought() && !thoughtHidden)
-                                        || (!seg.isThought() && !toolHidden)) {
-                                    visibleSegments.add(seg);
-                                }
-                            }
+                            List<CollapsibleToolPane.ToolSegment> visibleSegments =
+                                    MessageFilterManager.visibleSegments(allSegments);
                             if (visibleSegments.isEmpty()) {
                                 bubble.setVisible(false);
                                 if (i + 1 < comps.length) comps[i + 1].setVisible(false);
