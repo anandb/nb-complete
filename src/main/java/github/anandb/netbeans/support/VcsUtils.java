@@ -319,7 +319,8 @@ public class VcsUtils {
         StringBuilder output = new StringBuilder();
         AtomicBoolean truncated = new AtomicBoolean();
         Thread reader = new Thread(() -> {
-            try (BufferedReader readerIn = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
+            try (BufferedReader readerIn = new BufferedReader(new InputStreamReader(
+                    proc.getInputStream(), StandardCharsets.UTF_8))) {
                 char[] buf = new char[8192];
                 int n;
                 while ((n = readerIn.read(buf)) >= 0) {
