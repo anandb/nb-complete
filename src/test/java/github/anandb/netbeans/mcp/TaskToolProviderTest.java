@@ -32,10 +32,14 @@ import java.nio.file.Path;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import github.anandb.netbeans.contract.ProjectQuery;
+import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.contract.TaskInput;
 import github.anandb.netbeans.contract.TaskRepositoryControl;
 import github.anandb.netbeans.model.TaskRecord;
 import github.anandb.netbeans.support.MapperSupplier;
+import github.anandb.netbeans.support.ProjectPaths;
+import org.netbeans.api.project.Project;
 import org.openide.util.Lookup;
 
 @ExtendWith(MockitoExtension.class)
@@ -54,12 +58,13 @@ class TaskToolProviderTest {
     private TaskRepositoryControl taskRepositoryControl;
 
     private MockedStatic<Lookup> lookupMock;
+    private Lookup mockLookup;
     private TaskToolProvider provider;
 
     @BeforeEach
     void setUp() {
         lookupMock = mockStatic(Lookup.class);
-        Lookup mockLookup = mock(Lookup.class);
+        mockLookup = mock(Lookup.class);
         lookupMock.when(Lookup::getDefault).thenReturn(mockLookup);
         when(mockLookup.lookup(TaskRepositoryControl.class)).thenReturn(taskRepositoryControl);
 
@@ -170,6 +175,39 @@ class TaskToolProviderTest {
 
     @SuppressWarnings("unchecked")
     @Test
+    void createsDefaultRepositoryForCurrentSessionProjectAmongOpenProjects() throws Exception {
+        ProjectQuery projectQuery = mock(ProjectQuery.class);
+        SessionQuery sessionQuery = mock(SessionQuery.class);
+        Project project = mock(Project.class);
+        Project otherProject = mock(Project.class);
+        when(projectQuery.getAllOpenProjects()).thenReturn(new Project[]{project, otherProject});
+        when(sessionQuery.getCurrentSessionDirectory()).thenReturn("/workspace/project/src");
+        when(mockLookup.lookup(ProjectQuery.class)).thenReturn(projectQuery);
+        when(mockLookup.lookup(SessionQuery.class)).thenReturn(sessionQuery);
+        when(taskRepositoryControl.repositoryIds()).thenReturn(List.of(), List.of("default-repo"));
+        when(taskRepositoryControl.ensureDefaultRepository("/workspace/project"))
+                .thenReturn(new TaskRepositoryControl.DefaultRepository("default-repo", true));
+        when(taskRepositoryControl.displayNameOf("default-repo")).thenReturn("BeanBot Tasks");
+        createTempCsvFile("default-repo");
+        when(taskRepositoryControl.add(eq("default-repo"), any(TaskInput.class)))
+                .thenReturn(mockTaskRecord("t-1", "Fix bug"));
+
+        try (MockedStatic<ProjectPaths> paths = mockStatic(ProjectPaths.class)) {
+            paths.when(() -> ProjectPaths.nativePath(project)).thenReturn("/workspace/project");
+            paths.when(() -> ProjectPaths.nativePath(otherProject)).thenReturn("/workspace/other");
+            ToolExecutor<AddTaskInput, Map<String, Object>> executor = registerAndGetExecutor();
+            Map<String, Object> result = executor.execute(
+                    new AddTaskInput(null, "Fix bug", null, null, null, null, null, null, null));
+
+            assertEquals("ok", result.get("status"));
+            assertTrue(result.get("message").toString().contains("Created this Beanbot Tasks repository"));
+            verify(taskRepositoryControl).ensureDefaultRepository("/workspace/project");
+            verify(taskRepositoryControl).add(eq("default-repo"), any(TaskInput.class));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
     void returnsErrorWhenSummaryIsBlank() throws Exception {
         ToolExecutor<AddTaskInput, Map<String, Object>> executor = registerAndGetExecutor();
         AddTaskInput input = new AddTaskInput(null, "  ", null, null, null, null, null, null, null);
@@ -189,20 +227,26 @@ class TaskToolProviderTest {
         Map<String, Object> result = executor.execute(input);
 
         assertEquals("error", result.get("status"));
-        assertTrue(result.get("message").toString().contains("No Beanbot Tasks repository configured"));
+        assertTrue(result.get("message").toString().contains("current session project"));
     }
 
     @SuppressWarnings("unchecked")
     @Test
     void returnsErrorWhenMultipleReposAndNoRepoId() throws Exception {
         when(taskRepositoryControl.repositoryIds()).thenReturn(List.of("repo1", "repo2"));
+        when(taskRepositoryControl.displayNameOf("repo1")).thenReturn("Work");
+        when(taskRepositoryControl.displayNameOf("repo2")).thenReturn("Personal");
 
         ToolExecutor<AddTaskInput, Map<String, Object>> executor = registerAndGetExecutor();
         AddTaskInput input = new AddTaskInput(null, "Fix bug", null, null, null, null, null, null, null);
         Map<String, Object> result = executor.execute(input);
 
         assertEquals("error", result.get("status"));
-        assertTrue(result.get("message").toString().contains("Multiple repositories exist"));
+        assertTrue(result.get("message").toString().contains("Which Beanbot Tasks repository"));
+        assertTrue(result.get("message").toString().contains("repo1 (Work)"));
+        assertTrue(result.get("message").toString().contains("repo2 (Personal)"));
+        verify(taskRepositoryControl, never()).add(eq("repo1"), any(TaskInput.class));
+        verify(taskRepositoryControl, never()).add(eq("repo2"), any(TaskInput.class));
     }
 
     @SuppressWarnings("unchecked")

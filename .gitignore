@@ -101,3 +101,4 @@ node_modules/
 package.json
 package-lock.json
 .bbignore
+/beanbot_todo.txt

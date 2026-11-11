@@ -9,13 +9,18 @@ import java.util.Locale;
 import java.util.Map;
 
 import org.openide.util.Lookup;
+import org.netbeans.api.project.Project;
 
+import github.anandb.netbeans.contract.ProjectQuery;
+import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.contract.TaskInput;
 import github.anandb.netbeans.contract.TaskRepositoryControl;
 import github.anandb.netbeans.model.TaskRecord;
 import github.anandb.netbeans.model.TaskStatus;
 import github.anandb.netbeans.pattern.PriorityPattern;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.FileAccessGuard;
+import github.anandb.netbeans.support.ProjectPaths;
 
 /**
  * Registers the {@code add_task} MCP tool so the chat plugin (or any ACP
@@ -61,6 +66,38 @@ public class TaskToolProvider {
                     if (args.summary() == null || args.summary().isBlank()) {
                         return ToolResults.required("summary");
                     }
+                    boolean createdRepository = false;
+                    List<String> repositoryIds = control.repositoryIds();
+                    if (repositoryIds.isEmpty()) {
+                        String projectRoot = currentProjectRoot();
+                        if (projectRoot == null) {
+                            return ToolResults.error("No Beanbot Tasks repository is configured, and the current "
+                                    + "session project could not be determined.");
+                        }
+                        try {
+                            TaskRepositoryControl.DefaultRepository ensured =
+                                    control.ensureDefaultRepository(projectRoot);
+                            String createdId = ensured.repositoryId();
+                            createdRepository = ensured.created();
+                            repositoryIds = control.repositoryIds();
+                            if (!repositoryIds.contains(createdId)) {
+                                return ToolResults.error(
+                                        "The default Beanbot Tasks repository could not be registered.");
+                            }
+                        } catch (java.io.IOException | RuntimeException ex) {
+                            LOG.warn("Failed to create default task repository: {0}", ex.getMessage());
+                            return ToolResults.error("Could not create the default Beanbot Tasks repository: "
+                                    + ex.getMessage());
+                        }
+                    }
+                    if ((args.repoId() == null || args.repoId().isBlank()) && repositoryIds.size() > 1) {
+                        List<String> choices = new ArrayList<>();
+                        for (String id : repositoryIds) {
+                            choices.add(id + " (" + control.displayNameOf(id) + ")");
+                        }
+                        return ToolResults.error("Which Beanbot Tasks repository should I use? Choose one: "
+                                + String.join(", ", choices));
+                    }
                     String repoId = resolveRepository(control, args.repoId());
                     if (repoId == null) {
                         return resolveError(control, args.repoId());
@@ -92,8 +129,11 @@ public class TaskToolProvider {
                         toInt(args.estimate()), toInt(args.consumed()));
                     TaskRecord created = control.add(repoId, input);
                     LOG.info("add_task tool called: repo={0} id={1} summary={2}", repoId, created.id(), args.summary());
-                    return Map.of("status", "ok", "id", created.id(),
-                        "message", "Task added to '" + control.displayNameOf(repoId) + "'.");
+                    String message = "Task added to '" + control.displayNameOf(repoId) + "'.";
+                    if (createdRepository) {
+                        message += " Created this Beanbot Tasks repository in the open project.";
+                    }
+                    return Map.of("status", "ok", "id", created.id(), "message", message);
                 }
             });
     }
@@ -334,5 +374,24 @@ public class TaskToolProvider {
 
     private static int toInt(Integer v) {
         return v == null ? 0 : v;
+    }
+
+    private static String currentProjectRoot() {
+        SessionQuery sessions = Lookup.getDefault().lookup(SessionQuery.class);
+        String sessionDirectory = sessions == null ? null : sessions.getCurrentSessionDirectory();
+        if (sessionDirectory == null || sessionDirectory.isBlank()) {
+            return null;
+        }
+        ProjectQuery projects = Lookup.getDefault().lookup(ProjectQuery.class);
+        Project[] openProjects = projects == null ? new Project[0] : projects.getAllOpenProjects();
+        String currentRoot = null;
+        for (Project project : openProjects) {
+            String root = ProjectPaths.nativePath(project);
+            if (root != null && FileAccessGuard.isInsideProject(root, sessionDirectory)
+                    && (currentRoot == null || root.length() > currentRoot.length())) {
+                currentRoot = root;
+            }
+        }
+        return currentRoot;
     }
 }

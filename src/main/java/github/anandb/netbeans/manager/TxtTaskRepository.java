@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -93,6 +94,33 @@ public final class TxtTaskRepository implements TaskRepositoryControl {
         }
         TasksMetadata.put(repoId, tasksPath, displayName);
         loadAsync(s);
+    }
+
+    @Override
+    public synchronized DefaultRepository ensureDefaultRepository(String projectRoot) throws IOException {
+        if (projectRoot == null || projectRoot.isBlank()) {
+            throw new IOException("Project root is unavailable");
+        }
+        List<String> ids = repositoryIds();
+        if (!ids.isEmpty()) {
+            return new DefaultRepository(ids.get(0), false);
+        }
+        Path root = Path.of(projectRoot);
+        if (!Files.isDirectory(root)) {
+            throw new IOException("Project root is not a directory: " + projectRoot);
+        }
+        Path tasksFile = root.resolve("beanbot_todo.txt");
+        if (Files.exists(tasksFile) && !Files.isRegularFile(tasksFile)) {
+            throw new IOException("Default tasks path is not a file: " + tasksFile);
+        }
+        if (!Files.exists(tasksFile)) {
+            Files.createFile(tasksFile);
+        }
+        String repoId = "mcp-default-" + UUID.randomUUID();
+        String name = root.getFileName() == null ? "BeanBot Tasks"
+                : "BeanBot Tasks — " + root.getFileName();
+        registerRepository(repoId, tasksFile.toAbsolutePath().toString(), name);
+        return new DefaultRepository(repoId, true);
     }
 
     @Override

@@ -30,6 +30,13 @@ public interface TaskRepositoryControl {
     /** Registers (or re-registers) a repository and loads its tasks file from disk. */
     void registerRepository(String repoId, String tasksPath, String displayName);
 
+    /** Creates and registers the default project-root repository when none exist. */
+    DefaultRepository ensureDefaultRepository(String projectRoot) throws java.io.IOException;
+
+    /** Result of ensuring the default repository. */
+    record DefaultRepository(String repositoryId, boolean created) {
+    }
+
     /** Removes a repository and its cached state (the tasks file is not deleted). */
     void unregisterRepository(String repoId);
 
