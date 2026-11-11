@@ -894,12 +894,12 @@ divider and the input area (it must borrow space from the thread only).
   `ToolDataExtractor` title-length knob: the extractor only applies a 300-char safety cap.
 - Chat bubbles ride a width row: the assistant bubble has **no cap** and spans the whole
   thread width — a long answer is prose and code, and capping it clipped content. The user bubble
-  stays a compact right-aligned block at 86% of the thread width, capped at 912 px (20% wider than
-  the old 72 % / 760 px measure). BoxLayout's cross-axis alignment is cooperative between siblings,
+  stays a compact right-aligned block at 96% of the thread width, capped at 1024 px. BoxLayout's
+  cross-axis alignment is cooperative between siblings,
   so the cap MUST stay in `MessageBubble.AlignedRow` — putting it on `getMaximumSize()` shifts the
   whole row instead of aligning it. The assistant's row is created with
   `AlignedRow.fullWidth()` — no cap, no wide-content escape hatch (a table or code block in a user
-  message is rendered by its wrapping `JTextArea`, ordered by the user's 86 % block). Corners
+  message is rendered by its wrapping `JTextArea`, ordered by the user's 96 % block). Corners
   are `RoundedPanel(18)`; tables/tool blocks keep `RoundedPanel(12)`. Both chat cards are flat:
   fill plus the theme's 1px hairline, no drop shadow. Do NOT paint either card the page colour —
   on a near-white L&F page the bubble loses its boundary (reported after v1.30), and do not
