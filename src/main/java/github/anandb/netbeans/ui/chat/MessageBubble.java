@@ -65,6 +65,8 @@ public class MessageBubble extends JPanel implements Scrollable {
     private final transient BubbleThemeApplier themeApplier;
     private final transient BubbleActionBar actionBar;
     private transient HierarchyListener hierarchyListener;
+    /** Owner hook run after the streamed content is rendered (flush tick or cooldown finalize). */
+    private transient Runnable postFinalizeListener;
 
     @Override
     public float getAlignmentX() {
@@ -198,6 +200,10 @@ public class MessageBubble extends JPanel implements Scrollable {
                     }
                     revalidate();
                     repaint();
+                }
+                Runnable listener = postFinalizeListener;
+                if (listener != null) {
+                    listener.run();
                 }
             },
             segments, this.text
@@ -396,6 +402,11 @@ public class MessageBubble extends JPanel implements Scrollable {
      */
     void forceFinalize(boolean expanded) {
         streamer.forceFinalize(expanded);
+    }
+
+    /** Registers the owner hook that runs after each content render of a streaming bubble. */
+    void setPostFinalizeListener(Runnable listener) {
+        this.postFinalizeListener = listener;
     }
 
     /** Arms the safety-net cooldown for a newly created streaming bubble. */

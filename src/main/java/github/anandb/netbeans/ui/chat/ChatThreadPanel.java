@@ -116,6 +116,15 @@ public class ChatThreadPanel extends JPanel {
     private volatile boolean allBlocksExpanded = false;
     private volatile boolean keepOlderMessages = false;
     private volatile boolean isBatchMode = false;
+    /**
+     * True while the view is following the live stream. Set when a streaming chunk arrives while
+     * the view is anchored at the bottom; cleared when the user scrolls away or the turn ends.
+     * Needed because growth can land outside the flush tick — tool/thought chunks dump their full
+     * text (no drip cap) and the bubble's cooldown finalizer can render after the tick laid out —
+     * and measuring {@code isAtBottom()} after that growth reports "not at bottom", which would
+     * silently stop auto-scroll for the rest of the turn.
+     */
+    private boolean followStreamBottom;
     /** True while a chunked load/refresh render is in flight; blocks live
      *  {@link #drainMessageQueue()} so arriving deltas can't interleave with
      *  half-drawn history (order correctness). */
@@ -188,6 +197,8 @@ public class ChatThreadPanel extends JPanel {
         add(layeredPane, BorderLayout.CENTER);
 
         scrollController = new ScrollController(scrollPane, this, layeredPane);
+        // Following a stream must stop the moment the user scrolls away.
+        scrollController.setUserScrollListener(() -> followStreamBottom = false);
         messageTrimmer = new MessageTrimmer(messagesContainer, scrollController);
 
         layeredPane.add(scrollPane, JLayeredPane.DEFAULT_LAYER);
@@ -241,8 +252,10 @@ public class ChatThreadPanel extends JPanel {
             if (!isShowing() || bubble == null) {
                 return;
             }
-                // Check wasAtBottom BEFORE flushUpdate changes content height.
-            boolean wasAtBottom = scrollController.isAtBottom();
+            // Check wasAtBottom BEFORE flushUpdate changes content height. A chunk that
+            // arrived at the bottom pins the flush even if an earlier flush in the same
+            // burst already pushed the viewport past the sticky zone.
+            boolean wasAtBottom = followStreamBottom || scrollController.isAtBottom();
             boolean didUpdate = bubble.flushUpdate();
             if (didUpdate) {
                 // No explicit revalidate — container layout pass (triggered by scrollToBottom) handles it.
@@ -409,6 +422,12 @@ public class ChatThreadPanel extends JPanel {
         final String role = pm.messageType().roleName();
         // Capture scroll position BEFORE any mutations (stopStreaming, addSingleBubble, etc.)
         boolean wasAtBottom = scrollController.isAtBottom();
+        // Follow mode: a streaming chunk that arrives while the view is anchored keeps it
+        // anchored through the flush and the bubble's cooldown finalize, even if a burst grows
+        // the content past the sticky zone first. User scrolling and turn end clear it.
+        if (wasAtBottom && pm.streaming() && !replay) {
+            followStreamBottom = true;
+        }
 
         // Detect startup info message early — it arrives with streaming=true
         // but should be rendered as a compact card, not a regular message bubble.
@@ -634,6 +653,13 @@ public class ChatThreadPanel extends JPanel {
      */
     private void startStreamingWithCooldown(MessageBubble bubble) {
         streamingCoordinator.startStreaming(bubble);
+        // The bubble's own cooldown finalize can render a whole burst into the pane after the
+        // flush tick laid it out; keep a following view pinned through that growth too.
+        bubble.setPostFinalizeListener(() -> {
+            if (followStreamBottom) {
+                scrollController.scrollToBottom(true);
+            }
+        });
         bubble.scheduleStreamingCooldown(allBlocksExpanded);
     }
 
@@ -709,9 +735,11 @@ public class ChatThreadPanel extends JPanel {
     public void stopStreaming() {
         // Already on EDT — do NOT wrap in invokeLater (creates race with late SSE deltas).
         boolean anyFinalized = false;
-        boolean wasAtBottom = scrollController.isAtBottom();
+        boolean wasAtBottom = followStreamBottom || scrollController.isAtBottom();
 
         MessageBubble activeBubble = streamingCoordinator.stopStreaming();
+        // The turn is over: following must not force-scroll the next turn's first flush.
+        followStreamBottom = false;
         if (activeBubble != null) {
             activeBubble.flushUpdate(true);
             if (activeBubble.streamingFlagsSet()) {

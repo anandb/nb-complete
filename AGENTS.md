@@ -970,6 +970,9 @@ divider and the input area (it must borrow space from the thread only).
 ### Auto-Scroll Contract
 `ScrollController.isAtBottom()` uses a 150px sticky-zone tolerance (a 50px margin is too tight: adding a bubble shifts the viewport past it before `wasAtBottom` is captured). All content-modifying calls in `ChatThreadPanel` (`addSingleBubble`, `processMessageSections`, `stopStreaming`, stream timer) capture `wasAtBottom` BEFORE touching content; auto-scroll only fires when it is true. The stream timer (`Timer TimingConstants.STREAM_FLUSH_MS` ms) is the reference: it captures `wasAtBottom` before `flushUpdate()`.
 
+A streaming chunk that arrives while anchored sets `ChatThreadPanel.followStreamBottom`. It is needed because content can grow **outside** the flush tick — tool/thought chunks flush their whole pending text in one tick (no `STREAM_DRIP_MAX_CHARS` cap), and a bubble's cooldown finalizer (`MessageBubble.setPostFinalizeListener`) renders the rest of a burst after the tick has laid out — so measuring `isAtBottom()` after that growth answers "not at bottom" and auto-scroll would silently die for the rest of the turn. The flag is honoured by the flush tick, by the post-finalize hook and by `stopStreaming()`'s final pin; it is cleared by turn end and by `ScrollController.setUserScrollListener` (wheel, scrollbar drag, paging, Home), so following never fights a user who scrolls away. Do NOT drop the user-scroll cancel while keeping the follow flag, and do NOT gate the flag on the assistant role only: thought/tool bursts are the case that overflows the sticky zone.
+
+
 ### Live Context Report (`_goose/unstable/context/report`)
 - The Token panel's CONTEXT WINDOW block is the only place that reads the harness live:
   `TokenUsageDialog.readContextReport()` runs on the stats worker (never the EDT) and asks

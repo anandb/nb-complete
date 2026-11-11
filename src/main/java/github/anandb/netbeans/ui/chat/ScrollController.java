@@ -43,6 +43,8 @@ public class ScrollController implements KeyEventDispatcher {
     private final JButton scrollDownBtn;
     private final Map<Component, MouseWheelListener> wheelListeners = new ConcurrentHashMap<>();
     private BooleanSupplier scrollBlocker;
+    /** Notified when the user moves the view, so streaming auto-scroll can stop following. */
+    private Runnable userScrollListener;
 
     public ScrollController(JScrollPane scrollPane, Component parentComponent, JLayeredPane layeredPane) {
         this.scrollPane = scrollPane;
@@ -52,8 +54,11 @@ public class ScrollController implements KeyEventDispatcher {
 
         layeredPane.add(scrollDownBtn, JLayeredPane.PALETTE_LAYER);
 
+        scrollPane.addMouseWheelListener(e -> fireUserScroll());
         scrollPane.getVerticalScrollBar().addAdjustmentListener(e -> {
-            if (!e.getValueIsAdjusting()) {
+            if (e.getValueIsAdjusting()) {
+                fireUserScroll();
+            } else {
                 updateScrollDownBtnVisibility();
             }
         });
@@ -98,6 +103,18 @@ public class ScrollController implements KeyEventDispatcher {
 
     public void setScrollBlocker(BooleanSupplier scrollBlocker) {
         this.scrollBlocker = scrollBlocker;
+    }
+
+    /** Registers a callback for user-initiated scrolling (wheel, scrollbar drag, paging). */
+    public void setUserScrollListener(Runnable listener) {
+        this.userScrollListener = listener;
+    }
+
+    private void fireUserScroll() {
+        Runnable listener = userScrollListener;
+        if (listener != null) {
+            listener.run();
+        }
     }
 
     @Override
@@ -200,6 +217,7 @@ public class ScrollController implements KeyEventDispatcher {
     }
 
     public void scrollByBlock(boolean pageUp) {
+        fireUserScroll();
         JScrollBar vertical = scrollPane.getVerticalScrollBar();
         if (pageUp) {
             vertical.setValue(vertical.getValue() - vertical.getVisibleAmount());
@@ -209,6 +227,7 @@ public class ScrollController implements KeyEventDispatcher {
     }
 
     public void scrollToTop() {
+        fireUserScroll();
         SwingUtilities.invokeLater(() -> {
             // Force layout so getMaximum() reflects newly added components.
             scrollPane.validate();
