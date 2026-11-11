@@ -130,17 +130,17 @@ class MessageBubbleTest {
 
     @Test
     void alignedRowCapsAndRightAlignsAUserBubble() {
-        JLabel child = laidOutChild(new MessageBubble.AlignedRow(0.86f, 912, true), 800);
+        JLabel child = laidOutChild(new MessageBubble.AlignedRow(0.96f, 1024, true), 800);
 
-        assertEquals(688, child.getWidth(), "86% of the row");
-        assertEquals(112, child.getX(), "flush with the right edge");
+        assertEquals(768, child.getWidth(), "96% of the row");
+        assertEquals(32, child.getX(), "flush with the right edge");
     }
 
     @Test
-    void theUserCapStopsAt912Px() {
-        JLabel child = laidOutChild(new MessageBubble.AlignedRow(0.86f, 912, true), 2000);
+    void theUserCapStopsAt1024Px() {
+        JLabel child = laidOutChild(new MessageBubble.AlignedRow(0.96f, 1024, true), 2000);
 
-        assertEquals(912, child.getWidth(), "absolute cap wins on a wide panel");
+        assertEquals(1024, child.getWidth(), "absolute cap wins on a wide panel");
     }
 
     @Test

@@ -78,13 +78,11 @@ public class MessageBubble extends JPanel implements Scrollable {
     /** Bubble padding; the text panes add their own inset on top of this. */
     private static final int BUBBLE_PAD = 6;
     /**
-     * A user message stays a compact block, right-aligned: 86% of the thread width, capped at
-     * 912 px (20% wider than the old 72 % / 760 px measure, which clipped long prompts). The
-     * assistant bubble has no cap — a long answer is prose and code the thread must give its whole
-     * width to.
+     * User messages are right-aligned at 96% of the thread width, capped at 1024 px. The avatar
+     * shares this width. The assistant bubble has no cap — long answers need the full thread width.
      */
-    private static final float USER_WIDTH_RATIO = 0.86f;
-    private static final int USER_MAX_WIDTH_PX = 912;
+    private static final float USER_WIDTH_RATIO = 0.96f;
+    private static final int USER_MAX_WIDTH_PX = 1024;
 
     /**
      * Cached preferred size: the thread's BoxLayout asks every bubble for its preferred and
