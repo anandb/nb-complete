@@ -6,13 +6,15 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-The **Reload** button (reload icon) on the toolbar re-fetches the current session from the server. Your messages are always stored on the server, so reloading never loses anything — it just refreshes the chat view to match the server state.
+The **Reload** button (reload icon) on the toolbar re-fetches the current session from the agent and rebuilds the chat view from the replay. Reloading never changes the stored session, but the view it produces is exactly what the agent replays — after a compaction that is the compacted history, not every turn you ever sent.
 
 You'll want to reload when:
 
-- you ran <code>/compact</code> and want the summarised history displayed
-- older messages were trimmed from the view (click **Show All Messages** first, then **Reload** to bring them all back)
+- you ran `/compact` and want the summarised history displayed
+- older messages were trimmed from the view by the *Max Displayed Messages* cap (click **Show All Messages** first to stop the trimming; Reload then restores what the agent still replays)
 - the view seems out of sync with the server, for example after a server restart or a session reload from the dropdown
+
+If a session was compacted, the turns before the compaction point stay in the agent's own history log but are no longer replayed, so they do not come back in the chat view — see [[Message History]].
 
 
 > [[Message History]]

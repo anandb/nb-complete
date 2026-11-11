@@ -8,7 +8,7 @@
 
 ![Message history search](../images/history_search.webp){style="max-width:100%;"}
 
-Your complete message history is always safely stored on the server. While the local chat view hides older messages to conserve IDE memory, you can always retrieve the full history by clicking **Show All Messages** followed by **Reload** — the session is reloaded but all messages are retained. You can also search through your past input history using `Ctrl + R`. If you want to keep just one or two messages visible (e.g. a plan or to-do list), hover over the response bubble and click the pin icon; pinned messages stay in the chat panel instead of being cleared over time.
+Your message history is stored by the agent, not by the IDE. While the local chat view hides older messages to conserve IDE memory, clicking **Show All Messages** stops the trimming, and **Reload** asks the agent to replay the session — every message the agent still replays comes back. Newer agents compact their context once a session grows large, and the replay then starts at that compaction point: the compacted-away turns stay in the agent's own history log but are no longer sent to the IDE, so a reload cannot show them. Search your past input history with `Ctrl + R`. If you want to keep just one or two messages visible (e.g. a plan or to-do list), hover over the response bubble and click the pin icon; pinned messages stay in the chat panel instead of being cleared over time.
 
 
 > [[Pinned Messages]]
