@@ -4,6 +4,7 @@ import java.awt.Font;
 import javax.swing.Icon;
 
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.PluginSettings;
 
 /**
  * Unified theme manager facade.
@@ -48,6 +49,15 @@ public class ThemeManager {
     /** The editor font one point smaller, clamped at 9 — for the diff panes. */
     public static Font getDiffMonospaceFont() {
         return IconResourceManager.getDiffMonospaceFont();
+    }
+
+    /**
+     * Monospace for the permission surfaces (request panel, mini assistant and permission bubble):
+     * the diff font while <em>Use a smaller font size on diffs</em> is on, the editor monospace
+     * otherwise, so permission dialogs read exactly like the diff windows they preview.
+     */
+    public static Font getPermissionMonospaceFont() {
+        return PluginSettings.isDiffIdeFontEnabled() ? getDiffMonospaceFont() : getMonospaceFont();
     }
 
     public static boolean isDark() {

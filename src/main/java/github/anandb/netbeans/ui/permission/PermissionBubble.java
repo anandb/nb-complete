@@ -29,7 +29,6 @@ import github.anandb.netbeans.support.ToolCallDiffParser.FileChange;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.chat.CollapsibleCodePane;
-import github.anandb.netbeans.ui.rendering.IconResourceManager;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 
@@ -75,7 +74,7 @@ public class PermissionBubble extends JPanel {
         List<FileChange> fileChanges = toolCall != null
                 ? ToolCallDiffParser.parse(toolCall) : List.of();
         if (!fileChanges.isEmpty()) {
-            Font mono = IconResourceManager.getMonospaceFont();
+            Font mono = ThemeManager.getPermissionMonospaceFont();
             centerPanel.add(Box.createVerticalStrut(6));
             // Glanceable summary: count changes by type
             long added = fileChanges.stream().filter(fc -> fc.status() == 'A').count();

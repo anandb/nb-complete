@@ -10,6 +10,7 @@ import java.awt.image.BufferedImage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
+import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.ui.components.UIUtils;
 
 /**
@@ -36,6 +37,22 @@ class MonospaceFontTest {
 
         assertMonospaced(diff, "diff font");
         assertTrue(diff.getSize() <= mono.getSize(), "the diff font is never larger than the code font");
+    }
+
+    @Test
+    void permissionFontFollowsTheDiffFontOption() {
+        boolean original = PluginSettings.isDiffIdeFontEnabled();
+        try {
+            PluginSettings.setDiffIdeFontEnabled(false);
+            assertEquals(ThemeManager.getMonospaceFont(), ThemeManager.getPermissionMonospaceFont(),
+                    "option off: permission surfaces keep the full editor font");
+
+            PluginSettings.setDiffIdeFontEnabled(true);
+            assertEquals(ThemeManager.getDiffMonospaceFont(), ThemeManager.getPermissionMonospaceFont(),
+                    "option on: permission surfaces take the diff font");
+        } finally {
+            PluginSettings.setDiffIdeFontEnabled(original);
+        }
     }
 
     @Test

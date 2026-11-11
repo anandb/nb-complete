@@ -51,7 +51,6 @@ import org.openide.util.NbBundle;
 import org.openide.windows.WindowManager;
 import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.rendering.FitEditorPane;
-import github.anandb.netbeans.ui.rendering.IconResourceManager;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.assistant.AssistantTopComponent;
@@ -337,7 +336,7 @@ public final class PermissionRequestPanel extends JPanel {
             contextRow.add(prefixLabel, BorderLayout.WEST);
 
             StartTruncatingLabel contextLabel = new StartTruncatingLabel(context);
-            contextLabel.setFont(ThemeManager.getMonospaceFont().deriveFont(Font.PLAIN));
+            contextLabel.setFont(ThemeManager.getPermissionMonospaceFont().deriveFont(Font.PLAIN));
             contextLabel.setForeground(new Color(0xF44336));
             contextRow.add(contextLabel, BorderLayout.CENTER);
 
@@ -616,7 +615,7 @@ public final class PermissionRequestPanel extends JPanel {
         }
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
-        Font monoFont = IconResourceManager.getMonospaceFont();
+        Font monoFont = ThemeManager.getPermissionMonospaceFont();
 
         // Track per-file hunk index
         Map<String, Integer> hunkIndex = new HashMap<>();
@@ -680,7 +679,7 @@ public final class PermissionRequestPanel extends JPanel {
     /** Builds context for execute (bash) tool calls: shows command + workdir. */
     private void buildExecuteContext(JsonNode toolCall) {
         ColorTheme theme = ThemeManager.getCurrentTheme();
-        Font monoFont = IconResourceManager.getMonospaceFont();
+        Font monoFont = ThemeManager.getPermissionMonospaceFont();
         String command = null;
         String workdir = null;
 

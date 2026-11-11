@@ -1,8 +1,15 @@
 package github.anandb.netbeans.support;
 
+import java.awt.GraphicsEnvironment;
+import java.awt.MouseInfo;
+import java.awt.Point;
+import java.awt.PointerInfo;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import javax.swing.JComponent;
+import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 /**
@@ -11,6 +18,11 @@ import javax.swing.Timer;
  * component's paint method) and repeats every few seconds after a quiet period.
  * Holds no component reference beyond repaint, so it is safe for both the
  * sidebar permission panel and the mini-assistant dialog.
+ *
+ * <p>Motion pauses while the pointer is over the panel: a user who is reading or
+ * clicking it is already attending to the request, and a moving hit target is
+ * hard to click. The wobble resumes with its usual quiet period once the pointer
+ * leaves.</p>
  */
 public final class WobbleAnimator {
 
@@ -31,6 +43,10 @@ public final class WobbleAnimator {
 
     private int x;
     private int y;
+    /** The owner wants attention animation (set by scheduleStart/start/buzz, cleared by stop). */
+    private boolean active;
+    /** The pointer is over the target, so motion is paused. */
+    private boolean hovered;
     private Timer wobbleTimer;
     private Timer wobbleRestartTimer;
     private Timer wobbleDelayTimer;
@@ -38,6 +54,25 @@ public final class WobbleAnimator {
 
     public WobbleAnimator(JComponent target) {
         this.target = target;
+        target.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                hovered = true;
+                halt();
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                // Entering a child also exits the panel; only a real exit ends the hover.
+                if (pointerInside()) {
+                    return;
+                }
+                hovered = false;
+                if (active) {
+                    scheduleStart();
+                }
+            }
+        });
     }
 
     /** Current horizontal paint offset. */
@@ -52,7 +87,11 @@ public final class WobbleAnimator {
 
     /** Schedules wobble to start after 10 seconds of inactivity. */
     public void scheduleStart() {
+        active = true;
         cancelDelay();
+        if (hovered) {
+            return;
+        }
         wobbleDelayTimer = new Timer(WOBBLE_DELAY_MS, e -> {
             wobbleDelayTimer.stop();
             wobbleDelayTimer = null;
@@ -72,6 +111,10 @@ public final class WobbleAnimator {
 
     /** Shakes the target side-to-side, repeating every few seconds. */
     public void start() {
+        active = true;
+        if (hovered) {
+            return;
+        }
         if (wobbleTimer != null && wobbleTimer.isRunning()) {
             // Already wobbling — just reset the cycle (don't double-start)
             return;
@@ -107,8 +150,12 @@ public final class WobbleAnimator {
      *  tries to send a new message while a permission request is pending). Runs one
      *  fast burst, then schedules the gentle periodic wobble so attention continues. */
     public void buzz() {
+        active = true;
         // Stop any pending gentle wobble so the two animations do not fight over x/y.
-        stop();
+        halt();
+        if (hovered) {
+            return;
+        }
         buzzTimer = new Timer(BUZZ_INTERVAL_MS, new ActionListener() {
             private int frame = 0;
 
@@ -135,6 +182,15 @@ public final class WobbleAnimator {
 
     /** Stops the wobble animation and its repeat cycle. */
     public void stop() {
+        active = false;
+        // The owner is dismissing the panel; a hidden component never gets an exit event,
+        // so a stale hover flag would keep the next request from ever wobbling.
+        hovered = false;
+        halt();
+    }
+
+    /** Cancels every animation and its schedule without clearing the owner's intent. */
+    private void halt() {
         cancelDelay();
         if (wobbleTimer != null) {
             wobbleTimer.stop();
@@ -151,5 +207,19 @@ public final class WobbleAnimator {
         x = 0;
         y = 0;
         target.repaint();
+    }
+
+    /** True while the pointer is inside the target's bounds, including over its children. */
+    private boolean pointerInside() {
+        if (GraphicsEnvironment.isHeadless()) {
+            return false;
+        }
+        PointerInfo info = MouseInfo.getPointerInfo();
+        if (info == null) {
+            return false;
+        }
+        Point p = info.getLocation();
+        SwingUtilities.convertPointFromScreen(p, target);
+        return target.contains(p);
     }
 }

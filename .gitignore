@@ -102,3 +102,6 @@ package.json
 package-lock.json
 .bbignore
 /beanbot_todo.txt
+
+# Build artifact (empty file created by a Windows-style NUL redirect during the build)
+/NUL

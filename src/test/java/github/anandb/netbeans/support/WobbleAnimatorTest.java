@@ -2,6 +2,7 @@ package github.anandb.netbeans.support;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseEvent;
 import java.lang.reflect.Field;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.swing.JComponent;
@@ -73,6 +74,30 @@ class WobbleAnimatorTest {
         assertEquals(0, animator.y());
         assertNull(timer(animator, "buzzTimer"));
         assertNotNull(timer(animator, "wobbleDelayTimer"));
+        animator.stop();
+    }
+
+    @Test
+    void hoveringPausesEveryAnimation() throws Exception {
+        TestComponent target = new TestComponent(new AtomicInteger());
+        WobbleAnimator animator = new WobbleAnimator(target);
+        target.dispatchEvent(new MouseEvent(target, MouseEvent.MOUSE_ENTERED,
+                System.currentTimeMillis(), 0, 5, 5, 0, false));
+
+        animator.start();
+        assertNull(timer(animator, "wobbleTimer"), "no motion while the pointer is over the panel");
+
+        animator.scheduleStart();
+        assertNull(timer(animator, "wobbleDelayTimer"), "a hovered panel must not arm the delayed wobble");
+
+        animator.buzz();
+        assertNull(timer(animator, "buzzTimer"), "the alert burst must not move a panel the pointer is on");
+
+        // Dismissing a hovered panel gets no exit event (it is hidden), so stop() must clear the
+        // hover flag or every later request would stay still.
+        animator.stop();
+        animator.start();
+        assertNotNull(timer(animator, "wobbleTimer"), "a new request wobbles again");
         animator.stop();
     }
 

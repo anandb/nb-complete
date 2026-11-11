@@ -75,7 +75,6 @@ import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
 import github.anandb.netbeans.ui.permission.PermissionOption;
 import github.anandb.netbeans.ui.permission.PermissionRequestPanel;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
-import github.anandb.netbeans.ui.rendering.IconResourceManager;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.components.WobblePanel;
@@ -336,7 +335,7 @@ public class MiniAssistantDialog extends JDialog {
         miniContextLabel.setRows(2);
         miniContextLabel.setBorder(BorderFactory.createEmptyBorder());
         miniContextLabel.setForeground(ThemeManager.getCurrentTheme().mutedForeground());
-        miniContextLabel.setFont(IconResourceManager.getMonospaceFont());
+        miniContextLabel.setFont(ThemeManager.getPermissionMonospaceFont());
         FontMetrics fm = miniContextLabel.getFontMetrics(miniContextLabel.getFont());
         miniContextLabel.setMaximumSize(new Dimension(Integer.MAX_VALUE, fm.getHeight() * 2));
 
@@ -890,8 +889,14 @@ public class MiniAssistantDialog extends JDialog {
         if (!b && isVisible()) {
             saveBounds();
         }
+        // A hidden dialog gets no pointer events, so a paused wobble would stay paused (and its
+        // timers would keep ticking) until it is shown again — re-arm it on show.
+        miniPermissionPanel.stopWobble();
         super.setVisible(b);
         if (b) {
+            if (miniPermissionPanel.isVisible()) {
+                miniPermissionPanel.scheduleWobble();
+            }
             SwingUtilities.invokeLater(this::restoreDividerLocation);
         }
     }
@@ -903,6 +908,9 @@ public class MiniAssistantDialog extends JDialog {
         }
         stopElapsedTimer();
         stopTokenPolling();
+        // Release the permission strip's animation timers explicitly; disposal removes the
+        // component tree, but the timers hold this dialog's panel through their listeners.
+        miniPermissionPanel.stopWobble();
         if (keyDispatcher != null) {
             KeyboardFocusManager.getCurrentKeyboardFocusManager()
                     .removeKeyEventDispatcher(keyDispatcher);
