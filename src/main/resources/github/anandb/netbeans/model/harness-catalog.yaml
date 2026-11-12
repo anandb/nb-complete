@@ -85,10 +85,9 @@ harnesses:
     displayName: "Pi"
     iconBase: "pi-logo"
     binaryNames: ["pi-acp"]
-    prerequisites: "Requires Node.js 22+ and pi 0.80.4+ on your PATH. Install the ACP adapter separately: npm install -g @geohar/pi-acp. For MCP Tools, add pi-mcp-adapter to your Pi packages."
+    prerequisites: "Requires Node.js 22+, pi 0.80.4+ on your PATH, and @geohar/pi-acp 0.4.0+ for editor context. Install the ACP adapter separately: npm install -g @geohar/pi-acp. For MCP Tools, add pi-mcp-adapter to your Pi packages."
     docsUrl: "https://github.com/georgeharker/pi-acp"
     requiresMessageQueue: true
-    injectsEditorContext: false
     acceptsMcpAuthToken: false
     supportTier: LIMITED
     limitationsKey: "Harness.Limitations.Pi"

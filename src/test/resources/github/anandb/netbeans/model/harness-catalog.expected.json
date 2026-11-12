@@ -123,7 +123,7 @@
     "launchArgs" : "",
     "requiresMessageQueue" : true,
     "sendsMcpServerConfig" : true,
-    "injectsEditorContext" : false,
+    "injectsEditorContext" : true,
     "supportsMessageIds" : false,
     "supportsMcpServer" : true,
     "supportsSessionSetMode" : false,
@@ -140,7 +140,7 @@
     "installWindows" : "powershell -c \"irm https://pi.dev/install.ps1 | iex\"",
     "installMac" : "curl -fsSL https://pi.dev/install.sh | sh",
     "installLinux" : "curl -fsSL https://pi.dev/install.sh | sh",
-    "prerequisites" : "Requires Node.js 22+ and pi 0.80.4+ on your PATH. Install the ACP adapter separately: npm install -g @geohar/pi-acp. For MCP Tools, add pi-mcp-adapter to your Pi packages.",
+    "prerequisites" : "Requires Node.js 22+, pi 0.80.4+ on your PATH, and @geohar/pi-acp 0.4.0+ for editor context. Install the ACP adapter separately: npm install -g @geohar/pi-acp. For MCP Tools, add pi-mcp-adapter to your Pi packages.",
     "docsUrl" : "https://github.com/georgeharker/pi-acp",
     "windowsInstallSubDirs" : [ "%LOCALAPPDATA%\\pi-node\\current" ],
     "acceptsMcpAuthToken" : false
