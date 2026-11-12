@@ -19,7 +19,7 @@ BeanBot is a NetBeans IDE plugin designed to provide integrated AI capabilities 
 
 ## Getting Started
 
-Supported coding harnesses: **Goose, Oh My Pi, OpenCode, Codex, OpenClaw, Pi, Cursor, Copilot, Claude, Hermes, Gemini, Devin, Kilo Code, Cline, Jcode** — pick one during onboarding or later from the help menu.
+Supported coding harnesses: **Oh My Pi, OpenCode, Codex, OpenClaw, Pi, Goose, Cursor, Copilot, Claude, Hermes, Gemini, Devin, Kilo Code, Cline, Jcode, Qwen Code, Kimi Code, Grok, OpenHands** — pick one during onboarding or later from the help menu.
 
 **Token and cost statistics** are captured from the ACP traffic itself, not from an external process: the usage updates and per-turn token figures a harness already sends are recorded into an embedded H2 database under the NetBeans user directory (`beanbot/usage-stats.mv.db`), so they survive restarts and are readable without a harness running. The currency button in the toolbar opens the panel, which breaks the figures down by model and by agent; they are approximate for harnesses that report incomplete usage. Not all harnesses report usage as a monetary value.
 
