@@ -4,11 +4,13 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.JsonNode;
 import github.anandb.netbeans.contract.SessionQuery;
+import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.contract.UsageStatsStore;
 import github.anandb.netbeans.contract.UIHandler;
 import github.anandb.netbeans.contract.UsageStatsStore.GroupBy;
 import github.anandb.netbeans.model.UsageRecords.GroupTotals;
 import github.anandb.netbeans.model.MessageType;
+import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionState;
@@ -339,6 +341,30 @@ class StrategyRegistryCaptureTest {
         JsonNode content = MAPPER.createObjectNode().put("type", "text").put("text", text);
         SessionUpdate.UpdateData data = new SessionUpdate.UpdateData(MessageType.user_message_chunk,
                 null, null, messageId, content, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null);
+        return new SessionUpdate("2.0", "session/update", new SessionUpdate.Params("ses_capture", data));
+    }
+
+    @Test
+    void harnessSystemPromptThoughtIsFiltered() {
+        ProcessControl proc = mock(ProcessControl.class);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.OPENHANDS);
+        when(lookupInstance.lookup(ProcessControl.class)).thenReturn(proc);
+        UIHandler handler = noopHandler();
+
+        registry().handle(thoughtChunk("System Prompt:\nYou are OpenHands..."), handler);
+        verify(handler, never()).displayMessage(any());
+
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.OPENCODE);
+        registry().handle(thoughtChunk("System Prompt:\nnot from OpenHands"), handler);
+        verify(handler).displayMessage(any());
+    }
+
+    /** Builds an agent_thought_chunk with the given text. */
+    private static SessionUpdate thoughtChunk(String text) {
+        JsonNode content = MAPPER.createObjectNode().put("type", "text").put("text", text);
+        SessionUpdate.UpdateData data = new SessionUpdate.UpdateData(MessageType.agent_thought_chunk,
+                null, null, null, content, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null);
         return new SessionUpdate("2.0", "session/update", new SessionUpdate.Params("ses_capture", data));
     }

@@ -355,6 +355,43 @@ harnesses:
       command: "grok login"
       hint: "Sign in once, or set XAI_API_KEY."
 
+  # OpenHands CLI (`openhands acp`), ACP v1 over stdio. initialize advertises loadSession,
+  # prompt image+embeddedContext and MCP http+sse; session/new returns the three
+  # confirmation modes but no models or config options. session/list, close, delete,
+  # resume and set_model are not implemented; session/load replays the transcript. The
+  # model lives in the CLI's agent settings, so the model dropdown is not offered.
+  # Replies arrive as whole messages (token streaming is off). A second prompt is
+  # accepted, but it starts a second run loop on the same conversation, so BeanBot
+  # queues mid-turn messages. Its ACP adapter passes an HTTP server's ACP header LIST
+  # into an agent model that expects a header DICT, so an injected MCP server fails
+  # validation; BeanBot leaves the internal server out (configure MCP in the CLI).
+  - id: "openhands"
+    displayName: "OpenHands"
+    iconBase: "openhands"
+    binaryNames: ["openhands"]
+    launchArgs: "acp"
+    requiresMessageQueue: true
+    sendsMcpServerConfig: false
+    supportsMcpServer: false
+    supportsSessionSetMode: true
+    supportsSessionSetConfigOption: false
+    supportsModelSelection: false
+    supportsSessionList: false
+    sendsSystemPromptAsThought: true
+    unsupportedModelSelectionMessage: "MSG_OpenHandsUnsupportedModelSelection"
+    unsupportedModelSelectionPlaceholder: "MSG_OpenHandsUnsupportedModelSelectionPlaceholder"
+    supportTier: LIMITED
+    limitationsKey: "Harness.Limitations.OpenHands"
+    prerequisites: "Requires Python 3.12+ and uv for the pip route, or the standalone installer. Run `openhands` once to configure an LLM (or add --override-with-envs and set LLM_API_KEY, LLM_BASE_URL and LLM_MODEL) before the first session."
+    docsUrl: "https://docs.openhands.dev/openhands/usage/run-openhands/acp"
+    install:
+      windows: "uv tool install openhands --python 3.12"
+      mac: "curl -fsSL https://install.openhands.dev/install.sh | sh"
+      linux: "curl -fsSL https://install.openhands.dev/install.sh | sh"
+    activation:
+      command: "openhands"
+      hint: "Run it once to configure an LLM provider (or launch with --override-with-envs)."
+
   - id: "unknown"
     displayName: "Agent"
     iconBase: "agent"

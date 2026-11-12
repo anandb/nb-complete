@@ -28,7 +28,8 @@
     "docsUrl" : "https://omp.sh/docs/acp",
     "windowsInstallSubDirs" : [ "%LOCALAPPDATA%\\omp" ],
     "acceptsMcpAuthToken" : true,
-    "stripsSystemReminders" : false
+    "stripsSystemReminders" : false,
+    "sendsSystemPromptAsThought" : false
   }, {
     "id" : "opencode",
     "displayName" : "OpenCode",
@@ -58,7 +59,8 @@
     "docsUrl" : "https://opencode.ai/docs/",
     "windowsInstallSubDirs" : [ ],
     "acceptsMcpAuthToken" : true,
-    "stripsSystemReminders" : false
+    "stripsSystemReminders" : false,
+    "sendsSystemPromptAsThought" : false
   }, {
     "id" : "codex",
     "displayName" : "Codex",
@@ -88,7 +90,8 @@
     "docsUrl" : "https://github.com/agentclientprotocol/codex-acp",
     "windowsInstallSubDirs" : [ ],
     "acceptsMcpAuthToken" : true,
-    "stripsSystemReminders" : false
+    "stripsSystemReminders" : false,
+    "sendsSystemPromptAsThought" : false
   }, {
     "id" : "openclaw",
     "displayName" : "OpenClaw",
@@ -118,7 +121,8 @@
     "docsUrl" : "https://docs.openclaw.ai/install",
     "windowsInstallSubDirs" : [ ],
     "acceptsMcpAuthToken" : true,
-    "stripsSystemReminders" : false
+    "stripsSystemReminders" : false,
+    "sendsSystemPromptAsThought" : false
   }, {
     "id" : "pi",
     "displayName" : "Pi",
@@ -148,7 +152,8 @@
     "docsUrl" : "https://github.com/georgeharker/pi-acp",
     "windowsInstallSubDirs" : [ "%LOCALAPPDATA%\\pi-node\\current" ],
     "acceptsMcpAuthToken" : false,
-    "stripsSystemReminders" : false
+    "stripsSystemReminders" : false,
+    "sendsSystemPromptAsThought" : false
   }, {
     "id" : "goose",
     "displayName" : "Goose",
@@ -178,7 +183,8 @@
     "docsUrl" : "https://goose-docs.ai/docs/getting-started/installation",
     "windowsInstallSubDirs" : [ ],
     "acceptsMcpAuthToken" : true,
-    "stripsSystemReminders" : false
+    "stripsSystemReminders" : false,
+    "sendsSystemPromptAsThought" : false
   }, {
     "id" : "cursor",
     "displayName" : "Cursor",
@@ -208,7 +214,8 @@
     "docsUrl" : "https://cursor.com/docs/cli/acp",
     "windowsInstallSubDirs" : [ ],
     "acceptsMcpAuthToken" : true,
-    "stripsSystemReminders" : false
+    "stripsSystemReminders" : false,
+    "sendsSystemPromptAsThought" : false
   }, {
     "id" : "copilot",
     "displayName" : "Copilot",
@@ -238,7 +245,8 @@
     "docsUrl" : "https://github.com/github/copilot-cli",
     "windowsInstallSubDirs" : [ ],
     "acceptsMcpAuthToken" : true,
-    "stripsSystemReminders" : false
+    "stripsSystemReminders" : false,
+    "sendsSystemPromptAsThought" : false
   }, {
     "id" : "claude",
     "displayName" : "Claude",
@@ -268,7 +276,8 @@
     "docsUrl" : "https://github.com/agentclientprotocol/claude-agent-acp",
     "windowsInstallSubDirs" : [ ],
     "acceptsMcpAuthToken" : true,
-    "stripsSystemReminders" : false
+    "stripsSystemReminders" : false,
+    "sendsSystemPromptAsThought" : false
   }, {
     "id" : "hermes",
     "displayName" : "Hermes",
@@ -298,7 +307,8 @@
     "docsUrl" : "https://hermes-agent.nousresearch.com/docs/user-guide/features/acp",
     "windowsInstallSubDirs" : [ "%LOCALAPPDATA%\\hermes\\bin" ],
     "acceptsMcpAuthToken" : true,
-    "stripsSystemReminders" : false
+    "stripsSystemReminders" : false,
+    "sendsSystemPromptAsThought" : false
   }, {
     "id" : "gemini",
     "displayName" : "Gemini",
@@ -328,7 +338,8 @@
     "docsUrl" : "https://geminicli.com/docs/get-started/installation/",
     "windowsInstallSubDirs" : [ ],
     "acceptsMcpAuthToken" : true,
-    "stripsSystemReminders" : false
+    "stripsSystemReminders" : false,
+    "sendsSystemPromptAsThought" : false
   }, {
     "id" : "devin",
     "displayName" : "Devin",
@@ -358,7 +369,8 @@
     "docsUrl" : "https://docs.devin.ai/cli",
     "windowsInstallSubDirs" : [ ],
     "acceptsMcpAuthToken" : true,
-    "stripsSystemReminders" : false
+    "stripsSystemReminders" : false,
+    "sendsSystemPromptAsThought" : false
   }, {
     "id" : "kilo",
     "displayName" : "Kilo Code",
@@ -388,7 +400,8 @@
     "docsUrl" : "https://kilo.ai/docs/code-with-ai/platforms/cli",
     "windowsInstallSubDirs" : [ "%USERHOME%/.kilo/bin" ],
     "acceptsMcpAuthToken" : true,
-    "stripsSystemReminders" : false
+    "stripsSystemReminders" : false,
+    "sendsSystemPromptAsThought" : false
   }, {
     "id" : "cline",
     "displayName" : "Cline",
@@ -418,7 +431,8 @@
     "docsUrl" : "https://docs.cline.bot/usage/acp",
     "windowsInstallSubDirs" : [ ],
     "acceptsMcpAuthToken" : true,
-    "stripsSystemReminders" : false
+    "stripsSystemReminders" : false,
+    "sendsSystemPromptAsThought" : false
   }, {
     "id" : "jcode",
     "displayName" : "Jcode",
@@ -448,7 +462,8 @@
     "docsUrl" : "https://jcode.sh/docs",
     "windowsInstallSubDirs" : [ "%LOCALAPPDATA%\\jcode\\bin" ],
     "acceptsMcpAuthToken" : false,
-    "stripsSystemReminders" : false
+    "stripsSystemReminders" : false,
+    "sendsSystemPromptAsThought" : false
   }, {
     "id" : "qwen",
     "displayName" : "Qwen Code",
@@ -478,7 +493,8 @@
     "docsUrl" : "https://qwenlm.github.io/qwen-code-docs/",
     "windowsInstallSubDirs" : [ ],
     "acceptsMcpAuthToken" : true,
-    "stripsSystemReminders" : false
+    "stripsSystemReminders" : false,
+    "sendsSystemPromptAsThought" : false
   }, {
     "id" : "kimi",
     "displayName" : "Kimi Code",
@@ -508,7 +524,8 @@
     "docsUrl" : "https://moonshotai.github.io/kimi-code/",
     "windowsInstallSubDirs" : [ ],
     "acceptsMcpAuthToken" : true,
-    "stripsSystemReminders" : true
+    "stripsSystemReminders" : true,
+    "sendsSystemPromptAsThought" : false
   }, {
     "id" : "grok",
     "displayName" : "Grok",
@@ -538,7 +555,39 @@
     "docsUrl" : "https://x.ai/cli",
     "windowsInstallSubDirs" : [ ],
     "acceptsMcpAuthToken" : true,
-    "stripsSystemReminders" : false
+    "stripsSystemReminders" : false,
+    "sendsSystemPromptAsThought" : false
+  }, {
+    "id" : "openhands",
+    "displayName" : "OpenHands",
+    "iconBase" : "openhands",
+    "binaryNames" : [ "openhands" ],
+    "launchArgs" : "acp",
+    "requiresMessageQueue" : true,
+    "sendsMcpServerConfig" : false,
+    "injectsEditorContext" : true,
+    "supportsMessageIds" : false,
+    "supportsMcpServer" : false,
+    "supportsSessionSetMode" : true,
+    "supportsSessionSetConfigOption" : false,
+    "supportsSessionSetModel" : false,
+    "supportsModelSelection" : false,
+    "supportsSessionList" : false,
+    "supportsAgentList" : true,
+    "separateBubblesPerReplayChunk" : false,
+    "supportTier" : "LIMITED",
+    "limitationsKey" : "Harness.Limitations.OpenHands",
+    "unsupportedModelSelectionMessage" : "MSG_OpenHandsUnsupportedModelSelection",
+    "unsupportedModelSelectionPlaceholder" : "MSG_OpenHandsUnsupportedModelSelectionPlaceholder",
+    "installWindows" : "uv tool install openhands --python 3.12",
+    "installMac" : "curl -fsSL https://install.openhands.dev/install.sh | sh",
+    "installLinux" : "curl -fsSL https://install.openhands.dev/install.sh | sh",
+    "prerequisites" : "Requires Python 3.12+ and uv for the pip route, or the standalone installer. Run `openhands` once to configure an LLM (or add --override-with-envs and set LLM_API_KEY, LLM_BASE_URL and LLM_MODEL) before the first session.",
+    "docsUrl" : "https://docs.openhands.dev/openhands/usage/run-openhands/acp",
+    "windowsInstallSubDirs" : [ ],
+    "acceptsMcpAuthToken" : true,
+    "stripsSystemReminders" : false,
+    "sendsSystemPromptAsThought" : true
   } ],
   "unknown" : {
     "id" : "unknown",
@@ -569,7 +618,8 @@
     "docsUrl" : "",
     "windowsInstallSubDirs" : [ ],
     "acceptsMcpAuthToken" : true,
-    "stripsSystemReminders" : false
+    "stripsSystemReminders" : false,
+    "sendsSystemPromptAsThought" : false
   },
   "activations" : {
     "claude" : {
@@ -636,6 +686,10 @@
       "hint" : "Sign in once and connect a model provider.",
       "command" : "opencode auth login"
     },
+    "openhands" : {
+      "hint" : "Run it once to configure an LLM provider (or launch with --override-with-envs).",
+      "command" : "openhands"
+    },
     "pi" : {
       "hint" : "Connect a model provider in the Pi CLI before the first session.",
       "command" : ""
@@ -667,8 +721,9 @@
     "omp.exe" : "omp",
     "openclaw" : "openclaw",
     "opencode" : "opencode",
+    "openhands" : "openhands",
     "pi-acp" : "pi",
     "qwen" : "qwen"
   },
-  "sortedIds" : [ "claude", "cline", "codex", "copilot", "cursor", "devin", "gemini", "goose", "grok", "hermes", "jcode", "kilo", "kimi", "omp", "openclaw", "opencode", "pi", "qwen" ]
+  "sortedIds" : [ "claude", "cline", "codex", "copilot", "cursor", "devin", "gemini", "goose", "grok", "hermes", "jcode", "kilo", "kimi", "omp", "openclaw", "opencode", "openhands", "pi", "qwen" ]
 }

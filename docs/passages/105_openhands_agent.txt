@@ -1,0 +1,50 @@
+:: OpenHands Agent {"position":"2900,1400","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">OpenHands Agent</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+#### Install
+
+- **macOS / Linux / WSL (install script)**: `curl -fsSL https://install.openhands.dev/install.sh | sh`
+- **Windows (uv)**: `uv tool install openhands --python 3.12`
+
+The uv route needs **Python 3.12+** and <a href="https://docs.astral.sh/uv/" target="_blank" rel="noopener">uv</a>. CLI docs: <a href="https://docs.openhands.dev/openhands/usage/run-openhands/acp" target="_blank" rel="noopener">docs.openhands.dev/openhands/usage/run-openhands/acp</a>.
+
+#### About
+
+<a href="https://docs.openhands.dev" target="_blank" rel="noopener">OpenHands</a> is All Hands AI's coding agent. Running <code>openhands acp</code> makes the CLI act as an **ACP server** over stdio: it speaks JSON-RPC on stdin/stdout and is meant to be spawned by an ACP-aware editor, so it is not a command to run yourself.
+
+The executable you configure in BeanBot is <code>openhands</code>, run with the default launch argument <code>acp</code>.
+
+**Configuration** happens in the CLI, not in the chat. Run <code>openhands</code> once and configure an LLM provider (the settings live in <code>~/.openhands/agent&#95;settings.json</code>). Environment variables are ignored by default: to use <code>LLM&#95;API&#95;KEY</code>, <code>LLM&#95;BASE&#95;URL</code> and <code>LLM&#95;MODEL</code>, add <code>--override-with-envs</code> under Process Arguments. Without a configured agent, <code>session/new</code> fails with an authentication error and no chat starts.
+
+OpenHands in BeanBot supports:
+- [[Editor Context->Automatic Context Capture]] Seamlessly injects the active editor state into agent prompts.
+- **Agent / Mode List**: The three confirmation modes (<b>Always Ask</b>, <b>Always Approve</b>, <b>LLM Approve</b>) come from the server and switch through the protocol's mode request, so the agent dropdown works in an open session.
+- **[[Permission Requests]]**: Always Ask mode sends the standard permission request with allow-once, reject, always-allow and a risk-based option; the panel behaves like every other harness.
+- **Session reload**: OpenHands implements <code>session/load</code> and replays the agent and tool transcript, so [[Reloading a Session]] works for sessions it has already persisted. Your own messages are not replayed — see the limitations.
+- **Queued messages**: a message sent while a turn is running is held in the [[Queuing Messages]] toolbar queue until the turn ends. OpenHands accepts a second prompt, but that starts a second run loop on the same conversation, so BeanBot waits instead.
+
+#### Limitations
+
+The harness chooser labels OpenHands <b>Limited</b>; the items below are what that badge points to. See [[Onboarding]].
+
+- **No model switching**: OpenHands returns no model list and its <code>session/set&#95;model</code> is a no-op; the model dropdown is disabled. Configure the model in the CLI (or with <code>--override-with-envs</code>) before starting the session.
+- **No session list, close, delete or resume**: OpenHands implements only <code>session/load</code>. The session dropdown therefore shows sessions tracked locally by this BeanBot instance, **Delete Session…** is not offered, and sessions created in another OpenHands client do not appear. [[Archiving Sessions]] is local only.
+- **No plugin MCP tools**: OpenHands' ACP adapter passes an HTTP server's header list into an agent model that expects a header dictionary, so an injected MCP server fails validation and the session cannot start. BeanBot therefore does not hand it the internal server; configure MCP servers in OpenHands itself with `openhands mcp add` if you need them.
+- **Reloaded transcripts omit your messages**: the replay carries the agent's messages, thoughts and tool calls, but OpenHands deliberately skips user messages because it expects the editor to have drawn them. After a reload or an IDE restart your prompts are not shown. The full system prompt, which OpenHands also replays as a thought, is filtered out by BeanBot.
+- **No token streaming**: the ACP server sends each assistant message as a complete chunk rather than token deltas, so replies appear as whole messages while the status line shows the run in progress.
+- **No token statistics**: OpenHands reports cumulative usage in <code>&#95;meta</code> on its updates instead of a standard <code>usage&#95;update</code>; per-turn token and cost figures stay empty in [[Check token usage]].
+
+> [[Post Install]]
+> [[Starting a Session]]
+> [[Onboarding]]
+> [[Permission Requests]]
+> [[Picking an Agent, Model and Thinking Level]]
+> [[Queuing Messages]]
+> [[Reloading a Session]]
+> [[Check token usage]]
+> [[Archiving Sessions]]

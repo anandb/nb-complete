@@ -317,6 +317,12 @@ class ServerProcessLifecycle {
 
             Map<String, String> env = pb.environment();
             System.getenv().forEach(env::putIfAbsent);
+            // OpenHands prints its ASCII banner to stdout before the ACP stream; the
+            // streaming JSON parser cannot skip that leading text. Pin the documented
+            // switch so the handshake starts on a clean pipe.
+            if (configuredHarness() == HarnessCatalog.OPENHANDS) {
+                env.put("OPENHANDS_SUPPRESS_BANNER", "1");
+            }
 
             // The process is bound to one working directory for its whole life:
             // harnesses that resolve paths relative to their cwd (e.g. a

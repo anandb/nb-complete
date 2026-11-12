@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
+import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.contract.UIHandler;
 import github.anandb.netbeans.contract.UpdateDispatcher;
@@ -22,6 +23,7 @@ import github.anandb.netbeans.contract.UsageStatsStore;
 import github.anandb.netbeans.support.ToolDataExtractor;
 import github.anandb.netbeans.model.Message;
 import github.anandb.netbeans.model.MessageType;
+import github.anandb.netbeans.model.Harness;
 import github.anandb.netbeans.model.ModelRecords.MessageClassification;
 import github.anandb.netbeans.model.ModelRecords.PlanEntry;
 import github.anandb.netbeans.model.ProcessedMessage;
@@ -153,6 +155,10 @@ public class StrategyRegistry implements UpdateDispatcher {
 
             case "agent_thought_chunk" -> {
                 String text = extractText(update.content());
+                if (isSystemPromptThought(text)) {
+                    LOG.fine("Ignoring harness system-prompt thought");
+                    return;
+                }
                 captureMessage(update, MessageKind.THOUGHT);
                 String tTitle = SubAgentTitleResolver.resolve(null,
                         update.params() != null ? update.params().sessionId() : null,
@@ -325,6 +331,16 @@ public class StrategyRegistry implements UpdateDispatcher {
         return MessageType.agent_message_chunk.name().equals(t)
             || MessageType.agent_thought_chunk.name().equals(t)
             || MessageType.user_message_chunk.name().equals(t);
+    }
+
+    /** A harness that sends its system prompt as a thought chunk (OpenHands) hides it, not reasoning. */
+    private static boolean isSystemPromptThought(String text) {
+        if (text == null || !text.startsWith("System Prompt:")) {
+            return false;
+        }
+        ProcessControl proc = Lookup.getDefault().lookup(ProcessControl.class);
+        Harness caps = proc == null ? null : proc.getCapabilities();
+        return caps != null && caps.sendsSystemPromptAsThought();
     }
 
     // ---------------------------------------------------------------

@@ -18,14 +18,14 @@ class HarnessCatalogTest {
 
     @Test
     void allHarnessesPresent() {
-        assertEquals(18, HarnessCatalog.ALL.size());
+        assertEquals(19, HarnessCatalog.ALL.size());
         Set<String> ids = new HashSet<>();
         for (Harness h : HarnessCatalog.ALL) {
             assertTrue(ids.add(h.id()), "duplicate id: " + h.id());
         }
         assertTrue(ids.containsAll(Set.of("opencode", "codex", "goose", "pi", "cursor", "claude", "hermes",
                 "gemini", "omp", "openclaw", "devin", "copilot", "kilo", "cline", "jcode", "qwen", "kimi",
-                "grok")));
+                "grok", "openhands")));
     }
 
     @Test
@@ -33,7 +33,8 @@ class HarnessCatalogTest {
         Set<String> allIds = new HashSet<>(HarnessCatalog.ALL.stream()
                 .map(Harness::id).toList());
         assertEquals(Set.of("omp", "opencode", "codex", "openclaw", "pi", "goose", "cursor", "copilot",
-                "claude", "hermes", "gemini", "devin", "kilo", "cline", "jcode", "qwen", "kimi", "grok"),
+                "claude", "hermes", "gemini", "devin", "kilo", "cline", "jcode", "qwen", "kimi", "grok",
+                "openhands"),
                 allIds);
     }
 
@@ -240,8 +241,17 @@ class HarnessCatalogTest {
     }
 
     @Test
+    void onlyOpenHandsSendsItsSystemPromptAsAThought() {
+        for (Harness h : HarnessCatalog.ALL) {
+            assertEquals("openhands".equals(h.id()), h.sendsSystemPromptAsThought(),
+                    h.id() + " system-prompt thought capability");
+        }
+        assertFalse(HarnessCatalog.UNKNOWN.sendsSystemPromptAsThought());
+    }
+
+    @Test
     void onlyTheCuratedSetHasLimitedSupport() {
-        java.util.Set<String> limitedIds = java.util.Set.of("openclaw", "jcode", "gemini", "pi", "cline");
+        java.util.Set<String> limitedIds = java.util.Set.of("openclaw", "jcode", "gemini", "pi", "cline", "openhands");
         for (Harness h : HarnessCatalog.ALL) {
             boolean limited = limitedIds.contains(h.id());
             assertEquals(limited, h.hasLimitedSupport(), h.id() + " support tier");
@@ -489,6 +499,42 @@ class HarnessCatalogTest {
         assertEquals("grok.svg", HarnessCatalog.harnessIconName("grok"));
         assertNotNull(HarnessCatalogTest.class.getResource("/github/anandb/netbeans/ui/icons/grok.svg"));
         assertNotNull(HarnessCatalogTest.class.getResource("/github/anandb/netbeans/ui/icons/grok_dark.svg"));
+    }
+
+    @Test
+    void openhandsCapabilitiesMatchHandshake() {
+        // Pinned against the live OpenHands CLI 1.14.0 (SDK 1.16.1): initialize advertises
+        // loadSession, prompt image+embeddedContext and MCP http+sse; session/new returns
+        // three confirmation modes. session/list, close, delete, resume and set_model answer
+        // -32601; set_config_option is a no-op and no models/config options are returned.
+        // Transcript replay is session/load. A second prompt starts a second run loop on the
+        // same conversation, so the client queues mid-turn messages.
+        assertEquals(List.of("openhands"), HarnessCatalog.OPENHANDS.binaryNames());
+        assertEquals("acp", HarnessCatalog.OPENHANDS.launchArgs());
+        assertEquals(HarnessCatalog.OPENHANDS, HarnessCatalog.byBinaryName("openhands"));
+        assertEquals(HarnessCatalog.OPENHANDS, HarnessCatalog.byBinaryName("openhands.exe"));
+        assertTrue(HarnessCatalog.OPENHANDS.requiresMessageQueue());
+        assertFalse(HarnessCatalog.OPENHANDS.sendsMcpServerConfig());
+        assertTrue(HarnessCatalog.OPENHANDS.injectsEditorContext());
+        assertFalse(HarnessCatalog.OPENHANDS.supportsMessageIds());
+        assertFalse(HarnessCatalog.OPENHANDS.supportsMcpServer());
+        assertTrue(HarnessCatalog.OPENHANDS.supportsSessionSetMode());
+        assertTrue(HarnessCatalog.OPENHANDS.supportsAgentList());
+        assertFalse(HarnessCatalog.OPENHANDS.supportsSessionSetConfigOption());
+        assertFalse(HarnessCatalog.OPENHANDS.supportsSessionSetModel());
+        assertFalse(HarnessCatalog.OPENHANDS.supportsModelSelection());
+        assertFalse(HarnessCatalog.OPENHANDS.supportsSessionList());
+        assertFalse(HarnessCatalog.OPENHANDS.supportsSessionRename());
+        assertFalse(HarnessCatalog.OPENHANDS.supportsInterject());
+        assertTrue(HarnessCatalog.OPENHANDS.acceptsMcpAuthToken());
+        assertTrue(HarnessCatalog.OPENHANDS.sendsSystemPromptAsThought());
+        assertTrue(HarnessCatalog.OPENHANDS.hasLimitedSupport());
+        assertFalse(HarnessCatalog.OPENHANDS.limitations().isBlank());
+        assertEquals("https://docs.openhands.dev/openhands/usage/run-openhands/acp",
+                HarnessCatalog.OPENHANDS.docsUrl());
+        assertEquals("openhands.svg", HarnessCatalog.harnessIconName("openhands"));
+        assertNotNull(HarnessCatalogTest.class.getResource("/github/anandb/netbeans/ui/icons/openhands.svg"));
+        assertNotNull(HarnessCatalogTest.class.getResource("/github/anandb/netbeans/ui/icons/openhands_dark.svg"));
     }
 
     @Test

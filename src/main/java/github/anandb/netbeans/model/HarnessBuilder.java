@@ -39,6 +39,7 @@ public final class HarnessBuilder {
     private String limitationsKey = "";
     private boolean acceptsMcpAuthToken = true;
     private boolean stripsSystemReminders;
+    private boolean sendsSystemPromptAsThought;
     private String unsupportedModelSelectionMessage = "";
     private String unsupportedModelSelectionPlaceholder = "";
     private String installWindows = "";
@@ -143,6 +144,12 @@ public final class HarnessBuilder {
         return this;
     }
 
+    /** Declares that the harness sends its full system prompt as an agent thought chunk. */
+    public HarnessBuilder sendsSystemPromptAsThought(boolean value) {
+        this.sendsSystemPromptAsThought = value;
+        return this;
+    }
+
     /** Bundle keys for the message and the dropdown placeholder shown when
      *  model selection is unavailable. */
     public HarnessBuilder unsupportedModelSelection(String messageKey, String placeholderKey) {
@@ -181,6 +188,7 @@ public final class HarnessBuilder {
                 separateBubblesPerReplayChunk, supportTier, limitationsKey,
                 unsupportedModelSelectionMessage, unsupportedModelSelectionPlaceholder,
                 installWindows, installMac, installLinux, prerequisites, docsUrl,
-                windowsInstallSubDirs, acceptsMcpAuthToken, stripsSystemReminders);
+                windowsInstallSubDirs, acceptsMcpAuthToken, stripsSystemReminders,
+                sendsSystemPromptAsThought);
     }
 }

@@ -389,6 +389,12 @@ Resolved — kept as regression guards:
 ## Critical Technical Details
 
 ### Notifications & Streaming
+- A harness entry may set `sendsSystemPromptAsThought` (OpenHands): the adapter sends its
+  full system prompt as an `agent_thought_chunk`, so `StrategyRegistry` drops a thought
+  whose text starts with `System Prompt:` for that harness instead of rendering it.
+- OpenHands prints its ASCII banner to stdout before the JSON-RPC stream, which the
+  streaming parser cannot skip; `ServerProcessLifecycle` sets
+  `OPENHANDS_SUPPRESS_BANNER=1` when the configured harness resolves to OpenHands.
 - `session/update` pipeline: `AcpProtocolClient.handleMessage()` → `ProcessManager` →
   `SessionManager` → `SessionLifecycleHandler.onSessionUpdate()` → `StrategyRegistry.handle()`
   → UI. Returning early anywhere drops the message.
@@ -1202,7 +1208,11 @@ public void toggleVisibility() {
 - **Tool names** should be short and descriptive — they are re-sent in the tool list on every
   model turn and cost tokens each time. No hard length cap; the earlier 14-character limit was
   arbitrary and was already exceeded by `get_current_file_context` (24).
-- **Locating Java types**: use `find_type` when you need to find or verify where a Java type
+- **OpenHands is not handed the internal MCP server**: its ACP adapter passes an HTTP
+  server's ACP `headers` list into an agent model that expects a header dict, so any
+  injected server fails validation and `session/new` dies. `sendsMcpServerConfig=false`
+  (and `supportsMcpServer=false`) keeps the plugin server out; MCP is configured in
+  OpenHands itself. Do not flip either flag until the adapter converts `headers`.- **Locating Java types**: use `find_type` when you need to find or verify where a Java type
   (class, interface, enum, record) is declared, before reading, editing or opening it. It searches
   the open projects' `ClassIndex` and returns fully qualified names plus source paths, so do NOT
   `grep`/`search_project` for `class Foo` declarations and do NOT guess a path from a package name.

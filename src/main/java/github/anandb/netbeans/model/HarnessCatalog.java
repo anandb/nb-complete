@@ -42,6 +42,7 @@ public final class HarnessCatalog {
     public static final Harness QWEN = CATALOG.require("qwen");
     public static final Harness KIMI = CATALOG.require("kimi");
     public static final Harness GROK = CATALOG.require("grok");
+    public static final Harness OPENHANDS = CATALOG.require("openhands");
 
     /** OpenCode v2 capability variant: same identity as {@link #OPENCODE}, but without
      *  mid-turn steering. Selected by {@link #forAgentVersion}; deliberately not in

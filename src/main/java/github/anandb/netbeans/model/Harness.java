@@ -62,7 +62,10 @@ public record Harness(
         boolean acceptsMcpAuthToken,
         /** True when the harness injects {@code <system-reminder>} blocks into echoed
          *  user text, which must never be rendered (Kimi Code). */
-        boolean stripsSystemReminders) {
+        boolean stripsSystemReminders,
+        /** True when the harness sends its full system prompt as an agent thought chunk,
+         *  which the UI hides instead of rendering as reasoning (OpenHands). */
+        boolean sendsSystemPromptAsThought) {
 
     /** Starts a fluent definition; see {@link HarnessBuilder} for the defaults an entry overrides. */
     public static HarnessBuilder builder(String id, String displayName, String iconBase) {
@@ -113,7 +116,8 @@ public record Harness(
                 separateBubblesPerReplayChunk, supportTier, limitationsKey,
                 unsupportedModelSelectionMessage, unsupportedModelSelectionPlaceholder,
                 installWindows, installMac, installLinux, prerequisites, docsUrl,
-                windowsInstallSubDirs, acceptsMcpAuthToken, stripsSystemReminders);
+                windowsInstallSubDirs, acceptsMcpAuthToken, stripsSystemReminders,
+                sendsSystemPromptAsThought);
     }
 
     /** True when the given binary basename belongs to this harness, with or

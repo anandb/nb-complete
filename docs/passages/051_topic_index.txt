@@ -68,6 +68,7 @@ This is a complete list of topics in this guide, use it to directly jump to that
 > [[Onboarding]]
 > [[OpenClaw Agent]]
 > [[OpenCode]]
+> [[OpenHands Agent]]
 > [[Opening the Mini Assistant]]
 > [[Options Panel Reference]]
 > [[Permission Requests]]
