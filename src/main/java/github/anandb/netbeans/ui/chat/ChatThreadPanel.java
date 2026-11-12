@@ -147,8 +147,8 @@ public class ChatThreadPanel extends JPanel {
 
     // --- Message spacing ---
     /** Tight within one speaker's run, open across a speaker change. */
-    private static final int SAME_GROUP_GAP = 4;
-    private static final int TURN_GAP = 16;
+    private static final int SAME_GROUP_GAP = 2;
+    private static final int TURN_GAP = 8;
 
     // --- Permission state ---
     /** Client-property keys stored on permission result labels. */

@@ -118,8 +118,9 @@ public class OnboardingBubble extends JPanel {
         titleLabel.setForeground(theme.foreground());
         titleLabel.setBorder(BorderFactory.createEmptyBorder(2, 0, 2, 0));
         titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        JTextAreaNoWrap subtitle = new JTextAreaNoWrap(NbBundle.getMessage(
-                UIBundle.class, "OnboardingBubble.Subtitle"));
+        String subtitleText = NbBundle.getMessage(UIBundle.class, "OnboardingBubble.Subtitle",
+                NbBundle.getMessage(UIBundle.class, "LBL_HarnessSelectionHint"));
+        JTextAreaNoWrap subtitle = new JTextAreaNoWrap(subtitleText);
         subtitle.setForeground(theme.mutedForeground());
         subtitle.setBorder(BorderFactory.createEmptyBorder(2, 0, 10, 0));
         subtitle.setAlignmentX(Component.LEFT_ALIGNMENT);

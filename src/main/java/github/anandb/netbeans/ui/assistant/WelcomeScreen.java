@@ -102,6 +102,8 @@ public final class WelcomeScreen {
             addStarterPrompts(messagesContainer, theme, onStarterPrompt);
         }
 
+        messagesContainer.add(Box.createVerticalStrut(8));
+        addHarnessSelectionHint(messagesContainer, theme);
         messagesContainer.add(Box.createVerticalGlue());
 
         messagesContainer.revalidate();
@@ -178,6 +180,14 @@ public final class WelcomeScreen {
         row.add(newChatBtn, BorderLayout.CENTER);
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, newChatBtn.getPreferredSize().height));
         container.add(row);
+    }
+
+    private static void addHarnessSelectionHint(JPanel container, ColorTheme theme) {
+        JTextArea hint = createWrappedText(
+            NbBundle.getMessage(UIBundle.class, "LBL_HarnessSelectionHint"),
+            theme.mutedForeground(), 0, 0);
+        hint.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN, smallSize()));
+        container.add(hint);
     }
 
     /** Example prompts. They fill the composer and start the chat: a welcome screen
