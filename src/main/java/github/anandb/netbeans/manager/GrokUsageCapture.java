@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.contract.UsageStatsStore;
 import github.anandb.netbeans.model.UsageRecords.Attribution;
-import github.anandb.netbeans.model.UsageRecords.PromptUsageRow;
+import github.anandb.netbeans.support.PromptUsageRows;
 import github.anandb.netbeans.support.UsageTurnDedup;
 import org.openide.util.Lookup;
 
@@ -57,15 +57,6 @@ final class GrokUsageCapture {
                 sessions != null ? sessions.getHarnessId() : null,
                 sessions != null ? sessions.getSessionModelId(sessionId) : null,
                 sessions != null ? sessions.getSessionDirectory(sessionId) : null);
-        long input = usage.path("inputTokens").asLong(0);
-        long output = usage.path("outputTokens").asLong(0);
-        long total = usage.hasNonNull("totalTokens") ? usage.get("totalTokens").asLong() : input + output;
-        store.recordPromptUsage(new PromptUsageRow(attribution, System.currentTimeMillis(),
-                input, output, total, optLong(usage, "reasoningTokens"), optLong(usage, "cachedReadTokens")));
-    }
-
-    private static Long optLong(JsonNode node, String field) {
-        JsonNode value = node.get(field);
-        return value != null && value.isNumber() ? value.asLong() : null;
+        store.recordPromptUsage(PromptUsageRows.from(attribution, usage));
     }
 }

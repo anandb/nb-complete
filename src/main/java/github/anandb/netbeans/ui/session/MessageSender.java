@@ -28,8 +28,8 @@ import github.anandb.netbeans.contract.RpcFailure;
 import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.contract.UsageStatsStore;
 import github.anandb.netbeans.model.UsageRecords.Attribution;
-import github.anandb.netbeans.model.UsageRecords.PromptUsageRow;
 import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.support.PromptUsageRows;
 import github.anandb.netbeans.support.SteerEchoes;
 import github.anandb.netbeans.support.InterjectSupport;
 import github.anandb.netbeans.support.SteeringRequest;
@@ -728,6 +728,7 @@ public class MessageSender {
                         // The steer never landed: drop the echo so a resend does not
                         // draw a second identical bubble.
                         chatPanel.removeMessageBubble(echoMessageId);
+                        keepTurnAliveAfterFailedSteer();
                         inputFocusRequester.run();
                     });
                     return null;
@@ -774,6 +775,9 @@ public class MessageSender {
                             statusController.setStatus("STATUS_Error", outcome != null ? outcome : "no outcome");
                         }
                         restoreFailedSteer(draft);
+                        if (!turnGone) {
+                            keepTurnAliveAfterFailedSteer();
+                        }
                     });
                 })
                 .exceptionally(ex -> {
@@ -840,7 +844,26 @@ public class MessageSender {
             statusController.setStatus("STATUS_Error",
                     message != null ? message : ex.getClass().getSimpleName());
             restoreFailedSteer(draft);
+            keepTurnAliveAfterFailedSteer();
         });
+    }
+
+    /**
+     * A failed steer does not end the original turn. A harness that answers the failed steer
+     * with its own end-of-turn can have put the panel back on Go, so re-assert Stop, the
+     * watchdog and the input whenever that turn is still running. Mirrors the mid-turn
+     * branch of {@link #onPromptFailed}.
+     */
+    private void keepTurnAliveAfterFailedSteer() {
+        if (!isMidTurn()) {
+            return;
+        }
+        statusController.setInputEnabled(true);
+        statusController.updateButtonState(true);
+        if (!statusController.isRunWatchdogArmed()) {
+            statusController.armRunWatchdog();
+        }
+        statusController.touchRunActivity();
     }
 
     /** Undoes a steer draft that never landed; the caller sets the status first. */
@@ -1068,14 +1091,7 @@ public class MessageSender {
                 sessions != null ? sessions.getHarnessId() : null,
                 sessions != null ? sessions.getSessionModelId(sessionId) : null,
                 sessions != null ? sessions.getSessionDirectory(sessionId) : null);
-        long input = usage.path("inputTokens").asLong(0);
-        long output = usage.path("outputTokens").asLong(0);
-        long total = usage.hasNonNull("totalTokens") ? usage.get("totalTokens").asLong() : input + output;
-        Long thought = usage.hasNonNull("thoughtTokens") ? usage.get("thoughtTokens").asLong()
-                : (usage.hasNonNull("reasoningTokens") ? usage.get("reasoningTokens").asLong() : null);
-        store.recordPromptUsage(new PromptUsageRow(attribution, System.currentTimeMillis(),
-                input, output, total, thought,
-                usage.hasNonNull("cachedReadTokens") ? usage.get("cachedReadTokens").asLong() : null));
+        store.recordPromptUsage(PromptUsageRows.from(attribution, usage));
     }
 
     private boolean verifyPlatformServices() {

@@ -10,6 +10,7 @@ import github.anandb.netbeans.model.AttachedFile;
 import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
+import github.anandb.netbeans.support.InterjectSupport;
 import github.anandb.netbeans.support.MapperSupplier;
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -19,6 +20,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.swing.SwingUtilities;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -72,6 +74,7 @@ class MessageSenderTurnRoutesTest {
     @BeforeEach
     void setUp() throws Exception {
         TestUiUtils.setupTestUIManager();
+        InterjectSupport.reset();
         chatPanel = mock(ChatThreadPanel.class);
         inputArea = mock(PlaceholderTextArea.class);
         statusController = mock(StatusController.class);
@@ -99,6 +102,11 @@ class MessageSenderTurnRoutesTest {
         when(interceptor.intercept(anyString(), any())).thenReturn(CompletableFuture.completedFuture(false));
         when(proc.getSlashCommandInterceptor()).thenReturn(interceptor);
         inject("processService", (ProcessService) () -> proc);
+    }
+
+    @AfterEach
+    void tearDown() {
+        InterjectSupport.reset();
     }
 
     private void inject(String field, Object value) throws Exception {
@@ -232,6 +240,31 @@ class MessageSenderTurnRoutesTest {
 
         assertEquals("hello", input.toString(), "the text goes back so it can be resent");
         verify(chatPanel, never()).stopStreaming();
+        verify(statusController).updateButtonState(true);
+        verify(statusController, never()).updateButtonState(false);
+        verify(statusController, never()).disarmRunWatchdog();
+        assertEquals(false, messageDone.get(), "the running turn is not done because of the steer");
+        assertEquals(false, turnEndedCallbackRan.get());
+    }
+
+    @Test
+    void aFailedGrokInterjectRestoresTheTextAndKeepsTheTurnAlive() throws Exception {
+        session(false);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.GROK);
+        when(proc.supportsSessionSteering()).thenReturn(false);
+        InterjectSupport.set(true);
+        when(proc.interjectMessage(anyString(), anyString(), any()))
+                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("boom")));
+        input.append("hello");
+
+        sender.sendMessage();
+        drainEdt();
+
+        assertEquals("hello", input.toString(), "the text goes back so it can be resent");
+        verify(proc).interjectMessage(anyString(), anyString(), any());
+        verify(statusController).updateButtonState(true);
+        verify(statusController, never()).updateButtonState(false);
+        verify(statusController, never()).disarmRunWatchdog();
         assertEquals(false, messageDone.get(), "the running turn is not done because of the steer");
         assertEquals(false, turnEndedCallbackRan.get());
     }
@@ -331,6 +364,8 @@ class MessageSenderTurnRoutesTest {
 
         assertEquals("hello", input.toString(), "the text goes back so it can be resent");
         verify(chatPanel, never()).stopStreaming();
+        verify(statusController).updateButtonState(true);
+        verify(statusController, never()).updateButtonState(false);
         verify(statusController, never()).disarmRunWatchdog();
         assertEquals(false, messageDone.get(), "the running turn is not done because of the steer");
         assertEquals(false, turnEndedCallbackRan.get());

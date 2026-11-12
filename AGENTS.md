@@ -464,6 +464,10 @@ Resolved — kept as regression guards:
   (no run id). Otherwise the queue branch handles it. A failed steer restores the text *and*
   the attachments and drops its echo bubble (`ChatThreadPanel.removeMessageBubble`),
   so a resend does not draw a second identical bubble — user bubbles never merge.
+  While the original turn is still running, the failure handler also re-asserts Stop, the
+  input and the run watchdog, because a harness can answer a failed steer with its own
+  end-of-turn and otherwise leave the panel on Go with no way to stop the run that is still
+  going (`keepTurnAliveAfterFailedSteer`).
   The same restore runs on the prompt path: `PromptPayload` carries the attachments it
   cleared, and `restoreAttachments()` puts them back through `AttachmentManager.restore()`,
   which honours the caps and reports whatever no longer fits (`STATUS_AttachmentsDropped`).
