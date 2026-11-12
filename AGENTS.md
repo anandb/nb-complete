@@ -10,93 +10,42 @@
 - **Key Tech**: NetBeans API (RELEASE220), Flexmark, Jackson, RSyntaxTextArea, JUnit 5.
 
 ## Build Commands
-- If a workflow helper fails and the user explicitly directs a direct Bash workflow, follow that
-  instruction and continue with the project commands below.
-- **Code coverage target**: 96% project-wide. Use the JaCoCo report when checking coverage.
-- Build: `./mvnw package` (runs checks & tests — locally add the random-order profile per the rule
-  below) | Clean: `./mvnw clean` | Quick: `./mvnw package -DskipTests`
-- **Always run tests with `-P random-test-order` locally**: any command you run that executes
-  the suite (`./mvnw test`, `./mvnw verify`, `./mvnw package` without `-DskipTests`) MUST add the
-  profile. It runs Surefire classes in random order to surface order-dependent tests; the log
-  prints `-Dsurefire.runOrder.random.seed=<n>` to reproduce one run. A local run without the
-  profile is not a valid verification of the suite. **The GitHub workflows deliberately omit the
-  profile** (`.github/workflows/ci.yml` and `release.yml` run the default order) so CI and
-  release results are reproducible; do not add it there.
-- **Integration tests run in `verify`**: Surefire runs `*Test`; Failsafe runs `*IT`
-  (`mvn-failsafe-plugin`, bound to `integration-test`/`verify`) in a separate JVM with the same
-  pinned `netbeans.user`. `UsageStatsStoreFileLockIT` is the cross-process smoke test for the
-  H2 store — it spawns a second JVM to hold the database file so the real "Database may be
-  already in use" lock, the parked-capture behaviour and the single retry are exercised.
-  `./mvnw test` alone does NOT run it; use `./mvnw verify`. CI (`.github/workflows/ci.yml`)
-  runs `./mvnw -B verify` in the default order (deterministic on purpose; the release build
-  does the same) and installs the pinned tweego so the user-guide stitch fails on a PR rather
-  than at release.
-- **Always use `./mvnw`** (pinned Maven 3.9.x) and never system `mvn`: Maven 3.10 writes
-  `maven-metadata-local.xml` into `central-publishing-maven-plugin`'s file:// staging repo,
-  which gets bundled and Central rejects the deployment ("Bundle has content that does NOT
-  have a .pom file"). 3.9.x writes `maven-metadata-central-staging.xml`, which the plugin
-  deletes before bundling. The wrapper keeps local builds on the same Maven as CI.
-- **User guide toolchain**: `docs/stitch.py` (antrun `generate-user-guide` at
-  `generate-resources`) needs `python3` + `tweego` (Harlowe 3) to produce
-  `target/generated-guide/UserGuide.html.gz` (the stitch output is gzipped; no plain
-  HTML is left in `target/` — the IDE's HTML validator flags it), which is packaged into
-  the module jar. A stitch failure (Harlowe temp-variable check, missing image,
-  tweego compile error) **fails the build** and prints the errors; `-DskipUserGuide=true`
-  skips stitching and the copy entirely (e.g. `./mvnw package -DskipUserGuide=true`) when
-  python3/tweego are unavailable. A missing tweego also fails the build; install it, or skip
-  with `-DskipUserGuide=true`. CI installs a pinned tweego release in `.github/workflows/release.yml`, and the
-  `release` profile in `pom.xml` binds an antrun `verify-user-guide` check to the `verify`
-  phase: it fails the build (before `deploy` publishes anything) when
-  `target/generated-guide/UserGuide.html.gz` is missing or is not stitched HTML. Keep the
-  install step if you edit the workflow — the check needs tweego to have produced the file.
+- Use `./mvnw` (pinned Maven 3.9.x), never system `mvn`. Build: `./mvnw package`; clean:
+  `./mvnw clean`; quick package: `./mvnw package -DskipTests`.
+- Coverage target is 96%; use JaCoCo when reporting it.
+- If a workflow helper fails and the user explicitly requests direct Bash, continue with these
+  project commands.
+- **Local test suites MUST use `-P random-test-order`**; CI intentionally uses default order.
+  The profile prints the random seed for reproducing failures.
+- Surefire runs `*Test`; Failsafe runs `*IT` during `verify`. Use `./mvnw verify` for integration
+  tests; `test` alone does not run them. Tests use the pinned `netbeans.user` directory.
+- **User guide**: `docs/stitch.py` needs `python3` and Harlowe 3 `tweego`; output is gzipped at
+  `target/generated-guide/UserGuide.html.gz`. Stitch failures fail the build;
+  `-DskipUserGuide=true` skips stitching and copying. Release verification requires the output,
+  so keep CI's pinned tweego install step.
 
 ## BMAD Working Artifacts (`_bmad-output/`)
-- `_bmad-output/` is **gitignored local state** — never commit it and never cite it as a repo
-  artifact. Its entry point is `_bmad-output/index.md`; `project-context.md` holds only rule
-  deltas that this file does not already state, and `implementation-artifacts/deferred-work.md`
-  holds accepted debt with evidence.
-- **Spec lifecycle**: every `implementation-artifacts/spec-*.md` carries YAML frontmatter
-  (`title`, `type`, `created`, `status`). `done` and `superseded` specs move to
-  `implementation-artifacts/archive/`; `ready-for-dev`, `shelved` and `in-progress` stay live.
-  A spec's status must match the tree — `done` requires every class it names to exist.
-- **Research epics** live beside their research run and carry a `- **Status:**` line that must
-  agree with the corresponding spec.
-- **`index.md` is maintained, not generated**: update it in the same change that adds, moves or
-  retires an artifact, or that changes the pom version, the README badge or the passage count.
-- **Generated project docs** (`architecture.md`, `project-overview.md`, `technology-stack.md`,
-  `source-tree-analysis.md`, `component-inventory.md`, `development-guide.md`) are a dated
-  snapshot — regenerate with `bmad-document-project`; never hand-edit them to look current.
-- **Gate**: `python3 _bmad/check_artifacts.py` (exit 1 = violation) verifies all of the above
-  plus relative-link integrity and `index.md` freshness. Run it at the end of any spec /
-  quick-dev / research iteration and before `./mvnw verify -P release`; it is a no-op when
-  `_bmad-output/` is absent, and `_bmad/` is gitignored local tooling (missing on a fresh clone,
-  where the gate is skipped).
+- `_bmad-output/` is gitignored local state: never commit or cite it as a repo artifact. Maintain
+  its `index.md` when artifacts, pom version, README badge or passage count change.
+- Specs require `title/type/created/status` frontmatter; `done`/`superseded` specs belong in
+  `archive/`, and status must match the tree. Research epic status must match its spec.
+- Generated project docs are dated snapshots: regenerate with `bmad-document-project`, never
+  hand-edit. Run `python3 _bmad/check_artifacts.py` after spec/quick-dev/research work and before
+  release verification when `_bmad/` tooling is available.
 
 ## Architecture & UI
-- **ACP & JSON-RPC**: Compliant with ACP v1. Communication via `AcpProtocolClient`
-  (JSON-RPC + SSE Streams).
-- **Stop Mechanism**: `session/cancel` MUST be a **notification** (no ID). Stop must always work, it should re-enable all toolbar buttons, all dropdowns and the input textarea.
-- **UI Structure**:
-    - `AssistantTopComponent`: Main chat panel.
-    - `ChatThreadPanel`: Message thread container.
-    - `MessageBubble`: Chat turns (thought/tool/code/text bubbles).
-    - `CollapsibleCodePane`: Syntax highlighted code block rendering.
-    - **`ui/` is grouped by feature**: `assistant` (panel, mini panel, onboarding),
-      `chat` (thread, bubbles, collapsible panes), `composer` (input, history,
-      attachments), `session` (state, config dropdowns, session actions),
-      `permission`, `options`, `rendering` (markdown/HTML/theme/icons),
-      `components` (reusable widgets), `editor` (IDE actions and hooks), `export`,
-      `stats`, plus the seams in `platform/` and the project type in `mdproject/`.
-      The root holds only `UIBundle` and the `@OnStart` installer. Put a new class
-      in the group it belongs to, not at the root.
+- ACP v1 uses `AcpProtocolClient` (JSON-RPC + SSE). `session/cancel` MUST be a notification
+  without an id; Stop must restore all toolbar controls and the input.
+- UI entry points: `AssistantTopComponent` (panel), `ChatThreadPanel` (thread), `MessageBubble`
+  (turns), `CollapsibleCodePane` (code). Put new classes in the appropriate `ui/<feature>/`
+  package; keep the root for `UIBundle` and the `@OnStart` installer.
 
 ## Important Coding Rules
-- **Headless Testing**: All tests must be able to run in a headless environment (without X11). Do not instantiate UI components (like `JFrame` or `JDialog` via `MiniAssistantDialog.getInstance()`) in tests unless properly mocked, as this will trigger `HeadlessException`.
-- **JSON-RPC Parsing**: NEVER use `BufferedReader.readLine()` to parse JSON-RPC streams. It incorrectly assumes single-line formatting and breaks on embedded newlines or throws `OutOfMemoryError` on large payloads. Always use Jackson's streaming `JsonParser` (e.g., `MAPPER.getFactory().createParser()`).
-- **JSON-RPC ids may be strings**: goose sends requests with UUID string ids (`"id":"517ef9d2-…"`). NEVER coerce an incoming id with `asLong()` (non-numeric → 0) — echoing `id=0` back makes the agent wait forever for a matching response (goose hung on `fs/read_text_file`). Echo the id `JsonNode` verbatim in responses.
-- **Line Length**: Keep the line length <= 120 characters, but try to fit entire statements into the line without needlessly splitting into small chunks.
-- **Code Comments**: Keep code comments brief — at most 1–2 lines — and say only what the code cannot.
-  Longer explanations belong in Javadoc (or the commit message), not in inline comments.
+- Tests must run headless; mock UI instead of constructing windows/dialogs.
+- Parse JSON-RPC streams with Jackson `JsonParser`, never `BufferedReader.readLine()`.
+- Echo incoming JSON-RPC id nodes verbatim; ACP ids may be strings.
+- Keep lines ≤120 characters.
+- Keep comments to 1–2 lines; use Javadoc for longer explanations.
 - **Structural edits, not scripts**: for structural edits — replace usages, delete a helper
   block, remove constants, rename across files — use parser-aware tooling: the IDE's own
   refactoring, or a tree-sitter rewrite such as `ast-grep --pattern … --rewrite …`. Never use
@@ -117,84 +66,30 @@
 - **Regex in hot paths**: NEVER use `String.matches()` or `String.replaceAll()` in loops or
   per-tick callbacks. Pre-compile with `static final Pattern` and reuse via `matcher()`.
 - **Swing Layout Loops**: NEVER call `revalidate()` synchronously inside sizing methods like `getPreferredSize()` or `setBounds()`. Doing so re-adds the component to Swing's invalidation queue during a layout pass, causing an infinite 100% CPU layout loop. Use a boolean guard (e.g. `suppressRevalidate`) to ignore or defer revalidation during internal size calculations.
-- **Discovery and full-cache scans stay off the EDT**: `ACPOptionsPanel.load()` runs on the EDT
-  (Options SPI), so WSL probing — one `wsl.exe` per catalog name, `waitFor(2 s)` each — runs on
-  its own `RequestProcessor`. A `DefaultComboBoxModel` **auto-selects the first item added to an
-  empty model**, so `applyWslCandidates` must keep restoring the pre-probe selection/editor text
-  when a choice was already made, or it silently replaces text the user is typing. `StashDiffAction`
-  matches the Git Repositories window through `TopComponent.getRegistry().getOpened()` +
-  `preferredID`, never `WindowManager.findTopComponent` on the EDT (it instantiates the
-  TopComponent). `GoToFileDialog` runs per cached file on every keystroke: keep matching
-  allocation-free (`regionMatches`/`containsIgnoreCase`) and size the dialog from the longest
-  name/path instead of measuring every entry with `FontMetrics`.
-- **Bundle.properties source of truth**: The git-tracked `Bundle.properties` for each package
-  lives under `src/main/resources/` (e.g. `src/main/resources/github/anandb/netbeans/ui/Bundle.properties`).
-  There is also a generated copy under `src/main/java/` in the same package path — do NOT edit
-  that one. Always edit the `src/main/resources/` version.
-- **One UI bundle, explicit anchor**: `NbBundle.getMessage(X.class, key)` resolves
-  `Bundle.properties` from **X's package**, so moving a class breaks every lookup that names it.
-  All UI code therefore passes `github.anandb.netbeans.ui.UIBundle` and the one
-  `ui/Bundle.properties` stays put — keep `UIBundle` in `ui/` and do NOT reintroduce per-class
-  anchors. Annotations are the exception: `@ActionRegistration(displayName = "#KEY")`,
-  `@TopComponent.OpenActionRegistration` and `@OptionsPanelController.TopLevelRegistration`
-  resolve from the annotated class's own package, so a moved annotated class needs its keys in a
-  `Bundle.properties` beside it (the annotation processor fails the build otherwise).
-- **Moving a class moves its resources**: a class that loads a resource class-relative
-  (`ColorTheme` → `"colors.json"`, `CssGenerator` → `"chat-style.css.template"`,
-  `HtmlConversationExporter` → `"export-style.css.template"`) looks in its **own** package;
-  move the resource with it or it fails at runtime with "… not found", which no import rewrite
-  can catch. Also update hand-written `layer.xml` `delegate`/`newvalue` class strings and any
-  `Class.forName`/`getResource` FQN string: `LayerReferencesTest` guards the layer's class names
-  and bundle keys, including the entries the annotation processor generates, but the rest is on you.
-- **NbPreferences caching**: If a preference is read in a hot path, cache it in a `static volatile`
-  field and register a `PreferenceChangeListener` to update on change. Do NOT call
-  `NbPreferences.forModule().getBoolean()` on every invocation. Every cached setting must be read
-  through its `PluginSettings` accessor — `UpdateCheckerService` and `BinaryResolver` used to read
-  `CHECK_FOR_UPDATES` and `USE_WSL` straight from `NbPreferences` (bypassing the cache and its
-  round-trip test) and now go through `isCheckForUpdates()` / `isUseWsl()`. Do NOT reintroduce a
-  direct preference read for a key `PluginSettings` already exposes. Preference change events are
-  delivered **asynchronously** on the JDK's preference dispatcher, so a setter must `put` before it
-  assigns the cached field, and the listener must re-read the stored value instead of trusting
-  `evt.getNewValue()` — otherwise a queued stale event reverts a newer cache value (this made
-  `PluginSettingsTest` fail only under `-P random-test-order`).
+- Keep discovery and full-cache scans off the EDT. Async combo fills must preserve existing text
+  (empty `DefaultComboBoxModel` auto-selects its first item). Match open windows through the
+  registry, never `WindowManager.findTopComponent()` on the EDT. Keep per-keystroke file matching
+  allocation-light and size dialogs without measuring every cached entry.
+- Edit tracked bundles only under `src/main/resources/`; never edit generated copies under
+  `src/main/java/`. UI lookups use `UIBundle.class`; annotation keys stay beside annotated classes.
+- When moving classes, move class-relative resources and update `layer.xml` class strings plus
+  `Class.forName`/`getResource` FQNs. `LayerReferencesTest` covers layer names and bundle keys.
+- Cache hot preferences in `static volatile` fields with a listener; use `PluginSettings` accessors
+  instead of direct reads. Setters persist before updating cache; asynchronous listeners re-read the
+  stored value rather than trusting stale event values.
 - **Scan ranges**: When scanning large strings for patterns (e.g. ASCII art detection), limit
   the scan to a bounded prefix (e.g. first 512 chars) instead of the full string.
-- **ACPProjectManager cache**: `getAllOpenProjects()` returns the cached `currentProjects` field,
-  not `OpenProjects.getDefault().getOpenProjects()`. The cache is populated by `start()` and
-  updated via `propertyChange()` on project open/close. Do NOT bypass the cache.
-- **WSL launch path (security)**: `BinaryResolver.buildWslArgs(String...)` builds
-  `wsl.exe -e bash -lc 'exec "$0" "$@"'` and passes the exe + each arg as **separate argv
-  tokens** (never interpolated into the shell script). Do NOT reintroduce string
-  concatenation into the `bash -lc` script — that enabled shell injection from user-editable
-  process arguments. Use `tokenizeArgs()` (commons-exec quoting) to split the prefs string.
-- **Project directories handed to the harness are native OS paths**: anything sent as a session
-  `cwd` (`session/new`, `session/load`, `session/resume`, the `session/list` directory) or compared
-  with a session's directory MUST go through `support/ProjectPaths.nativePath(...)` —
-  `FileUtil.toFile(dir).getAbsolutePath()`, with the virtual path as the non-local-filesystem
-  fallback. `FileObject.getPath()` is a virtual path: on Windows it renders a UNC root as
-  `//host/share/…`, and OpenCode 2.x canonicalises a leading `//` with POSIX rules to
-  `/host/share/…`, so `session/new` fails with `LocationNotFoundError`. Convert at the producer —
-  `SessionManager.retainSessionsForDirectories` and the project-close path compare exact strings,
-  so mixing the two forms empties the dropdown. `SessionManager.createSession` and
-  `loadSessionFromServer` also run the cwd through `ProjectPaths.nativeForm`, so a new producer
-  that forgets the conversion still sends the native form — do NOT remove that guard.
-- **Harness binary detection**: `BinaryResolver.findAllOnPath()` is the `which -a` view
-  (harness-owned install dirs first, then same-user files, then PATH, then common install
-  dirs). A candidate inside `/bin`, `/sbin`, `/usr/bin` or `/usr/sbin` is accepted only when
-  `isTrustedSystemCandidate()` vouches for it — the file is owned by the IDE user, or it is
-  the symlink a root `npm i -g`/`bun install -g` leaves behind (a link into
-  `node_modules/`). Distro packages ship a regular root-owned file or a link into
-  `/usr/lib`, so Debian's `kilo` text editor and a generic `agent` stay excluded and can
-  never shadow a real harness. Do NOT drop system-directory candidates outright: a real
-  global install into `/usr/bin` would become invisible. On macOS/Linux file ownership is
-  compared by uid against the IDE user's home, so a root-owned `/usr/local/bin/agent` loses
-  to a user-owned `~/.local/bin/agent`; unknown owners (Windows, non-POSIX filesystems) are
-  treated as same-user, never disqualified. `findHarnessBinary()` ranks harness-owned dir >
-  same-user file > other-owner file, and breaks ties in favour of a distinctive name
-  (`kilocode`, `cursor-agent`) over a generic one. Do NOT reintroduce "first PATH hit wins"
-  or a per-name collision list. The WSL batch probe keeps the stricter rule — it ignores
-  every system-directory hit, because ownership and link targets cannot be inspected from
-  the host.
+- `ACPProjectManager.getAllOpenProjects()` returns its event-maintained cache; do not bypass it.
+- WSL launches use `wsl.exe -e bash -lc 'exec "$0" "$@"'`; pass executable and each argument as
+  separate argv tokens. Parse preferences with `tokenizeArgs()`; never interpolate user args into
+  the shell script.
+- Convert all harness `cwd` values and session-directory comparisons through
+  `ProjectPaths.nativePath(...)`; `FileObject.getPath()` is virtual and breaks Windows UNC paths.
+  Preserve `SessionManager`'s native-form guards.
+- Harness detection scans all candidates, ranking harness-owned directories, same-user files,
+  then other files; distinctive binary names break ties. Accept system-directory installs only
+  when user-owned or symlinked into `node_modules`; do not drop all system candidates or return the
+  first PATH hit. WSL probes exclude system directories because host ownership cannot be checked.
 - **Context-menu hooks (EDT safety)**: `InspectorContextMenu`/`TestResultsContextMenu` must
   NEVER call `WindowManager.findTopComponent(...)` on the EDT — it synchronously instantiates
   the target TopComponent and blocks on `MediaTracker` image loading. Match already-open
@@ -229,106 +124,30 @@
 ## Hexagonal Architecture Rules
 
 ### Layer Model (dependencies flow downward only)
-```
-  ┌─────────┐        ┌──────────┐   ┌───────────┐
-  │   ui/   │        │ manager/ │   │   mcp/    │   ← adapters (highest)
-  └────┬────┘        └────┬─────┘   └─────┬─────┘
-       │                  │               │
-       │             ┌────┴───────────────┘
-       │             │
-  ┌────▼─────────────▼──────────────────────────┐
-  │  contract/   (ports; imports only model/)   │
-  ├─────────────────────────────────────────────┤
-  │  support/    (utilities; imports model/)    │
-  ├─────────────────────────────────────────────┤
-  │  model/      (records; leaf — no imports)   │
-  └─────────────────────────────────────────────┘
-
-  Satellites, importing downward only:
-
-  ┌──────────┐  →  model/ · contract/ · support/
-  │ project/ │
-  └──────────┘
-
-  ┌──────────┐  →  model/ · contract/ · support/   (+ deferred ui/platform debt)
-  │  tasks/  │
-  └──────────┘
-```
-
-`manager/`, `mcp/` and `db/` are adapters over `contract/` ports and `model/` records.
-`manager/` orchestrates the session and process, `mcp/` serves the IDE tool set, and
-`db/` holds the H2 persistence (store + SQL loader).
-
-**Actual import edges** (verified; anything not listed is currently zero):
-
-| From | To |
-|---|---|
-| `ui/` | `support/` (112), `model/` (60), `contract/` (48), `project/` (1 — `ui/platform/DefaultPlatformBridge` only) |
-| `manager/` | `support/` (53), `model/` (35), `contract/` (38), `mcp/` (2 — `ProcessManager` only), `pattern/` (4) |
-| `mcp/` | `support/` (18), `contract/` (12), `model/` (4) |
-| `db/` | `model/` (24), `support/` (11), `contract/` (6), `pattern/` (2 — `Sql` only) |
-| `tasks/` | `model/` (9), `contract/` (8), `support/` (6), `ui/` (3 — deferred debt) |
-| `project/` | `support/` (8), `contract/` (3), `model/` (1) |
-| `support/` | `model/` (6 — incl. `HarnessCatalog` exception) |
-| `contract/` | `model/` (25) |
-| `model/` | *(nothing — leaf)* |
+`ui/`, `manager/`, `mcp/` and `db/` are adapters over `contract/` and `model/`. `project/` and
+`tasks/` are satellites; `support/` provides shared utilities. Dependencies flow downward to
+`contract/`/`model/`; `model/` is a leaf. `manager/` and `mcp/` are peers.
 
 ### Forbidden Patterns (do NOT introduce these)
-- **manager/ → ui/**: Never import from `ui/` in `manager/`. Use `contract/`
-  interfaces or `support/` classes instead.
-- **project/ → ui/**: Use `WindowManager.findTopComponent("...")` by string ID,
-  never direct class references.
-- **ui/ → manager/ or ui/ → mcp/**: `ui/` must call `contract/` interfaces, not
-  concrete `manager/`/`mcp/` classes directly. This keeps UI testable and swappable.
-  (Both edges are currently zero — keep them that way.)
-- **Lower layer → Higher layer**: `model/`, `contract/`, `support/` must never
-  import from `manager|mcp|tasks|project|ui/`.
-- **Non-`ui/` consumer of `ui/platform/`**: the platform seams live in `ui/`;
-  only `ui/` may use them, except the two deferred `tasks/` files listed under debt.
+- No upward dependencies: `manager/` must not import `ui/`; `ui/` uses `contract/`, not
+  `manager/`/`mcp/`; `model/`, `contract/`, `support/` must not import adapter packages.
+- `project/` uses TopComponents by string ID. Only `ui/` consumes `ui/platform/`, except the two
+  accepted `tasks/` violations listed under debt.
 
 ### Adding New Code
-- **New manager/ class**: Depends only on `contract/`, `model/`, `support/`.
-  Inject `contract/` interfaces, not concrete managers.
-- **New mcp/ tool provider**: Class goes in `mcp/`, registered from
-  `mcp/McpServer.start()`. Depend on `contract/` ports (`ProjectQuery`,
-  `SessionQuery`, `TaskRepositoryControl`, `StashDiffControl`, `EditorContextQuery`)
-  and `support/` helpers only — never `manager/` or `ui/`. Filesystem/git/hg tools
-  MUST route every path through `mcp/ProjectPathGuard`.
-- **New ui/ class**: Depends on `contract/` interfaces. If you need session
-  state, use `contract/SessionQuery`, not `manager/SessionManager` directly.
-- **New support/ class**: Ideal is zero dependencies (pure utilities, constants,
-  loggers). The accepted exception is typing against `model/` records — see debt.
-- **New contract/ interface**: Only imports from `model/` (currently verified —
-  `contract/` imports nothing from any other package). Defines ports that
-  `manager/`/`mcp/` implement and `ui/` consumes.
+- `manager/`, `mcp/`, and `ui/` depend on `contract/` ports; UI must not call concrete managers.
+  New `contract/` types import only `model/`; keep `model/` dependency-free.
+- Register MCP providers from `McpServer.start()`; filesystem/git/hg tools must use
+  `ProjectPathGuard`. Keep `support/` utilities dependency-light.
 
 ### Fixing Existing Violations
-If you find an upward dependency, extract a neutral class in a lower layer:
-```java
-// BAD: manager/ProcessManager.java imports ui/ACPOptionsPanel
-import github.anandb.netbeans.ui.ACPOptionsPanel;
-NbPreferences.forModule(ACPOptionsPanel.class)
-
-// GOOD: manager/ProcessManager.java uses support/PreferenceKeys
-import github.anandb.netbeans.support.PreferenceKeys;
-NbPreferences.forModule(PreferenceKeys.class)
-```
+Move shared logic to a lower neutral layer or define a `contract/` port; do not widen upward
+dependencies.
 
 ### What Belongs Where
-| Concern | Location | Examples |
-|---------|----------|----------|
-| Swing components, layout | `ui/<feature>/` | `ui.chat`, `ui.assistant`, `ui.components` — see UI Structure |
-| Shared UI bundle anchor | `ui/UIBundle` | Every `NbBundle.getMessage(...)` passes `UIBundle.class` |
-| Platform seams (bridges) | `ui/platform/` | `PlatformBridge`, `SessionService`, `ProcessService`, `ProjectContext`, `PrefStore` |
-| Session state machine | `manager/` | `SessionManager` |
-| Network protocol | `manager/` | `AcpProtocolClient` |
-| IDE tool providers | `mcp/` | `EditorToolProvider`, `FileSystemToolProvider`, `McpServer` |
-| Path confinement | `mcp/` | `ProjectPathGuard` |
-| Task repository feature | `tasks/` | `TaskRepositoryController`, `TasksConnector` |
-| NetBeans lifecycle / projects | `project/` | `ACPStartup`, `ACPShutdown`, `ACPProjectManager` |
-| Domain interfaces | `contract/` | `SessionQuery`, `ProcessControl`, `FileCacheQuery` |
-| Data classes | `model/` | `Session`, `ProcessedMessage` |
-| Utilities, constants | `support/` | `Logger`, `PreferenceKeys` |
+`ui/<feature>/` owns Swing; `ui/platform/` holds UI seams. `manager/` owns session/process
+orchestration; `mcp/` IDE tools and path guards; `db/` persistence; `tasks/` task repository;
+`project/` project lifecycle. `contract/` defines ports, `model/` records, `support/` utilities.
 
 ### Architectural Debt (Known Violations)
 
@@ -389,81 +208,28 @@ Resolved — kept as regression guards:
 ## Critical Technical Details
 
 ### Notifications & Streaming
-- A harness entry may set `sendsSystemPromptAsThought` (OpenHands): the adapter sends its
-  full system prompt as an `agent_thought_chunk`, so `StrategyRegistry` drops a thought
-  whose text starts with `System Prompt:` for that harness instead of rendering it.
-- OpenHands prints its ASCII banner to stdout before the JSON-RPC stream, which the
-  streaming parser cannot skip; `ServerProcessLifecycle` sets
-  `OPENHANDS_SUPPRESS_BANNER=1` when the configured harness resolves to OpenHands.
-- `session/update` pipeline: `AcpProtocolClient.handleMessage()` → `ProcessManager` →
-  `SessionManager` → `SessionLifecycleHandler.onSessionUpdate()` → `StrategyRegistry.handle()`
-  → UI. Returning early anywhere drops the message.
-- Streaming is finalized via `ChatThreadPanel.stopStreaming()` → `finalizeStreaming()`.
-- End-of-turn signals: `responding_finished` or `end_turn` set
-  `turnEnded=true` and start a flush timer (`TimingConstants.STREAM_FLUSH_MS`, currently 80ms).
-  The RPC result's `stopReason` also ends the turn.   `available_commands_update` must NOT be
-  treated as turn-end: goose emits it at turn START, which made turnEnded flip mid-stream and
-  let the next message bypass the queue guard (goose drops the in-flight prompt and hangs).
-  Cursor is interleaved (`requiresMessageQueue=false`): it accepts a new `session/prompt`
-  while the previous RPC is in flight, then completes the old one with `stopReason=cancelled`.
-  That stale completion must NOT set Ready / `turnEnded` — `MessageSender` ignores completions
-  whose send generation is no longer current, and `onInternalMessageDone` is skipped while a
-  user prompt is in flight. `onUserPromptSent` runs only when `session/prompt` is actually
-  issued (not on local slash intercept or other send aborts).
-  `session/load` configOptions also triggers a flush.
-- `stopReason=max_tokens` means the reply was cut off by the model's output limit. Both
-  completion paths in `MessageSender` call `showTruncationNotice(result)`, which draws the
-  `INFO_ResponseTruncated` info bubble. goose reports `max_tokens` for exactly the condition
-  behind `_meta.goose.outputTokenLimitReached`/`fallbackContent`, so the `stopReason` check
-  covers both and the per-chunk `_meta` flags are NOT read separately (that would double-report).
-- A failed `session/prompt` is classified through `contract/RpcFailure` (code + `error.data`
-  kept by `AcpRpcException`): goose answers code `-32000` for an authentication failure
-  (`data.reason=turn_failed`) and `-32603` with `data.reason=credits_exhausted` plus a `data.url`
-  for an exhausted balance. `MessageSender.promptFailureText` maps those to `MSG_AuthRequired` /
-  `MSG_CreditsExhausted*` on both completion paths; every other failure keeps `STATUS_Error`.
-  Do NOT classify these by matching on the message text.
-- `MessageType` enum contains all valid session updates (e.g. `agent_message_chunk`, `agent_thought_chunk`, `plan`, `tool_call`). Check this enum before adding message types.
+- OpenHands' `sendsSystemPromptAsThought` filters `System Prompt:` thoughts; suppress its stdout
+  banner with `OPENHANDS_SUPPRESS_BANNER=1`. Route `session/update` through the full pipeline to UI.
+- End a turn on `responding_finished`, `end_turn`, RPC `stopReason`, or load config options; flush
+  pending text. Never treat `available_commands_update` as turn-end. Cursor permits interleaved
+  prompts: ignore stale completions by send generation. Call `onUserPromptSent` only when a prompt
+  is actually sent. Finalize via `stopStreaming()` → `finalizeStreaming()`.
+- `stopReason=max_tokens` drives the truncation notice; do not also inspect goose per-chunk flags.
+  Classify prompt failures by `RpcFailure` code/data (goose auth `-32000/turn_failed`, credits
+  `-32603/credits_exhausted`), never by message text. Check `MessageType` before adding updates.
 
 ### Harness Version Capabilities (OpenCode v1 vs v2)
-- The catalog holds ONE entry per harness, but capabilities can change across major
-  releases. `HarnessCatalog.forAgentVersion(harness, agentInfo.version)` is the single
-  seam for version-dependent deltas; `ServerProcessLifecycle.initializeProtocol()` applies
-  it after the harness is resolved and before `checkServerSupport` / the harness listener.
-  `MessageSender` reads `getCapabilities()` live at send time, so the resolved variant
-  governs the whole process lifetime.
-- OpenCode v2 dropped mid-turn steering, so a second `session/prompt` is no longer folded
-  into the running turn: `forAgentVersion` returns `HarnessCatalog.OPENCODE_V2`
-  (`requiresMessageQueue=true`) and the queue guard in `MessageSender` holds messages
-  until turn end. OpenCode v1 keeps steering (`requiresMessageQueue=false`).
-- `OPENCODE_V2` shares `OPENCODE`'s id, display name and binary names (derive it with
-  `Harness.withRequiresMessageQueue`) so id-keyed model caches and stored preferences do
-  not see a distinct harness. It must NOT be added to `HarnessCatalog.ALL` — onboarding,
-  install metadata and `byId`/`byBinaryName` must keep resolving the v1 base entry.
-- Unknown, absent or non-numeric version keeps the catalog default (v1); never guess v2.
+Capabilities that vary by version belong in `HarnessCatalog.forAgentVersion()` and are applied
+after resolution. OpenCode v2 requires queueing; v1 keeps interleaved prompts. `OPENCODE_V2` shares
+the base id/name/binaries and stays out of `HarnessCatalog.ALL`. Unknown versions keep the catalog
+default; never guess.
 
 ### goose Mid-Turn Steering (`_goose/unstable/session/steer`)
 
-- A second `session/prompt` while a goose run is active is **rejected**, not folded into
-  the turn: `server.rs` answers `invalid_params` with *"session already has active run
-  `<run_id>`; use _goose/unstable/session/steer"*. Therefore `HarnessCatalog.GOOSE` is
-  `requiresMessageQueue = true` (queue is the fallback), and
-  `Harness.supportsSessionSteer()` is true for goose only.
-- Run id: goose publishes it on `session_info_update` as `_meta.goose.activeRunId`
-  (null when the run ends). `manager/ActiveRunTracker` stores it per session;
-  `SessionUpdateDecoder` feeds every raw `session/update` notification into it (that is
-  the only place the raw node exists — do NOT try to read it from `SessionUpdate`), and
-  `ProcessManager.getActiveRunId()` reads it. Cleared on `session/cancel` (`stopMessage()`,
-  which `SessionRpcClient.closeBeforeLoad()` now uses instead of a bare notification) and by
-  `ServerProcessLifecycle.stopServer()` — NOT by `ProcessManager.doRestartServer()`, because
-  `ensureStartedIn()` restarts the lifecycle directly for a project-switch rebind and never
-  passes through it. A stale id makes the next steer carry a dead `expectedRunId`.
-- `ProcessManager.steerMessage()` builds the request with `support/SteerRequest.params`
-  (`sessionId`, `prompt` blocks, `expectedRunId`) and fails fast when no run id is known.
-  A run id can go stale between the tracker reading it and goose comparing it: goose rejects
-  the steer with `error.data.actualRunId`, and `steerMessage` retries **once** with that id
-  (updating `ActiveRunTracker`). Only `actualRunId` triggers the retry; any other failure is
-  returned as-is. `AcpRpcException` carries `error.data` and implements `contract/RpcFailure`,
-  which is how a caller reads `data.actualRunId`/`data.reason` without touching the transport.
+- Goose rejects a second `session/prompt`; keep `requiresMessageQueue=true` as fallback and
+  `supportsSessionSteer()` enabled. Read `_meta.goose.activeRunId` from raw notifications into
+  `ActiveRunTracker`, clear it on cancel/server stop, and send it as `expectedRunId`. If goose
+  returns `error.data.actualRunId`, retry once with that id; propagate other failures.
 - `MessageSender.trySteer()` takes a steer route only when the turn is in flight and no
   permission request is pending; the route depends on the harness: goose needs a known run id,
   Hermes takes `/steer`, and the `_session/steering` extension needs the handshake capability
@@ -590,33 +356,14 @@ Resolved — kept as regression guards:
 
 ### goose Custom Notifications (`_goose/unstable/session/update`)
 
-- goose sends its richer per-session channel **only** when the client opts in with
-  `clientCapabilities._meta.goose.customNotifications = true`. That flag is built by
-  `ServerProcessLifecycle.clientCapabilities(policy)`; removing it silently turns the
-  channel off (goose never advertises an error for it).
-- `SessionUpdateDecoder.decodeCustom` handles the channel: `message_usage` and
-  `status_message` are dispatched like any other update (same `SessionUpdate` record,
-  same `StrategyRegistry` switch), and the custom `usage_update` variant is **dropped on
-  purpose** — goose sends the standard `usage_update` on `session/update` as well, and
-  capturing both writes every gauge row twice.
-- `UpdateData.status` is a `JsonNode`, not a `String`: tool-call updates send a status
-  string while goose's `status_message` sends an object under the same key. Read
-  tool-call state through `update.status()` (text only) and notices through
-  `update.statusMessage()`.
-- `message_usage` rows are captured per execution into `message_usage` (schema v9) with
-  the message id, cache read/write tokens, cost, `elapsed_ms` and `ttft_ms`; a repeated
-  id is deduped (`CAPTURED_USAGE`) and the LOADING replay window is skipped like every
-  other capture. Compaction usage carries no message id and is still stored.
-- `status_message` is live status, never transcript: it goes to
-  `UIHandler.showStatus` → `StatusController.showStatusNotice`, which only schedules the
-  Ready reset when no turn is processing (a reset mid-turn would overwrite the
-  thinking/responding text).
-- Rows are attributed to the model that actually answered, read from
-  `_meta.goose.inference.resolvedModel` (falling back to `requestedModel`, then the
-  session's current model) through `StrategyRegistry.attribution(sessionId, update)`.
-  Do NOT record the dropdown value directly: a provider alias resolves to a different
-  model, and a sub-agent can run on one the dropdown never named. `UpdateData._meta`
-  exists for this; `SessionUpdate.meta()` is the accessor.
+- Enable this channel through `clientCapabilities._meta.goose.customNotifications=true`.
+  Decode `message_usage` and `status_message`; ignore its duplicate `usage_update` because goose
+  also sends the standard update. `UpdateData.status` is a `JsonNode` and may be text or object.
+- Capture `message_usage` per execution, dedupe by message id, skip LOADING replay, and retain
+  compaction rows without ids. Treat `status_message` as live status, never transcript; do not
+  reset Ready during a turn.
+- Attribute usage from `_meta.goose.inference.resolvedModel`, then requested/session model; never
+  use the dropdown value when a provider alias or sub-agent may differ.
 
 ### Harness Identity For Custom Binaries And Containers
 - `acpHarnessId` is written only by onboarding (`AssistantTopComponent.onHarnessSelected`)
@@ -637,119 +384,37 @@ Resolved — kept as regression guards:
 
 ### session/close Before session/load (Do Not Break)
 
-ACP forbids calling `session/close` on an agent that did not advertise
-`agentCapabilities.sessionCapabilities.close` in the `initialize` response. That flag is per connection, not in the static catalog: `ServerProcessLifecycle`
-captures it from the handshake, exposes it via `ProcessManager.isSessionCloseSupported()`,
-and resets it to `false` when the server process starts, so a restart against a
-different harness never inherits it.
-`SessionRpcClient.closeBeforeLoad()` gates on it — sends the `session/cancel`
-notification, then `session/close`, and swallows any failure, because a close
-that fails must never skip the load that follows. `SessionManager` chains it
-immediately before `session/load`, but ONLY when the load target is the session
-already loaded by the current server process: `shouldCloseBeforeLoad()` compares
-`loadedSessionId` and the `ProcessManager.serverGeneration()` the load recorded.
-Cancelling any other session cancels the load that follows (omp answers
-"ACP session load was cancelled"), so a plain switch skips cancel+close and goes
-straight to `session/load`. A restart/rebind bumps the generation, so the new
-process never inherits the previous process's loaded session. Copilot advertises
-`close` and needs the reload path; without it the load replays against a session
-still holding in-flight work. Do NOT make cancel+close unconditional again.
+Capture `sessionCapabilities.close` per connection and reset it on process start. Before loading,
+cancel/close only when the target is already loaded by this server generation; gate on the
+capability and swallow close failures so load continues. A plain session switch must not cancel
+the target load. Do not make cancel/close unconditional.
 
 ### File Access Policy Is Shared By ACP And MCP Tools
-- `support/FileAccessGuard.check(policy, path, write, inProject)` is the single
-  enforcement point for the user's file-access policy (`support/AcpFsPolicy`):
-  `ALLOW` permits reads and writes inside the project, `READ_ANY_WRITE_PROJECT`
-  permits reads anywhere but keeps writes inside the project, and `READ_ONLY`
-  permits project reads and rejects writes. It also denies credential files for
-  reads and writes and VCS/build metadata for writes. Each caller supplies only
-  its own containment predicate and its own message.
-- `fs/readTextFile` (`fs/read_text_file`) and `fs/writeTextFile` (`fs/write_text_file`)
-  are handled by `manager/AcpRequestRouter`; its `checkFsAccess` applies the guard
-  with the session's project directory, resolved through
-  `SessionQuery.getSessionDirectory(sessionId)`; a missing directory denies access.
-  The ACP fs capabilities are advertised from the policy during `initialize`
-  (`readTextFile` always; `writeTextFile` only for `ALLOW` and
-  `READ_ANY_WRITE_PROJECT`), so a policy change takes effect on the next harness
-  start while per-request enforcement is immediate.
-- The internal MCP file tools apply the same guard through
-  `FileSystemToolProvider.checkAccess`: `read_file` and `list_directory` are reads,
-  `write_to_file`, `replace_lines`, `insert_in_file` and `delete_lines` are writes.
-  Under `READ_ONLY` every MCP write is refused; under
-  `READ_ANY_WRITE_PROJECT` MCP reads may leave the open projects while writes
-  still may not. Their containment predicate is `ProjectPathGuard.isInOpenProject`.
-  Do NOT add an MCP file tool that bypasses `checkAccess`.
-- `search_project` keeps its own project-root contract (it only scans open
-  projects, skips secret files and rejects traversal out of the project), and the
-  git/hg/run_command tools keep `ProjectPathGuard` confinement for their working
-  directory. `run_command` is not a file tool: the policy does not restrict what a
-  command may read or write.
-- Path containment goes through `FileAccessGuard.isInsideProject`, which compares
-  canonical paths with a separator boundary (a sibling sharing a prefix is outside,
-  symlinks are resolved, `..` cannot escape). Do NOT replace it with a bare
-  `startsWith` on the unresolved path.
-- The policy is user-visible under *Options > BeanBot > System* (the **ACP file access** dropdown).
-- The harness's own `session/request_permission` prompt still runs; the policy is the
-  IDE-side guard, not a replacement for it.
-- Writes into `.git`, `.hg` and `.mvn` are refused even inside an open project:
-  `support/ProtectedPaths.isProtected` is applied by `FileAccessGuard` to every
-  write (both ACP and MCP). Those directories contain hooks and build
-  configuration that execute on the user's next git/hg/build action, so a write
-  there is code execution by proxy. Reads stay allowed. Do NOT add a write path
-  that skips this check (or an MCP write tool that calls the guard with
-  `write=false`).
-- Credential-looking files are refused for both reads and writes:
-  `support/SecretPaths.isSecret` covers `.env*` (except `.env.example|sample|template|dist`),
-  `.netrc`, `.npmrc`, `.pypirc`, `.git-credentials`, `.htpasswd`, SSH/GPG/cloud
-  credential directories, private key names and `*.pem|key|p12|pfx|jks|keystore|ppk|secret(s)`.
-  MCP `read_file`, the write tools, `search_project` (skips them) and
-  ACP `fs/read_text_file`/`fs/write_text_file` all apply it. It is a name heuristic,
-  not a sandbox: `run_command` can still print any file, so extend the matcher rather
-  than special-casing tools.
-- Agent-driven file access MUST NOT take focus unless the user asked to be taken
-  there. `fs/write*` writes through `EditorCookie.openDocument()` (loads the
-  buffer, opens no view), and `open_pos` defaults to `Line.show(OPEN, NONE)` —
-  the old `SHOW_SHOW`: opens the editor if needed, moves the caret, does not
-  focus. The single exception is an explicit user navigation request ("show me
-  where…", "take me to line X"): the model then passes `focus=true`, which maps
-  to `Line.show(OPEN, FOCUS)` (`SHOW_GOTO`). Anything else that activates the
-  editor — `EditorCookie.open()`, a bare `ShowVisibilityType.FOCUS`,
-  `requestActive()` — yanks the user out of whatever they are typing and MUST NOT
-  appear on an agent-triggered path: opening in the background is fine, stealing
-  focus is not.
+- `FileAccessGuard.check(...)` is the shared ACP/MCP enforcement point. `ALLOW` reads/writes within
+  the project; `READ_ANY_WRITE_PROJECT` reads anywhere but writes only within; `READ_ONLY` allows
+  project reads and rejects writes. Missing ACP session directory denies access.
+- Every ACP and MCP filesystem path must use `FileAccessGuard`; MCP filesystem/git/hg tools also use
+  `ProjectPathGuard`. Containment uses canonical paths with separator boundaries; never use bare
+  `startsWith`. `search_project` stays limited to open projects. `run_command` is separately guarded
+  by working directory and `RunCommandPolicy`, not the file policy.
+- The guard denies credentials on reads and writes and `.git`, `.hg`, `.mvn` writes. Extend
+  `SecretPaths`/`ProtectedPaths` rather than bypassing checks. The harness permission prompt remains
+  active; this is an additional IDE-side policy, not a sandbox.
+- Agent-driven file access must not steal focus. Open/write in the background; use `FOCUS` only for
+  an explicit user navigation request. `EditorCookie.openDocument()` is suitable for background
+  writes; do not activate editors through `open()`, `requestActive()` or equivalent.
 
 ### ACP Server Working Directory (Experimental)
 
-- `ProcessManager.ensureStartedIn(dir)` binds the server's spawn cwd and rebinds by
-  restarting the process. It is gated by `projectSwitchRestart.enabled`
-  (*Options > BeanBot > System → Enable ACP server restart on project switch*), read
-  once at startup — changing the option requires an IDE restart. Do NOT add a
-  preference listener for it or make it live; `setProjectSwitchRestartForTest` exists
-  only for tests.
-- **The flag always wins, for every harness.** `SessionManager.prepareServerBind` (the
-  `session/new` path) and `prepareSessionLoad` (the `session/load` path) rebind whenever
-  the flag is on — even for a harness that can move a session's cwd live. A live move is
-  not a silent override of the user's explicit setting.
-- Off (default): `session/new` follows the v1.27.0 path (no `ensureStartedIn`),
-  `ServerProcessLifecycle.spawnDirectory()` returns null, and the server is never bound
-  or restarted on a project switch. The one off-path addition is the load-time live move
-  below; keep everything else free of side effects — that is the compatibility contract.
-- Off + `session/load`: when the load target has a cwd and the harness supports
-  `Harness.supportsWorkingDirUpdate()` (goose only, via
-  `_goose/unstable/session/working-dir/update`), `prepareSessionLoad` moves the session's
-  cwd live *before* `session/load`, so the load happens in the directory the user selected
-  without restarting the process or terminating the sessions it serves. A failed move is
-  logged and the load proceeds. Other harnesses are left alone.
-- On: a rebind restarts the process and terminates every session it serves. The restart
-  installs a fresh ready future and `initializeProtocol` is bound to its
-  (client, generation), so a stale handshake cannot complete/stop the new process.
-  Binding comparison is canonical; a missing directory clears the binding.
-- The ready handler must NOT auto-reload while an explicit session operation is in
-  flight (`explicitSessionOps`): loading `currentSessionId` at that point can load the
-  previous session over the new one and rebind back, killing the new session.
-- The live move itself is `SessionControl.changeWorkingDirectory` (cwd context menu) →
-  `SessionRpcClient.updateWorkingDirectory`; a success also rewrites the cached session and
-  its metadata, so the header and a later reload agree with the server.
-- Manual *Restart Server* and preference-driven restarts are independent of this gate.
+- `projectSwitchRestart.enabled` is read at startup; changing it requires IDE restart. When on,
+  `session/new` and `session/load` rebind by restarting the server, regardless of harness support.
+  Do not make this preference live.
+- When off (default), new sessions do not bind/restart. On `session/load`, only harnesses supporting
+  `changeWorkingDirectory` (currently goose) move cwd live before loading; log a failed move and
+  continue. Preserve this compatibility behavior.
+- Rebind terminates served sessions. Bind handshakes to their client/generation, compare canonical
+  paths, and do not auto-reload during `explicitSessionOps`. Manual and preference-driven restarts
+  are independent of this option.
 
 ### fs/read_text_file Line Windows
 - `AcpRequestRouter.selectLines(content, startLine, limit)` slices content from both the editor document and
@@ -881,80 +546,20 @@ divider and the input area (it must borrow space from the thread only).
 - Deleting is confirmed and permanent, unlike the local archive (`setHidden`) flag.
 
 ### UI Sizing & Document Re-use
-- **Collapsible pane sizing is cached**: `BaseCollapsiblePane` caches `getPreferredSize()` and
-  `getMaximumSize()` and clears both in `invalidate()` (AWT propagates invalidation up from a
-  child whose content or width changed). Keep the cache — `BoxLayout` asks for preferred and
-  maximum size per child, and every miss re-wraps all text bodies. Do NOT restore the old
-  `getMaximumSize()` that called `getPreferredSize()` unconditionally on every query.
-- **Expand/collapse must repaint the viewport after layout**: `updateParentLayout` repaints the
-  enclosing `JViewport` via `SwingUtilities.invokeLater` after the queued validate. The pane's
-  own repaint still targets its pre-layout bounds, and a BLIT viewport then leaves the newly
-  exposed strip blank until the user scrolls. Do NOT drop that deferred repaint or move it
-  before the layout pass.
-- Bubbles use a cheap `JTextArea` during streaming (timer flush every `TimingConstants.STREAM_FLUSH_MS` ms).
-- `finalizeStreaming(expanded, immediate=false)` starts a cooldown timer (`TimingConstants.STREAM_FLUSH_MS` ms). New content
-  resets the timer. Full update runs once on cooldown expiry. `stopStreaming()` calls it with
-  `immediate=true`.
-- `FitEditorPane.setText(String)` reuses the HTML Document via `doc.remove()` + `kit.read()`
-  to prevent layout tree rebuilds.
-- `HtmlContentPreparer` uses an LRU cache (256 entries) for markdown->HTML conversion. Content
-  >32 KB bypasses the cache.
-- Welcome-screen accents are **drawn**, never typed: `WelcomeAccentIcons` paints the sparkle (Start
-  New Chat) and the chip glyphs with `Graphics2D`, tinted by the caller. An emoji codepoint is a
-  glyph the user's font may not have (Swing draws an empty box) and a colour-emoji font cannot be
-  rendered on Java 17, so `HardcodedFontTest` fails the build if a UI bundle string carries one.
-- Tool/activity header titles are fitted to the width they are given, never truncated at a fixed
-  character count: `CollapsibleHeaderRenderer.elideMiddle` works in pixels and keeps the **tail**
-  (a path's file name), so a long path reads `…/MessageBubble.java` instead of losing its name.
-  Elision runs from the containers' layout passes (`titlePanel.doLayout()`,
-  `ElidingHeaderLabel.fitText()` from the segment header's `doLayout`), because a resize listener
-  or a `setTitle`-time guess fires while the label still has no width — that stale, oversized
-  budget is what let the label be clipped at the pane edge. Do NOT reintroduce the old global
-  `ToolDataExtractor` title-length knob: the extractor only applies a 300-char safety cap.
-- Chat bubbles ride a width row: the assistant bubble has **no cap** and spans the whole
-  thread width — a long answer is prose and code, and capping it clipped content. The user bubble
-  stays a compact right-aligned block at 96% of the thread width, capped at 1024 px. BoxLayout's
-  cross-axis alignment is cooperative between siblings,
-  so the cap MUST stay in `MessageBubble.AlignedRow` — putting it on `getMaximumSize()` shifts the
-  whole row instead of aligning it. The assistant's row is created with
-  `AlignedRow.fullWidth()` — no cap, no wide-content escape hatch (a table or code block in a user
-  message is rendered by its wrapping `JTextArea`, ordered by the user's 96 % block). Corners
-  are `RoundedPanel(18)`; tables/tool blocks keep `RoundedPanel(12)`. Both chat cards are flat:
-  fill plus the theme's 1px hairline, no drop shadow. Do NOT paint either card the page colour —
-  on a near-white L&F page the bubble loses its boundary (reported after v1.30), and do not
-  reintroduce `setDropShadow` on chat bubbles (reported as not helping).
-  Pin/queue markers are the same left accent (`RoundedPanel.setLeftAccent`), painted as a 4px
-  capsule inset 2px from the edge and 10px from top/bottom: pinned uses `theme.accent()`, queued
-  the queue amber. Do NOT paint a full-height stripe — with the border off it reads as a damaged
-  card edge (reported after the v1.30 bubble refresh).
-  The user avatar is pinned LEFT (`BubbleFactory.resolveAvatarPosition`) — do NOT reintroduce the
-  LEFT/RIGHT alternation, and do not revive the removed `userMessageCount` index.
-- Message spacing: `ChatThreadPanel.addBubbleWithGap` sets a 4px gap inside one speaker's run and
-  16px across a speaker change (tool + thought share one activity group). The gap is applied by
-  resizing the *previous* bubble's trailing strut, so `removeMessageBubble` still drops the right
-  spacer.
-- `removeNotify()` in UI components MUST stop `javax.swing.Timer` instances and finalize
-  streaming to prevent memory leaks.
-- `BaseCollapsiblePane` does NOT remove its MouseListeners (`toggleListener`, `copyButtonHoverListener`)
-  in `removeNotify()`. These listeners only capture `this` (the component itself) — they die with the
-  component tree. Removing and re-adding them caused duplicate listeners (click fired toggle twice).
-  Do NOT add matching `removeMouseListener` calls here.
-- Clamping: `McpServer` connector idle timeout is clamped to a minimum of 30s.
-- Status label cap: `StatusController` caps `statusLabel` text at `MAX_STATUS_LENGTH` (50) chars,
-  ending over-long messages with an ellipsis. The label sits left of the model dropdown and absorbs
-  spare width, so every write goes through the private `show()` helper.
-- Thinking animation is constant-width: `thinkingFrame()` right-pads each frame with spaces to
-  `base.length() + 3`, and `startThinking()` pads immediately, so the dot cycle never changes the
-  label width (e.g. `Sending` is always 10 chars). Frames compose from the stored `statusBase`, not
-  from the label's current text — recovering a base by stripping trailing dots/spaces would also eat
-  the truncation ellipsis and shorten the message on every tick. Do NOT add another
-  `statusLabel.setText` call site, or the base and the label drift apart.
-- Model dropdown never shrinks while a session is open: `ConfigPanelController.updateConfigControls`
-  merges models the incoming options omitted back into the combo (`mergeModelItems`) and re-sorts,
-  because `config_options_update` (SSE) can carry a subset of what `session/load` reported;
-  `cacheModelList` likewise skips writing a smaller list. Do NOT restore the wholesale replace without
-  reproducing the "model missing until manual reload" report.
-- MCP tools/call: Response is sent immediately after tool execution (no artificial delay). The old 5,000ms minimum latency was removed in v1.7.2 because it caused client abort errors on macOS.
+- `BaseCollapsiblePane` caches preferred/maximum size and clears on `invalidate()`. After expand /
+  collapse, repaint the enclosing viewport after layout. Keep streaming lightweight (`JTextArea`)
+  and finalize to HTML after the cooldown; reuse the HTML document and retain the content LRU cache.
+- Fit/elide headers in pixels during layout and preserve path tails. Do not truncate by fixed
+  character count. Draw welcome accents as icons; do not put emoji glyphs in UI bundle strings.
+- Assistant bubbles span the thread width; constrain the right-aligned user bubble in
+  `MessageBubble.AlignedRow`. Keep flat themed cards, left pin/queue accents, left user avatar and
+  current thread grouping/gap behavior. Do not restore shadows, full-height stripes or alternating
+  avatars.
+- UI components stop timers in `removeNotify()`. `BaseCollapsiblePane` intentionally retains its
+  self-only mouse listeners; removing/readding them duplicates callbacks. Keep the MCP idle-timeout
+  minimum at 30s.
+- Status labels are length-capped; thinking frames keep constant width and update through the status
+  helper. Merge incoming model options so an open session's dropdown does not shrink.
 
 ### Task Repository Toggle
 - The `taskRepository.enabled` preference (default `true`) gates the entire todo.txt feature.
@@ -981,15 +586,17 @@ divider and the input area (it must borrow space from the thread only).
   only toggles the dialog's visibility/focus.
 
 ### SSE → EDT Session Race Guard
-`SessionLifecycleHandler.displayMessage()` captures `update.params().sessionId()` before scheduling the EDT callback via `invokeLater`. Inside the runnable, it re-checks against `SessionControl.getCurrentSessionId()` and silently drops the message if the session no longer matches. This prevents stale SSE messages from appearing in the wrong session's chat panel when the user switches sessions during streaming.
+Capture the update's session id before `invokeLater`; on the EDT, drop it if it no longer matches
+`SessionControl.getCurrentSessionId()`.
 
 ### Editor Context Capture
-`EditorContextCapture.capture()` returns `null` when no real file is open (no `FileObject` associated with the editor document). This prevents phantom paths like `/tmp/xxx` from being sent to the AI as context. The return value is passed as `Map<String, Object> context` in `MessageSender`, where `null` means "no editor context available" — the caller skips attaching context entirely.
+Return `null` when no real editor `FileObject` exists; callers then omit context (do not send
+phantom paths).
 
 ### Auto-Scroll Contract
-`ScrollController.isAtBottom()` uses a 150px sticky-zone tolerance (a 50px margin is too tight: adding a bubble shifts the viewport past it before `wasAtBottom` is captured). All content-modifying calls in `ChatThreadPanel` (`addSingleBubble`, `processMessageSections`, `stopStreaming`, stream timer) capture `wasAtBottom` BEFORE touching content; auto-scroll only fires when it is true. The stream timer (`Timer TimingConstants.STREAM_FLUSH_MS` ms) is the reference: it captures `wasAtBottom` before `flushUpdate()`.
-
-A streaming chunk that arrives while anchored sets `ChatThreadPanel.followStreamBottom`. It is needed because content can grow **outside** the flush tick — tool/thought chunks flush their whole pending text in one tick (no `STREAM_DRIP_MAX_CHARS` cap), and a bubble's cooldown finalizer (`MessageBubble.setPostFinalizeListener`) renders the rest of a burst after the tick has laid out — so measuring `isAtBottom()` after that growth answers "not at bottom" and auto-scroll would silently die for the rest of the turn. The flag is honoured by the flush tick, by the post-finalize hook and by `stopStreaming()`'s final pin; it is cleared by turn end and by `ScrollController.setUserScrollListener` (wheel, scrollbar drag, paging, Home), so following never fights a user who scrolls away. Do NOT drop the user-scroll cancel while keeping the follow flag, and do NOT gate the flag on the assistant role only: thought/tool bursts are the case that overflows the sticky zone.
+Capture `wasAtBottom` before every content mutation; scroll only when anchored. Keep the 150px
+sticky zone and `followStreamBottom` through flush/finalize/stop, but clear it on turn end or user
+scroll. Apply it to thought/tool bursts as well as assistant text.
 
 
 ### Live Context Report (`_goose/unstable/context/report`)
@@ -1006,79 +613,26 @@ A streaming chunk that arrives while anchored sets `ChatThreadPanel.followStream
   `autoCompactionPending` is called out rather than looking like an oversized context.
 
 ### Usage Stats Store
-`db/H2UsageStatsStore` implements `contract/UsageStatsStore`, `contract/SessionStore`,
-`contract/PinnedMessageControl` and `contract/ModelListControl` over one H2 database under the NetBeans
-user directory. Every database operation runs on that class's single-thread executor, so an EDT caller
-enqueues and returns — never add a query that runs inline on the calling thread. The pin and model-list
-caches are primed by `load()` and are memory-only for readers; writes update the cache and enqueue a
-row-level delta (`pinsDirty`/`modelsDirty` keep a write that races startup from being overwritten by the
-older snapshot). `harness_model` rows carry `last_seen`: `updateModels` stamps every model in a received
-list and keeps omitted models until one hour has passed since they were last seen, measured from that
-harness's newest report — never from wall-clock at load, so a gap without a report does not empty the
-cache. Pruning happens only when the harness reports again. `SCHEMA_VERSION` is the upgrade cursor: bump it and extend `applySchemaMigration` when
-stored semantics change, and never alter a released version's branch in place. Model ids are canonicalised
-(`support/ModelIdNormalizer`) inside `bindAttribution`, the one method every captured row from every table
-passes through; a version upgrade rewrites rows stored under the non-canonical separator. Do NOT re-add a
-process-global model fallback: a model belongs to a session, and `getSessionModelId` returning null renders
-as "(not attributed)" — that is the correct answer, not a bug. Attribution is captured as messages arrive,
-never resolved from current UI state at query time.
+`H2UsageStatsStore` is single-executor: all DB work stays off the caller/EDT. Keep pin/model caches
+memory-backed for reads and persist deltas; preserve startup writes. Model lists expire omitted entries
+one hour after the harness's latest report (prune only on a new report). Bump `SCHEMA_VERSION` and add
+migrations for semantic changes; canonicalize model ids at attribution and never use a global model
+fallback. Capture usage attribution when messages arrive.
 
-MCP tool calls are captured per execution, not per turn: `mcp/McpTools.callTool` reports every exit (OK,
-`status:"error"`, unknown tool, thrown executor) through the `contract/ToolCallRecorder` port to
-`manager/ToolCallUsageRecorder`, which resolves the attribution from `SessionQuery` at that moment and writes
-one `tool_call_usage` row with `duration_ms` and `status`. There is no in-memory counter and no turn-end drain —
-do NOT reintroduce one: a drain loses counts on a stop, a session switch, a server restart or shutdown, and
-attributes them to whatever session is current when the turn ends. A call with no active session is stored with
-`session_id NULL` rather than dropped, and `call_count` stays 1 per row so the version-7 turn aggregates still
-sum correctly.
+Record MCP tool usage per execution, attributed through `SessionQuery`; do not add turn-end counters or
+drop calls with no session. On open failure, mark the store unavailable and allow only the explicit
+user retry (at most two opens); do not auto-retry. Only an absent schema-version row means legacy;
+invalid values fail safely. Catch executor rejection after shutdown, and close the store from
+`ACPShutdown` (flush does not release the H2 lock).
 
-Opening and closing are both bounded. H2 refuses a file another process holds, so an `open()` failure sets
-`unavailable`: `connection()` then throws without retrying, `runDb()`/`call()` skip every later task, and the
-reason is logged once (stack at FINE). `retryAfterFailure()` — called by `ui/TokenUsageDialog` when the user
-opens or refreshes it — spends the only further attempt (`MAX_OPEN_ATTEMPTS` = 2) and finishes the startup
-preference migration, without reloading the in-memory datasets (a reload would drop history typed while the
-database was unreachable). A failed open also makes `runPrefsMigration` return an empty report, so a locked
-database never surfaces as "some data could not be migrated" and preference keys stay put for the next
-launch. Do NOT re-add automatic retries or per-write failure logging.
-
-`DbLifecycle.readSchemaVersion` treats only an **absent** version row as legacy (0). An unreadable or
-non-positive value fails the open instead: the legacy branch (`dbVersion < 2`) drops every capture table, so
-answering 0 for a read error or a damaged value would wipe the usage history over a fault that heals on the
-next launch. `unavailable` is the right outcome — capture is disabled for the session and the rows survive.
-
-After `shutdown()` the executor is terminated, so `DbLifecycle.call()` and `runDb()` catch
-`RejectedExecutionException` and answer the fallback (FINE log) instead of throwing at the caller: a late
-read from the usage dialog, or a capture from a session update still in flight, is not an error. Keep that
-guard on both — a bare `dbExecutor.submit()`/`execute()` throws on the calling thread, which may be the EDT.
-
-`project/ACPShutdown` must call `UsageStatsStore.close()`. An in-place plugin upgrade loads the new module in
-the same JVM, and the new classloader's H2 cannot lock a file the old one still holds (`OverlappingFileLock`
-surfaces as "Database may be already in use"). `close()` delegates to `shutdown()`, which closes the
-connection with three attempts and then stops the executor; `flush()` alone does not release the lock.
-
-The store's SQL does not live in the Java source. DDL is `db/schema.sql` (all `IF NOT EXISTS`, so it runs
-through H2's `RunScript` on every open, and once more when the legacy reset dropped tables); statements are
-`db/queries.sql` in `-- name: <key>` blocks. `db/Sql` loads and renders them: `{{slot}}` values are
-code-controlled identifiers only (a column, a `CAPTURE_TABLES` entry, the window predicate), and `render()`
-fails fast when a statement's placeholder count disagrees with the parameters its slots produced — which is what
-removed the hand-counted bind repetitions the aggregates needed. Do NOT inline SQL back into the store, and do
-NOT hand-bind placeholders that a slot supplied; use `Sql.sql()` only for a statement whose `?` the caller owns.
+SQL lives in `db/schema.sql` and named blocks in `db/queries.sql`; use `db/Sql` slots for controlled
+identifiers and do not inline SQL or rebind slot-owned parameters.
 
 ### Preference Migration To The Store
-Input history, per-session metadata, pinned message ids and per-harness model lists moved out of
-`NbPreferences` into the same H2 store. `runPrefsMigration()` copies each dataset once, guarded by its own
-`usage_meta` marker (`prefs_migrated`, `pinned_migrated`, `models_migrated`) and deletes only what it
-confirmed written. The markers are separate on purpose: an installation that ran the earlier migration
-already has `prefs_migrated`, so a shared guard would strand the newer datasets in preferences for ever.
-Containment is per entry: an unreadable entry is counted in the `MigrationReport`, its preference key is kept
-for inspection, and startup proceeds — a migration error is never a failure. Order matters and must stay:
-rows first, then the marker, then the deletions, so a database that cannot be written never costs the user
-their data. Only a run that stored everything records a marker: a *parse* skip is final, so it does not
-stop one (a corrupt value notifies once rather than on every launch), while a *write* failure leaves the
-marker unset so the next launch retries the rest, and only a key whose value reached the database is
-deleted. Input history is the one exception to retry: `input_history` holds plain INSERTs and a partly
-imported set cannot be resumed without duplicating entries, so its failed keys stay in preferences for
-inspection instead of being re-imported.
+`runPrefsMigration()` migrates history, session metadata, pins and model lists with separate markers.
+Preserve ordering: write rows, write marker, then delete only successfully stored keys. Parse skips are
+final; write failures leave markers unset for retry. Keep unreadable keys and report them without
+blocking startup. Do not retry partial input-history inserts, which would duplicate rows.
 
 ### Test NetBeans User Directory
 The build pins `-Dnetbeans.user=target/test-userdir` for the test JVM, because `Places.getUserDirectory()` is
@@ -1096,208 +650,50 @@ one from Lookup.
   complex; reserved for main chat bubbles needing full list, link, and nested styling support.
 
 ### Config Combo Enabled State
-The agent/model/thinking dropdowns in `ConfigPanelController` use two independent
-dimensions of control. Every `setEnabled` call flows through `applyEnabledState()`,
-which computes `field && !processing`:
-
-| Field | Set by | Meaning |
-|-------|--------|---------|
-| `modelEnabled` | `updateConfigControls` | Harness supports model selection |
-| `agentEnabled` | `updateConfigControls` | Harness supports agent list |
-| `thinkingEnabled` | `updateConfigControls` / `repopulateThinkingForModel` | Thinking options available |
-| `processing` | `setProcessing` from listener | Message in flight |
-
-- **Never call `combo.setEnabled()` directly** — always update the corresponding
-  field and call `applyEnabledState()`.
-- `updateConfigControls` fills the `*Enabled` fields from the harness capabilities
-  (table above). When processing is active, `applyEnabledState` keeps combos disabled
-  regardless of the field value; when processing ends, the stored fields are reapplied.
-- `setProcessing(boolean)` updates the `processing` flag and re-applies on the EDT.
-- `setOptionsPanelVisible` calls `applyEnabledState()` when the panel becomes
-  visible (does NOT overwrite fields).
+`ConfigPanelController` stores model/agent/thinking capability flags separately from `processing`;
+`applyEnabledState()` computes `field && !processing`. Never call `combo.setEnabled()` directly.
+Update capability flags from options, toggle processing on the EDT, and reapply when the options
+panel becomes visible without overwriting those flags.
 
 ### Ctrl+L Toggle / Shortcut Registration (DO NOT BREAK)
-The Ctrl+L shortcut and Window > Assistant menu item depend on a specific combination of
-annotations and layer.xml entries. This is the ONLY working configuration:
+The assistant's registration annotations must stay together: `@TopComponent.Registration`,
+`@ActionID(id="github.anandb.netbeans.ui.AssistantTopComponent")`, and
+`@TopComponent.OpenActionRegistration(preferredID="AssistantTopComponent")`. RELEASE220 does not
+support shortcut registration on that annotation.
 
-1. **`AssistantTopComponent` annotations** (must all be present together):
-```java
-@TopComponent.Registration(mode = "properties", openAtStartup = true, position = 1001)
-@ActionID(category = "Window", id = "github.anandb.netbeans.ui.AssistantTopComponent")
-@TopComponent.OpenActionRegistration(
-    displayName = "#CTL_AssistantAction",
-    preferredID = "AssistantTopComponent"
-)
-```
-   - `@TopComponent.OpenActionRegistration` generates a built-in open action at
-     `Actions/Window/github-anandb-netbeans-ui-AssistantTopComponent.instance`.
-   - Do NOT remove `@ActionID` or `@TopComponent.OpenActionRegistration` — other
-     combinations cause the shortcut or menu to stop working.
-   - `@TopComponent.OpenActionRegistration` does NOT support a `shortcuts` attribute in
-     NetBeans RELEASE220 — the shortcut must be registered in `layer.xml`.
-
-2. **`layer.xml`** — manual `ToggleAssistantAction` registration (handles toggle/close):
-```xml
-<!-- Action instance -->
-<folder name="Actions">
-    <folder name="Window">
-        <file name="github-anandb-netbeans-ui-ToggleAssistantAction.instance">
-            <attr name="instanceCreate" methodvalue="org.openide.awt.Actions.alwaysEnabled"/>
-            <attr name="delegate" newvalue="github.anandb.netbeans.ui.ToggleAssistantAction"/>
-            <attr name="displayName" bundlevalue="github/anandb/netbeans/ui/Bundle#CTL_ToggleAssistantAction"/>
-            <attr name="iconBase" stringvalue="github/anandb/netbeans/ui/icons/logo_window.svg"/>
-        </file>
-    </folder>
-</folder>
-<!-- Menu entry -->
-<folder name="Menu">
-    <folder name="Window">
-        <file name="Assistant.shadow">
-            <attr name="originalFile" stringvalue="Actions/Window/github-anandb-netbeans-ui-ToggleAssistantAction.instance"/>
-        </file>
-    </folder>
-</folder>
-<!-- Shortcut -->
-<folder name="Shortcuts">
-    <file name="D-L.shadow">
-        <attr name="originalFile" stringvalue="Actions/Window/github-anandb-netbeans-ui-ToggleAssistantAction.instance"/>
-    </file>
-</folder>
-```
-   - Both `Assistant.shadow` (menu) and `D-L.shadow` (Ctrl+L) point to
-     `ToggleAssistantAction`, NOT the generated open action.
-   - `D-L` = Ctrl+L in NetBeans keymap notation (D = Ctrl, S = Shift).
-
-3. **`ToggleAssistantAction.java`** — must use `findInstance()` + `toggleVisibility()`:
-```java
-@ActionID(category = "Window", id = "github.anandb.netbeans.ui.ToggleAssistantAction")
-public class ToggleAssistantAction implements ActionListener {
-    @Override
-    public void actionPerformed(ActionEvent e) {
-        AssistantTopComponent assistant = AssistantTopComponent.findInstance();
-        if (assistant != null) {
-            assistant.toggleVisibility();
-        }
-    }
-}
-```
-
-4. **`AssistantTopComponent.toggleVisibility()`** — must check `isOpened() && isShowing()`:
-```java
-public void toggleVisibility() {
-    if (isOpened() && isShowing()) {
-        close();
-    } else {
-        if (!isOpened()) {
-            open();
-        }
-        requestActive();
-    }
-}
-```
-   - Do NOT replace with `close()` + `open()` (always reopens, can never close).
-   - Do NOT remove the `isShowing()` check (needed for minimized/docked state).
-
-5. **`ComponentLifecycleHandler.createPageKeyDispatcher()`** — must NOT intercept Ctrl+L.
-   A `KeyEventDispatcher` for Page Up/Down/Ctrl+Home/End was stealing Ctrl+L when focus
-   was inside the assistant panel. The interceptor was removed. Do NOT re-add Ctrl+L
-   handling in any `KeyEventDispatcher`.
+Register `ToggleAssistantAction` in `layer.xml`; both `Menu/Window/Assistant.shadow` and
+`Shortcuts/D-L.shadow` (Ctrl+L) must target it, not the generated open action. The action uses
+`AssistantTopComponent.findInstance().toggleVisibility()`. Toggle closes only when
+`isOpened() && isShowing()`; otherwise open if needed and activate. Do not intercept Ctrl+L in a
+`KeyEventDispatcher`.
 
 ## MCP Tools
 
-- **Tool names** should be short and descriptive — they are re-sent in the tool list on every
-  model turn and cost tokens each time. No hard length cap; the earlier 14-character limit was
-  arbitrary and was already exceeded by `get_current_file_context` (24).
-- **OpenHands is not handed the internal MCP server**: its ACP adapter passes an HTTP
-  server's ACP `headers` list into an agent model that expects a header dict, so any
-  injected server fails validation and `session/new` dies. `sendsMcpServerConfig=false`
-  (and `supportsMcpServer=false`) keeps the plugin server out; MCP is configured in
-  OpenHands itself. Do not flip either flag until the adapter converts `headers`.- **Locating Java types**: use `find_type` when you need to find or verify where a Java type
-  (class, interface, enum, record) is declared, before reading, editing or opening it. It searches
-  the open projects' `ClassIndex` and returns fully qualified names plus source paths, so do NOT
-  `grep`/`search_project` for `class Foo` declarations and do NOT guess a path from a package name.
-  It is Java-only; other languages still go through `search_project`. Follow a returned `path` with
-  `open_pos` (no `focus`) to read the file.
-- **Locating files**: use `find_file` when you need the path of a file whose name — or part of its
-  path — you already know, before `list_directory`, `run_command` (`ls`/`find`/`glob`) or
-  `search_project`. It answers from the Jump to File index (open projects minus VCS-ignored files)
-  and returns an absolute `path` you can hand to `read_file`/`open_pos`; do NOT shell out to look
-  for a file. It is scoped to the session's working directory and says so in `scope`; pass
-  `scope: "projects"` to search every open project.
-- **Token auth**: `MessageServlet` verifies a per-instance token whenever `authRequired` is set.
-  `Harness.acceptsMcpAuthToken()` (false for the PI family and Jcode, true for every other
-  catalog entry) is the policy: those agents cannot carry a token on an MCP URL, so the embedded
-  MCP server runs without token enforcement for them. `ServerProcessLifecycle` resolves the
-  configured harness from preferences before the handshake (stored id → binary name → `UNKNOWN`)
-  because the flag must be set BEFORE `toolExecutor.start()`; do NOT move
-  it after. A custom binary the catalog cannot identify keeps the token requirement unless
-  `BinaryResolver.isPiHarness()` matches a bare `pi`/`pi-agent` install. Do NOT hand
-  authenticated URLs to PI harness sessions
-  (`McpManager.getServerConfig()`). `run_command` is gated on its *working directory*
-  (`ProjectPathGuard.isInOpenProject(workDir)`, defaulting to the current session directory) and
-  by `support/RunCommandPolicy`: when either the allowlist or denylist (*Options > BeanBot >
-  System → Command Whitelist*) is set, shell operators, env assignments and command chaining are
-  rejected, a denied binary always loses even if allowed, a denied `*` denies everything, and
-  only allowlisted executables may run (entries and commands match by executable name; `*`/`?`
-  globs are supported). With both lists empty the command string still runs via `bash -c`
-  unconstrained — that remains deferred hardening. The denylist is seeded with
-  `sudo, dd, mkfs.*, shutdown, reboot` when the preference has never been set
-  (`RunCommandPolicy.DEFAULT_DENYLIST`); `rm` is intentionally not denied. Do NOT bypass
-  `RunCommandPolicy.rejection` in any command-executing tool.
-- **Tool failures**: a tool returns a normal JSON object with `status: "error"` plus a human
-  `message`. `MessageServlet.handleToolsCallAsync` sets `result.isError = true` only when that
-  object also carries `"fatal": true`, so the harness shows a failed call for real breakage
-  without painting ordinary validation failures ("file not found", "summary is required") red.
-  Reserve `fatal` for a missing service (`…Control not available`), a failed write/close/update,
-  and a VCS command that timed out or exited non-zero. Do NOT throw (the servlet would answer
-  JSON-RPC `-32603` and the harness loses the message).
-- **Exploratory searches must not report failure**: `grep` exits 1 when it matches nothing, and a
-  harness's own shell tool (goose's `shell`) turns that exit status into a failed tool call even
-  though the command produced the real output. Prefer `nb__run_command`, which always returns
-  `status: "ok"` with a separate `exitCode`, and append `|| true` (or `; true`) when a command's
-  last element is `grep`/`rg` whose empty result is a legitimate answer. Keep `set -e`-less
-  one-liners honest: only the exit status of the *last* command in a chain decides the tool
-  result, so a trailing `grep` that finds nothing is what gets reported.
+- Keep MCP tool names short. OpenHands must not receive the internal MCP server until its adapter
+  accepts the expected headers shape.
+- `Harness.acceptsMcpAuthToken()` controls MCP URL authentication; resolve the harness before
+  `toolExecutor.start()`. Never hand authenticated MCP URLs to PI-family or Jcode sessions.
+- Every filesystem/git/hg tool must use `ProjectPathGuard`/`FileAccessGuard`; never bypass
+  `RunCommandPolicy.rejection`. `run_command` is confined by working directory and command policy.
+- Return tool errors as `{status:"error", message:...}`; set `fatal:true` only for service failures,
+  failed writes/updates, or timed-out/nonzero VCS commands. Do not throw for ordinary validation.
+- When an empty `grep`/`rg` result is expected in harness shell calls, neutralize its exit code or
+  use the command tool's separate `exitCode` field.
+- For connected IDE tools, use `find_type`/`find_file` for indexed Java types and known filenames;
+  other language searches use `search_project`.
 
 ## User Guide (docs/)
 
-The interactive user guide lives at `target/User Guide.twee` (Twine/Twee format), generated from the split passages.
-When editing it, use the split passage files — they are the source of truth:
+`docs/passages/NNN_<name>.txt` and `docs/images/` are the guide sources; never edit generated
+`target/User Guide.twee` directly. Passages start with `:: Name {attrs}` and the standard title/index
+header. Add new pages at the next number, link them from `051_topic_index.txt` (alphabetically), and
+cross-link related pages. Images use `![alt](../images/<name>-N.webp){style="max-width:100%;"}`.
 
-- **Passages**: `docs/passages/NNN_<name>.txt` — one file per page, numbered
-  `001_`..`NNN_`, header line `:: Name {attrs}` followed by the body. The last
-  passage number is the next one to use for new pages.
-- **Images**: `docs/images/<name>-N.webp` — binary files; passage bodies
-  reference them as `![alt](../images/<name>-N.webp){style="max-width:100%;"}`.
-  Screenshots are lossless WebP, photographs lossy `-quality 90`; `stitch.py`
-  inlines them as `data:image/webp;base64`.
-- **Tooling**: `docs/split.py` unpacks `User Guide.twee` into passages+images;
-  `docs/stitch.py` reassembles them back into `User Guide.twee`.
-- **Bundled copy**: the Maven build also copies the gzipped compiled HTML to
-  `target/generated-guide/UserGuide.html.gz`, which the `<resources>` block packages into
-  the module jar at `github/anandb/netbeans/docs/UserGuide.html.gz` (no plain HTML
-  artifact exists — the IDE's HTML validator flags it in `target/`). The Open User Guide
-  action (`support/UserGuideOpener`) extracts it to `java.io.tmpdir/beanbot` on a
-  background thread and opens it in the system browser; if the resource is missing
-  (stitch skipped) or the copy fails, the fallback runs on the EDT: a custom
-  `-Dbeanbot.user.guide.url` when set, otherwise a "not available in this build" status.
-  There is no default remote URL. Do NOT open the temp file on the EDT.
-- **Reachability check**: after editing, run
-  `python3 docs/check_reachable.py "target/User Guide.twee"`. Every passage must be
-  reachable from Home through the in-page `> [[Other Page]]` cross-links alone — never
-  only via the Topic Index — and there must be no dangling links. Show the absolute path
-  to the stitched file in a code block.
-- **Workflow to add a page**: create `docs/passages/NNN_<topic>.txt` (next
-  number), add a `> [[Page Name]]` link to the Topic Index passage
-  (`051_topic_index.txt`), then run `python3 docs/stitch.py` to regenerate
-  `User Guide.twee`. Do NOT hand-edit the .twee file.
-- **Page header convention**: each passage starts with a flex header div
-  (`Topic Title` + `[[Index->Topic Index]]` link) like existing passages.
-- **Cross-links**: pages link to related pages via `> [[Other Page]]` blocks
-  near the bottom.
-- **Topic Index sorting**: keep the `> [[Page Name]]` entries in
-  `051_topic_index.txt` sorted alphabetically; insert new entries in the
-  correct position instead of appending at the end.
+After edits, run `python3 docs/stitch.py` and
+`python3 docs/check_reachable.py "target/User Guide.twee"`; all passages must be reachable from
+Home through page links and there must be no dangling links. Build output is gzipped at
+`target/generated-guide/UserGuide.html.gz`. `UserGuideOpener` opens the extracted temp file off the
+EDT; do not move that I/O onto the EDT.
 
 <!-- graymatter:instructions:begin — managed by `graymatter init`; edits inside this block are overwritten -->
 ## Memory (GrayMatter)

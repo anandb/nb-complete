@@ -317,8 +317,11 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
             int y = getInsets().top + g2.getFontMetrics().getAscent();
             int lineHeight = g2.getFontMetrics().getHeight();
             String[] lines = LINE_SPLIT.split(placeholder, -1);
-            for (String line : lines) {
-                g2.drawString(line, x, y);
+            for (int i = 0; i < lines.length; i++) {
+                if (i > 0) {
+                    y += lineHeight / 2;
+                }
+                g2.drawString(lines[i], x, y);
                 y += lineHeight;
             }
             g2.dispose();
@@ -348,7 +351,9 @@ public class PlaceholderTextArea extends JTextArea implements Scrollable {
                 Font placeholderFont = getFont().deriveFont(Font.PLAIN);
                 FontMetrics fm = getFontMetrics(placeholderFont);
                 String[] lines = LINE_SPLIT.split(placeholder, -1);
-                int placeholderHeight = getInsets().top + getInsets().bottom + (fm.getHeight() * lines.length);
+                int gaps = (fm.getHeight() / 2) * Math.max(0, lines.length - 1);
+                int placeholderHeight = getInsets().top + getInsets().bottom
+                        + (fm.getHeight() * lines.length) + gaps;
                 if (placeholderHeight > minHeight) minHeight = placeholderHeight;
             }
         }
