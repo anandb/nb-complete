@@ -1,0 +1,48 @@
+:: Kimi Code Agent {"position":"2700,1400","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Kimi Code Agent</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+#### Install
+
+- **macOS / Linux / WSL (install script)**: `curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash`
+- **Windows (PowerShell)**: `irm https://code.kimi.com/kimi-code/install.ps1 | iex`
+
+The installer ships a self-contained CLI, so no separate Node.js install is needed. CLI docs: <a href="https://moonshotai.github.io/kimi-code/" target="_blank" rel="noopener">moonshotai.github.io/kimi-code</a>.
+
+#### About
+
+<a href="https://moonshotai.github.io/kimi-code/" target="_blank" rel="noopener">Kimi Code</a> is Moonshot AI's coding agent command-line tool. Running <code>kimi acp</code> makes it act as an **ACP server** over stdio: it speaks JSON-RPC on stdin/stdout and is meant to be spawned by an ACP-aware editor, so it is not a command to run yourself.
+
+The executable you configure in BeanBot is <code>kimi</code>, run with the default launch argument <code>acp</code>.
+
+**Authentication** is a CLI prerequisite: run <code>kimi login</code> in a terminal (or <code>/login</code> inside the CLI) once, to connect Kimi Code OAuth or a Moonshot API key. BeanBot has no in-chat sign-in, so a fresh install without credentials fails <code>session/new</code> — sign in first, then pick Kimi Code in the chooser.
+
+Kimi Code in BeanBot supports:
+- [[Editor Context->Automatic Context Capture]] Seamlessly injects the active editor state into agent prompts.
+- **[[MCP Tools]]**: Kimi Code accepts a per-session MCP server, so BeanBot hands it the plugin's internal server automatically — no manual registration is needed.
+- **Model Selection**: Exposed as an ACP config option, so the in-session model dropdown works.
+- **Agent / Mode List**: The agent selector is offered, and mode changes go through the protocol's mode request, so the dropdown works in an open session.
+- **Session List**: Sessions come from Kimi Code itself, so the dropdown reflects its own list and needs no local tracking. It also advertises <code>session/delete</code>, so **Delete Session…** is available.
+- **Session reload**: Kimi Code implements <code>session/load</code> and advertises <code>session/close</code>/<code>session/resume</code>, so [[Reloading a Session]] works for sessions it has already persisted.
+- **Queued messages**: a message sent while a turn is running is held in the [[Queuing Messages]] toolbar queue until the turn ends. Kimi Code's engine already queues a mid-turn prompt; BeanBot holds it as well so the turn-end signal stays honest.
+- **Token statistics**: Kimi Code emits the standard <code>usage&#95;update</code> notification, so token and context figures appear; see [[Check token usage]].
+- **No system reminders in the chat**: Kimi's CLI injects <code>&lt;system-reminder&gt;</code> blocks into echoed prompts. BeanBot filters them out of user bubbles instead of rendering them.
+
+#### Limitations
+
+- **Model switching path**: BeanBot changes the model through Kimi Code's <code>model</code> config option and mode request, not the dedicated model request. The dropdown shows the options Kimi Code reports back, not a fixed list.
+- **Queued messages**: Kimi Code does not accept a second prompt mid-turn, so BeanBot holds the message until turn end (see [[Queuing Messages]]). Interleaved agents such as [[OpenCode]] send immediately instead.
+
+> [[Post Install]]
+> [[Starting a Session]]
+> [[Onboarding]]
+> [[MCP Tools]]
+> [[Permission Requests]]
+> [[Picking an Agent, Model and Thinking Level]]
+> [[Queuing Messages]]
+> [[Reloading a Session]]
+> [[Check token usage]]
