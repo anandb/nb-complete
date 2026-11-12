@@ -18,13 +18,14 @@ class HarnessCatalogTest {
 
     @Test
     void allHarnessesPresent() {
-        assertEquals(16, HarnessCatalog.ALL.size());
+        assertEquals(18, HarnessCatalog.ALL.size());
         Set<String> ids = new HashSet<>();
         for (Harness h : HarnessCatalog.ALL) {
             assertTrue(ids.add(h.id()), "duplicate id: " + h.id());
         }
         assertTrue(ids.containsAll(Set.of("opencode", "codex", "goose", "pi", "cursor", "claude", "hermes",
-                "gemini", "omp", "openclaw", "devin", "copilot", "kilo", "cline", "jcode", "qwen")));
+                "gemini", "omp", "openclaw", "devin", "copilot", "kilo", "cline", "jcode", "qwen", "kimi",
+                "grok")));
     }
 
     @Test
@@ -32,7 +33,7 @@ class HarnessCatalogTest {
         Set<String> allIds = new HashSet<>(HarnessCatalog.ALL.stream()
                 .map(Harness::id).toList());
         assertEquals(Set.of("omp", "opencode", "codex", "openclaw", "pi", "goose", "cursor", "copilot",
-                "claude", "hermes", "gemini", "devin", "kilo", "cline", "jcode", "qwen"),
+                "claude", "hermes", "gemini", "devin", "kilo", "cline", "jcode", "qwen", "kimi", "grok"),
                 allIds);
     }
 
@@ -433,6 +434,60 @@ class HarnessCatalogTest {
         assertEquals("qwen.svg", HarnessCatalog.harnessIconName("qwen"));
         assertNotNull(HarnessCatalogTest.class.getResource("/github/anandb/netbeans/ui/icons/qwen.svg"));
         assertNotNull(HarnessCatalogTest.class.getResource("/github/anandb/netbeans/ui/icons/qwen_dark.svg"));
+    }
+
+    @Test
+    void kimiCapabilitiesMatchHandshake() {
+        // Pinned against the Kimi Code CLI acp-server source: loadSession, session
+        // capabilities {list,resume,close,delete,fork,additionalDirectories}, prompt
+        // image+embeddedContext (audio false), mcp http+sse. session/set_mode and
+        // set_config_option are implemented; chunks carry no messageId. A plain mid-turn
+        // prompt is queued by the engine and the RPC returns undefined, so the client
+        // queues to keep the turn-end signal honest.
+        assertEquals(List.of("kimi"), HarnessCatalog.KIMI.binaryNames());
+        assertEquals("acp", HarnessCatalog.KIMI.launchArgs());
+        assertEquals(HarnessCatalog.KIMI, HarnessCatalog.byBinaryName("kimi"));
+        assertEquals(HarnessCatalog.KIMI, HarnessCatalog.byBinaryName("kimi.exe"));
+        assertTrue(HarnessCatalog.KIMI.requiresMessageQueue());
+        assertTrue(HarnessCatalog.KIMI.sendsMcpServerConfig());
+        assertTrue(HarnessCatalog.KIMI.injectsEditorContext());
+        assertFalse(HarnessCatalog.KIMI.supportsMessageIds());
+        assertTrue(HarnessCatalog.KIMI.supportsMcpServer());
+        assertTrue(HarnessCatalog.KIMI.supportsSessionSetMode());
+        assertTrue(HarnessCatalog.KIMI.supportsSessionSetConfigOption());
+        assertTrue(HarnessCatalog.KIMI.supportsModelSelection());
+        assertTrue(HarnessCatalog.KIMI.supportsSessionList());
+        assertEquals("https://moonshotai.github.io/kimi-code/", HarnessCatalog.KIMI.docsUrl());
+        assertEquals("kimi.svg", HarnessCatalog.harnessIconName("kimi"));
+        assertNotNull(HarnessCatalogTest.class.getResource("/github/anandb/netbeans/ui/icons/kimi.svg"));
+        assertNotNull(HarnessCatalogTest.class.getResource("/github/anandb/netbeans/ui/icons/kimi_dark.svg"));
+    }
+
+    @Test
+    void grokCapabilitiesMatchHandshake() {
+        // Pinned against the Grok Build acp_agent source: loadSession, session
+        // capabilities {list,close,resume} (no delete/fork), prompt embeddedContext,
+        // mcp http+sse. session/set_mode and set_config_option are implemented and
+        // session/new returns models. Mid-turn messages queue.
+        assertEquals(List.of("grok"), HarnessCatalog.GROK.binaryNames());
+        assertEquals("agent stdio", HarnessCatalog.GROK.launchArgs());
+        assertEquals(HarnessCatalog.GROK, HarnessCatalog.byBinaryName("grok"));
+        assertEquals(HarnessCatalog.GROK, HarnessCatalog.byBinaryName("grok.exe"));
+        assertTrue(HarnessCatalog.GROK.requiresMessageQueue());
+        assertTrue(HarnessCatalog.GROK.sendsMcpServerConfig());
+        assertTrue(HarnessCatalog.GROK.injectsEditorContext());
+        assertFalse(HarnessCatalog.GROK.supportsMessageIds());
+        assertTrue(HarnessCatalog.GROK.supportsMcpServer());
+        assertTrue(HarnessCatalog.GROK.supportsSessionSetMode());
+        assertTrue(HarnessCatalog.GROK.supportsSessionSetConfigOption());
+        assertTrue(HarnessCatalog.GROK.supportsModelSelection());
+        assertTrue(HarnessCatalog.GROK.supportsSessionList());
+        assertTrue(HarnessCatalog.GROK.supportsInterject());
+        assertFalse(HarnessCatalog.KIMI.supportsInterject());
+        assertEquals("https://x.ai/cli", HarnessCatalog.GROK.docsUrl());
+        assertEquals("grok.svg", HarnessCatalog.harnessIconName("grok"));
+        assertNotNull(HarnessCatalogTest.class.getResource("/github/anandb/netbeans/ui/icons/grok.svg"));
+        assertNotNull(HarnessCatalogTest.class.getResource("/github/anandb/netbeans/ui/icons/grok_dark.svg"));
     }
 
     @Test

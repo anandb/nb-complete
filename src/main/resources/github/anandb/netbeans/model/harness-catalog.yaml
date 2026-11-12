@@ -312,6 +312,48 @@ harnesses:
     activation:
       hint: "Set OPENAI_API_KEY or DASHSCOPE_API_KEY before the first session."
 
+  # Kimi Code CLI (`kimi acp`). ACP v1 over stdio; mid-turn prompts are queued by the
+  # engine (the RPC returns undefined), so the client queues to keep turn-end honest.
+  # No message ids on chunks (the fallback ids them); the standard usage_update is
+  # emitted; model selection goes through set_mode / set_config_option.
+  - id: "kimi"
+    displayName: "Kimi Code"
+    iconBase: "kimi"
+    binaryNames: ["kimi"]
+    launchArgs: "acp"
+    requiresMessageQueue: true
+    supportsSessionSetMode: true
+    prerequisites: "Requires the Kimi Code CLI (no Node.js needed). Run kimi login once, or /login inside the CLI, to connect Kimi Code OAuth or a Moonshot API key."
+    docsUrl: "https://moonshotai.github.io/kimi-code/"
+    install:
+      windows: "powershell -c \"irm https://code.kimi.com/kimi-code/install.ps1 | iex\""
+      mac: "curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash"
+      linux: "curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash"
+    activation:
+      command: "kimi login"
+      hint: "Sign in once to connect Kimi Code OAuth or a Moonshot API key."
+
+  # Grok Build (`grok agent stdio`). ACP v1 over stdio; advertises loadSession,
+  # session list/close/resume, embeddedContext and MCP http+sse; model switching goes
+  # through set_mode / set_config_option. Mid-turn messages queue. No standard
+  # usage_update: token usage arrives only in _x.ai/session_notification frames.
+  - id: "grok"
+    displayName: "Grok"
+    iconBase: "grok"
+    binaryNames: ["grok"]
+    launchArgs: "agent stdio"
+    requiresMessageQueue: true
+    supportsSessionSetMode: true
+    prerequisites: "Requires the Grok CLI. Sign in with grok login (or set XAI_API_KEY) before the first session."
+    docsUrl: "https://x.ai/cli"
+    install:
+      windows: "powershell -c \"irm https://x.ai/cli/install.ps1 | iex\""
+      mac: "curl -fsSL https://x.ai/cli/install.sh | bash"
+      linux: "curl -fsSL https://x.ai/cli/install.sh | bash"
+    activation:
+      command: "grok login"
+      hint: "Sign in once, or set XAI_API_KEY."
+
   - id: "unknown"
     displayName: "Agent"
     iconBase: "agent"

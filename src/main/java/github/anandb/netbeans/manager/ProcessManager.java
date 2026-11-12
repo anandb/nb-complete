@@ -40,6 +40,7 @@ import github.anandb.netbeans.support.PreferenceKeys;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.InterjectRequest;
 import github.anandb.netbeans.support.SteerEchoes;
 import github.anandb.netbeans.support.SteerRequest;
 import github.anandb.netbeans.support.SteeringRequest;
@@ -481,6 +482,19 @@ public class ProcessManager implements ProcessControl {
         int idleTimeoutSec = PluginSettings.getSessionIdleTimeout();
         return client.sendRequest(SteeringRequest.METHOD,
                 SteeringRequest.params(sessionId, text, additionalBlocks),
+                idleTimeoutSec, TimeUnit.SECONDS);
+    }
+
+    @Override
+    public CompletableFuture<JsonNode> interjectMessage(String sessionId, String text,
+                                                        List<Map<String, Object>> additionalBlocks) {
+        AcpProtocolClient client = rpcClient.get();
+        if (client == null) {
+            return CompletableFuture.failedFuture(new RuntimeException(operationalError()));
+        }
+        int idleTimeoutSec = PluginSettings.getSessionIdleTimeout();
+        return client.sendRequest(InterjectRequest.METHOD,
+                InterjectRequest.params(sessionId, text, additionalBlocks),
                 idleTimeoutSec, TimeUnit.SECONDS);
     }
 

@@ -18,6 +18,7 @@ import org.openide.util.NbPreferences;
 import org.openide.util.RequestProcessor;
 
 import github.anandb.netbeans.contract.RequestHandler;
+import github.anandb.netbeans.contract.RpcFailure;
 import github.anandb.netbeans.contract.ToolExecutor;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.model.HarnessCatalog;
@@ -27,6 +28,7 @@ import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.AcpFsPolicy;
 import github.anandb.netbeans.support.ProcessTerminator;
+import github.anandb.netbeans.support.InterjectSupport;
 import github.anandb.netbeans.support.SteerEchoes;
 import github.anandb.netbeans.model.Harness;
 
@@ -276,6 +278,8 @@ class ServerProcessLifecycle {
         isClosing = false;
         // A new process has no loaded sessions: invalidate the previous generation.
         generation++;
+        // Interject support is probed per process; a new build may differ.
+        InterjectSupport.reset();
         if (readyFuture == null || readyFuture.isDone()) {
             readyFuture = new CompletableFuture<>();
         }
@@ -386,6 +390,10 @@ class ServerProcessLifecycle {
                 }
             });
 
+            // Grok Build never sends a standard usage_update; per-turn usage arrives
+            // in _x.ai/session_notification turn_completed frames (and the prompt result _meta).
+            client.onNotification("_x.ai/session_notification", GrokUsageCapture::onNotification);
+
             // Initialize ACP
             initializeProtocol();
 
@@ -438,6 +446,32 @@ class ServerProcessLifecycle {
         caps.put("terminal", false);
         caps.put("_meta", Map.of("goose", Map.of("customNotifications", true)));
         return caps;
+    }
+
+    /**
+     * Probes Grok Build's {@code x.ai/interject}, which is not advertised in the handshake.
+     * A bogus-session interject answers {@code -32601 Method not found} when the running
+     * build predates the method and {@code invalid_params} when it exists. The answer gates
+     * the steer route; until it arrives, mid-turn input queues.
+     */
+    private void probeInterject(AcpProtocolClient client) {
+        Map<String, Object> params = Map.of("sessionId", "__beanbot_interject_probe__", "text", "");
+        client.sendRequest("x.ai/interject", params, 10, TimeUnit.SECONDS)
+                .thenAccept(ignored -> InterjectSupport.set(true))
+                .exceptionally(ex -> {
+                    InterjectSupport.set(!isMethodNotFound(ex));
+                    return null;
+                });
+    }
+
+    /** True when the RPC failure (or a wrapped cause) is JSON-RPC's {@code -32601}. */
+    private static boolean isMethodNotFound(Throwable ex) {
+        for (Throwable cause = ex; cause != null; cause = cause.getCause()) {
+            if (cause instanceof RpcFailure failure) {
+                return failure.code() == -32601;
+            }
+        }
+        return false;
     }
 
     private void initializeProtocol() {
@@ -509,6 +543,9 @@ class ServerProcessLifecycle {
                         // OpenCode v2 dropped mid-turn steering, so its messages
                         // must be queued until turn end (used live by MessageSender).
                         capabilities = HarnessCatalog.forAgentVersion(capabilities, agentVersion);
+                        if (capabilities != null && capabilities.supportsInterject()) {
+                            probeInterject(client);
+                        }
                         toolExecutor.checkServerSupport(capabilities);
                         LOG.info("Harness resolved: {0} ({1})", capabilities.id(), capabilities.displayName());
                         Consumer<Harness> listener = harnessListener;
@@ -611,6 +648,7 @@ class ServerProcessLifecycle {
         // the first steer after the rebind fail.
         ActiveRunTracker.clear();
         SteerEchoes.clear();
+        InterjectSupport.reset();
 
         // Cancel any pending reconnect task
         if (reconnectTask != null) {

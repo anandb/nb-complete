@@ -463,6 +463,64 @@
     "docsUrl" : "https://qwenlm.github.io/qwen-code-docs/",
     "windowsInstallSubDirs" : [ ],
     "acceptsMcpAuthToken" : true
+  }, {
+    "id" : "kimi",
+    "displayName" : "Kimi Code",
+    "iconBase" : "kimi",
+    "binaryNames" : [ "kimi" ],
+    "launchArgs" : "acp",
+    "requiresMessageQueue" : true,
+    "sendsMcpServerConfig" : true,
+    "injectsEditorContext" : true,
+    "supportsMessageIds" : false,
+    "supportsMcpServer" : true,
+    "supportsSessionSetMode" : true,
+    "supportsSessionSetConfigOption" : true,
+    "supportsSessionSetModel" : false,
+    "supportsModelSelection" : true,
+    "supportsSessionList" : true,
+    "supportsAgentList" : true,
+    "separateBubblesPerReplayChunk" : false,
+    "supportTier" : "FULL",
+    "limitationsKey" : "",
+    "unsupportedModelSelectionMessage" : "",
+    "unsupportedModelSelectionPlaceholder" : "",
+    "installWindows" : "powershell -c \"irm https://code.kimi.com/kimi-code/install.ps1 | iex\"",
+    "installMac" : "curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash",
+    "installLinux" : "curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash",
+    "prerequisites" : "Requires the Kimi Code CLI (no Node.js needed). Run kimi login once, or /login inside the CLI, to connect Kimi Code OAuth or a Moonshot API key.",
+    "docsUrl" : "https://moonshotai.github.io/kimi-code/",
+    "windowsInstallSubDirs" : [ ],
+    "acceptsMcpAuthToken" : true
+  }, {
+    "id" : "grok",
+    "displayName" : "Grok",
+    "iconBase" : "grok",
+    "binaryNames" : [ "grok" ],
+    "launchArgs" : "agent stdio",
+    "requiresMessageQueue" : true,
+    "sendsMcpServerConfig" : true,
+    "injectsEditorContext" : true,
+    "supportsMessageIds" : false,
+    "supportsMcpServer" : true,
+    "supportsSessionSetMode" : true,
+    "supportsSessionSetConfigOption" : true,
+    "supportsSessionSetModel" : false,
+    "supportsModelSelection" : true,
+    "supportsSessionList" : true,
+    "supportsAgentList" : true,
+    "separateBubblesPerReplayChunk" : false,
+    "supportTier" : "FULL",
+    "limitationsKey" : "",
+    "unsupportedModelSelectionMessage" : "",
+    "unsupportedModelSelectionPlaceholder" : "",
+    "installWindows" : "powershell -c \"irm https://x.ai/cli/install.ps1 | iex\"",
+    "installMac" : "curl -fsSL https://x.ai/cli/install.sh | bash",
+    "installLinux" : "curl -fsSL https://x.ai/cli/install.sh | bash",
+    "prerequisites" : "Requires the Grok CLI. Sign in with grok login (or set XAI_API_KEY) before the first session.",
+    "docsUrl" : "https://x.ai/cli",
+    "windowsInstallSubDirs" : [ ],
+    "acceptsMcpAuthToken" : true
   } ],
   "unknown" : {
     "id" : "unknown",
@@ -527,6 +585,10 @@
       "hint" : "Connect a model provider once.",
       "command" : "goose configure"
     },
+    "grok" : {
+      "hint" : "Sign in once, or set XAI_API_KEY.",
+      "command" : "grok login"
+    },
     "hermes" : {
       "hint" : "Start it once and connect a model provider.",
       "command" : "hermes"
@@ -538,6 +600,10 @@
     "kilo" : {
       "hint" : "Sign in once, or start kilo and use /connect.",
       "command" : "kilo auth login"
+    },
+    "kimi" : {
+      "hint" : "Sign in once to connect Kimi Code OAuth or a Moonshot API key.",
+      "command" : "kimi login"
     },
     "omp" : {
       "hint" : "Start it once and use /login to connect a model provider.",
@@ -571,10 +637,12 @@
     "devin" : "devin",
     "gemini" : "gemini",
     "goose" : "goose",
+    "grok" : "grok",
     "hermes" : "hermes",
     "jcode" : "jcode",
     "kilo" : "kilo",
     "kilocode" : "kilo",
+    "kimi" : "kimi",
     "missing-agent" : "unknown",
     "omp" : "omp",
     "omp.exe" : "omp",
@@ -583,5 +651,5 @@
     "pi-acp" : "pi",
     "qwen" : "qwen"
   },
-  "sortedIds" : [ "claude", "cline", "codex", "copilot", "cursor", "devin", "gemini", "goose", "hermes", "jcode", "kilo", "omp", "openclaw", "opencode", "pi", "qwen" ]
+  "sortedIds" : [ "claude", "cline", "codex", "copilot", "cursor", "devin", "gemini", "goose", "grok", "hermes", "jcode", "kilo", "kimi", "omp", "openclaw", "opencode", "pi", "qwen" ]
 }

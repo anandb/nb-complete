@@ -31,7 +31,9 @@ import github.anandb.netbeans.model.UsageRecords.Attribution;
 import github.anandb.netbeans.model.UsageRecords.PromptUsageRow;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.SteerEchoes;
+import github.anandb.netbeans.support.InterjectSupport;
 import github.anandb.netbeans.support.SteeringRequest;
+import github.anandb.netbeans.support.UsageTurnDedup;
 import github.anandb.netbeans.support.VcsUtils;
 import org.openide.util.RequestProcessor;
 import github.anandb.netbeans.ui.UIBundle;
@@ -626,9 +628,10 @@ public class MessageSender {
     /**
      * Adds the text to the running turn. Returns false when the harness cannot
      * steer right now, leaving the caller to queue or to start a new prompt.
-     * Three mechanisms exist: a dedicated extension (goose), a slash command
-     * the harness interprets as guidance (Hermes {@code /steer}), and the
-     * cross-adapter {@code _session/steering} extension the agent advertises.
+     * The mechanisms are: a dedicated extension (goose), a slash command the
+     * harness interprets as guidance (Hermes {@code /steer}), the cross-adapter
+     * {@code _session/steering} extension the agent advertises, and Grok Build's
+     * {@code x.ai/interject} extension.
      */
     private boolean trySteer(String text, ProcessControl proc) {
         if (proc == null) {
@@ -643,6 +646,9 @@ public class MessageSender {
         }
         if (proc.supportsSessionSteering()) {
             return tryProtocolSteer(text, proc);
+        }
+        if (caps != null && caps.supportsInterject() && InterjectSupport.isSupported()) {
+            return tryInterject(text, proc);
         }
         return false;
     }
@@ -763,6 +769,30 @@ public class MessageSender {
                         restoreFailedSteer(draft);
                     });
                 })
+                .exceptionally(ex -> {
+                    onSteerFailure(ex, draft);
+                    return null;
+                });
+        return true;
+    }
+
+    /**
+     * Interjects through Grok Build's {@code x.ai/interject} extension. The interjection joins
+     * the running turn at the next safe point; live user echo is opt-in via
+     * {@code x.ai/userMessageEcho}, which the plugin does not send, so the local echo is the only
+     * renderer and no {@code SteerEchoes} expectation is registered.
+     */
+    private boolean tryInterject(String text, ProcessControl proc) {
+        String sessionId = sessionService.get().getCurrentSessionId();
+        if (sessionId == null) {
+            return false;
+        }
+        SteerDraft draft = prepareSteerDraft(text, proc);
+        if (draft == null) {
+            return false;
+        }
+        proc.interjectMessage(sessionId, draft.echoText(), draft.fileBlocks())
+                .thenAccept(result -> LOG.info("Interjected running turn for session {0}", sessionId))
                 .exceptionally(ex -> {
                     onSteerFailure(ex, draft);
                     return null;
@@ -1008,8 +1038,18 @@ public class MessageSender {
         if (result == null || sessionId == null) {
             return;
         }
+        JsonNode meta = result.get("_meta");
         JsonNode usage = result.get("usage");
+        if ((usage == null || !usage.isObject()) && meta != null) {
+            usage = meta.get("usage");
+        }
         if (usage == null || !usage.isObject()) {
+            return;
+        }
+        // Grok reports the turn usage in the result _meta; the same turn also arrives
+        // in an _x.ai/session_notification frame, so dedupe on the turn id.
+        String turnId = meta != null ? meta.path("promptId").asText("") : "";
+        if (!UsageTurnDedup.firstCapture(sessionId, turnId)) {
             return;
         }
         UsageStatsStore store = PlatformBridge.serviceSafe(UsageStatsStore.class);
@@ -1021,11 +1061,13 @@ public class MessageSender {
                 sessions != null ? sessions.getHarnessId() : null,
                 sessions != null ? sessions.getSessionModelId(sessionId) : null,
                 sessions != null ? sessions.getSessionDirectory(sessionId) : null);
+        long input = usage.path("inputTokens").asLong(0);
+        long output = usage.path("outputTokens").asLong(0);
+        long total = usage.hasNonNull("totalTokens") ? usage.get("totalTokens").asLong() : input + output;
+        Long thought = usage.hasNonNull("thoughtTokens") ? usage.get("thoughtTokens").asLong()
+                : (usage.hasNonNull("reasoningTokens") ? usage.get("reasoningTokens").asLong() : null);
         store.recordPromptUsage(new PromptUsageRow(attribution, System.currentTimeMillis(),
-                usage.path("inputTokens").asLong(0),
-                usage.path("outputTokens").asLong(0),
-                usage.path("totalTokens").asLong(0),
-                usage.hasNonNull("thoughtTokens") ? usage.get("thoughtTokens").asLong() : null,
+                input, output, total, thought,
                 usage.hasNonNull("cachedReadTokens") ? usage.get("cachedReadTokens").asLong() : null));
     }
 

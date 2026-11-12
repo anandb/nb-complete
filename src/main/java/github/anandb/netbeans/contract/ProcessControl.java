@@ -52,6 +52,13 @@ public interface ProcessControl {
      */
     CompletableFuture<JsonNode> steerSession(String sessionId, String text, List<Map<String, Object>> additionalBlocks);
 
+    /**
+     * Adds user input to the running turn through Grok Build's {@code x.ai/interject}
+     * extension. The reply is {@code {status:"queued"}}; the session actor drains the
+     * interjection at the next safe point. Needs no run id.
+     */
+    CompletableFuture<JsonNode> interjectMessage(String sessionId, String text, List<Map<String, Object>> additionalBlocks);
+
     /** Stops the current message being processed. */
     CompletableFuture<Void> stopMessage(String sessionId);
 

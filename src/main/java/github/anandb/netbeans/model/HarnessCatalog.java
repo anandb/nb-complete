@@ -40,6 +40,8 @@ public final class HarnessCatalog {
     public static final Harness CLINE = CATALOG.require("cline");
     public static final Harness JCODE = CATALOG.require("jcode");
     public static final Harness QWEN = CATALOG.require("qwen");
+    public static final Harness KIMI = CATALOG.require("kimi");
+    public static final Harness GROK = CATALOG.require("grok");
 
     /** OpenCode v2 capability variant: same identity as {@link #OPENCODE}, but without
      *  mid-turn steering. Selected by {@link #forAgentVersion}; deliberately not in

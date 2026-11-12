@@ -139,6 +139,16 @@ public record Harness(
         return "hermes".equals(id);
     }
 
+    /**
+     * True when the harness adds input to a running turn through its own
+     * {@code x.ai/interject} extension (Grok Build). The interjection is queued into the
+     * running turn's pending buffer and drained at the next safe point; it needs no run id
+     * and the adapter does not echo it.
+     */
+    public boolean supportsInterject() {
+        return "grok".equals(id);
+    }
+
     /** True when the harness retitles a session server-side
      *  ({@code _goose/unstable/session/rename}); ACP itself has no rename. */
     public boolean supportsSessionRename() {
