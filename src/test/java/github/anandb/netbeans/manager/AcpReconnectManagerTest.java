@@ -9,11 +9,14 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.doAnswer;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -94,6 +97,31 @@ class AcpReconnectManagerTest {
         closing.set(false);
         processRef.set(null);
         manager.handleDisconnection(() -> {});
+    }
+
+    @Test
+    void aClientThatReportsDisconnectionOnCloseStaysOneDrop() {
+        // AcpProtocolClient.close() notifies disconnection, so retiring the stale client
+        // calls handleDisconnection again. That re-entry drew a second balloon and spent
+        // a second restart slot against MAX_RESTARTS.
+        AtomicInteger crashes = new AtomicInteger();
+        AcpReconnectManager local = new AcpReconnectManager(
+                () -> false,
+                () -> null,
+                rpcRef,
+                crashes::incrementAndGet,
+                () -> null,
+                () -> null,
+                t -> {}
+        );
+        doAnswer(invocation -> {
+            local.handleDisconnection(() -> {});
+            return null;
+        }).when(rpcClient).close();
+
+        local.handleDisconnection(() -> {});
+
+        assertEquals(1, crashes.get(), "the re-entrant close must not be treated as a second drop");
     }
 
     @Test

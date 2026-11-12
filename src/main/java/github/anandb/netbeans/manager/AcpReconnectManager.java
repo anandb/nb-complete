@@ -38,6 +38,8 @@ class AcpReconnectManager {
     private final Supplier<RequestProcessor> reconnectRP;
     private final Consumer<RequestProcessor.Task> setReconnectTask;
     private volatile String lastDisconnectReason;
+    /** Guards re-entry: closing the stale client notifies disconnection again. */
+    private boolean handling;
 
     AcpReconnectManager(
             BooleanSupplier isClosing,
@@ -56,7 +58,25 @@ class AcpReconnectManager {
         this.setReconnectTask = setReconnectTask;
     }
 
+    /**
+     * One broken pipe must stay one drop: {@link AcpProtocolClient#close()} reports a
+     * disconnection itself, so retiring the stale client below calls straight back in —
+     * which used to draw a second balloon and spend a second restart slot.
+     */
     synchronized void handleDisconnection(Runnable onStartServer) {
+        if (handling) {
+            LOG.fine("Ignoring re-entrant disconnection report");
+            return;
+        }
+        handling = true;
+        try {
+            handleDisconnectionLocked(onStartServer);
+        } finally {
+            handling = false;
+        }
+    }
+
+    private void handleDisconnectionLocked(Runnable onStartServer) {
         if (isClosing.getAsBoolean()) {
             // Double-get is safe here: serverProcess Supplier wraps an AtomicReference
             // that is written only once (ServerProcessLifecycle.start()) and cleared

@@ -447,7 +447,9 @@ public class MessageSender {
     /**
      * Text for a failed prompt. goose classifies its failures in {@code error.data}: an
      * {@code auth_required} code or a {@code credits_exhausted} reason tells the user what to do,
-     * where the generic message only repeats the server text.
+     * where the generic message only repeats the server text. grok answers an exhausted quota
+     * with {@code -32003} and puts the actionable detail ("used all the included free usage …
+     * resets over a rolling 24-hour window") in {@code data.message}.
      */
     private static String promptFailureText(Throwable ex, String reason) {
         RpcFailure failure = RpcFailure.find(ex);
@@ -456,6 +458,11 @@ public class MessageSender {
         }
         if (failure.code() == RpcFailure.AUTH_REQUIRED) {
             return NbBundle.getMessage(UIBundle.class, "MSG_AuthRequired", reason);
+        }
+        if (failure.code() == RpcFailure.RATE_LIMITED) {
+            String detail = failure.dataField("message");
+            return NbBundle.getMessage(UIBundle.class, "MSG_RateLimited",
+                    detail != null && !detail.isBlank() ? detail : reason);
         }
         if (RpcFailure.REASON_CREDITS_EXHAUSTED.equals(failure.dataField("reason"))) {
             String url = failure.dataField("url");

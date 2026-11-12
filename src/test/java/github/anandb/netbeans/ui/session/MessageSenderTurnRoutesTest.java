@@ -578,6 +578,40 @@ class MessageSenderTurnRoutesTest {
     }
 
     @Test
+    void aRateLimitedPromptShowsTheProviderQuotaDetail() throws Exception {
+        session(true);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.OPENCODE);
+        when(proc.sendMessage(anyString(), anyString(), any(), any()))
+                .thenReturn(CompletableFuture.failedFuture(new FakeRpcFailure(
+                        RpcFailure.RATE_LIMITED, "Rate limited",
+                        Map.of("message", "You've used all the included free usage for grok-4.7"))));
+        input.append("hello");
+
+        sender.sendMessage();
+        drainEdt();
+
+        String text = lastErrorText();
+        assertTrue(text.contains("Rate limited"), "the failure must be named: " + text);
+        assertTrue(text.contains("free usage"),
+                "grok's quota detail lives in data.message and must reach the user: " + text);
+    }
+
+    @Test
+    void aRateLimitedPromptWithoutDetailFallsBackToTheServerText() throws Exception {
+        session(true);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.OPENCODE);
+        when(proc.sendMessage(anyString(), anyString(), any(), any()))
+                .thenReturn(CompletableFuture.failedFuture(new FakeRpcFailure(
+                        RpcFailure.RATE_LIMITED, "Rate limited", Map.of())));
+        input.append("hello");
+
+        sender.sendMessage();
+        drainEdt();
+
+        assertTrue(lastErrorText().contains("Rate limited"), "no detail: keep the server text");
+    }
+
+    @Test
     void anUnclassifiedFailureKeepsThePlainServerMessage() throws Exception {
         session(true);
         when(proc.getCapabilities()).thenReturn(HarnessCatalog.OPENCODE);

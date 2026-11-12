@@ -13,6 +13,9 @@ public interface RpcFailure {
     /** JSON-RPC "Internal error". */
     int INTERNAL_ERROR = -32603;
 
+    /** JSON-RPC error code for a provider rate limit, including an exhausted quota window. */
+    int RATE_LIMITED = -32003;
+
     /** {@code data.reason} of a prompt that failed after the turn started. */
     String REASON_TURN_FAILED = "turn_failed";
 
