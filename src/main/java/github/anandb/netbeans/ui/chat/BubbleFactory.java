@@ -1,8 +1,11 @@
 package github.anandb.netbeans.ui.chat;
 
+import github.anandb.netbeans.contract.ProcessControl;
+import github.anandb.netbeans.model.Harness;
 import github.anandb.netbeans.model.MessageType;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.ui.UIBundle;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
 
 /**
  * Factory for creating MessageBubble instances.
@@ -34,6 +37,14 @@ final class BubbleFactory {
     static MessageBubble createRoleBubble(MessageType type, String text,
             String messageId, String toolTitle, boolean streaming, String sessionId) {
         MessageBubble.AvatarPosition avatarPos = resolveAvatarPosition(type.roleName());
-        return new MessageBubble(type, text, messageId, toolTitle, avatarPos, streaming, sessionId);
+        return new MessageBubble(type, text, messageId, toolTitle, avatarPos, streaming, sessionId,
+                stripsSystemReminders());
+    }
+
+    /** The active harness folds {@code <system-reminder>} blocks into echoed user text. */
+    private static boolean stripsSystemReminders() {
+        ProcessControl pc = PlatformBridge.processControl();
+        Harness caps = pc == null ? null : pc.getCapabilities();
+        return caps != null && caps.stripsSystemReminders();
     }
 }

@@ -614,6 +614,14 @@ public class ChatThreadPanel extends JPanel {
         MessageBubble bubble = BubbleFactory.createRoleBubble(type, text, messageId, toolTitle, streaming, sid);
         bubble.setGeneratedMessageId(generatedId);
 
+        // A user message can be nothing but harness-injected noise (a bare
+        // <system-reminder> echo or a replayed block); never draw it. User text
+        // renders immediately and user chunks never merge, so decide here rather
+        // than waiting for a finalize that may never come.
+        if (type.isUser() && bubble.getRawText().isBlank()) {
+            return;
+        }
+
         if (lastUserTimestamp > 0 && !"user".equals(type.roleName())) {
             long elapsed = System.currentTimeMillis() - lastUserTimestamp;
             bubble.setResponseTimeMs(elapsed);

@@ -801,8 +801,17 @@ divider and the input area (it must borrow space from the thread only).
 ### User Message Display
 - User bubbles are a wrapping `JTextArea` (stream and finalize). Do not use
   `FitEditorPane` or HTML for user text.
-- `MessageBubble.finalizeStreaming` strips `<metadata>` via `ToolDataExtractor.stripMetadata`
-  then refreshes the `JTextArea`. The one-arg overload must delegate to the two-arg overload.
+- `MessageBubble.finalizeStreaming` strips harness noise via
+  `ToolDataExtractor.stripMessageNoise` then refreshes the `JTextArea`. The one-arg
+  overload must delegate to the two-arg overload.
+- `<metadata>`/HTML-comment blocks are always stripped. `<system-reminder>` blocks are
+  stripped only for a harness whose catalog entry sets `stripsSystemReminders` (Kimi
+  Code), because that harness folds them into echoed user text. `MessageBubble` takes
+  the flag from `BubbleFactory`, which reads `ProcessControl.getCapabilities()`. A user
+  bubble left empty after stripping is dropped at add time in
+  `ChatThreadPanel.addSingleBubble` (user text renders immediately and user chunks never
+  merge, so this needs no finalize); `finalizeStreaming` repeats the strip and removes a
+  bubble left empty there, and copy uses the same stripping.
 
 ### Assistant MessageId Generation
 - Assistant messages from the server may lack a `messageId`. For pinning support, we generate

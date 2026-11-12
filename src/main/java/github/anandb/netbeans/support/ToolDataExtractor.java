@@ -12,6 +12,7 @@ import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.pattern.HtmlCommentPattern;
 import github.anandb.netbeans.pattern.MetadataBlockPattern;
+import github.anandb.netbeans.pattern.SystemReminderPattern;
 import github.anandb.netbeans.pattern.McpTitlePrefixPattern;
 import github.anandb.netbeans.pattern.ToolTitlePrefixPattern;
 import github.anandb.netbeans.pattern.SkillContentPattern;
@@ -115,6 +116,21 @@ public final class ToolDataExtractor {
 
     public static String stripMetadata(String text) {
         return MetadataBlockPattern.stripFrom(HtmlCommentPattern.stripFrom(text));
+    }
+
+    /** Strips harness-injected {@code <system-reminder>} blocks from echoed message text. */
+    public static String stripSystemReminders(String text) {
+        return SystemReminderPattern.stripFrom(text);
+    }
+
+    /**
+     * Strips the noise a harness folds into echoed message text. System reminders are
+     * only removed for a harness that declares {@code stripsSystemReminders}; metadata
+     * blocks are always removed.
+     */
+    public static String stripMessageNoise(String text, boolean stripSystemReminders) {
+        String stripped = stripMetadata(text);
+        return stripSystemReminders ? stripSystemReminders(stripped) : stripped;
     }
 
     public static String extractToolTitle(String messageId, String rawText,

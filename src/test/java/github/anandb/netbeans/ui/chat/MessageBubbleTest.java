@@ -4,6 +4,7 @@ import github.anandb.netbeans.model.MessageType;
 import java.awt.Component;
 import java.awt.Dimension;
 import javax.swing.JLabel;
+import javax.swing.JPanel;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -87,6 +88,37 @@ class MessageBubbleTest {
         MessageBubble assistant = new MessageBubble(MessageType.agent_message_chunk,
                 raw, null, null, MessageBubble.AvatarPosition.NONE);
         assertEquals(raw, assistant.getRawText());
+    }
+
+    @Test
+    void userBubbleStripsSystemRemindersWhenTheHarnessOptsIn() {
+        String raw = "fix the bug\n<system-reminder>\nbe nice\n</system-reminder>";
+        MessageBubble bubble = new MessageBubble(MessageType.user_message_chunk, raw,
+                null, null, MessageBubble.AvatarPosition.LEFT, false, null, true);
+
+        assertEquals("fix the bug", bubble.getRawText().strip());
+    }
+
+    @Test
+    void userBubbleKeepsSystemRemindersWhenTheHarnessDoesNotOptIn() {
+        String raw = "fix the bug\n<system-reminder>\nbe nice\n</system-reminder>";
+        MessageBubble bubble = new MessageBubble(MessageType.user_message_chunk, raw,
+                null, null, MessageBubble.AvatarPosition.LEFT, false, null, false);
+
+        assertEquals(raw, bubble.getRawText());
+    }
+
+    @Test
+    void userBubbleThatIsOnlyASystemReminderIsDropped() {
+        MessageBubble bubble = new MessageBubble(MessageType.user_message_chunk,
+                "<system-reminder>\ndate\n</system-reminder>", null, null,
+                MessageBubble.AvatarPosition.LEFT, true, null, true);
+        JPanel parent = new JPanel();
+        parent.add(bubble);
+
+        bubble.finalizeStreaming(false, true);
+
+        assertEquals(0, parent.getComponentCount(), "an empty user bubble must be removed");
     }
     @Test
     void userBubbleRidesARightAlignedRow() {

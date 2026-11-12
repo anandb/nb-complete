@@ -127,6 +127,7 @@ final class HarnessCatalogLoader {
             String docsUrl,
             List<String> windowsInstallSubDirs,
             Boolean acceptsMcpAuthToken,
+            Boolean stripsSystemReminders,
             Boolean listed,
             ActivationEntry activation) {
 
@@ -157,6 +158,7 @@ final class HarnessCatalogLoader {
                 builder.separateBubblesPerReplayChunk(separateBubblesPerReplayChunk);
             }
             if (acceptsMcpAuthToken != null) builder.acceptsMcpAuthToken(acceptsMcpAuthToken);
+            if (stripsSystemReminders != null) builder.stripsSystemReminders(stripsSystemReminders);
 
             String limitationKey = nullToEmpty(limitationsKey);
             SupportTier tier = supportTier == null

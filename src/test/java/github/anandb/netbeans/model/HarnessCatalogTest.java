@@ -457,6 +457,7 @@ class HarnessCatalogTest {
         assertTrue(HarnessCatalog.KIMI.supportsSessionSetConfigOption());
         assertTrue(HarnessCatalog.KIMI.supportsModelSelection());
         assertTrue(HarnessCatalog.KIMI.supportsSessionList());
+        assertTrue(HarnessCatalog.KIMI.stripsSystemReminders());
         assertEquals("https://moonshotai.github.io/kimi-code/", HarnessCatalog.KIMI.docsUrl());
         assertEquals("kimi.svg", HarnessCatalog.harnessIconName("kimi"));
         assertNotNull(HarnessCatalogTest.class.getResource("/github/anandb/netbeans/ui/icons/kimi.svg"));

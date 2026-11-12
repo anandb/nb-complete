@@ -27,7 +27,8 @@
     "prerequisites" : "Authenticate a model provider in a terminal (omp, then /login) before ACP. The ACP entry point is omp acp.",
     "docsUrl" : "https://omp.sh/docs/acp",
     "windowsInstallSubDirs" : [ "%LOCALAPPDATA%\\omp" ],
-    "acceptsMcpAuthToken" : true
+    "acceptsMcpAuthToken" : true,
+    "stripsSystemReminders" : false
   }, {
     "id" : "opencode",
     "displayName" : "OpenCode",
@@ -56,7 +57,8 @@
     "prerequisites" : "",
     "docsUrl" : "https://opencode.ai/docs/",
     "windowsInstallSubDirs" : [ ],
-    "acceptsMcpAuthToken" : true
+    "acceptsMcpAuthToken" : true,
+    "stripsSystemReminders" : false
   }, {
     "id" : "codex",
     "displayName" : "Codex",
@@ -85,7 +87,8 @@
     "prerequisites" : "Requires Node.js and a ChatGPT account or OPENAI_API_KEY. Bundles the Codex CLI, so a separate codex install is not needed.",
     "docsUrl" : "https://github.com/agentclientprotocol/codex-acp",
     "windowsInstallSubDirs" : [ ],
-    "acceptsMcpAuthToken" : true
+    "acceptsMcpAuthToken" : true,
+    "stripsSystemReminders" : false
   }, {
     "id" : "openclaw",
     "displayName" : "OpenClaw",
@@ -114,7 +117,8 @@
     "prerequisites" : "Requires Node 24.16+ or 26.1+ - Node 26 is recommended; the installer provisions Node 26 on macOS and Node 24 LTS on Linux",
     "docsUrl" : "https://docs.openclaw.ai/install",
     "windowsInstallSubDirs" : [ ],
-    "acceptsMcpAuthToken" : true
+    "acceptsMcpAuthToken" : true,
+    "stripsSystemReminders" : false
   }, {
     "id" : "pi",
     "displayName" : "Pi",
@@ -143,7 +147,8 @@
     "prerequisites" : "Requires Node.js 22+, pi 0.80.4+ on your PATH, and @geohar/pi-acp 0.4.0+ for editor context. Install the ACP adapter separately: npm install -g @geohar/pi-acp. For MCP Tools, add pi-mcp-adapter to your Pi packages.",
     "docsUrl" : "https://github.com/georgeharker/pi-acp",
     "windowsInstallSubDirs" : [ "%LOCALAPPDATA%\\pi-node\\current" ],
-    "acceptsMcpAuthToken" : false
+    "acceptsMcpAuthToken" : false,
+    "stripsSystemReminders" : false
   }, {
     "id" : "goose",
     "displayName" : "Goose",
@@ -172,7 +177,8 @@
     "prerequisites" : "",
     "docsUrl" : "https://goose-docs.ai/docs/getting-started/installation",
     "windowsInstallSubDirs" : [ ],
-    "acceptsMcpAuthToken" : true
+    "acceptsMcpAuthToken" : true,
+    "stripsSystemReminders" : false
   }, {
     "id" : "cursor",
     "displayName" : "Cursor",
@@ -201,7 +207,8 @@
     "prerequisites" : "The ACP entry point is the cursor-agent CLI itself (run with \"agent acp\").",
     "docsUrl" : "https://cursor.com/docs/cli/acp",
     "windowsInstallSubDirs" : [ ],
-    "acceptsMcpAuthToken" : true
+    "acceptsMcpAuthToken" : true,
+    "stripsSystemReminders" : false
   }, {
     "id" : "copilot",
     "displayName" : "Copilot",
@@ -230,7 +237,8 @@
     "prerequisites" : "Requires Node.js 22+. Authenticate with \"copilot login\" before using ACP.",
     "docsUrl" : "https://github.com/github/copilot-cli",
     "windowsInstallSubDirs" : [ ],
-    "acceptsMcpAuthToken" : true
+    "acceptsMcpAuthToken" : true,
+    "stripsSystemReminders" : false
   }, {
     "id" : "claude",
     "displayName" : "Claude",
@@ -259,7 +267,8 @@
     "prerequisites" : "Requires Node.js 18+. Bundles the Claude Agent SDK, so a separate claude CLI install is not needed.",
     "docsUrl" : "https://github.com/agentclientprotocol/claude-agent-acp",
     "windowsInstallSubDirs" : [ ],
-    "acceptsMcpAuthToken" : true
+    "acceptsMcpAuthToken" : true,
+    "stripsSystemReminders" : false
   }, {
     "id" : "hermes",
     "displayName" : "Hermes",
@@ -288,7 +297,8 @@
     "prerequisites" : "Requires Python 3.10+. Enable ACP with: cd ~/.hermes/hermes-agent && uv pip install -e '.[acp]'.",
     "docsUrl" : "https://hermes-agent.nousresearch.com/docs/user-guide/features/acp",
     "windowsInstallSubDirs" : [ "%LOCALAPPDATA%\\hermes\\bin" ],
-    "acceptsMcpAuthToken" : true
+    "acceptsMcpAuthToken" : true,
+    "stripsSystemReminders" : false
   }, {
     "id" : "gemini",
     "displayName" : "Gemini",
@@ -317,7 +327,8 @@
     "prerequisites" : "Requires Node.js 20+",
     "docsUrl" : "https://geminicli.com/docs/get-started/installation/",
     "windowsInstallSubDirs" : [ ],
-    "acceptsMcpAuthToken" : true
+    "acceptsMcpAuthToken" : true,
+    "stripsSystemReminders" : false
   }, {
     "id" : "devin",
     "displayName" : "Devin",
@@ -346,7 +357,8 @@
     "prerequisites" : "",
     "docsUrl" : "https://docs.devin.ai/cli",
     "windowsInstallSubDirs" : [ ],
-    "acceptsMcpAuthToken" : true
+    "acceptsMcpAuthToken" : true,
+    "stripsSystemReminders" : false
   }, {
     "id" : "kilo",
     "displayName" : "Kilo Code",
@@ -375,7 +387,8 @@
     "prerequisites" : "Authenticate with kilo auth login (or run kilo and use /connect) before connecting. The npm route requires Node.js.",
     "docsUrl" : "https://kilo.ai/docs/code-with-ai/platforms/cli",
     "windowsInstallSubDirs" : [ "%USERHOME%/.kilo/bin" ],
-    "acceptsMcpAuthToken" : true
+    "acceptsMcpAuthToken" : true,
+    "stripsSystemReminders" : false
   }, {
     "id" : "cline",
     "displayName" : "Cline",
@@ -404,7 +417,8 @@
     "prerequisites" : "Requires Cline CLI 3.0.74+ (npm i -g cline@latest). Run cline auth once (or set CLINE_API_KEY) before connecting; ACP sessions start no interactive login.",
     "docsUrl" : "https://docs.cline.bot/usage/acp",
     "windowsInstallSubDirs" : [ ],
-    "acceptsMcpAuthToken" : true
+    "acceptsMcpAuthToken" : true,
+    "stripsSystemReminders" : false
   }, {
     "id" : "jcode",
     "displayName" : "Jcode",
@@ -433,7 +447,8 @@
     "prerequisites" : "Sign in once with jcode login (or import an existing provider credential) before connecting. The ACP entry point is jcode acp.",
     "docsUrl" : "https://jcode.sh/docs",
     "windowsInstallSubDirs" : [ "%LOCALAPPDATA%\\jcode\\bin" ],
-    "acceptsMcpAuthToken" : false
+    "acceptsMcpAuthToken" : false,
+    "stripsSystemReminders" : false
   }, {
     "id" : "qwen",
     "displayName" : "Qwen Code",
@@ -462,7 +477,8 @@
     "prerequisites" : "Requires Node.js 20+. Set OPENAI_API_KEY (or DASHSCOPE_API_KEY for Qwen models) before the first session.",
     "docsUrl" : "https://qwenlm.github.io/qwen-code-docs/",
     "windowsInstallSubDirs" : [ ],
-    "acceptsMcpAuthToken" : true
+    "acceptsMcpAuthToken" : true,
+    "stripsSystemReminders" : false
   }, {
     "id" : "kimi",
     "displayName" : "Kimi Code",
@@ -491,7 +507,8 @@
     "prerequisites" : "Requires the Kimi Code CLI (no Node.js needed). Run kimi login once, or /login inside the CLI, to connect Kimi Code OAuth or a Moonshot API key.",
     "docsUrl" : "https://moonshotai.github.io/kimi-code/",
     "windowsInstallSubDirs" : [ ],
-    "acceptsMcpAuthToken" : true
+    "acceptsMcpAuthToken" : true,
+    "stripsSystemReminders" : true
   }, {
     "id" : "grok",
     "displayName" : "Grok",
@@ -520,7 +537,8 @@
     "prerequisites" : "Requires the Grok CLI. Sign in with grok login (or set XAI_API_KEY) before the first session.",
     "docsUrl" : "https://x.ai/cli",
     "windowsInstallSubDirs" : [ ],
-    "acceptsMcpAuthToken" : true
+    "acceptsMcpAuthToken" : true,
+    "stripsSystemReminders" : false
   } ],
   "unknown" : {
     "id" : "unknown",
@@ -550,7 +568,8 @@
     "prerequisites" : "",
     "docsUrl" : "",
     "windowsInstallSubDirs" : [ ],
-    "acceptsMcpAuthToken" : true
+    "acceptsMcpAuthToken" : true,
+    "stripsSystemReminders" : false
   },
   "activations" : {
     "claude" : {

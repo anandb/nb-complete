@@ -323,6 +323,7 @@ harnesses:
     launchArgs: "acp"
     requiresMessageQueue: true
     supportsSessionSetMode: true
+    stripsSystemReminders: true
     prerequisites: "Requires the Kimi Code CLI (no Node.js needed). Run kimi login once, or /login inside the CLI, to connect Kimi Code OAuth or a Moonshot API key."
     docsUrl: "https://moonshotai.github.io/kimi-code/"
     install:

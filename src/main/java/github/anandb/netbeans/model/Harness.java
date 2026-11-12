@@ -59,7 +59,10 @@ public record Harness(
         /** True when the agent can carry the embedded MCP server's auth token on its
          *  MCP URL. False for the PI family and Jcode, which cannot, so the server
          *  runs without token enforcement for them. */
-        boolean acceptsMcpAuthToken) {
+        boolean acceptsMcpAuthToken,
+        /** True when the harness injects {@code <system-reminder>} blocks into echoed
+         *  user text, which must never be rendered (Kimi Code). */
+        boolean stripsSystemReminders) {
 
     /** Starts a fluent definition; see {@link HarnessBuilder} for the defaults an entry overrides. */
     public static HarnessBuilder builder(String id, String displayName, String iconBase) {
@@ -110,7 +113,7 @@ public record Harness(
                 separateBubblesPerReplayChunk, supportTier, limitationsKey,
                 unsupportedModelSelectionMessage, unsupportedModelSelectionPlaceholder,
                 installWindows, installMac, installLinux, prerequisites, docsUrl,
-                windowsInstallSubDirs, acceptsMcpAuthToken);
+                windowsInstallSubDirs, acceptsMcpAuthToken, stripsSystemReminders);
     }
 
     /** True when the given binary basename belongs to this harness, with or

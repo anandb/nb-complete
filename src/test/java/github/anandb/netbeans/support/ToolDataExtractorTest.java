@@ -78,6 +78,26 @@ class ToolDataExtractorTest {
     }
 
     @Test
+    void testStripSystemRemindersRemovesBlock() {
+        String result = ToolDataExtractor.stripSystemReminders(
+            "hello\n<system-reminder>\nbe nice\n</system-reminder>\nworld");
+        assertEquals("hello\n\nworld", result);
+    }
+
+    @Test
+    void testStripSystemRemindersWithNullString() {
+        assertNull(ToolDataExtractor.stripSystemReminders(null));
+    }
+
+    @Test
+    void testStripMessageNoiseStripsRemindersOnlyWhenEnabled() {
+        String text = "ask <metadata>meta</metadata>\n<system-reminder>reminder</system-reminder>";
+        assertEquals("ask \n", ToolDataExtractor.stripMessageNoise(text, true));
+        assertEquals("ask \n<system-reminder>reminder</system-reminder>",
+                ToolDataExtractor.stripMessageNoise(text, false));
+    }
+
+    @Test
     void testExtractToolTitleWithSkillContent() {
         String result = ToolDataExtractor.extractToolTitle(
             "skill",

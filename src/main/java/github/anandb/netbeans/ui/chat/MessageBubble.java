@@ -58,6 +58,8 @@ public class MessageBubble extends JPanel implements Scrollable {
      *  messages with equal text share it, so it must never drive merging. */
     private boolean generatedMessageId;
     private final String role;
+    /** True when the active harness injects {@code <system-reminder>} blocks into echoed user text. */
+    private final boolean stripsSystemReminders;
     private final StringBuilder text;
     private final transient BubbleAccordionManager accordionManager;
     private final transient BubbleContentRenderer contentRenderer;
@@ -128,14 +130,21 @@ public class MessageBubble extends JPanel implements Scrollable {
     public MessageBubble(MessageType type, String text, String messageId,
             String toolTitle, AvatarPosition avatarPosition,
             boolean streaming, String sessionId) {
+        this(type, text, messageId, toolTitle, avatarPosition, streaming, sessionId, false);
+    }
+
+    public MessageBubble(MessageType type, String text, String messageId,
+            String toolTitle, AvatarPosition avatarPosition,
+            boolean streaming, String sessionId, boolean stripsSystemReminders) {
         this.role = type.roleName();
+        this.stripsSystemReminders = stripsSystemReminders;
         this.messageId = messageId;
-        // User bubbles may carry <metadata> context blocks. Strip complete
-        // blocks up front so non-streaming user messages — local echo,
-        // session reload — never display them; the streamed chunk tails
-        // are still stripped in finalizeStreaming().
+        // User bubbles may carry <metadata> context blocks and harness-injected
+        // <system-reminder> blocks. Strip complete blocks up front so non-streaming
+        // user messages — local echo, session reload — never display them; the
+        // streamed chunk tails are still stripped in finalizeStreaming().
         this.text = new StringBuilder("user".equals(type.roleName())
-                ? ToolDataExtractor.stripMetadata(text) : text);
+                ? ToolDataExtractor.stripMessageNoise(text, stripsSystemReminders) : text);
         this.toolTitle = toolTitle;
 
         ColorTheme theme = ThemeManager.getCurrentTheme();
@@ -364,13 +373,13 @@ public class MessageBubble extends JPanel implements Scrollable {
         // blocks, etc.); strip them before the final display. Copy already
         // strips via MessageCopyMouseAdapter — this fixes the on-screen text.
         if ("user".equals(role)) {
-            String stripped = ToolDataExtractor.stripMetadata(text.toString()).trim();
+            String stripped = ToolDataExtractor.stripMessageNoise(text.toString(), stripsSystemReminders).trim();
             if (!stripped.equals(text.toString())) {
                 text.setLength(0);
                 text.append(stripped);
             }
-            // If the user message is empty after stripping metadata, hide and
-            // remove the bubble so it doesn't appear as a blank gap.
+            // If the user message is empty after stripping metadata/system reminders,
+            // hide and remove the bubble so it doesn't appear as a blank gap.
             if (text.isEmpty()) {
                 setVisible(false);
                 Container parent = getParent();
@@ -446,6 +455,11 @@ public class MessageBubble extends JPanel implements Scrollable {
 
     public String getRawText() {
         return text.toString();
+    }
+
+    /** True when this bubble's harness injects {@code <system-reminder>} blocks to strip. */
+    public boolean stripsSystemReminders() {
+        return stripsSystemReminders;
     }
 
     /** Returns true if this bubble is still in streaming mode (not yet converted to HTML)
