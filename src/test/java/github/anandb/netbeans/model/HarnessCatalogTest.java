@@ -18,13 +18,13 @@ class HarnessCatalogTest {
 
     @Test
     void allHarnessesPresent() {
-        assertEquals(15, HarnessCatalog.ALL.size());
+        assertEquals(16, HarnessCatalog.ALL.size());
         Set<String> ids = new HashSet<>();
         for (Harness h : HarnessCatalog.ALL) {
             assertTrue(ids.add(h.id()), "duplicate id: " + h.id());
         }
         assertTrue(ids.containsAll(Set.of("opencode", "codex", "goose", "pi", "cursor", "claude", "hermes",
-                "gemini", "omp", "openclaw", "devin", "copilot", "kilo", "cline", "jcode")));
+                "gemini", "omp", "openclaw", "devin", "copilot", "kilo", "cline", "jcode", "qwen")));
     }
 
     @Test
@@ -32,7 +32,7 @@ class HarnessCatalogTest {
         Set<String> allIds = new HashSet<>(HarnessCatalog.ALL.stream()
                 .map(Harness::id).toList());
         assertEquals(Set.of("omp", "opencode", "codex", "openclaw", "pi", "goose", "cursor", "copilot",
-                "claude", "hermes", "gemini", "devin", "kilo", "cline", "jcode"),
+                "claude", "hermes", "gemini", "devin", "kilo", "cline", "jcode", "qwen"),
                 allIds);
     }
 
@@ -397,6 +397,42 @@ class HarnessCatalogTest {
         assertEquals("jcode.svg", HarnessCatalog.harnessIconName("jcode"));
         assertNotNull(HarnessCatalogTest.class.getResource("/github/anandb/netbeans/ui/icons/jcode.svg"));
         assertNotNull(HarnessCatalogTest.class.getResource("/github/anandb/netbeans/ui/icons/jcode_dark.svg"));
+    }
+
+    @Test
+    void qwenCapabilitiesMatchHandshake() {
+        // Pinned against the live qwen-code 0.27.2 initialize: loadSession,
+        // sessionCapabilities {list,resume} (no close/delete), mcp http+sse, prompt
+        // image+audio+embeddedContext. session/new returns models and both
+        // session/set_mode and session/set_config_option are implemented, so model
+        // selection works. Chunks carry no messageId, and there is no steering
+        // extension: a second session/prompt mid-turn supersedes the running turn
+        // (the first execution is cancelled and its result is -32603 Internal error),
+        // so a second prompt must be queued until turn end.
+        assertEquals(List.of("qwen"), HarnessCatalog.QWEN.binaryNames());
+        assertEquals("--acp", HarnessCatalog.QWEN.launchArgs());
+        assertEquals(HarnessCatalog.QWEN, HarnessCatalog.byBinaryName("qwen"));
+        assertEquals(HarnessCatalog.QWEN, HarnessCatalog.byBinaryName("qwen.exe"));
+        assertEquals(HarnessCatalog.QWEN, HarnessCatalog.byBinaryName("qwen.cmd"));
+        assertTrue(HarnessCatalog.QWEN.requiresMessageQueue());
+        assertTrue(HarnessCatalog.QWEN.sendsMcpServerConfig());
+        assertTrue(HarnessCatalog.QWEN.injectsEditorContext());
+        assertFalse(HarnessCatalog.QWEN.supportsMessageIds());
+        assertTrue(HarnessCatalog.QWEN.supportsMcpServer());
+        assertTrue(HarnessCatalog.QWEN.supportsSessionSetMode());
+        assertTrue(HarnessCatalog.QWEN.supportsSessionSetConfigOption());
+        assertFalse(HarnessCatalog.QWEN.supportsSessionSetModel());
+        assertTrue(HarnessCatalog.QWEN.supportsModelSelection());
+        assertTrue(HarnessCatalog.QWEN.supportsSessionList());
+        assertTrue(HarnessCatalog.QWEN.supportsAgentList());
+        assertEquals("npm install -g @qwen-code/qwen-code", HarnessCatalog.QWEN.installWindows());
+        assertEquals("npm install -g @qwen-code/qwen-code", HarnessCatalog.QWEN.installMac());
+        assertEquals("npm install -g @qwen-code/qwen-code", HarnessCatalog.QWEN.installLinux());
+        assertEquals(List.of(), HarnessCatalog.QWEN.windowsInstallSubDirs());
+        assertEquals("https://qwenlm.github.io/qwen-code-docs/", HarnessCatalog.QWEN.docsUrl());
+        assertEquals("qwen.svg", HarnessCatalog.harnessIconName("qwen"));
+        assertNotNull(HarnessCatalogTest.class.getResource("/github/anandb/netbeans/ui/icons/qwen.svg"));
+        assertNotNull(HarnessCatalogTest.class.getResource("/github/anandb/netbeans/ui/icons/qwen_dark.svg"));
     }
 
     @Test

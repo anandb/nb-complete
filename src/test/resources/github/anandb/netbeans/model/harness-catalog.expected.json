@@ -434,6 +434,35 @@
     "docsUrl" : "https://jcode.sh/docs",
     "windowsInstallSubDirs" : [ "%LOCALAPPDATA%\\jcode\\bin" ],
     "acceptsMcpAuthToken" : false
+  }, {
+    "id" : "qwen",
+    "displayName" : "Qwen Code",
+    "iconBase" : "qwen",
+    "binaryNames" : [ "qwen" ],
+    "launchArgs" : "--acp",
+    "requiresMessageQueue" : true,
+    "sendsMcpServerConfig" : true,
+    "injectsEditorContext" : true,
+    "supportsMessageIds" : false,
+    "supportsMcpServer" : true,
+    "supportsSessionSetMode" : true,
+    "supportsSessionSetConfigOption" : true,
+    "supportsSessionSetModel" : false,
+    "supportsModelSelection" : true,
+    "supportsSessionList" : true,
+    "supportsAgentList" : true,
+    "separateBubblesPerReplayChunk" : false,
+    "supportTier" : "FULL",
+    "limitationsKey" : "",
+    "unsupportedModelSelectionMessage" : "",
+    "unsupportedModelSelectionPlaceholder" : "",
+    "installWindows" : "npm install -g @qwen-code/qwen-code",
+    "installMac" : "npm install -g @qwen-code/qwen-code",
+    "installLinux" : "npm install -g @qwen-code/qwen-code",
+    "prerequisites" : "Requires Node.js 20+. Set OPENAI_API_KEY (or DASHSCOPE_API_KEY for Qwen models) before the first session.",
+    "docsUrl" : "https://qwenlm.github.io/qwen-code-docs/",
+    "windowsInstallSubDirs" : [ ],
+    "acceptsMcpAuthToken" : true
   } ],
   "unknown" : {
     "id" : "unknown",
@@ -525,6 +554,10 @@
     "pi" : {
       "hint" : "Connect a model provider in the Pi CLI before the first session.",
       "command" : ""
+    },
+    "qwen" : {
+      "hint" : "Set OPENAI_API_KEY or DASHSCOPE_API_KEY before the first session.",
+      "command" : ""
     }
   },
   "binaryLookups" : {
@@ -547,7 +580,8 @@
     "omp.exe" : "omp",
     "openclaw" : "openclaw",
     "opencode" : "opencode",
-    "pi-acp" : "pi"
+    "pi-acp" : "pi",
+    "qwen" : "qwen"
   },
-  "sortedIds" : [ "claude", "cline", "codex", "copilot", "cursor", "devin", "gemini", "goose", "hermes", "jcode", "kilo", "omp", "openclaw", "opencode", "pi" ]
+  "sortedIds" : [ "claude", "cline", "codex", "copilot", "cursor", "devin", "gemini", "goose", "hermes", "jcode", "kilo", "omp", "openclaw", "opencode", "pi", "qwen" ]
 }

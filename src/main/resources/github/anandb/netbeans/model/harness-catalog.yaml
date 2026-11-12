@@ -292,6 +292,27 @@ harnesses:
       command: "jcode login"
       hint: "Sign in once, or import an existing provider credential."
 
+  # qwen-code speaks ACP v1 over stdio (qwen --acp). No session close/delete and no
+  # message ids on chunks (the client's deterministic fallback ids them); model
+  # selection goes through session/set_mode + session/set_config_option. A second
+  # session/prompt mid-turn supersedes the running turn (first result -32603), so
+  # messages queue.
+  - id: "qwen"
+    displayName: "Qwen Code"
+    iconBase: "qwen"
+    binaryNames: ["qwen"]
+    launchArgs: "--acp"
+    requiresMessageQueue: true
+    supportsSessionSetMode: true
+    prerequisites: "Requires Node.js 20+. Set OPENAI_API_KEY (or DASHSCOPE_API_KEY for Qwen models) before the first session."
+    docsUrl: "https://qwenlm.github.io/qwen-code-docs/"
+    install:
+      windows: "npm install -g @qwen-code/qwen-code"
+      mac: "npm install -g @qwen-code/qwen-code"
+      linux: "npm install -g @qwen-code/qwen-code"
+    activation:
+      hint: "Set OPENAI_API_KEY or DASHSCOPE_API_KEY before the first session."
+
   - id: "unknown"
     displayName: "Agent"
     iconBase: "agent"
