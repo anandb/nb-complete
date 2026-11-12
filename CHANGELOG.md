@@ -1,6 +1,6 @@
 # Release Notes
 
-## Unreleased (changes since v1.30.0)
+## v1.31.0 (Changes since v1.30.0)
 
 ### Features
 - **UX Review**: Revamped some parts of the UI after reviewing the current layout.
@@ -29,6 +29,10 @@
 - **"Use a smaller font size on diffs" reaches more windows and is now off by default**: the hook styles the Git/Mercurial/Subversion diff windows and the *Show history* view's embedded diff as well as DefaultDiff, matching panes by any ancestry whose class name contains "Diff" (the Git view's diff host is not under the diff module package), and it now also styles windows that were already open at startup. Because the hook walks another module's component tree on every open and activation, the switch is **off by default**; the stash and permission diffs keep their own smaller font regardless.
 - **The permission surfaces honour the diff font option**: the permission request panel, the permission bubble and the mini assistant's permission context now take the diff font (the editor font one point smaller, never below 9 pt) while *Use a smaller font size on diffs* is on, and the full editor monospace when it is off, so a request's file list, command and context lines read at the same size as the diff window its *Show Diff* button opens.
 - **"or just type below" was removed from the welcome screen**: the composer is disabled with no session, so the hint promised something the user could not do.
+- **The empty composer says what the keyboard can do**: the placeholder's second line adds *Shift+Enter for a newline · / for the command list* under the history hint, half a line of spacing separates the two rows, and the placeholder height follows the wrapped text.
+- **Harness selection is discoverable again after onboarding**: the onboarding subtitle and the welcome screen both name the help icon (*To run harness selection again later, open the Help menu from the help icon in the top-right corner*), so re-picking a harness is no longer a guess.
+- **Chat rows sit tighter**: the gap inside one speaker's run is 2 px and a speaker change 8 px, half of the previous spacing, so a long turn reads as fewer blocks.
+- **Onboarding says what "limited" means**: the partial-support section is now *Harnesses with limited ACP support*, carries one muted line stating those harnesses implement only part of ACP, and the per-harness tooltip reads *This harness has limited ACP support* — so the limitation is never read as the plugin's.
 
 ### Fixes
 - **A failed mid-turn steer no longer makes the original turn look finished**: when a harness rejects an interject or steer request, BeanBot restores the draft and reasserts the active turn's Stop state and watchdog while the original response is still running.
@@ -44,6 +48,7 @@
 - **An Appearance-only save no longer rewrites the server settings**: `ACPOptionsPanel.store()` previously wrote the binary path, process arguments and MCP toggle on every save, so changing the chat font could persist an auto-detected binary and fire the "restart required" notification. Each restart-scoped setting is now written only when its value differs from what `load()` showed.
 - **A missing platform bridge no longer NPEs the config controls**: `agentSupportsSessionSetModel()` dereferenced `getCapabilities()` unguarded, unlike its sibling, and the same pattern appeared in the model/agent enablement, the Gemini config-gate check, the queueing-agent test and three steering checks. Every UI call now goes through a local `caps` variable and treats a null harness as "capability off".
 - **Timers no longer outlive their panels, and browser opens leave the EDT**: `MiniAssistantDialog.dispose()` stops its token polling, `AssistantTopComponent.removeNotify()` stops the queue manager's wobble timer, and the support/report-issue/release-notes browser opens (with the clipboard fallback) run on a background `RequestProcessor` and deliver their callback on the EDT. The rounded-panel shadow passes also paint faintest-first again after a cached colour array reversed the alpha order.
+- **The Qwen harness icon follows the theme**: it was blue in both themes; it now uses the same black (light) and near-white (dark) pair as the other harness icons.
 
 ### Performance
 - **Diff-font window scanning is memoised**: a window already wired is not re-walked on activation, a negative scan is remembered by child count, and a collection-valued `PROP_OPENED` event no longer degrades to scanning every open window.
@@ -60,13 +65,15 @@
 - New coverage: `WelcomeScreenPreviewTest`, `ChatThreadPanelWelcomeScreenTest`, `MessageSenderComposerLockTest`, `MdProjectMarkerTest`, `MarkdownProjectTemplateTest`, `HarnessCatalogParityTest` and `IdeDiffFontHookTest` (the hook is a no-op while the setting is off).
 - Harness and routing coverage was expanded for Qwen, Kimi, Grok, interject requests, usage capture and deduplication, failed-steer turn recovery, MCP file search and task-repository operations. Export, project, slash-command, file-cache, update-checker, pattern, support and model tests also gained coverage.
 - `ACPOptionsPanelAppearanceTest` no longer depends on a specific font being installed: it selects whichever family the JVM reports and skips when the environment has none.
+- `ChatThreadPanelSpacingTest` pins the halved message gaps (2 px within a run, 8 px across a speaker change) that the spacing change introduced.
 
 ### Documentation
-- The user guide gained pages for steering/Hermes recovery and Qwen, Kimi and Grok, and was updated for the rebuilt welcome screen, the config-gate lock, mini-assistant dimming, Markdown projects, task repository, file search, session history after compaction and master/detail Options pages. The README's code reading path was corrected to the `ui/` feature packages (seven links pointed at files that no longer existed) and its package counts refreshed.
+- The user guide gained pages for steering/Hermes recovery and Qwen, Kimi and Grok, and was updated for the rebuilt welcome screen, the config-gate lock, mini-assistant dimming, Markdown projects, task repository, file search, session history after compaction and master/detail Options pages. The README's code reading path was corrected to the `ui/` feature packages (seven links pointed at files that no longer existed) and its package counts refreshed. The README's supported-harness list and the guide's harness picker now name OpenHands, Qwen Code, Kimi Code and Grok, and the onboarding page explains what "limited ACP support" means.
 
 ### Housekeeping
-- Test builds are versioned `0.9.0-M19` (below the published `1.x` line on purpose), and unused `DbLifecycle`/`H2UsageStatsStore` helpers were removed.
+- Unused `DbLifecycle`/`H2UsageStatsStore` helpers were removed.
 - Unreferenced members were removed: `ToolContextExtractor.truncatePath` (a no-op), the unused single-arg `truncateCommand`, `BinaryResolver.isInPath`, `AcpSessionInfo.getHarnessVersion`, `ModeAgentMapping`'s mode accessors, the dead `ui/` accessors and 13 unused `UIUtils` border constants, six unused `LOG` fields plus write-only bubble/queue/mini-assistant fields, and the unused `List<Message>` export overloads. Tests that pinned only the removed members were dropped or retargeted at the live two-arg API.
+- Version bumped to 1.31.0.
 
 ## v1.30.0 (Changes since v1.29.1)
 

@@ -86,8 +86,12 @@ class OnboardingBubbleTest {
     void limitedSupportSectionIsExpandedByDefaultAndCollapses() {
         OnboardingBubble bubble = new OnboardingBubble(java.util.List.of(),
                 (id, path) -> { });
-        javax.swing.JButton header = findButtonContaining(bubble, "Limited support");
+        javax.swing.JButton header = findButtonContaining(bubble, "limited ACP support");
         assertNotNull(header, "limited-support section header must exist");
+        java.util.List<String> texts = new java.util.ArrayList<>();
+        collectTexts(bubble, texts);
+        assertTrue(texts.stream().anyMatch(t -> t.contains("harnesses implement only part of ACP")),
+                "section must say the harnesses are limited, not the plugin: " + texts);
         assertTrue(header.getText().startsWith("v "), "section must start expanded: " + header.getText());
         header.doClick();
         assertTrue(header.getText().startsWith("> "), "section must collapse on click: " + header.getText());

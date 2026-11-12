@@ -27,10 +27,10 @@ class ChatThreadPanelSpacingTest {
     void speakerChangeWidensTheGapAndOneSpeakerStaysTight() throws Exception {
         add(MessageType.user_message_chunk, "u1");
         add(MessageType.user_message_chunk, "u2");
-        assertEquals(4, spacerAfter("u1"), "two user messages share one run");
+        assertEquals(2, spacerAfter("u1"), "two user messages share one run");
 
         add(MessageType.agent_message_chunk, "a1");
-        assertEquals(16, spacerAfter("u2"), "the user -> assistant change opens the gap");
+        assertEquals(8, spacerAfter("u2"), "the user -> assistant change opens the gap");
     }
 
     private void add(MessageType type, String id) throws Exception {

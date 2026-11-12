@@ -267,6 +267,18 @@ public class OnboardingBubble extends JPanel {
         String headerText = NbBundle.getMessage(UIBundle.class,
                 "OnboardingBubble.Section.Limited", rows.size());
         JButton header = createCollapsibleSectionHeader("v " + headerText, theme);
+        // One muted line so "limited" reads as a property of these harnesses, not the plugin.
+        JTextAreaNoWrap scopeHint = new JTextAreaNoWrap(NbBundle.getMessage(
+                UIBundle.class, "OnboardingBubble.Hint.LimitedSection"), 10f);
+        scopeHint.setForeground(theme.mutedForeground());
+        scopeHint.setBorder(BorderFactory.createEmptyBorder(2, 0, 4, 0));
+        scopeHint.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JPanel heading = new JPanel();
+        heading.setOpaque(false);
+        heading.setLayout(new BoxLayout(heading, BoxLayout.Y_AXIS));
+        header.setAlignmentX(Component.LEFT_ALIGNMENT);
+        heading.add(header);
+        heading.add(scopeHint);
         JPanel rowContainer = new JPanel();
         rowContainer.setOpaque(false);
         rowContainer.setLayout(new BoxLayout(rowContainer, BoxLayout.Y_AXIS));
@@ -286,7 +298,7 @@ public class OnboardingBubble extends JPanel {
             revalidate();
             repaint();
         });
-        section.add(header, BorderLayout.NORTH);
+        section.add(heading, BorderLayout.NORTH);
         section.add(rowContainer, BorderLayout.CENTER);
         return section;
     }
