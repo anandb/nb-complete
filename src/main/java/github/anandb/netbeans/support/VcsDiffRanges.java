@@ -137,7 +137,7 @@ public final class VcsDiffRanges {
             return parseHgStatus(result.output());
         }
         List<String> command = new ArrayList<>(List.of("git", "diff", "--name-status",
-                "--no-renames", "--no-ext-diff", from));
+                "-z", "--no-renames", "--no-ext-diff", from));
         if (!workingTree) {
             command.add(to);
         }
@@ -199,12 +199,13 @@ public final class VcsDiffRanges {
     }
 
     private static List<ChangedFile> untrackedGitFiles(File repoDir) throws Exception {
+        // -z: NUL-separated raw paths, never quoted — unicode and whitespace
+        // in untracked names survive without unescaping or trimming.
         VcsUtils.CapturedCommand result = run(repoDir, "git", "ls-files",
-                "--others", "--exclude-standard");
+                "--others", "--exclude-standard", "-z");
         requireSuccess(result, "git ls-files");
         List<ChangedFile> files = new ArrayList<>();
-        for (String line : result.output().split("\n")) {
-            String path = line.trim();
+        for (String path : result.output().split("\0")) {
             if (!path.isEmpty()) {
                 files.add(new ChangedFile(path, 'A'));
             }
@@ -232,16 +233,20 @@ public final class VcsDiffRanges {
         return content != null && content.indexOf('\0') >= 0;
     }
 
-    private static List<ChangedFile> parseGitNameStatus(String output) {
+    /**
+     * Parses {@code git diff --name-status -z --no-renames} output: status, NUL,
+     * path, NUL, … With {@code --no-renames} every record is exactly two fields,
+     * and the paths are raw — no C-quoting to unescape, no whitespace to trim.
+     * Package-private so the parser can be unit-tested with synthetic records.
+     */
+    static List<ChangedFile> parseGitNameStatus(String output) {
         List<ChangedFile> files = new ArrayList<>();
-        for (String line : output.split("\n")) {
-            String trimmed = line.trim();
-            if (trimmed.isEmpty()) {
-                continue;
-            }
-            String[] parts = trimmed.split("\t", 2);
-            if (parts.length == 2 && !parts[1].isBlank()) {
-                files.add(new ChangedFile(parts[1].trim(), parts[0].trim().charAt(0)));
+        String[] fields = output.split("\0");
+        for (int i = 0; i + 1 < fields.length; i += 2) {
+            String status = fields[i];
+            String path = fields[i + 1];
+            if (!status.isEmpty() && !path.isEmpty()) {
+                files.add(new ChangedFile(path, status.charAt(0)));
             }
         }
         return files;

@@ -207,6 +207,33 @@ class VcsDiffRangesTest {
     }
 
     @Test
+    void gitNameStatusParsingKeepsRawPaths() {
+        // -z records: status, NUL, path, NUL. No quoting, no trimming — a path's
+        // unicode, trailing space and embedded tab must all survive verbatim.
+        String records = "M\0na\u00efve \u00fcn\u00efcode.txt\0A\0dir/trailing \0D\0tab\tname\0";
+
+        assertEquals(Map.of(
+                "na\u00efve \u00fcn\u00efcode.txt", 'M',
+                "dir/trailing ", 'A',
+                "tab\tname", 'D'), byPath(VcsDiffRanges.parseGitNameStatus(records)));
+    }
+
+    @Test
+    void gitUnicodePathsSurviveQuoting() throws Exception {
+        File repo = initGit("git-unicode-paths");
+        String unicode = "na\u00efve \u00fcn\u00efcode.txt";
+        Files.writeString(new File(repo, unicode).toPath(), "base\n");
+        Files.writeString(new File(repo, "plain.txt").toPath(), "base\n");
+        String head = commitGit(repo, "base");
+        Files.writeString(new File(repo, unicode).toPath(), "mod\n");
+
+        assertEquals(Map.of(unicode, 'M'), byPath(
+                VcsDiffRanges.listChanges(repo, VcsUtils.VcsType.GIT, head, null)));
+        assertEquals("base\n",
+                VcsDiffRanges.loadContent(repo, VcsUtils.VcsType.GIT, head, unicode).text());
+    }
+
+    @Test
     void flagsBinaryContentAtARevisionAndInTheWorkingTree() throws Exception {
         File repo = initGit("git-repo");
         Files.writeString(new File(repo, "a.txt").toPath(), "one\n");
