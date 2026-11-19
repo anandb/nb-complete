@@ -170,7 +170,9 @@ public final class VcsDiffRanges {
             if (result.truncated()) {
                 return new FileContent("", true);
             }
-            return content(FatalPrefixPattern.stripFrom(result.output()));
+            // The raw file content — never stripped: a line legitimately starting
+            // with "fatal: " must not be altered on the revision side of a diff.
+            return content(result.output());
         } catch (Exception e) {
             LOG.warn("Failed to read {0} at {1}: {2}", path, revision, ExceptionUtils.getMessage(e));
             return FileContent.EMPTY;

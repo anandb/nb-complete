@@ -246,6 +246,18 @@ class VcsDiffRangesTest {
     }
 
     @Test
+    void gitRevisionContentKeepsFatalPrefixedLines() throws Exception {
+        // A file line legitimately starting with "fatal: " must survive on the
+        // revision side — stripping it fabricated a phantom diff line.
+        File repo = initGit("git-fatal-content");
+        Files.writeString(new File(repo, "log.txt").toPath(), "fatal: oops\nplain line\n");
+        String head = commitGit(repo, "log");
+
+        assertEquals("fatal: oops\nplain line\n",
+                VcsDiffRanges.loadContent(repo, VcsUtils.VcsType.GIT, head, "log.txt").text());
+    }
+
+    @Test
     void flagsBinaryContentAtARevisionAndInTheWorkingTree() throws Exception {
         File repo = initGit("git-repo");
         Files.writeString(new File(repo, "a.txt").toPath(), "one\n");
