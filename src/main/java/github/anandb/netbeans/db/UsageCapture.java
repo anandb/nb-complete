@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Locale;
 import java.util.logging.Level;
 
@@ -45,8 +46,8 @@ final class UsageCapture {
             try (PreparedStatement ps = db.connection().prepareStatement(Sql.get("insert_usage_update"))) {
                 UsageQueries.bindAttribution(ps, 1, row.attribution());
                 ps.setLong(5, row.capturedAt());
-                ps.setLong(6, row.used());
-                UsageQueries.setNullableLong(ps, 7, row.size());
+                ps.setLong(6, UsageQueries.nonNegative(row.used()));
+                UsageQueries.setNullableLong(ps, 7, UsageQueries.nonNegative(row.size()));
                 // Harnesses repeat the session's cumulative cost per notification
                 // (pi-acp re-sends the running total several times per turn).
                 // Storing the delta against the spend already recorded for the
@@ -66,18 +67,27 @@ final class UsageCapture {
      * whose sum equals the session's cumulative spend even across restarts.
      * The first row of a session stores the full amount; a session with no
      * attribution stores the full amount too.
+     *
+     * <p>Neither the stored spend nor the result is allowed to be negative: a harness
+     * that reports an amount that is negative, or lower than what it already reported
+     * (Claude has done both), means no new spend, not a refund.</p>
      */
     private static double costDelta(Connection conn, UsageUpdateRow row) throws SQLException {
         Attribution attribution = row.attribution();
         if (attribution == null || attribution.sessionId() == null) {
-            return row.costAmount();
+            return Math.max(row.costAmount(), 0d);
         }
+        String sessionId = attribution.sessionId();
+        double stored = 0;
         try (PreparedStatement ps = conn.prepareStatement(Sql.get("select_session_cost"))) {
-            ps.setString(1, attribution.sessionId());
+            ps.setString(1, sessionId);
             try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? row.costAmount() - rs.getDouble(1) : row.costAmount();
+                if (rs.next()) {
+                    stored = rs.getDouble(1);
+                }
             }
         }
+        return Math.max(row.costAmount() - Math.max(stored, 0d), 0d);
     }
 
     void recordPromptUsage(PromptUsageRow row) {
@@ -88,11 +98,11 @@ final class UsageCapture {
             try (PreparedStatement ps = db.connection().prepareStatement(Sql.get("insert_prompt_usage"))) {
                 UsageQueries.bindAttribution(ps, 1, row.attribution());
                 ps.setLong(5, row.capturedAt());
-                ps.setLong(6, row.inputTokens());
-                ps.setLong(7, row.outputTokens());
-                ps.setLong(8, row.totalTokens());
-                UsageQueries.setNullableLong(ps, 9, row.thoughtTokens());
-                UsageQueries.setNullableLong(ps, 10, row.cachedReadTokens());
+                ps.setLong(6, UsageQueries.nonNegative(row.inputTokens()));
+                ps.setLong(7, UsageQueries.nonNegative(row.outputTokens()));
+                ps.setLong(8, UsageQueries.nonNegative(row.totalTokens()));
+                UsageQueries.setNullableLong(ps, 9, UsageQueries.nonNegative(row.thoughtTokens()));
+                UsageQueries.setNullableLong(ps, 10, UsageQueries.nonNegative(row.cachedReadTokens()));
                 ps.executeUpdate();
             } catch (SQLException e) {
                 db.log().log(Level.WARNING, "Failed to record prompt usage row", e);
@@ -109,14 +119,14 @@ final class UsageCapture {
                 UsageQueries.bindAttribution(ps, 1, row.attribution());
                 ps.setLong(5, row.capturedAt());
                 ps.setString(6, row.messageId());
-                ps.setLong(7, Math.max(row.inputTokens(), 0));
-                ps.setLong(8, Math.max(row.outputTokens(), 0));
-                ps.setLong(9, Math.max(row.totalTokens(), 0));
-                UsageQueries.setNullableLong(ps, 10, row.cacheReadTokens());
-                UsageQueries.setNullableLong(ps, 11, row.cacheWriteTokens());
-                UsageQueries.setNullableDouble(ps, 12, row.cost());
-                UsageQueries.setNullableLong(ps, 13, row.elapsedMs());
-                UsageQueries.setNullableLong(ps, 14, row.timeToFirstTokenMs());
+                ps.setLong(7, UsageQueries.nonNegative(row.inputTokens()));
+                ps.setLong(8, UsageQueries.nonNegative(row.outputTokens()));
+                ps.setLong(9, UsageQueries.nonNegative(row.totalTokens()));
+                UsageQueries.setNullableLong(ps, 10, UsageQueries.nonNegative(row.cacheReadTokens()));
+                UsageQueries.setNullableLong(ps, 11, UsageQueries.nonNegative(row.cacheWriteTokens()));
+                UsageQueries.setNullableDouble(ps, 12, UsageQueries.nonNegative(row.cost()));
+                UsageQueries.setNullableLong(ps, 13, UsageQueries.nonNegative(row.elapsedMs()));
+                UsageQueries.setNullableLong(ps, 14, UsageQueries.nonNegative(row.timeToFirstTokenMs()));
                 ps.setBoolean(15, row.compaction());
                 ps.executeUpdate();
             } catch (SQLException e) {
@@ -153,11 +163,29 @@ final class UsageCapture {
                 // One row per execution; keeping the column at 1 leaves a SUM over
                 // pre-version-8 turn aggregates correct.
                 ps.setLong(7, 1);
-                ps.setLong(8, Math.max(row.durationMs(), 0));
+                ps.setLong(8, UsageQueries.nonNegative(row.durationMs()));
                 ps.setString(9, row.status() != null ? row.status().name().toLowerCase(Locale.ROOT) : "ok");
                 ps.executeUpdate();
             } catch (SQLException e) {
                 db.log().log(Level.WARNING, "Failed to record tool-call usage row", e);
+            }
+        });
+    }
+
+    /**
+     * Deletes every captured row from the capture tables, so every aggregate reads zero.
+     * One transaction: a store that reads between two deletes would otherwise see a
+     * half-cleared history. A still-active session reports its cumulative cost again on
+     * its next {@code usage_update}, which is intended: a reset is a fresh start, not a
+     * baseline to measure against. Runs on the lifecycle's executor via the caller.
+     */
+    static void resetAll(DbLifecycle lifecycle) throws SQLException {
+        Connection conn = lifecycle.connection();
+        DbLifecycle.inTransaction(conn, () -> {
+            try (Statement st = conn.createStatement()) {
+                for (String table : DbLifecycle.captureTables()) {
+                    st.executeUpdate(DbLifecycle.tableSql("delete_all_capture_rows", table));
+                }
             }
         });
     }

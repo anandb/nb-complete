@@ -40,6 +40,12 @@ INSERT INTO tool_call_usage
      duration_ms, status)
 VALUES (?,?,?,?,?,?,?,?,?)
 
+-- User-requested reset: empties one capture table. The caller runs it for every
+-- table in DbLifecycle.CAPTURE_TABLES inside one transaction, so the aggregates
+-- can never read a half-cleared store.
+-- name: delete_all_capture_rows
+DELETE FROM {{table}}
+
 -- name: merge_session_meta
 MERGE INTO session_meta
     (harness_id, session_id, title, hidden, cwd, used_tokens, size_tokens, ordinal)

@@ -33,6 +33,7 @@ import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
@@ -92,6 +93,7 @@ public class TokenUsageDialog extends JDialog {
     private final JComboBox<String> projectCombo;
     private final FitEditorPane statsPane;
     private final JButton refreshBtn;
+    private final JButton resetBtn;
     private final JScrollPane scrollPane;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private Timer autoRefreshTimer;
@@ -183,6 +185,13 @@ public class TokenUsageDialog extends JDialog {
         refreshBtn = new JButton(NbBundle.getMessage(UIBundle.class, "LBL_Refresh"));
         refreshBtn.addActionListener(this::onRefresh);
         formPanel.add(refreshBtn, new GridBagConstraints(4, 0, 1, 1, 0, 0, GridBagConstraints.EAST, GridBagConstraints.NONE, ins, 0, 0));
+
+        // Reset button: clears the captured rows behind every figure above.
+        resetBtn = new JButton(NbBundle.getMessage(UIBundle.class, "LBL_ResetStats"));
+        resetBtn.setToolTipText(NbBundle.getMessage(UIBundle.class, "HINT_ResetStats"));
+        resetBtn.addActionListener(e -> onReset());
+        formPanel.add(resetBtn, new GridBagConstraints(5, 0, 1, 1, 0, 0, GridBagConstraints.EAST,
+                GridBagConstraints.NONE, ins, 0, 0));
 
         content.add(formPanel, BorderLayout.BEFORE_FIRST_LINE);
 
@@ -329,6 +338,58 @@ public class TokenUsageDialog extends JDialog {
                 SwingUtilities.invokeLater(() -> refreshBtn.setEnabled(true));
                 running.set(false);
             }
+        });
+    }
+
+    /**
+     * Confirms, then deletes every captured usage row and reloads, so all figures read
+     * zero. The confirmation is a warning: the delete cannot be undone, and it also drops
+     * the per-message and per-tool history the tables are built from. The delete itself
+     * runs on the stats worker (the store blocks on the database) and the reload reuses
+     * {@link #onRefresh}, which is why the in-flight flag is released here first.
+     */
+    private void onReset() {
+        if (!running.compareAndSet(false, true)) {
+            // A refresh is already reading the store; one operation at a time.
+            return;
+        }
+        int choice = JOptionPane.showConfirmDialog(this,
+                NbBundle.getMessage(UIBundle.class, "MSG_ResetStatsConfirm"),
+                NbBundle.getMessage(UIBundle.class, "LBL_ResetStatsTitle"),
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (choice != JOptionPane.YES_OPTION) {
+            running.set(false);
+            return;
+        }
+        UsageStatsStore store = PlatformBridge.serviceSafe(UsageStatsStore.class);
+        if (store == null) {
+            running.set(false);
+            statsPane.setText(buildPlaceholderHtml(ThemeManager.getCurrentTheme(),
+                    NbBundle.getMessage(UIBundle.class, "ERR_ResetStatsFailed")));
+            return;
+        }
+        resetBtn.setEnabled(false);
+        refreshBtn.setEnabled(false);
+        STATS_RP.post(() -> {
+            boolean cleared = false;
+            try {
+                cleared = store.resetAll();
+            } catch (RuntimeException ex) {
+                LOG.log(Level.WARNING, "Failed to reset captured token usage", ex);
+            }
+            boolean ok = cleared;
+            SwingUtilities.invokeLater(() -> {
+                resetBtn.setEnabled(true);
+                refreshBtn.setEnabled(true);
+                running.set(false);
+                if (!ok) {
+                    statsPane.setText(buildPlaceholderHtml(ThemeManager.getCurrentTheme(),
+                            NbBundle.getMessage(UIBundle.class, "ERR_ResetStatsFailed")));
+                    return;
+                }
+                onRefresh(null);
+            });
         });
     }
 

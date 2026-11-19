@@ -109,6 +109,19 @@ public interface UsageStatsStore {
      */
     List<ToolTotals> queryToolTotals(int days, String projectDir, long now);
 
+    /**
+     * Deletes every captured usage row — the token, cost, message and tool-call
+     * tables — so every aggregate reads zero. Session metadata, input history,
+     * pinned messages and the cached model lists are kept. Only an explicit,
+     * confirmed user action may call this.
+     *
+     * <p>May block on the database; background-thread use.</p>
+     *
+     * @return true when the rows were deleted, false when the database could not
+     *         be reached (nothing is deleted in that case)
+     */
+    boolean resetAll();
+
     /** Which attribution column a {@code queryGrouped} call groups on. */
     enum GroupBy {
         MODEL,

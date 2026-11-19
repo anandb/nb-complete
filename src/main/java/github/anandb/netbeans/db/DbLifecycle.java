@@ -190,6 +190,11 @@ final class DbLifecycle {
         return Sql.sql(name, Map.of("table", Sql.Slot.of(table)));
     }
 
+    /** The capture tables, in introduction order; the user-requested reset empties exactly these. */
+    static String[] captureTables() {
+        return CAPTURE_TABLES.clone();
+    }
+
     Connection connection() throws SQLException {
         Connection local = connection;
         if (local != null) {

@@ -62,6 +62,9 @@ class GrokUsageCaptureTest {
         @Override public List<ToolTotals> queryToolTotals(int days, String projectDir, long now) {
             throw new UnsupportedOperationException();
         }
+        @Override public boolean resetAll() {
+            throw new UnsupportedOperationException();
+        }
         @Override public void close() { }
     }
 

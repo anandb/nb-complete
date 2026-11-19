@@ -374,4 +374,19 @@ public class H2UsageStatsStore
         return call(() -> UsageQueries.queryToolTotals(connection(), window, projectDir, now), List.of());
     }
 
+    /**
+     * Empties the capture tables in one transaction. Runs on the database executor,
+     * so the caller may be on the EDT; a query submitted afterwards observes the
+     * empty store. Nothing else is touched: sessions, pins, history and model lists
+     * survive.
+     */
+    @Override
+    public boolean resetAll() {
+        Boolean cleared = call(() -> {
+            UsageCapture.resetAll(lifecycle);
+            return Boolean.TRUE;
+        }, Boolean.FALSE);
+        return Boolean.TRUE.equals(cleared);
+    }
+
 }

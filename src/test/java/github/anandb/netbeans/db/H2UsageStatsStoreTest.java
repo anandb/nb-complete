@@ -352,8 +352,7 @@ class H2UsageStatsStoreTest {
     }
 
     @Test
-    void overviewMessageCountSpansAllFourKinds() {
-        for (int i = 0; i < 3; i++) {
+    void overviewMessageCountSpansAllFourKinds() {        for (int i = 0; i < 3; i++) {
             store.recordMessage(new MessageEvent(att("s1", "opencode", "m1", "/proj/a"), NOW, MessageKind.USER));
         }
         for (int i = 0; i < 5; i++) {
@@ -369,6 +368,121 @@ class H2UsageStatsStoreTest {
         UsageSummary summary = store.query(1, null, NOW);
         assertEquals(14, summary.messages());
         assertEquals(1, summary.sessions());
+    }
+
+    @Test
+    void resetAllEmptiesEveryCaptureTableAndKeepsEverythingElse() throws SQLException {
+        Attribution a = att("s1", "goose", "provider:model", "/proj/a");
+        store.recordUsageUpdate(new UsageUpdateRow(a, NOW, 70281, 1_000_000L, 1.25, "USD"));
+        store.recordPromptUsage(new PromptUsageRow(a, NOW, 100, 20, 120, null, null));
+        store.recordMessage(new MessageEvent(a, NOW, MessageKind.ASSISTANT));
+        store.recordMessageUsage(new MessageUsageRow(a, NOW, "msg-1", 10, 20, 30, 5L, 7L,
+                0.002, 900L, 120L, false));
+        store.recordToolCall(new ToolCallExecution(a, NOW, "read_file", 12, ToolCallStatus.OK));
+        // Data a reset must not touch: the session list, pins, history and model lists.
+        store.saveSessionMetadata("goose", "s1",
+                new SessionMetadata("Session s1", null, false, "/proj/a"));
+        store.appendInputHistory("hello");
+        store.setPinned("s1", "msg-1", true);
+
+        assertTrue(store.resetAll(), "the reset must report success");
+
+        UsageSummary summary = store.query(1, null, NOW);
+        assertEquals(0, summary.sessions());
+        assertEquals(0, summary.messages());
+        assertEquals(0, summary.days());
+        assertEquals(0.0, summary.totalCost(), 0.0001);
+        assertEquals(0, summary.inputTokens());
+        assertEquals(0, summary.outputTokens());
+        assertTrue(store.queryGrouped(1, null, NOW, UsageStatsStore.GroupBy.MODEL).isEmpty());
+        assertTrue(store.queryToolTotals(1, null, NOW).isEmpty());
+        for (String table : new String[]{"usage_update", "prompt_usage", "message_usage",
+                "message_event", "tool_call_usage"}) {
+            assertEquals(0, scalarLong("SELECT COUNT(*) FROM " + table), table + " must be empty");
+        }
+
+        assertEquals(List.of("hello"), store.inputHistory());
+        assertTrue(store.isPinned("s1", "msg-1"), "pins survive a reset");
+        assertFalse(store.sessionMetadata("goose").isEmpty(), "session metadata survives a reset");
+
+        // A reset is a clean slate: a still-active session reports its cumulative cost
+        // again on the next notification, and that figure is recorded in full.
+        store.recordUsageUpdate(new UsageUpdateRow(a, NOW + 1_000, 70281, 1_000_000L, 1.25, "USD"));
+        assertEquals(1.25, store.query(1, null, NOW + 2_000).totalCost(), 0.0001,
+                "the cumulative figure is the first row of the fresh history");
+        store.recordUsageUpdate(new UsageUpdateRow(a, NOW + 2_000, 70281, 1_000_000L, 1.50, "USD"));
+        assertEquals(1.50, store.query(1, null, NOW + 3_000).totalCost(), 0.0001,
+                "only the growth over the new row is added");
+    }
+
+    @Test
+    void negativeReportedFiguresAreStoredAsZero() throws SQLException {
+        // Claude has reported negative cost and cache figures. A negative row can only
+        // distort a sum, so it is stored as zero rather than skipped.
+        Attribution a = att("s1", "claude", "m1", "/proj/a");
+        store.recordUsageUpdate(new UsageUpdateRow(a, NOW, -5, -100L, -0.9, "USD"));
+        store.recordPromptUsage(new PromptUsageRow(a, NOW, -10, -2, -12, -3L, -4L));
+        store.recordMessageUsage(new MessageUsageRow(a, NOW, "m-1", -1, -2, -3, -4L, -5L,
+                -0.6, -7L, -8L, false));
+        store.recordToolCall(new ToolCallExecution(a, NOW, "read_file", -9, ToolCallStatus.OK));
+
+        UsageSummary summary = store.query(1, null, NOW);
+        assertEquals(0.0, summary.totalCost(), 1e-9);
+        assertEquals(0, summary.inputTokens());
+        assertEquals(0, summary.outputTokens());
+        assertEquals(0, summary.cachedReadTokens());
+        assertEquals(0L, scalarLong("SELECT used_tokens FROM usage_update"));
+        assertEquals(0L, scalarLong("SELECT size_tokens FROM usage_update"));
+        assertEquals(0L, scalarLong("SELECT cost_amount FROM usage_update"));
+        assertEquals(0L, scalarLong("SELECT cached_read_tokens FROM prompt_usage"));
+        assertEquals(0L, scalarLong("SELECT cache_write_tokens FROM message_usage"));
+        assertEquals(0L, scalarLong("SELECT cost_amount FROM message_usage"));
+        assertEquals(0L, scalarLong("SELECT duration_ms FROM tool_call_usage"));
+
+        List<GroupTotals> byModel = store.queryGrouped(1, null, NOW, UsageStatsStore.GroupBy.MODEL);
+        assertEquals(1, byModel.size());
+        assertEquals(0.0, byModel.get(0).cost(), 1e-9);
+        assertEquals(0, byModel.get(0).inputTokens());
+        assertEquals(0, byModel.get(0).outputTokens());
+    }
+
+    @Test
+    void aFallingCumulativeCostNeverStoresANegativeDelta() {
+        // A harness that reports a lower cumulative figure than before means no new spend,
+        // not a refund: the total must not drop.
+        store.recordUsageUpdate(new UsageUpdateRow(att("s1", "claude", "m1", "/proj/a"), NOW,
+                0, null, 0.50, "USD"));
+        store.recordUsageUpdate(new UsageUpdateRow(att("s1", "claude", "m1", "/proj/a"), NOW + 1,
+                0, null, 0.20, "USD"));
+
+        assertEquals(0.50, store.query(1, null, NOW + 2).totalCost(), 1e-9);
+    }
+
+    @Test
+    void negativeRowsFromAnEarlierBuildDoNotMakeTheTotalsNegative() throws SQLException {
+        // Rows already stored before the clamp existed: the aggregates must ignore them,
+        // so the panel is not negative until the user resets.
+        store.query(1, null, NOW);
+        execute("INSERT INTO usage_update (session_id, harness_id, model_id, project, captured_at,"
+                + " used_tokens, size_tokens, cost_amount, cost_currency)"
+                + " VALUES ('s1','claude','m1','/proj/a'," + NOW + ",-5,-100,-0.9,'USD')");
+        execute("INSERT INTO prompt_usage (session_id, harness_id, model_id, project, captured_at,"
+                + " input_tokens, output_tokens, total_tokens, thought_tokens, cached_read_tokens)"
+                + " VALUES ('s1','claude','m1','/proj/a'," + NOW + ",-10,-2,-12,-3,-4)");
+
+        UsageSummary summary = store.query(1, null, NOW);
+        assertEquals(0.0, summary.totalCost(), 1e-9);
+        assertEquals(0, summary.inputTokens());
+        assertEquals(0, summary.outputTokens());
+        assertEquals(0, summary.cachedReadTokens());
+        assertEquals(0.0, summary.avgTokensPerSession(), 1e-9);
+
+        List<GroupTotals> byModel = store.queryGrouped(1, null, NOW, UsageStatsStore.GroupBy.MODEL);
+        assertEquals(1, byModel.size());
+        assertEquals(0.0, byModel.get(0).cost(), 1e-9);
+        assertEquals(0, byModel.get(0).inputTokens());
+        assertEquals(0, byModel.get(0).outputTokens());
+        assertEquals(0, byModel.get(0).cachedReadTokens());
     }
 
     @Test

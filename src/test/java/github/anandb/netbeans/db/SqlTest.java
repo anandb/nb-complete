@@ -29,7 +29,8 @@ class SqlTest {
             "backfill_harness_model_last_seen", "alter_harness_model_last_seen_not_null",
             "add_tool_call_usage_duration", "add_tool_call_usage_status",
             "tool_totals", "count_scope_rows", "count_messages", "count_days",
-            "sum_cost", "sum_tokens", "per_session_totals", "grouped_totals");
+            "sum_cost", "sum_tokens", "per_session_totals", "grouped_totals",
+            "delete_all_capture_rows");
 
     @Test
     void everyStatementIsBundled() {

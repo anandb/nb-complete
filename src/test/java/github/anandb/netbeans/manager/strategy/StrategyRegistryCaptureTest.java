@@ -101,6 +101,11 @@ class StrategyRegistryCaptureTest {
         }
 
         @Override
+        public boolean resetAll() {
+            throw new UnsupportedOperationException("reset is not part of this test");
+        }
+
+        @Override
         public void close() {
             // Nothing to release: this double writes to lists only.
         }

@@ -55,7 +55,8 @@ final class UsageQueries {
             try (ResultSet rs = ps.executeQuery()) {
                 List<ToolTotals> rows = new ArrayList<>();
                 while (rs.next()) {
-                    rows.add(new ToolTotals(rs.getString(1), rs.getLong(2), rs.getLong(3)));
+                    rows.add(new ToolTotals(rs.getString(1),
+                            Math.max(rs.getLong(2), 0), Math.max(rs.getLong(3), 0)));
                 }
                 return rows;
             }
@@ -81,9 +82,12 @@ final class UsageQueries {
                 while (rs.next()) {
                     String key = "(unknown)".equals(rs.getString(1)) ? null : rs.getString(1);
                     rows.add(new GroupTotals(key,
-                            rs.getLong("sessions"), rs.getLong("messages"), rs.getLong("tool_calls"),
-                            rs.getLong("input_tokens"), rs.getLong("output_tokens"),
-                            rs.getLong("cached_read_tokens"), rs.getDouble("cost")));
+                            Math.max(rs.getLong("sessions"), 0), Math.max(rs.getLong("messages"), 0),
+                            Math.max(rs.getLong("tool_calls"), 0),
+                            Math.max(rs.getLong("input_tokens"), 0),
+                            Math.max(rs.getLong("output_tokens"), 0),
+                            Math.max(rs.getLong("cached_read_tokens"), 0),
+                            Math.max(rs.getDouble("cost"), 0d)));
                 }
             }
         }
@@ -148,13 +152,17 @@ final class UsageQueries {
 
     private static double sumCost(Connection conn, long cutoff, String projectFilter) throws SQLException {
         Sql.Statement statement = windowQuery("sum_cost", cutoff, projectFilter);
-        return queryOne(conn, statement, rs -> rs.getDouble(1), 0d);
+        // A negative figure never means a refund, so a row stored by an earlier build
+        // (or reported negative by a harness) cannot pull the total below zero.
+        return queryOne(conn, statement, rs -> Math.max(rs.getDouble(1), 0d), 0d);
     }
 
     private static long[] sumTokens(Connection conn, long cutoff, String projectFilter) throws SQLException {
         Sql.Statement statement = windowQuery("sum_tokens", cutoff, projectFilter);
         return queryOne(conn, statement,
-                rs -> new long[]{rs.getLong(1), rs.getLong(2), rs.getLong(3)}, new long[3]);
+                rs -> new long[]{Math.max(rs.getLong(1), 0), Math.max(rs.getLong(2), 0),
+                        Math.max(rs.getLong(3), 0)},
+                new long[3]);
     }
 
     /**
@@ -168,7 +176,7 @@ final class UsageQueries {
             bind(ps, 1, statement);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    sums.add(rs.getDouble(1));
+                    sums.add(Math.max(rs.getDouble(1), 0d));
                 }
             }
         }
@@ -252,5 +260,24 @@ final class UsageQueries {
         } else {
             ps.setDouble(index, value);
         }
+    }
+
+    /**
+     * A harness-reported figure with a negative treated as zero. Harnesses disagree
+     * about what they report — Claude has sent negative cost and cache figures — and a
+     * negative row can only distort a sum, so it is never stored.
+     */
+    static long nonNegative(long value) {
+        return Math.max(value, 0);
+    }
+
+    /** As {@link #nonNegative(long)}: null stays null (an absent figure is not a zero). */
+    static Long nonNegative(Long value) {
+        return value != null ? Math.max(value, 0) : null;
+    }
+
+    /** As {@link #nonNegative(long)}: null stays null. */
+    static Double nonNegative(Double value) {
+        return value != null ? Math.max(value, 0d) : null;
     }
 }
