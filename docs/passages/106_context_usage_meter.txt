@@ -1,0 +1,24 @@
+:: Context Usage Meter {"position":"600,1100","size":"100,100"}
+
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="font-weight: bold; text-align: left; flex-grow: 1;">Context Usage Meter</div>
+  <div>[[Index->Topic Index]]</div>
+</div>
+
+The context usage meter stays in the assistant's bottom status row and shows how much of the current session's context window is in use. Hover over it to see the used and total token counts. Its bar is green below 70%, amber from 70% to 90%, and red at 90% or higher. The meter updates when the harness reports context usage; if the harness does not provide a context-window size, the meter shows no fill and its tooltip says usage is unavailable.
+
+To ask the harness to summarise the conversation and free context, right-click the meter and choose **Compact**. This sends `/compact` to the harness for the current session, just like entering the command in chat. Compaction behavior depends on the harness. See [[Resetting context limits (/compact)]].
+
+The meter is a quick estimate for the current session. For historical token and cost reports, open [[Check token usage]].
+
+
+> [[Resetting context limits (/compact)]]
+> [[Check token usage]]
+> [[Commands]]
+
+
+
+
+
+

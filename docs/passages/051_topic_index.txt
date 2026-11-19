@@ -23,6 +23,7 @@ This is a complete list of topics in this guide, use it to directly jump to that
 > [[Cline Agent]]
 > [[Codex Agent]]
 > [[Commands]]
+> [[Context Usage Meter]]
 > [[Configuration Template]]
 > [[Configure OpenCode for Ollama]]
 > [[Copilot Agent]]

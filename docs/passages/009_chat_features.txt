@@ -15,6 +15,7 @@ The chat panel is packed with features to help you get the most out of the assis
 > [[Pinned Messages]]
 > [[Plan Slideout]]
 > [[Message History]]
+> [[Context Usage Meter]]
 > [[Resetting context limits (/compact)]]
 > [[Check token usage]]
 > [[Attachments]]
@@ -24,7 +25,6 @@ The chat panel is packed with features to help you get the most out of the assis
 > [[Exporting a conversation]]
 > [[MCP Tools]]
 > [[Automatic Context Capture]]
-
 
 
 

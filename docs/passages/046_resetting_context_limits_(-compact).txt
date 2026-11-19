@@ -6,13 +6,12 @@
   <div>[[Index->Topic Index]]</div>
 </div>
 
-If your conversation becomes very long and you notice the AI starting to forget earlier details or slow down as it approaches its context token limits, you can reset the conversation context. Type the `/compact` command in the chat input. The assistant will summarise the history, code changes, and context discussed so far, replacing the verbose message history with a highly condensed summary. This resets the active token budget while preserving the essential goals and context of the thread.
+If your conversation becomes very long and approaches its context token limit, ask the harness to compact it. Enter `/compact` in the chat input, or right-click the [[Context Usage Meter]] in the assistant's bottom status row and choose **Compact**. The command asks the harness to summarise the conversation and reduce the context it uses; the exact behavior depends on the harness. Check the meter's tooltip for used and total tokens, and see [[Check token usage]] for historical usage reports.
 
 
 > [[Commands]] / [[Slash Command Autocomplete]]
 > [[Check token usage]]
 > [[Reloading a Session]]
-
 
 
 

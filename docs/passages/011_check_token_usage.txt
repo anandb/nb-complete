@@ -8,7 +8,7 @@
 
 ![Check token usage](../images/check_token_usage.webp){style="max-width:100%;"}
 
-Click the **Currency/Token Stats** icon on the toolbar to open the token and cost panel. It summarises every harness from data captured locally in the IDE: session, message and active-day counts, plus total cost, per-day averages, per-session token averages and median, and the summed **Input**, **Output** and **Cache Read** figures. Pick a day window and filter to the current project or all projects, then press **Refresh**. Hover over the status label (which normally says "Ready") to view the context window fill level. This helps you decide when to run `/compact` to summarise the conversation and free up context.
+Click the **Currency/Token Stats** icon on the toolbar to open the token and cost panel. It summarises every harness from data captured locally in the IDE: session, message and active-day counts, plus total cost, per-day averages, per-session token averages and median, and the summed **Input**, **Output** and **Cache Read** figures. Pick a day window and filter to the current project or all projects, then press **Refresh**. The [[Context Usage Meter]] in the assistant's bottom status row shows the current session's context fill and helps you decide when to run `/compact`.
 
 The **Internal MCP Calls** table counts every call the agent made to the plugin's own tools, one row per tool, with a bar for each tool's share of the window and a **3 failed** style note when some of its executions ended in an error. Calls made while no session is active are still counted.
 
@@ -20,7 +20,6 @@ The **Internal MCP Calls** table counts every call the agent made to the plugin'
 > [[Resetting context limits (/compact)]]
 > [[Time to first token]]
 > [[Customising the Toolbar]]
-
 
 
 

@@ -8,8 +8,8 @@
 
 BeanBot stores tasks as plain todo.txt files — one task per line (see the <a href="https://github.com/todotxt/todo.txt" target="_blank">todo.txt spec</a>). The format extends the spec with a small set of BeanBot-specific tokens. Because it's plain text, you can edit your tasks with any todo.txt tool, a text editor, or version control.
 
-<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Line layout</div>
-<pre>x (B) 2026-08-02 2026-08-01 Fix the bug @urgent @bug +myproject due:2026-09-01 id:t-1a2b3c4d estimate:5 consumed:2 upd:2026-08-02T10:00:00Z</pre>
+#### Line layout
+<pre><code>x (B) 2026-08-02 2026-08-01 Fix the bug @urgent @bug +myproject due:2026-09-01 id:t-1a2b3c4d estimate:5 consumed:2 upd:2026-08-02T10:00:00Z</code></pre>
 
 <table class="ug-table">
 <thead><tr><th>Token</th><th>Meaning</th></tr></thead>
@@ -29,19 +29,19 @@ BeanBot stores tasks as plain todo.txt files — one task per line (see the <a h
 </tbody>
 </table>
 
-<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Priority letters</div>
+#### Priority letters
 BeanBot uses the full A–Z range for priority. In the task editor, priorities are shown as NATO phonetic words (Alpha, Bravo, Charlie … Zulu) but stored as single uppercase letters. A is the highest priority; N (November) is the default.
 
-<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Tags and projects</div>
+#### Tags and projects
 Tags and projects are stored <b>only</b> as <code>@</code> and <code>+</code> tokens — there is no redundant <code>tags:</code> or <code>projects:</code> mirror. This ensures a load→save round-trip never duplicates them. Tags appear in the dashboard's tag filter; projects are a separate dimension for grouping.
 
-<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Estimate and consumed</div>
+#### Estimate and consumed
 <code>estimate</code> and <code>consumed</code> are integers representing <b>arbitrary, user-defined units</b> — BeanBot does not assign them meaning. They are for personal tracking only (e.g. story points, hours, t-shirt sizes).
 
-<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">External tool compatibility</div>
+#### External tool compatibility
 Unknown tokens are tolerated on read and ignored, so files edited by other todo.txt tools remain compatible. Lines without a parseable task (e.g. blank lines) are skipped.
 
-<div style="font-weight: bold; margin-top: 0.8em; margin-bottom: 0.2em;">Reserialization safety</div>
+#### Reserialization safety
 When BeanBot reads a task file and writes it back, it preserves:
 <ul>
 <li>The summary text byte-for-byte (no reformatting).</li>

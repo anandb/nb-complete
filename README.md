@@ -57,36 +57,56 @@ The key is read from the `NVD_API_KEY` environment variable (or pass `-Dnvd.api.
 
 The project follows a hexagonal (ports & adapters) architecture integrated into the NetBeans Platform:
 
-- **`model/`**: ACP-compliant data records (sessions, messages, updates, config options). Zero dependencies on upper layers.
-- **`contract/`**: Service interfaces that define ports for session control, process management, and UI callbacks. `manager/` implements; `ui/` consumes.
+- **`model/`**: ACP-compliant data records (sessions, messages, updates, config options) plus the harness catalog, theme colour tokens and usage records. A clean leaf: it imports nothing else in the project.
+- **`contract/`**: Service interfaces that define ports for session control, process management, UI callbacks and the local stores. Implemented by `manager/` (session/process/tool execution), `db/` (usage, session, pin and model-list stores) and `mcp/McpToolAdapter` (tool executor); consumed by `ui/`.
 - **`manager/`**: Core orchestration — protocol client (JSON-RPC over stdin/stdout), session state machine, process lifecycle, and SSE strategy dispatch.
 - **`mcp/`**: MCP server integration — hosts a local server that registers the IDE tool set (editor context and navigation, filesystem, git/hg, tasks, projects, stash diff) so that the AI client can inspect open tabs and control editor navigation.
 - **`project/`**: NetBeans lifecycle hooks (`@OnStart`/`@OnStop`), the open-project manager, and the markdown project type.
 - **`tasks/`**: todo.txt task repository integration — bugtracking providers, issue cache, task editors.
-- **`support/`**: Pure utilities — logging, JSON mapping, text scanning, constants, browser helpers. Zero dependencies on upper layers.
+- **`support/`**: Pure utilities — logging, JSON mapping, text scanning, constants, browser helpers, shortcut utils, binary resolution. It imports only `model/` (a few static codecs) and `pattern/`.
 - **`db/`**: H2 persistence layer — usage-stats store, session store, pinned-message and model-list caches, SQL loader, preference migration. Depends on `model/`, `support/`, `contract/`.
 - **`pattern/`**: Compiled regex patterns as pure constants with no dependencies; consumed by all layers (ui, support, mcp, tasks, project, manager, db).
-- **`ui/`**: All Swing components — chat window, message bubbles, streaming animation, theming, options panel, stash diff viewer. Depends on `contract/` interfaces, plus `model/` data records, `support/` utilities, and — through the `ui/platform/` bridge only — the `project/` layer. Never imports `manager/` or `mcp/`.
+- **`ui/`**: All Swing components — chat window, message bubbles, streaming animation, theming, options panel, stash diff viewer. Depends on `contract/` interfaces, plus `model/` data records, `support/` utilities, and `project/` only through `ui/platform/` (plus the two `ui/mdproject/` wizard classes, which read `project/mdproject/MdProjectMarker` directly). Never imports `manager/`, `mcp/` or `db/`.
 
 ### Layer Dependencies
 
-Dependencies flow downward only — no upward imports between layers:
+Dependencies flow downward only. `ui/` and `manager/` are **peers over `contract/`** — the ports are
+what invert the dependency, so `ui/` never imports `manager/` — and everything rests on `model/`,
+`support/` and the dependency-free `pattern/`.
 
 ```
-        ┌─────────┐
-        │   ui/   │  ← presentation (highest)
-        └────┬────┘
-             │
-        ┌────▼────┐
-        │manager/ │  ← business logic
-        └────┬────┘
-             │
-    ┌────────┼────────┐
-    ▼        ▼        ▼
-┌────────┐ ┌────────┐ ┌────────┐
-│ model/ │ │contract│ │support/│  ← data, interfaces, utils (lowest)
-└────────┘ └────────┘ └────────┘
+        ┌──────────┐                  ┌──────────────┐
+        │   ui/    │                  │   manager/   │   ← adapters (peers)
+        └────┬─────┘                  └──────┬───────┘
+             │            ┌──────────────────┘
+             ▼            ▼
+        ┌──────────────────────┐
+        │      contract/       │  ← ports (interfaces only)
+        └──────────┬───────────┘
+                   ▼
+        ┌──────────┐ ┌──────────┐ ┌──────────┐
+        │ model/   │ │ support/ │ │ pattern/ │  ← data, utilities, regex constants (lowest)
+        └──────────┘ └──────────┘ └──────────┘
 ```
+
+`project/`, `mcp/`, `tasks/` and `db/` sit outside this five-layer model and reach downward only:
+
+| Satellite | May import | Role |
+| --- | --- | --- |
+| `project/` | `contract/`, `model/`, `support/`, `pattern/` | NetBeans lifecycle wiring and the open-project manager |
+| `mcp/` | `contract/`, `model/`, `support/`, `pattern/` | The tool-serving adapter surface |
+| `tasks/` | `contract/`, `model/`, `support/`, `pattern/`, `ui/platform/` | A self-contained bugtracking feature |
+| `db/` | `contract/`, `model/`, `support/`, `pattern/` | The H2 persistence adapter behind the store ports |
+
+`model/`, `contract/` and `support/` import none of `project/`, `mcp/` or `tasks/`. `manager/` reaches
+`mcp/` only from `ProcessManager` (via `McpManager`/`McpToolAdapter`).
+
+Two accepted exceptions exist, both recorded in `AGENTS.md`:
+
+- `tasks/TaskRepositoryController` and `tasks/TaskIssueController` read open projects through
+  `ui/platform/PlatformBridge` and `ProjectContext` instead of a `contract/` port.
+- `ui/mdproject/MdProjectWizardIterator` and `ui/mdproject/UseAsMarkdownProjectAction` import
+  `project/mdproject/MdProjectMarker` directly instead of going through `ui/platform/`.
 
 ### Connection Flow
 
@@ -129,16 +149,18 @@ All source lives under `src/main/java/github/anandb/netbeans/`:
 
 | Package | Files | Role |
 | --- | --- | --- |
-| `contract/` | 29 | Service interfaces (UI callbacks, session & process control, permission & request handlers, pinned message control) |
+| `contract/` | 29 | Service interfaces — the ports (UI callbacks, session & process control, permission & request handlers, pinned message control, usage/session stores, tool execution) |
 | `db/` | 8 | H2 persistence layer (usage-stats store, session store, pinned-message and model-list caches, SQL loader, preference migration) |
-| `manager/` | 29 | Core orchestration, protocol clients, session management, process lifecycle (includes `strategy/`, file cache, VCS ignore) |
-| `mcp/` | 44 | MCP server integration (editor, filesystem, VCS, task and project tool providers, tool input records, message servlet) |
-| `model/` | 33 | ACP-compliant data models (session, messages, updates, config options, color tokens, usage records); `harness-catalog.yaml` holds the harness definitions |
-| `pattern/` | 40 | Compiled regex patterns (pure constants, no dependencies; consumed by all layers) |
-| `project/` | 12 | NetBeans lifecycle hooks, project manager (includes `mdproject/`, the markdown project type) |
-| `support/` | 42 | Utilities (logging, JSON mapping, text scanning, constants, browser helpers, pinned message store, shortcut utils, binary resolution) |
+| `manager/` | 30 | Core orchestration, protocol clients, session management, process lifecycle (includes `strategy/`, file cache, VCS ignore) |
+| `mcp/` | 47 | MCP server integration (editor, filesystem, VCS, task and project tool providers, tool input records, message servlet) |
+| `model/` | 33 | ACP-compliant data models (session, messages, updates, config options, colour tokens, usage records); `harness-catalog.yaml` holds the harness definitions |
+| `pattern/` | 43 | Compiled regex patterns (pure constants, no dependencies; consumed by all layers) |
+| `project/` | 13 | NetBeans lifecycle hooks, project manager (includes `mdproject/`, the markdown project type) |
+| `support/` | 46 | Utilities (logging, JSON mapping, text scanning, constants, browser helpers, shortcut utils, binary resolution, steering requests) |
 | `tasks/` | 17 | todo.txt task repository integration (bugtracking providers, issue cache, task editors) |
-| `ui/` | 137 | Swing components, platform integration, markdown project UI (chat, bubbles, theming, options, stash diff, file search, send-to-assistant actions) |
+| `ui/` | 143 | Swing components, platform integration, markdown project UI (chat, bubbles, theming, options, stash diff, file search, export, send-to-assistant actions) |
+
+Counts are recursive and current; adjust the row when you add or remove a class.
 
 ---
 
@@ -152,7 +174,7 @@ For a guided walkthrough mapped to the plugin's execution flow, read files in th
 3. [`src/main/resources/github/anandb/netbeans/ui/layer.xml`](src/main/resources/github/anandb/netbeans/ui/layer.xml) — NetBeans registration (window menu/shortcuts, editor popup, Git toolbar); the Options panel is registered by annotation in `ui/options/ACPOptionsPanelController.java`
 
 ### Phase 2: Server Process
-4. [`manager/ProcessManager.java`](src/main/java/github/anandb/netbeans/manager/ProcessManager.java) — Owns the ACP server subprocess and acts as the central request-dispatch hub; spawn itself is in `manager/ServerProcessLifecycle.startServer()`, launching the harness binary the user selected (15 supported)
+4. [`manager/ProcessManager.java`](src/main/java/github/anandb/netbeans/manager/ProcessManager.java) — Owns the ACP server subprocess and acts as the central request-dispatch hub; spawn itself is in `manager/ServerProcessLifecycle.startServer()`, launching the harness binary the user selected (19 supported)
 5. [`support/BinaryResolver.java`](src/main/java/github/anandb/netbeans/support/BinaryResolver.java) — Locates the binary on PATH
 6. [`manager/AcpProtocolClient.java`](src/main/java/github/anandb/netbeans/manager/AcpProtocolClient.java) — JSON-RPC over stdin/stdout, SSE read loop, pending request tracking
 
