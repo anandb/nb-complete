@@ -70,6 +70,9 @@ public class McpServer {
         StashDiffToolProvider stashDiffTool = new StashDiffToolProvider();
         stashDiffTool.registerTools(mcpTools);
 
+        DiffRangeToolProvider diffRangeTool = new DiffRangeToolProvider();
+        diffRangeTool.registerTools(mcpTools);
+
         ProjectToolProvider projectTools = new ProjectToolProvider();
         projectTools.registerTools(mcpTools);
 

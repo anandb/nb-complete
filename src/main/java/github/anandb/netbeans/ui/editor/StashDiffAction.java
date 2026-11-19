@@ -470,7 +470,7 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         fileList.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
-                if (e.isPopupTrigger()) showFilePopup(e);
+                if (data.isStash && e.isPopupTrigger()) showFilePopup(e);
             }
             @Override
             public void mouseReleased(MouseEvent e) {
@@ -624,7 +624,9 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         Font uiFont = fileList.getFont();
         if (uiFont == null) uiFont = UIManager.getFont("Label.font");
         FontMetrics fm = fileList.getFontMetrics(uiFont);
-        int widestFileName = data.headDiffs.stream()
+        int widestFileName = java.util.stream.Stream
+                .of(data.primaryDiffs, data.headDiffs, data.workTreeDiffs)
+                .flatMap(List::stream)
                 .mapToInt(fd -> fm.stringWidth(fd.filePath))
                 .max().orElse(0);
         toolbar.doLayout();
@@ -683,6 +685,16 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
             String baseContent = sanitizeDiffContent(fd.headContent);
             String stashContent = sanitizeDiffContent(fd.stashContent);
             try {
+                if (fd.binary) {
+                    JLabel binaryLabel = new JLabel(NbBundle.getMessage(
+                            UIBundle.class, "CTL_StashDiffAction_BinaryFile"), JLabel.CENTER);
+                    binaryLabel.setFont(binaryLabel.getFont().deriveFont(Font.ITALIC, 16f));
+                    binaryLabel.setForeground(new Color(128, 128, 128));
+                    diffPanel.add(binaryLabel, BorderLayout.CENTER);
+                    diffPanel.revalidate();
+                    diffPanel.repaint();
+                    return;
+                }
                 // Identical content: show clear message instead of empty diff view
                 if (baseContent.equals(stashContent)) {
                     JLabel identicalLabel = new JLabel(NbBundle.getMessage(
@@ -704,7 +716,8 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
                         new InputStreamReader(
                             new ByteArrayInputStream(baseContent.getBytes(StandardCharsets.UTF_8)),
                             StandardCharsets.UTF_8));
-                String modifiedTitle = !isStash ? "Modified" : (fd.conflict
+                String modifiedTitle = fd.rightLabel != null ? fd.rightLabel
+                        : !isStash ? "Modified" : (fd.conflict
                         ? "<html>Stash (<font color='red'>Conflict</font>)</html>"
                         : "Stash");
                 StreamSource modified = StreamSource.createSource(
@@ -876,6 +889,14 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
     }
 
     /**
+     * Opens the same file-list + diff view for any set of file changes that
+     * already carry both sides. Used by commit-range and permission diffs.
+     */
+    public static void openMultiFileDiff(String title, List<FileDiff> diffs) {
+        openPanel(new DiffContext(false, title, null, -1, diffs, List.of(), List.of()));
+    }
+
+    /**
      * Opens a TopComponent with the same file-list + diff view layout as stash
      * diff, but for permission-request file changes. Each diff view includes
      * prev/next hunk navigation buttons.
@@ -923,6 +944,8 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         final boolean conflict;
         final String leftLabel; // null = use default "Base (status)"
         final String hunkLabel; // null unless displayed as part of multi-hunk list
+        final String rightLabel; // null = use default "Modified"/"Stash"
+        final boolean binary;
 
         FileDiff(String filePath, String status, String headContent, String stashContent) {
             this(filePath, status, headContent, stashContent, false, null, null);
@@ -937,6 +960,17 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
         }
 
         FileDiff(String filePath, String status, String headContent, String stashContent, boolean conflict, String leftLabel, String hunkLabel) {
+            this(filePath, status, headContent, stashContent, conflict, leftLabel, hunkLabel, null, false);
+        }
+
+        /** A file from a commit-range diff; both side labels are the revisions. */
+        static FileDiff forRange(String filePath, String status, String before, String after,
+                String leftLabel, String rightLabel, boolean binary) {
+            return new FileDiff(filePath, status, before, after, false, leftLabel, null, rightLabel, binary);
+        }
+
+        private FileDiff(String filePath, String status, String headContent, String stashContent,
+                boolean conflict, String leftLabel, String hunkLabel, String rightLabel, boolean binary) {
             this.filePath = filePath;
             this.status = status;
             this.headContent = headContent;
@@ -944,6 +978,8 @@ public final class StashDiffAction extends AbstractAction implements Presenter.T
             this.conflict = conflict;
             this.leftLabel = leftLabel;
             this.hunkLabel = hunkLabel;
+            this.rightLabel = rightLabel;
+            this.binary = binary;
         }
     }
 
