@@ -1144,16 +1144,19 @@ public class SessionManager implements SessionQuery, SessionControl,
                         waitForQuietDrain(capture);
                         return;
                     }
-                    if (transcriptCapture.get() == capture) {
-                        try {
-                            capture.succeed(dispatchCaptured(capture.drain()));
-                        } catch (RuntimeException e) {
-                            LOG.warn("Transcript capture dispatch failed: {0}",
-                                    ExceptionUtils.getMessage(e), e);
-                            capture.fail(e);
-                        } finally {
-                            transcriptCapture.compareAndSet(capture, null);
-                        }
+                    // Unregister before draining: an update landing between the snapshot
+                    // and the unregistration would be swallowed by a spent collector.
+                    // After the CAS a straggler falls through to the display path
+                    // instead of being silently lost from the export.
+                    if (!transcriptCapture.compareAndSet(capture, null)) {
+                        return;
+                    }
+                    try {
+                        capture.succeed(dispatchCaptured(capture.drain()));
+                    } catch (RuntimeException e) {
+                        LOG.warn("Transcript capture dispatch failed: {0}",
+                                ExceptionUtils.getMessage(e), e);
+                        capture.fail(e);
                     }
                 });
     }
