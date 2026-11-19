@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.contract.RpcFailure;
 import github.anandb.netbeans.contract.SessionControl;
+import github.anandb.netbeans.contract.SessionExportControl;
 import github.anandb.netbeans.contract.SlashCommandInterceptor;
 import github.anandb.netbeans.model.AttachedFile;
 import github.anandb.netbeans.model.HarnessCatalog;
@@ -25,6 +26,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -33,6 +35,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -41,8 +44,9 @@ import github.anandb.netbeans.ui.chat.ChatThreadPanel;
 import github.anandb.netbeans.ui.composer.AttachmentManager;
 import github.anandb.netbeans.ui.composer.MessageHistory;
 import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
-import github.anandb.netbeans.ui.platform.SessionService;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.ProcessService;
+import github.anandb.netbeans.ui.platform.SessionService;
 
 /**
  * The three mid-turn routes and what a failed send does to the turn.
@@ -193,6 +197,22 @@ class MessageSenderTurnRoutesTest {
 
         verify(proc, never()).sendMessage(anyString(), anyString(), any(), any());
         assertEquals("keep this draft", input.toString());
+    }
+
+    @Test
+    void promptIsRefusedWhileATranscriptCaptureRuns() throws Exception {
+        session(true);
+        input.append("wait for the export");
+        SessionExportControl export = mock(SessionExportControl.class);
+        when(export.isTranscriptCaptureActive(SESSION)).thenReturn(true);
+        try (MockedStatic<PlatformBridge> bridge = mockStatic(PlatformBridge.class)) {
+            bridge.when(() -> PlatformBridge.serviceSafe(SessionExportControl.class)).thenReturn(export);
+            sender.sendMessage();
+        }
+
+        verify(proc, never()).sendMessage(anyString(), anyString(), any(), any());
+        verify(statusController).setStatus("STATUS_ExportBusy");
+        assertEquals("wait for the export", input.toString());
     }
 
     @Test

@@ -17,7 +17,9 @@ import java.util.concurrent.CompletableFuture;
  * <p>
  * While a capture is active, prompt sends are refused
  * ({@link #isTranscriptCaptureActive()}) — a live turn's updates would be
- * swallowed by the collector.
+ * swallowed by the collector. A turn that starts anyway aborts the capture:
+ * the session service fails it in {@code onTurnStarted()} under its admission
+ * lock, so a send that raced the gate can never share the session with the replay.
  */
 @HexagonalPort
 public interface SessionExportControl {
@@ -39,10 +41,6 @@ public interface SessionExportControl {
     /** True when the active capture owns the supplied session. */
     default boolean isTranscriptCaptureActive(String sessionId) {
         return isTranscriptCaptureActive();
-    }
-
-    /** Cancels an active capture because a live prompt is taking ownership of the session. */
-    default void cancelTranscriptCapture() {
     }
 
 }

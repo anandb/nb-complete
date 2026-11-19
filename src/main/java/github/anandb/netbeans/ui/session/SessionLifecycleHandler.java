@@ -11,7 +11,6 @@ import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.SwingUtilities;
 import github.anandb.netbeans.contract.SessionListener;
-import github.anandb.netbeans.contract.SessionExportControl;
 import github.anandb.netbeans.contract.UIHandler;
 import github.anandb.netbeans.contract.PinnedMessageControl;
 import github.anandb.netbeans.model.ModelRecords.PlanEntry;
@@ -189,12 +188,9 @@ public class SessionLifecycleHandler implements SessionListener {
 
     /** Marks a user {@code session/prompt} as in flight (not preamble/reconnect). */
     public void onUserPromptSent() {
-        SessionControl sessions = PlatformBridge.sessionControl();
-        SessionExportControl export = PlatformBridge.serviceSafe(SessionExportControl.class);
-        if (export != null && export.isTranscriptCaptureActive(sessions.getCurrentSessionId())) {
-            export.cancelTranscriptCapture();
-        }
-        sessions.onTurnStarted();
+        // onTurnStarted is also the race backstop: it aborts a transcript capture
+        // admitted after the send gate's check (SessionManager, under its lock).
+        PlatformBridge.sessionControl().onTurnStarted();
         userPromptInFlight = true;
         turnEnded = false;
     }

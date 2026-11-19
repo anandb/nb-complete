@@ -25,6 +25,7 @@ import org.openide.util.NbBundle;
 import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.model.Harness;
 import github.anandb.netbeans.contract.RpcFailure;
+import github.anandb.netbeans.contract.SessionExportControl;
 import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.contract.UsageStatsStore;
 import github.anandb.netbeans.model.UsageRecords.Attribution;
@@ -296,6 +297,14 @@ public class MessageSender {
 
     private void dispatchPrompt(String sessionId, String text, SlashRouting slash,
             boolean midTurn, boolean turnEnded, boolean preserveComposer) {
+        // Send gate: a transcript capture owns the session's replay stream and its
+        // load closes/reopens the session server-side — a prompt now would race it.
+        // Refused, not queued: the capture is short and the text stays in the composer.
+        SessionExportControl export = PlatformBridge.serviceSafe(SessionExportControl.class);
+        if (export != null && export.isTranscriptCaptureActive(sessionId)) {
+            statusController.setStatus("STATUS_ExportBusy");
+            return;
+        }
         ProcessControl sendProc = processService.get();
         // Accepted, so the forwarded command's own echo is safe to draw now.
         if (slash.forwardedEcho() != null) {

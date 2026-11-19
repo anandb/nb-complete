@@ -992,9 +992,9 @@ public class SessionManager implements SessionQuery, SessionControl,
      * fired, so the thread keeps its trimmed state, scroll position and pins.
      * <p>
      * The load cancels/closes the session on the server first, so a turn in
-     * flight would be killed: the caller gates on turn-idle, and the UI blocks
-     * sends while a capture is active (a live turn's updates would be swallowed
-     * by the collector).
+     * flight would be killed: the caller gates on turn-idle, the send pipeline
+     * refuses prompts while a capture is active, and a turn that starts anyway
+     * aborts it in {@link #onTurnStarted()}.
      */
     @Override
     public CompletableFuture<List<ProcessedMessage>> captureTranscript(String sessionId) {
@@ -1188,11 +1188,6 @@ public class SessionManager implements SessionQuery, SessionControl,
             capture.cancelLoad();
             capture.fail(cause);
         }
-    }
-
-    @Override
-    public void cancelTranscriptCapture() {
-        abortTranscriptCapture(new IllegalStateException("a user turn started"));
     }
 
     @Override
@@ -1874,6 +1869,10 @@ public class SessionManager implements SessionQuery, SessionControl,
     @Override
     public void onTurnStarted() {
         synchronized (turnAdmissionLock) {
+            // Backstop for a send that raced the send gate: a turn taking
+            // ownership aborts a capture admitted in between. The lock makes
+            // turn start and capture admission mutually exclusive.
+            abortTranscriptCapture(new IllegalStateException("a user turn started"));
             turnInFlight = true;
         }
     }

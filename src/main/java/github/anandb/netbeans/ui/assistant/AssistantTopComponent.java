@@ -413,6 +413,12 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         // Turn-end callback: flush queued messages as a single combined prompt.
         // Returns true if messages were flushed (callers must NOT set Ready/Go).
         Supplier<Boolean> turnEndFlush = () -> {
+            // A transcript capture owns the session: keep the queue intact; it
+            // flushes at the next turn end instead of racing the capture's load.
+            if (exportCaptureActive()) {
+                statusController.setStatus("STATUS_ExportBusy");
+                return false;
+            }
             String combined = queueManager.flushAll();
             if (combined != null) {
                 chatPanel.clearQueuedMessageIds();
@@ -435,6 +441,11 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         // Wire send-now callback for the queue context menu
         queueManager.setSendNowCallback(() -> {
+            // Same gate as turnEndFlush: a capture owns the session, the queue stays.
+            if (exportCaptureActive()) {
+                statusController.setStatus("STATUS_ExportBusy");
+                return;
+            }
             String combined = queueManager.flushAll();
             if (combined != null) {
                 chatPanel.clearQueuedMessageIds();
@@ -826,6 +837,13 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             ConversationExporter.export(this, markdown,
                     ConversationExporter.defaultFileName(title), exportOutcomeListener());
         }
+    }
+
+    /** True while a transcript capture owns the current session; prompt sends must wait. */
+    private boolean exportCaptureActive() {
+        SessionExportControl export = PlatformBridge.serviceSafe(SessionExportControl.class);
+        return export != null
+                && export.isTranscriptCaptureActive(sessionService.get().getCurrentSessionId());
     }
 
     /**

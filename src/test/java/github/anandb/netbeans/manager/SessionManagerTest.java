@@ -899,6 +899,21 @@ class SessionManagerTest {
     }
 
     @Test
+    void startingATurnAbortsAnActiveCapture() throws Exception {
+        seedCachedSession("s1", "/p");
+        when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(new CompletableFuture<>());
+        driveToStreaming("s1");
+        CompletableFuture<List<ProcessedMessage>> future = sessionManager.captureTranscript("s1");
+        assertTrue(sessionManager.isTranscriptCaptureActive());
+
+        sessionManager.onTurnStarted();
+
+        assertThrows(ExecutionException.class, () -> future.get(5, TimeUnit.SECONDS));
+        assertFalse(sessionManager.isTranscriptCaptureActive());
+    }
+
+    @Test
     void captureTranscriptFailsWhenLoadNeverCompletes() throws Exception {
         seedCachedSession("s1", "/p");
         when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
