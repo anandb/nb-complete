@@ -252,23 +252,32 @@ public final class VcsDiffRanges {
         return files;
     }
 
-    private static List<ChangedFile> parseHgStatus(String output) {
+    /**
+     * Parses {@code hg status} lines ({@code "XY path"}); hg never quotes or
+     * escapes paths, so the path substring is kept verbatim — only a Windows CR
+     * can trail the line. Package-private for unit-testing raw-path records.
+     */
+    static List<ChangedFile> parseHgStatus(String output) {
         List<ChangedFile> files = new ArrayList<>();
         for (String line : output.split("\n")) {
-            String trimmed = line.trim();
-            if (trimmed.length() < 3 || trimmed.charAt(1) != ' ') {
+            if (line.length() < 3 || line.charAt(1) != ' ') {
                 continue;
             }
-            char status = switch (trimmed.charAt(0)) {
+            char status = switch (line.charAt(0)) {
                 case 'A', '?' -> 'A';
                 case 'M' -> 'M';
                 // Mercurial reports removed files as R (or ! when missing).
                 case 'R', '!' -> 'D';
                 default -> 'M';
             };
-            files.add(new ChangedFile(trimmed.substring(2).trim(), status));
+            files.add(new ChangedFile(stripTrailingCr(line.substring(2)), status));
         }
         return files;
+    }
+
+    /** hg paths are raw; a trailing CR is the only line-ending artefact to drop. */
+    private static String stripTrailingCr(String path) {
+        return path.endsWith("\r") ? path.substring(0, path.length() - 1) : path;
     }
 
     private static List<String> nonBlankLines(String output) {

@@ -219,6 +219,18 @@ class VcsDiffRangesTest {
     }
 
     @Test
+    void hgStatusParsingKeepsRawPaths() {
+        // hg never quotes: the path substring must survive verbatim — trailing
+        // space, unicode and tabs — with only a Windows CR stripped.
+        String records = "M trailing \nA \u00fcn\u00efcode.txt\nR tab\tname\r\n";
+
+        assertEquals(Map.of(
+                "trailing ", 'M',
+                "\u00fcn\u00efcode.txt", 'A',
+                "tab\tname", 'D'), byPath(VcsDiffRanges.parseHgStatus(records)));
+    }
+
+    @Test
     void gitUnicodePathsSurviveQuoting() throws Exception {
         File repo = initGit("git-unicode-paths");
         String unicode = "na\u00efve \u00fcn\u00efcode.txt";
