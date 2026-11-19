@@ -60,6 +60,11 @@ final class TranscriptCapture {
         }
     }
 
+    /** True once an abort cancelled the load; a retry must not re-issue it. */
+    boolean isAborted() {
+        return aborted;
+    }
+
     TranscriptCapture(String sessionId, long serverGeneration, Predicate<String> descendantOfTarget) {
         this(sessionId, serverGeneration, descendantOfTarget, DRAIN_MAX_MS);
     }

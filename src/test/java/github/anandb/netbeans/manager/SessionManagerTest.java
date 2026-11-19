@@ -957,6 +957,30 @@ class SessionManagerTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void mcpFallbackRetryDoesNotDuplicateCollectedReplay() throws Exception {
+        seedCachedSession("s1", "/p");
+        CompletableFuture<JsonNode> firstLoad = new CompletableFuture<>();
+        CompletableFuture<JsonNode> retryLoad = new CompletableFuture<>();
+        when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(firstLoad, retryLoad);
+        driveToStreaming("s1");
+        ArgumentCaptor<Consumer<SessionUpdate>> sse = ArgumentCaptor.forClass(Consumer.class);
+        verify(processManager).addSseListener(sse.capture());
+
+        CompletableFuture<List<ProcessedMessage>> future = sessionManager.captureTranscript("s1");
+        sse.getValue().accept(update("s1", chunk(MessageType.agent_message_chunk, "replayed", "mcp-a1")));
+        firstLoad.completeExceptionally(new AcpRpcException(-32602, "Invalid params"));
+        retryLoad.complete(mapper.createObjectNode());
+        sse.getValue().accept(update("s1", chunk(MessageType.agent_message_chunk, "replayed", "mcp-a1")));
+
+        List<ProcessedMessage> transcript = future.get(5, TimeUnit.SECONDS);
+
+        assertEquals(1, transcript.size());
+        assertEquals("replayed", transcript.get(0).text());
+    }
+
+    @Test
     void displayReloadCancelsTheExportLoadRequest() throws Exception {
         seedCachedSession("s1", "/p");
         CompletableFuture<JsonNode> exportLoad = new CompletableFuture<>();

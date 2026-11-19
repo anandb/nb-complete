@@ -1069,7 +1069,6 @@ public class SessionManager implements SessionQuery, SessionControl,
                         // the transcript still loads (Hermes unknown_execution).
                         LOG.info("session/load (export): lost turn blocks the attach for {0}, "
                                 + "retrying without editor MCP servers", sessionId);
-                        capture.resetForRetry();
                         return withMcpFallback("session/load (export retry)",
                                 () -> withStartupRetry("session/load (export retry)",
                                         () -> sendExportLoad(capture, sessionId, targetCwd, start, true), 0), start);
@@ -1099,9 +1098,20 @@ public class SessionManager implements SessionQuery, SessionControl,
         return capture.result().whenComplete((messages, ex) -> explicitSessionOps.decrementAndGet());
     }
 
-    /** Issues the export load and registers the raw RPC future so an abort can cancel it. */
+    /**
+     * Issues the export load and registers the raw RPC future so an abort can cancel it.
+     * A retry wrapper re-invokes this supplier, so it is also the abort and retry
+     * boundary: an aborted capture never issues another load, and every attempt
+     * starts with an empty collector — a retry replays the whole transcript, so
+     * updates collected by the failed attempt must not survive into the next.
+     */
     private CompletableFuture<List<SessionConfigOption>> sendExportLoad(TranscriptCapture capture,
             String sessionId, String cwd, long start, boolean readOnlyRetry) {
+        if (capture.isAborted()) {
+            return CompletableFuture.failedFuture(new IllegalStateException(
+                    "the transcript export was cancelled"));
+        }
+        capture.resetForRetry();
         CompletableFuture<List<SessionConfigOption>> raw =
                 sendLoadSessionRequest(sessionId, cwd, start, true, readOnlyRetry);
         capture.setLoadFuture(raw);
