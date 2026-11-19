@@ -743,9 +743,7 @@ public class MessageSender {
         proc.sendMessage(sessionId, steerCommand, null, List.of())
                 .exceptionally(ex -> {
                     SwingUtilities.invokeLater(() -> {
-                        statusController.setStatus("STATUS_Error",
-                                ExceptionUtils.getMessage(ex) != null
-                                        ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName());
+                        statusController.setStatus("STATUS_Error", failureReason(ex));
                         restoreComposerText(echoText);
                         // The steer never landed: drop the echo so a resend does not
                         // draw a second identical bubble.
@@ -862,9 +860,7 @@ public class MessageSender {
     /** Reports a steer delivery error, then restores the text, echo bubble and attachments. */
     private void onSteerFailure(Throwable ex, SteerDraft draft) {
         SwingUtilities.invokeLater(() -> {
-            String message = ExceptionUtils.getMessage(ex);
-            statusController.setStatus("STATUS_Error",
-                    message != null ? message : ex.getClass().getSimpleName());
+            statusController.setStatus("STATUS_Error", failureReason(ex));
             restoreFailedSteer(draft);
             keepTurnAliveAfterFailedSteer();
         });
