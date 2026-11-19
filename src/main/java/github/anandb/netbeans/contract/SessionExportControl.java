@@ -38,9 +38,10 @@ public interface SessionExportControl {
     /** True while a transcript capture is in flight; sends must wait. */
     boolean isTranscriptCaptureActive();
 
-    /** True when the active capture owns the supplied session. */
-    default boolean isTranscriptCaptureActive(String sessionId) {
-        return isTranscriptCaptureActive();
-    }
+    /** True when the active capture owns the supplied session; the per-session
+     *  answer must be implemented, not defaulted to the global flag — a default
+     *  that ignores its argument answers "true" for every session while any
+     *  capture runs. */
+    boolean isTranscriptCaptureActive(String sessionId);
 
 }
