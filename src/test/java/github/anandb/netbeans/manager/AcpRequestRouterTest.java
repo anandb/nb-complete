@@ -2,6 +2,8 @@ package github.anandb.netbeans.manager;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import github.anandb.netbeans.contract.ToolCallRecorder;
+import github.anandb.netbeans.model.UsageRecords.ToolCallStatus;
 import github.anandb.netbeans.support.AcpFsPolicy;
 import github.anandb.netbeans.support.MapperSupplier;
 import org.junit.jupiter.api.Test;
@@ -153,6 +155,31 @@ class AcpRequestRouterTest {
     }
 
     @Test
+    void fsRequestsAreRecordedAsToolCalls(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("recorded.txt");
+        Files.writeString(file, "x");
+        RecordingRecorder recorder = new RecordingRecorder();
+        AcpRequestRouter router = routerFor(dir, AcpFsPolicy.ALLOW);
+        router.setToolCallRecorderForTest(recorder);
+
+        router.handleReadTextFile(readParams(file)).get(5, TimeUnit.SECONDS);
+        assertEquals("fs/read_text_file", recorder.lastTool());
+        assertEquals(ToolCallStatus.OK, recorder.lastStatus());
+
+        // A new file completes without the EDT-bound editor document path.
+        router.handleWriteTextFile(writeParams(dir.resolve("created.txt"))).get(5, TimeUnit.SECONDS);
+        assertEquals("fs/write_text_file", recorder.lastTool());
+        assertEquals(ToolCallStatus.OK, recorder.lastStatus());
+
+        assertThrows(ExecutionException.class,
+                () -> router.handleReadTextFile(readParams(dir.resolve(".env")))
+                        .get(5, TimeUnit.SECONDS));
+        assertEquals("fs/read_text_file", recorder.lastTool());
+        assertEquals(ToolCallStatus.ERROR, recorder.lastStatus());
+        assertEquals(3, recorder.count);
+    }
+
+    @Test
     void absentLineAndLimitReturnsWholeContent() {
         assertEquals(CONTENT, AcpRequestRouter.selectLines(CONTENT, 1, null));
     }
@@ -191,5 +218,26 @@ class AcpRequestRouterTest {
     void emptyContentReturnsEmptyForAnyWindow() {
         assertEquals("", AcpRequestRouter.selectLines("", 1, null));
         assertEquals("", AcpRequestRouter.selectLines("", 2, 1));
+    }
+
+    private static final class RecordingRecorder implements ToolCallRecorder {
+        private String lastTool;
+        private ToolCallStatus lastStatus;
+        private int count;
+
+        @Override
+        public void record(String toolName, long capturedAt, long durationMs, ToolCallStatus status) {
+            lastTool = toolName;
+            lastStatus = status;
+            count++;
+        }
+
+        String lastTool() {
+            return lastTool;
+        }
+
+        ToolCallStatus lastStatus() {
+            return lastStatus;
+        }
     }
 }

@@ -208,6 +208,7 @@ public class StrategyRegistry implements UpdateDispatcher {
             }
 
             case "tool_call_update", "tool_call" -> {
+                ExternalMcpToolCapture.capture(update);
                 if (isPlanToolCall(update)) {
                     LOG.fine("Ignoring tool_call: plan tool call, update={0}", update);
                     return;

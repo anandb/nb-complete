@@ -27,7 +27,7 @@ public record SessionUpdate(
     /** Centralizes textual turn-end synthesis; avoids positional construction at call sites. */
     public static SessionUpdate syntheticTurnEnd(String sessionId, MessageType type) {
         UpdateData data = new UpdateData(type, null, null, null, null, null, null, null, null, null, null, null,
-            null, null, null, null, null, null, null, null, null);
+            null, null, null, null, null, null, null, null, null, null, null);
         return new SessionUpdate(JSONRPC_VERSION, METHOD, new Params(sessionId, data));
     }
 
@@ -58,7 +58,9 @@ public record SessionUpdate(
         // Per-message usage object on the goose custom message_usage update.
         JsonNode usage,
         // The update's _meta block (goose inference attribution, output-limit flag, ...).
-        @JsonProperty("_meta") JsonNode meta
+        @JsonProperty("_meta") JsonNode meta,
+        // The tool name on tool_call updates (opencode, codex); absent on most updates.
+        String name
     ) {
 
         /**
@@ -73,7 +75,20 @@ public record SessionUpdate(
                           JsonNode entries, JsonNode locations, JsonNode cost, JsonNode usage) {
             this(type, title, rawInput, messageId, content, message, agents, sessions, isThinking,
                     status, kind, toolCallId, rawOutput, availableCommands, configOptions, used, size,
-                    entries, locations, cost, usage, null);
+                    entries, locations, cost, usage, null, null);
+        }
+
+        /** An update with {@code _meta} but no tool name. */
+        public UpdateData(MessageType type, String title, JsonNode rawInput, String messageId,
+                          JsonNode content, Message message, List<Agent> agents, List<Session> sessions,
+                          Boolean isThinking, JsonNode status, String kind, String toolCallId,
+                          JsonNode rawOutput, List<AvailableCommand> availableCommands,
+                          List<SessionConfigOption> configOptions, Long used, Long size,
+                          JsonNode entries, JsonNode locations, JsonNode cost, JsonNode usage,
+                          JsonNode meta) {
+            this(type, title, rawInput, messageId, content, message, agents, sessions, isThinking,
+                    status, kind, toolCallId, rawOutput, availableCommands, configOptions, used, size,
+                    entries, locations, cost, usage, meta, null);
         }
 
         /**

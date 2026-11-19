@@ -10,7 +10,7 @@
 
 Click the **Currency/Token Stats** icon on the toolbar to open the token and cost panel. It summarises every harness from data captured locally in the IDE: session, message and active-day counts, plus total cost, per-day averages, per-session token averages and median, and the summed **Input**, **Output** and **Cache Read** figures. Pick a day window and filter to the current project or all projects, then press **Refresh**. The [[Context Usage Meter]] in the assistant's bottom status row shows the current session's context fill and helps you decide when to run `/compact`.
 
-The **Internal MCP Calls** table counts every call the agent made to the plugin's own tools, one row per tool, with a bar for each tool's share of the window and a **3 failed** style note when some of its executions ended in an error. Calls made while no session is active are still counted.
+The **Tool Calls** table counts every captured execution, one row per tool, with a bar for each tool's share of the window and a **3 failed** style note when some of its executions ended in an error. It includes calls to the plugin's own MCP tools, the harness's ACP `fs/read_text_file` and `fs/write_text_file` requests, and external MCP executions reported by goose, codex-acp, opencode and omp, listed as `server/tool`; the internal server is counted once. Calls made while no session is active are still counted.
 
 **Reset** deletes every captured token, cost, message and tool-call record from the local database, so all figures read zero. It asks for confirmation first, because the delete is permanent: sessions, pinned messages, input history and cached model lists are kept.
 

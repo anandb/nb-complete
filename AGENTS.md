@@ -659,11 +659,14 @@ one hour after the harness's latest report (prune only on a new report). Bump `S
 migrations for semantic changes; canonicalize model ids at attribution and never use a global model
 fallback. Capture usage attribution when messages arrive.
 
-Record MCP tool usage per execution, attributed through `SessionQuery`; do not add turn-end counters or
-drop calls with no session. On open failure, mark the store unavailable and allow only the explicit
-user retry (at most two opens); do not auto-retry. Only an absent schema-version row means legacy;
-invalid values fail safely. Catch executor rejection after shutdown, and close the store from
-`ACPShutdown` (flush does not release the H2 lock).
+Record tool usage per execution through `ToolCallRecorder`, attributed through `SessionQuery`; do not
+add turn-end counters or drop calls with no session. Capture the ACP `fs/read_text_file` /
+`fs/write_text_file` requests and external MCP executions from goose, codex-acp, opencode and omp
+(recorded as `server/tool`) too, but never the internal `nb` server there — `McpTools` already
+records it. On open failure, mark the store
+unavailable and allow only the explicit user retry (at most two opens); do not auto-retry. Only an
+absent schema-version row means legacy; invalid values fail safely. Catch executor rejection after
+shutdown, and close the store from `ACPShutdown` (flush does not release the H2 lock).
 
 SQL lives in `db/schema.sql` and named blocks in `db/queries.sql`; use `db/Sql` slots for controlled
 identifiers and do not inline SQL or rebind slot-owned parameters.

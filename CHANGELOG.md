@@ -8,6 +8,7 @@
 - **`diff_range` MCP tool**: opens a multi-file diff for a commit range or from a revision to the working tree, for Git and Mercurial; a broken VCS command is reported as fatal.
 - **Extra MCP servers**: an ACP `mcpServers` JSON array in Options is sent with `session/new` and `session/load` alongside the internal Beanbot server; the internal-server toggle no longer drops it, and the editor validates while you type.
 - **Git blame first names**: an option (off by default) shows the commit author's first name in annotations; Toggle Annotations is bound to Alt+F10.
+- **Tool-call stats cover more than the internal MCP server**: the usage panel also counts the harness's ACP `fs/read_text_file`/`fs/write_text_file` requests and external MCP executions reported by goose, codex-acp, opencode and omp (listed as `server/tool`); the internal `nb` server is still counted once.
 
 ### Fixes
 - **A long tool title no longer paints a clipped second line**: the tool/thought header elided its parameter *after* laying the title row out, so a parameter wider than the row wrapped onto a second row that the one-line header clipped to a few pixels just above the card border. The title row is now a single line (`BorderLayout`, parameter in the center) and the parameter is fitted before the row is laid out.

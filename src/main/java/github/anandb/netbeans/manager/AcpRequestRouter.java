@@ -22,6 +22,8 @@ import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 
 import github.anandb.netbeans.contract.SessionQuery;
+import github.anandb.netbeans.contract.ToolCallRecorder;
+import github.anandb.netbeans.model.UsageRecords.ToolCallStatus;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -48,11 +50,18 @@ class AcpRequestRouter {
     /** The file-access policy; a supplier so tests can inject one. */
     private volatile Supplier<AcpFsPolicy> fsPolicySupplier = PluginSettings::getAcpFsPolicy;
 
+    /** Records each handled fs request as a tool call; resolved from Lookup on first use. */
+    private volatile ToolCallRecorder toolCallRecorder;
+
     AcpRequestRouter() {
     }
 
     void setPermissionHandler(PermissionHandler handler) {
         this.permissionHandler = handler;
+    }
+
+    void setToolCallRecorderForTest(ToolCallRecorder recorder) {
+        this.toolCallRecorder = recorder;
     }
 
     void setSessionDirectoryResolver(Function<String, String> resolver) {
@@ -177,6 +186,10 @@ class AcpRequestRouter {
     }
 
     CompletableFuture<JsonNode> handleReadTextFile(JsonNode params) {
+        return captureFsCall("fs/read_text_file", () -> readTextFile(params));
+    }
+
+    private CompletableFuture<JsonNode> readTextFile(JsonNode params) {
         String filePath = extractFilePath(params);
 
         if (filePath == null) {
@@ -284,6 +297,10 @@ class AcpRequestRouter {
     }
 
     CompletableFuture<JsonNode> handleWriteTextFile(JsonNode params) {
+        return captureFsCall("fs/write_text_file", () -> writeTextFile(params));
+    }
+
+    private CompletableFuture<JsonNode> writeTextFile(JsonNode params) {
         String filePath = extractFilePath(params);
         String content = params.has("content") ? params.get("content").asText() : "";
 
@@ -371,6 +388,46 @@ class AcpRequestRouter {
     }
 
     private record WriteContext(FileObject fo, boolean wasNew) {}
+
+    /** Records one fs request, whichever protocol spelling registered the handler. */
+    private CompletableFuture<JsonNode> captureFsCall(String toolName,
+            Supplier<CompletableFuture<JsonNode>> call) {
+        long startedAt = System.currentTimeMillis();
+        CompletableFuture<JsonNode> future;
+        try {
+            future = call.get();
+        } catch (RuntimeException ex) {
+            record(toolName, startedAt, ToolCallStatus.ERROR);
+            throw ex;
+        }
+        return future.whenComplete((result, ex) ->
+                record(toolName, startedAt, ex == null ? ToolCallStatus.OK : ToolCallStatus.ERROR));
+    }
+
+    private void record(String toolName, long startedAt, ToolCallStatus status) {
+        ToolCallRecorder target = recorder();
+        if (target == null) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        try {
+            target.record(toolName, now, now - startedAt, status);
+        } catch (RuntimeException ex) {
+            LOG.fine("Tool-call capture failed for {0}: {1}", toolName, ExceptionUtils.getMessage(ex));
+        }
+    }
+
+    /** The recorder seam, resolved from Lookup once and then cached. */
+    private ToolCallRecorder recorder() {
+        ToolCallRecorder current = toolCallRecorder;
+        if (current == null) {
+            current = Lookup.getDefault().lookup(ToolCallRecorder.class);
+            if (current != null) {
+                toolCallRecorder = current;
+            }
+        }
+        return current;
+    }
 
     /** Resolves the file path param, which may be named "filePath" or "path". */
     private static String extractFilePath(JsonNode params) {
