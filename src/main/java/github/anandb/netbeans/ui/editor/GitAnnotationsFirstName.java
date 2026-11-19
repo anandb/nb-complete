@@ -402,6 +402,6 @@ public final class GitAnnotationsFirstName {
             return;
         }
         reflectionFailureReported = true;
-        LOG.warn("Cannot show first names in git annotations: {0}", ex); // NOI18N
+        LOG.warn("Cannot show first names in git annotations", ex); // NOI18N
     }
 }
