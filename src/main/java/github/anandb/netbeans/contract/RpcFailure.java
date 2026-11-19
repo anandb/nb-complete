@@ -1,10 +1,13 @@
 package github.anandb.netbeans.contract;
 
+import github.anandb.netbeans.stereotype.HexagonalPort;
+
 /**
  * A failed JSON-RPC call as far as a consumer needs to see it: the numeric code and the
  * {@code data} the server attached to the error. The manager's protocol exception
  * implements this, so the UI can classify a failure without importing the transport.
  */
+@HexagonalPort
 public interface RpcFailure {
 
     /** JSON-RPC error code for "authentication required" (goose: {@code data.reason=turn_failed}). */

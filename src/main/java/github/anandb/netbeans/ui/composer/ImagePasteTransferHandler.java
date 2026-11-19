@@ -1,7 +1,6 @@
 package github.anandb.netbeans.ui.composer;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import github.anandb.netbeans.contract.PasteCallback;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.datatransfer.DataFlavor;

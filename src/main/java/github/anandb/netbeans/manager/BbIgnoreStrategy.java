@@ -13,7 +13,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-import github.anandb.netbeans.contract.VcsIgnoreStrategy;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.ProjectPaths;
 

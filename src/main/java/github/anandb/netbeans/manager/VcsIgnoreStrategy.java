@@ -1,4 +1,4 @@
-package github.anandb.netbeans.contract;
+package github.anandb.netbeans.manager;
 
 import java.io.File;
 import java.util.Set;
@@ -8,7 +8,7 @@ import java.util.Set;
  * Implementations detect a specific VCS (Git, Mercurial, SVN) and
  * provide the list of tracked/ignorable files under a root directory.
  *
- * <p>Layer: contract (lowest) — imports only java.io and java.util.</p>
+ * <p>Manager-internal strategy. Implementations are selected by file-cache orchestration.</p>
  */
 public interface VcsIgnoreStrategy {
 

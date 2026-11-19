@@ -31,7 +31,6 @@ import org.openide.util.RequestProcessor;
 import org.openide.util.lookup.ServiceProvider;
 
 import github.anandb.netbeans.contract.FileCacheQuery;
-import github.anandb.netbeans.contract.VcsIgnoreStrategy;
 import github.anandb.netbeans.support.FileAccessGuard;
 import github.anandb.netbeans.support.ProjectPaths;
 import github.anandb.netbeans.support.SlidingTask;

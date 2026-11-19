@@ -4,7 +4,6 @@ import java.io.File;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-import github.anandb.netbeans.contract.VcsIgnoreStrategy;
 import github.anandb.netbeans.pattern.SwapFilePattern;
 import github.anandb.netbeans.support.ProjectPaths;
 

@@ -30,7 +30,6 @@ import org.openide.util.RequestProcessor;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
-import github.anandb.netbeans.contract.RequestHandler;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.PluginSettings;

@@ -1,6 +1,5 @@
 package github.anandb.netbeans.ui.composer;
 
-import github.anandb.netbeans.contract.PasteCallback;
 import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.util.List;

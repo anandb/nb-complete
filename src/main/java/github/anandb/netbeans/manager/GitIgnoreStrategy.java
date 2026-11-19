@@ -4,7 +4,6 @@ import java.io.File;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.logging.Level;
-import github.anandb.netbeans.contract.VcsIgnoreStrategy;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.VcsUtils;
 

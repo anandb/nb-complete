@@ -17,7 +17,6 @@ import org.apache.commons.exec.CommandLine;
 import org.openide.util.NbPreferences;
 import org.openide.util.RequestProcessor;
 
-import github.anandb.netbeans.contract.RequestHandler;
 import github.anandb.netbeans.contract.RpcFailure;
 import github.anandb.netbeans.contract.ToolExecutor;
 import github.anandb.netbeans.model.SessionUpdate;

@@ -30,7 +30,6 @@ import org.openide.filesystems.FileUtil;
 import org.junit.jupiter.api.io.TempDir;
 
 import github.anandb.netbeans.contract.FileCacheQuery;
-import github.anandb.netbeans.contract.VcsIgnoreStrategy;
 import github.anandb.netbeans.support.ProjectPaths;
 
 class FileCacheManagerTest {
