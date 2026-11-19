@@ -93,13 +93,29 @@ class McpManagerTest {
     }
 
     @Test
-    void extraServersObeyTheMasterSwitch() {
+    void extraServersSurviveTheInternalServerToggle() {
         settings = mockStatic(PluginSettings.class);
         settings.when(PluginSettings::isMcpServerEnabled).thenReturn(false);
         settings.when(PluginSettings::getExtraMcpServers).thenReturn(ExtraMcpServers.HTTP_EXAMPLE);
         manager = new McpManager();
 
-        assertTrue(manager.getServerConfig().isEmpty());
+        // The toggle governs only the internal Beanbot server; the user's
+        // own servers still reach the harness.
+        List<Map<String, Object>> config = manager.getServerConfig();
+        assertEquals(1, config.size());
+        assertEquals("example-http", config.get(0).get("name"));
+    }
+
+    @Test
+    void theInvalidParamsLatchDropsEveryServerIncludingExtras() {
+        settings = mockStatic(PluginSettings.class);
+        settings.when(PluginSettings::isMcpServerEnabled).thenReturn(true);
+        settings.when(PluginSettings::getExtraMcpServers).thenReturn(ExtraMcpServers.HTTP_EXAMPLE);
+        manager = new McpManager();
+        manager.disable();
+
+        assertTrue(manager.getServerConfig().isEmpty(),
+                "the no-MCP retry must be clean: a latched manager sends nothing");
     }
 
     @Test

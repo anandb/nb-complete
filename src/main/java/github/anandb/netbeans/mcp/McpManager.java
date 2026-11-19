@@ -178,22 +178,29 @@ public class McpManager {
 
     public List<Map<String, Object>> getServerConfig() {
         List<Map<String, Object>> mcpServerList = new ArrayList<>();
-        if (mcpDisabled.get() || !PluginSettings.isMcpServerEnabled()) return mcpServerList;
-
-        synchronized (this) {
-            if (mcpServer != null && mcpServer.isRunning()) {
-                // Auth-capable agents (opencode, goose, ...) get the token-protected url
-                String url = mcpAuthRequired ? mcpServer.getAuthenticatedUrl() : mcpServer.getUrl();
-                mcpServerList.add(Map.of(
-                        "headers", List.of(),
-                        "type", "http",
-                        "name", "nb",
-                        "url", url
-                ));
+        // The latch (a harness that rejected the MCP config) drops every server:
+        // the no-MCP retry must be clean. The preference toggle governs only the
+        // internal Beanbot server — the user's own servers still go out.
+        if (mcpDisabled.get()) {
+            return mcpServerList;
+        }
+        if (PluginSettings.isMcpServerEnabled()) {
+            synchronized (this) {
+                if (mcpServer != null && mcpServer.isRunning()) {
+                    // Auth-capable agents (opencode, goose, ...) get the token-protected url
+                    String url = mcpAuthRequired ? mcpServer.getAuthenticatedUrl() : mcpServer.getUrl();
+                    mcpServerList.add(Map.of(
+                            "headers", List.of(),
+                            "type", "http",
+                            "name", "nb",
+                            "url", url
+                    ));
+                }
             }
         }
         // User-supplied servers follow the internal entry and are sent even when the
-        // embedded server failed to start, so an extra server does not depend on it.
+        // embedded server is disabled or failed to start, so an extra server does
+        // not depend on it.
         mcpServerList.addAll(ExtraMcpServers.parseStored(PluginSettings.getExtraMcpServers()));
         return mcpServerList;
     }
