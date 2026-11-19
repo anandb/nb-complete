@@ -3,6 +3,7 @@ package github.anandb.netbeans.ui.components;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
@@ -105,6 +106,20 @@ public class UIUtils {
         cachedFontFamily = actual;
         cachedFontStack = quoted + ", " + FONT_STACK;
         return cachedFontStack;
+    }
+
+    /**
+     * Effective chat font: the configured family and size, with the same inherited size
+     * fallback the chat bubbles use ({@code theme font - 2}).
+     */
+    public static Font chatFont() {
+        int configuredSize = PluginSettings.getChatFontSize();
+        int size = configuredSize > 0 ? configuredSize : ThemeManager.getFont().getSize() - 2;
+        String family = chatFontFamilyOverride();
+        if (family != null) {
+            return new Font(family, Font.PLAIN, size);
+        }
+        return ThemeManager.getFont().deriveFont(Font.PLAIN, (float) size);
     }
 
     /**

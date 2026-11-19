@@ -127,6 +127,9 @@ public final class PreferenceKeys {
     /** Internal MCP server HTTP port. 0 (default) = pick a random free port. */
     public static final String MCP_SERVER_PORT = "mcpServer.port";
 
+    /** User-supplied ACP {@code mcpServers} JSON, combined with the internal server. */
+    public static final String MCP_SERVER_EXTRA = "mcpServer.extra";
+
     /** Whether switching to a session in another project restarts the ACP server to rebind its
      *  working directory (experimental, disabled by default). */
     public static final String PROJECT_SWITCH_RESTART_ENABLED = "projectSwitchRestart.enabled";

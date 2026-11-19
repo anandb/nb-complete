@@ -19,18 +19,20 @@ import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JTextArea;
 import javax.swing.KeyStroke;
 import javax.swing.Popup;
 import javax.swing.PopupFactory;
-import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
+import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
+import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
+import org.fife.ui.rtextarea.RTextScrollPane;
 import org.openide.util.NbBundle;
 
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.ui.UIBundle;
+import github.anandb.netbeans.ui.components.UIUtils;
 
 /**
  * Modal dialog for editing the session preamble text.
@@ -42,7 +44,7 @@ final class PreambleDialog extends JDialog {
     /** Wrap box for the copy tooltip. Swing's HTML view renders it wider than this
      *  number (roughly 1.3×), so 320 lands the popup near the 420px other tooltips use. */
     private static final int TOOLTIP_WIDTH_PX = 320;
-    private final JTextArea preambleArea;
+    private final RSyntaxTextArea preambleArea;
     private final JButton copySystemButton;
     /** Shown above the copy button on hover; stays until the dialog closes. */
     private Popup copyTipPopup;
@@ -52,12 +54,22 @@ final class PreambleDialog extends JDialog {
         super(owner, NbBundle.getMessage(UIBundle.class, "TITLE_PreambleDialog"), Dialog.ModalityType.APPLICATION_MODAL);
         this.confirmed = false;
 
-        preambleArea = new JTextArea(15, 50);
+        preambleArea = new RSyntaxTextArea(15, 50);
+        preambleArea.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_MARKDOWN);
+        preambleArea.setCodeFoldingEnabled(false);
+        preambleArea.setHighlightCurrentLine(false);
+        preambleArea.setAntiAliasingEnabled(true);
+        preambleArea.setLineWrap(true);
+        preambleArea.setWrapStyleWord(true);
+        preambleArea.setTabSize(2);
         preambleArea.setText(currentText);
 
-        JScrollPane scrollPane = new JScrollPane(preambleArea);
+        RTextScrollPane scrollPane = new RTextScrollPane(preambleArea, true);
+        scrollPane.setFoldIndicatorEnabled(false);
         scrollPane.setPreferredSize(TEXT_SIZE);
         scrollPane.setBorder(BorderFactory.createEmptyBorder(8, 8, 0, 8));
+        SyntaxEditorTheme.apply(preambleArea, scrollPane, UIUtils.chatFont());
+        preambleArea.setCaretPosition(0);
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
         copySystemButton = new JButton(NbBundle.getMessage(UIBundle.class, "LBL_PreambleCopySystem"));

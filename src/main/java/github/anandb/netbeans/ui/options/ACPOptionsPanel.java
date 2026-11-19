@@ -17,11 +17,18 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.AcpFsPolicy;
 import github.anandb.netbeans.support.HarnessSelection;
+import github.anandb.netbeans.support.ExtraMcpServers;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.XmlUtils;
 import org.netbeans.api.editor.mimelookup.MimeLookup;
 import org.netbeans.api.editor.mimelookup.MimePath;
 import org.netbeans.api.editor.settings.SimpleValueNames;
+import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
+import org.fife.ui.rsyntaxtextarea.Style;
+import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
+import org.fife.ui.rsyntaxtextarea.SyntaxScheme;
+import org.fife.ui.rsyntaxtextarea.Token;
+import org.fife.ui.rtextarea.RTextScrollPane;
 import org.openide.util.NbBundle;
 import org.openide.util.RequestProcessor;
 
@@ -29,6 +36,7 @@ import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -63,11 +71,14 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.JTree;
+import javax.swing.JViewport;
 import javax.swing.ToolTipManager;
 import javax.swing.UIManager;
 import javax.swing.SwingUtilities;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeCellRenderer;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
 import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.model.HarnessCatalog;
@@ -133,6 +144,9 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private JCheckBox gitFirstNameCheckbox;
     private JCheckBox mcpServerCheckbox;
     private JSpinner mcpPortSpinner;
+    private RSyntaxTextArea extraMcpServersArea;
+    private RTextScrollPane extraMcpScroll;
+    private JLabel extraMcpValidationLabel;
     private JCheckBox useWslCheckbox;
     private JCheckBox projectSwitchRestartCheckbox;
     private JSpinner idleTimeoutSpinner;
@@ -220,6 +234,18 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
             savedTooltipDismissDelay = -1;
         }
         super.removeNotify();
+    }
+
+    @Override
+    public void updateUI() {
+        super.updateUI();
+        if (extraMcpServersArea != null) {
+            // LAF changes update the children after the parent, so restyle once the tree settles.
+            SwingUtilities.invokeLater(() -> {
+                applyExtraMcpTheme();
+                updateExtraMcpValidation();
+            });
+        }
     }
 
     private void initComponents() {
@@ -419,6 +445,75 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         mcpPortSpinner.addChangeListener(evt -> controller.changed());
         systemPanel.add(mcpPortSpinner, UIUtils.createGbc(3, 1, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
+
+        JLabel extraMcpLabel = new JLabel(
+                scopedLabel("LBL_ExtraMcpServers", PluginSettings.Effect.NEW_SESSION));
+        extraMcpLabel.setToolTipText(tooltip("TT_ExtraMcpServers"));
+        GridBagConstraints extraMcpLabelGbc = UIUtils.createGbc(0, 4, 1.0, 0,
+                GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST, new Insets(4, 12, 2, 5));
+        extraMcpLabelGbc.gridwidth = 2;
+        systemPanel.add(extraMcpLabel, extraMcpLabelGbc);
+
+        JButton httpExampleButton = new JButton(
+                NbBundle.getMessage(UIBundle.class, "LBL_InsertHttpMcpExample"));
+        httpExampleButton.setToolTipText(tooltip("TT_InsertHttpMcpExample"));
+        httpExampleButton.addActionListener(evt -> insertMcpExample(ExtraMcpServers.HTTP_EXAMPLE));
+        JButton stdioExampleButton = new JButton(
+                NbBundle.getMessage(UIBundle.class, "LBL_InsertStdioMcpExample"));
+        stdioExampleButton.setToolTipText(tooltip("TT_InsertStdioMcpExample"));
+        stdioExampleButton.addActionListener(evt -> insertMcpExample(ExtraMcpServers.STDIO_EXAMPLE));
+        JPanel mcpExampleButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        mcpExampleButtons.setOpaque(false);
+        mcpExampleButtons.add(httpExampleButton);
+        mcpExampleButtons.add(stdioExampleButton);
+        GridBagConstraints exampleButtonsGbc = UIUtils.createGbc(2, 4, 0.0, 0,
+                GridBagConstraints.NONE, GridBagConstraints.EAST, new Insets(4, 0, 2, 12));
+        exampleButtonsGbc.gridwidth = 2;
+        systemPanel.add(mcpExampleButtons, exampleButtonsGbc);
+
+        extraMcpServersArea = new RSyntaxTextArea(8, 60);
+        extraMcpServersArea.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_JSON);
+        extraMcpServersArea.setCodeFoldingEnabled(false);
+        extraMcpServersArea.setHighlightCurrentLine(false);
+        extraMcpServersArea.setAntiAliasingEnabled(true);
+        extraMcpServersArea.setTabSize(2);
+        extraMcpServersArea.setLineWrap(true);
+        extraMcpServersArea.setWrapStyleWord(false);
+        extraMcpServersArea.setFont(ThemeManager.getMonospaceFont().deriveFont(Font.PLAIN));
+        extraMcpScroll = new RTextScrollPane(extraMcpServersArea, true);
+        extraMcpScroll.setFoldIndicatorEnabled(false);
+        extraMcpScroll.setBorder(BorderFactory.createEmptyBorder());
+        applyExtraMcpTheme();
+        extraMcpServersArea.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent evt) {
+                onExtraMcpEdited();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent evt) {
+                onExtraMcpEdited();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent evt) {
+                onExtraMcpEdited();
+            }
+        });
+        GridBagConstraints extraMcpScrollGbc = UIUtils.createGbc(0, 5, 1.0, 1.0,
+                GridBagConstraints.BOTH, GridBagConstraints.WEST, new Insets(0, 12, 8, 12));
+        extraMcpScrollGbc.gridwidth = 4;
+        systemPanel.add(extraMcpScroll, extraMcpScrollGbc);
+
+        extraMcpValidationLabel = new JLabel();
+        extraMcpValidationLabel.setFont(extraMcpValidationLabel.getFont().deriveFont(Font.PLAIN,
+                extraMcpValidationLabel.getFont().getSize() - 1f));
+        extraMcpValidationLabel.setIconTextGap(5);
+        GridBagConstraints validationGbc = UIUtils.createGbc(0, 6, 1.0, 0,
+                GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST, new Insets(0, 14, 6, 12));
+        validationGbc.gridwidth = 4;
+        systemPanel.add(extraMcpValidationLabel, validationGbc);
+        updateExtraMcpValidation();
 
         JLabel lineHeightLabel = new JLabel(NbBundle.getMessage(UIBundle.class, "LBL_LineHeightCorrection"));
         lineHeightLabel.setToolTipText(tooltip("TT_LineHeightCorrection"));
@@ -987,7 +1082,9 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private void addCard(String cardKey, JPanel section) {
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(false);
-        wrapper.add(section, BorderLayout.NORTH);
+        // The General page hosts the MCP JSON editor; it claims the leftover vertical space
+        // so the editor grows with the Options dialog instead of staying at its pref height.
+        wrapper.add(section, "general".equals(cardKey) ? BorderLayout.CENTER : BorderLayout.NORTH);
         detailCards.add(wrapper, cardKey);
     }
 
@@ -1049,7 +1146,8 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
 
         @Override
         public boolean getScrollableTracksViewportHeight() {
-            return false;
+            Container parent = getParent();
+            return parent instanceof JViewport viewport && getPreferredSize().height <= viewport.getHeight();
         }
     }
 
@@ -1139,6 +1237,91 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
             preambleText = dialog.getPreambleText();
             controller.changed();
         }
+    }
+
+    /** Loads the example as the most recent server entry, keeping the editor a valid ACP array. */
+    private void insertMcpExample(String example) {
+        extraMcpServersArea.setText(ExtraMcpServers.insertExample(extraMcpServersArea.getText(), example));
+        extraMcpServersArea.setCaretPosition(extraMcpServersArea.getDocument().getLength());
+    }
+
+    private void onExtraMcpEdited() {
+        updateExtraMcpValidation();
+        controller.changed();
+    }
+
+    /** Mirrors the store-time validation so a broken draft is visible while typing. */
+    private void updateExtraMcpValidation() {
+        if (extraMcpValidationLabel == null || extraMcpServersArea == null) {
+            return;
+        }
+        ColorTheme theme = ThemeManager.getCurrentTheme();
+        boolean dark = SyntaxEditorTheme.isDarkSurface();
+        Color validColor = dark ? new Color(0x81C784) : new Color(0x2E7D32);
+        Color invalidColor = dark ? new Color(0xFCA5A5) : new Color(0x991B1B);
+        String text = extraMcpServersArea.getText().trim();
+        if (text.isEmpty()) {
+            extraMcpValidationLabel.setIcon(null);
+            extraMcpValidationLabel.setText(NbBundle.getMessage(UIBundle.class, "MSG_McpJsonEmpty"));
+            extraMcpValidationLabel.setForeground(
+                    SyntaxEditorTheme.uiColor("Label.disabledForeground", theme.mutedForeground()));
+            extraMcpValidationLabel.setToolTipText(null);
+            return;
+        }
+        try {
+            int count = ExtraMcpServers.parse(text).size();
+            extraMcpValidationLabel.setIcon(ThemeManager.getIcon("check.svg", 14));
+            extraMcpValidationLabel.setText(NbBundle.getMessage(UIBundle.class,
+                    count == 1 ? "MSG_McpJsonValidOne" : "MSG_McpJsonValidMany", count));
+            extraMcpValidationLabel.setForeground(validColor);
+            extraMcpValidationLabel.setToolTipText(null);
+        } catch (IllegalArgumentException e) {
+            String reason = e.getMessage();
+            String compact = reason == null ? "" : reason.replace('\n', ' ').trim();
+            if (compact.length() > 90) {
+                compact = compact.substring(0, 87) + "...";
+            }
+            extraMcpValidationLabel.setIcon(ThemeManager.getIcon("x.svg", 14));
+            extraMcpValidationLabel.setText(NbBundle.getMessage(UIBundle.class, "MSG_McpJsonInvalid")
+                    + (compact.isEmpty() ? "" : " \u00b7 " + compact));
+            extraMcpValidationLabel.setForeground(invalidColor);
+            extraMcpValidationLabel.setToolTipText(reason);
+        }
+    }
+
+    private void applyExtraMcpTheme() {
+        SyntaxEditorTheme.apply(extraMcpServersArea, extraMcpScroll, UIUtils.chatFont());
+        applyMcpTokenColours(SyntaxEditorTheme.isDarkSurface());
+    }
+
+    /** RSyntax paints JSON keys orange, strings pink and separators red; use a neutral palette. */
+    private void applyMcpTokenColours(boolean dark) {
+        SyntaxScheme scheme = extraMcpServersArea.getSyntaxScheme();
+        Color strings = dark ? new Color(0xA9DC76) : new Color(0x1A7F37);
+        for (int token : new int[]{Token.LITERAL_STRING_DOUBLE_QUOTE, Token.LITERAL_CHAR,
+                Token.LITERAL_BACKQUOTE}) {
+            Style style = scheme.getStyle(token);
+            if (style != null) {
+                style.foreground = strings;
+                style.background = null;
+            }
+        }
+        Style keys = scheme.getStyle(Token.VARIABLE);
+        if (keys != null) {
+            keys.foreground = dark ? new Color(0x9CDCFE) : new Color(0x0451A5);
+            keys.background = null;
+        }
+        Style separators = scheme.getStyle(Token.SEPARATOR);
+        if (separators != null) {
+            separators.foreground = dark ? new Color(0xD4D4D4) : new Color(0x333333);
+            separators.background = null;
+        }
+        Style error = scheme.getStyle(Token.ERROR_STRING_DOUBLE);
+        if (error != null) {
+            error.foreground = dark ? new Color(0xFFD180) : new Color(0x7A3E00);
+            error.background = dark ? new Color(0x5A2A00) : new Color(0xFFE0B2);
+        }
+        extraMcpServersArea.setSyntaxScheme(scheme);
     }
 
     public void load() {
@@ -1258,6 +1441,8 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         diffIdeFontCheckbox.setSelected(PluginSettings.isDiffIdeFontEnabled());
         mcpServerCheckbox.setSelected(PluginSettings.isMcpServerEnabled());
         mcpPortSpinner.setValue(PluginSettings.getMcpServerPort());
+        extraMcpServersArea.setText(PluginSettings.getExtraMcpServers());
+        extraMcpServersArea.setCaretPosition(0);
         useWslCheckbox.setSelected(PluginSettings.isUseWsl());
         updateGeminiModelHint();
 
@@ -1725,6 +1910,10 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         if (mcpPortToSave != loadedMcpServerPort) {
             PluginSettings.setMcpServerPort(mcpPortToSave);
         }
+        String extraMcpToSave = extraMcpServersArea.getText().trim();
+        if (!extraMcpToSave.equals(PluginSettings.getExtraMcpServers())) {
+            storeExtraMcpServers(extraMcpToSave);
+        }
         boolean useWslToSave = useWslCheckbox.isSelected();
         if (useWslToSave != loadedUseWsl) {
             PluginSettings.setUseWsl(useWslToSave);
@@ -1773,6 +1962,32 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         String message = NbBundle.getMessage(UIBundle.class, "MSG_PreambleTooLong",
                 length, PluginSettings.MAX_PREAMBLE_LENGTH);
         LOG.log(Level.WARNING, "Session preamble not saved: {0} characters", length);
+        SwingUtilities.invokeLater(() -> NotificationDisplayer.getDefault().notify(
+                title, NotificationDisplayer.Priority.LOW.getIcon(), message, null,
+                NotificationDisplayer.Priority.LOW));
+    }
+
+    /**
+     * Stores the ACP {@code mcpServers} array only when it validates, so a broken draft never
+     * reaches {@code session/new}/{@code session/load}. The previous value is kept otherwise.
+     */
+    private void storeExtraMcpServers(String json) {
+        try {
+            ExtraMcpServers.parse(json);
+            if (json.length() > Preferences.MAX_VALUE_LENGTH) {
+                throw new IllegalArgumentException("The text is longer than "
+                        + Preferences.MAX_VALUE_LENGTH + " characters.");
+            }
+            PluginSettings.setExtraMcpServers(json);
+        } catch (IllegalArgumentException e) {
+            warnInvalidExtraMcpServers(e.getMessage());
+        }
+    }
+
+    private void warnInvalidExtraMcpServers(String reason) {
+        String title = NbBundle.getMessage(UIBundle.class, "LBL_InvalidExtraMcpServers");
+        String message = NbBundle.getMessage(UIBundle.class, "MSG_InvalidExtraMcpServers", reason);
+        LOG.log(Level.WARNING, "Extra MCP servers not saved: {0}", reason);
         SwingUtilities.invokeLater(() -> NotificationDisplayer.getDefault().notify(
                 title, NotificationDisplayer.Priority.LOW.getIcon(), message, null,
                 NotificationDisplayer.Priority.LOW));

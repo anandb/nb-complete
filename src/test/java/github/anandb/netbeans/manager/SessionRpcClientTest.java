@@ -76,6 +76,27 @@ class SessionRpcClientTest {
     }
 
     @Test
+    void createSessionOmitsMcpServersWhenHarnessDoesNotAcceptThem() {
+        Harness noMcp = Harness.builder("no-mcp", "No MCP", "agent")
+                .binaryNames("no-mcp")
+                .sendsMcpServerConfig(false)
+                .build();
+        when(processManager.getCapabilities()).thenReturn(noMcp);
+        when(processManager.sendRequest(eq("session/new"), any(), eq(60L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
+
+        client.createSession("/project");
+
+        ArgumentCaptor<Object> params = ArgumentCaptor.forClass(Object.class);
+        verify(processManager).sendRequest(eq("session/new"), params.capture(), eq(60L),
+                eq(TimeUnit.SECONDS));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> sent = (Map<String, Object>) params.getValue();
+        assertEquals(List.of(), sent.get("mcpServers"));
+        verify(processManager, never()).getToolExecutor();
+    }
+
+    @Test
     void loadSessionFromServerCallsCorrectMethod() {
         when(processManager.getCapabilities()).thenReturn(HarnessCatalog.UNKNOWN);
         when(processManager.getToolExecutor()).thenReturn(createMockToolExecutor());

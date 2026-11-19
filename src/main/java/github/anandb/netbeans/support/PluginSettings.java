@@ -59,6 +59,8 @@ public final class PluginSettings {
     private static volatile boolean cachedMcpServerEnabled = true;
     /** Cached internal MCP server port. 0 = pick a random free port. */
     private static volatile int cachedMcpServerPort = 0;
+    /** Cached raw ACP mcpServers JSON for user-supplied servers. */
+    private static volatile String cachedExtraMcpServers = "";
     /** Cached markdown project type toggle — volatile for cross-thread visibility. Defaults to true. */
     private static volatile boolean cachedMarkdownProjectEnabled = true;
     /**
@@ -132,6 +134,7 @@ public final class PluginSettings {
         cachedPreambleEnabled = prefs.getBoolean(PreferenceKeys.PREAMBLE_ENABLED, true);
         cachedMcpServerEnabled = prefs.getBoolean(PreferenceKeys.MCP_SERVER_ENABLED, true);
         cachedMcpServerPort = prefs.getInt(PreferenceKeys.MCP_SERVER_PORT, 0);
+        cachedExtraMcpServers = prefs.get(PreferenceKeys.MCP_SERVER_EXTRA, "");
         cachedMarkdownProjectEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_MARKDOWN_PROJECT, true);
         cachedDiffIdeFont = prefs.getBoolean(PreferenceKeys.DIFF_IDE_FONT, false);
         cachedUserBubbleLight = prefs.get(PreferenceKeys.USER_BUBBLE_LIGHT, "");
@@ -325,6 +328,8 @@ public final class PluginSettings {
             cachedMcpServerEnabled = prefs().getBoolean(PreferenceKeys.MCP_SERVER_ENABLED, true);
         } else if (PreferenceKeys.MCP_SERVER_PORT.equals(evt.getKey())) {
             cachedMcpServerPort = intPref(PreferenceKeys.MCP_SERVER_PORT, 0);
+        } else if (PreferenceKeys.MCP_SERVER_EXTRA.equals(evt.getKey())) {
+            cachedExtraMcpServers = prefs().get(PreferenceKeys.MCP_SERVER_EXTRA, "");
         } else if (PreferenceKeys.ACTIONS_MARKDOWN_PROJECT.equals(evt.getKey())) {
             cachedMarkdownProjectEnabled = prefs().getBoolean(PreferenceKeys.ACTIONS_MARKDOWN_PROJECT, true);
         } else if (PreferenceKeys.DIFF_IDE_FONT.equals(evt.getKey())) {
@@ -589,6 +594,24 @@ public final class PluginSettings {
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .putInt(PreferenceKeys.MCP_SERVER_PORT, safe);
         cachedMcpServerPort = safe;
+    }
+
+    /**
+     * Raw ACP {@code mcpServers} JSON supplied by the user. Parsing and validation live in
+     * {@link ExtraMcpServers}; this accessor keeps the text exactly as the Options panel stored it.
+     */
+    public static String getExtraMcpServers() {
+        return cachedExtraMcpServers;
+    }
+
+    public static void setExtraMcpServers(String json) {
+        String safe = json != null ? json : "";
+        if (safe.length() > Preferences.MAX_VALUE_LENGTH) {
+            throw new IllegalArgumentException("Extra MCP servers exceed the preference size limit.");
+        }
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .put(PreferenceKeys.MCP_SERVER_EXTRA, safe);
+        cachedExtraMcpServers = safe;
     }
 
     /** Whether the Markdown project type is enabled (default true). */

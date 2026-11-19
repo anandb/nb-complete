@@ -17,6 +17,7 @@ import org.mockito.MockedStatic;
 
 import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.model.Harness;
+import github.anandb.netbeans.support.ExtraMcpServers;
 import github.anandb.netbeans.support.PluginSettings;
 
 /**
@@ -49,6 +50,7 @@ class McpManagerTest {
         settings.when(PluginSettings::isMcpServerEnabled).thenReturn(true);
         settings.when(PluginSettings::getMcpServerPort).thenReturn(0);
         settings.when(PluginSettings::getSessionIdleTimeout).thenReturn(30);
+        settings.when(PluginSettings::getExtraMcpServers).thenReturn("");
     }
 
     private static Harness harness(boolean mcpSupported) {
@@ -68,10 +70,36 @@ class McpManagerTest {
 
     @Test
     void serverConfigEmptyWhenNoServerStarted() {
+        settings = mockStatic(PluginSettings.class);
+        settings.when(PluginSettings::isMcpServerEnabled).thenReturn(true);
+        settings.when(PluginSettings::getExtraMcpServers).thenReturn("");
         manager = new McpManager();
 
         assertTrue(manager.getServerConfig().isEmpty());
         assertNull(manager.getMcpTools());
+    }
+
+    @Test
+    void extraServersAreSentEvenWhenTheEmbeddedServerIsNotRunning() {
+        settings = mockStatic(PluginSettings.class);
+        settings.when(PluginSettings::isMcpServerEnabled).thenReturn(true);
+        settings.when(PluginSettings::getExtraMcpServers).thenReturn(ExtraMcpServers.HTTP_EXAMPLE);
+        manager = new McpManager();
+
+        List<Map<String, Object>> config = manager.getServerConfig();
+
+        assertEquals(1, config.size());
+        assertEquals("example-http", config.get(0).get("name"));
+    }
+
+    @Test
+    void extraServersObeyTheMasterSwitch() {
+        settings = mockStatic(PluginSettings.class);
+        settings.when(PluginSettings::isMcpServerEnabled).thenReturn(false);
+        settings.when(PluginSettings::getExtraMcpServers).thenReturn(ExtraMcpServers.HTTP_EXAMPLE);
+        manager = new McpManager();
+
+        assertTrue(manager.getServerConfig().isEmpty());
     }
 
     @Test

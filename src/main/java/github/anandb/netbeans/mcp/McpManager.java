@@ -2,6 +2,7 @@ package github.anandb.netbeans.mcp;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.ExtraMcpServers;
 import github.anandb.netbeans.support.PluginSettings;
 
 import java.io.IOException;
@@ -180,18 +181,20 @@ public class McpManager {
         if (mcpDisabled.get() || !PluginSettings.isMcpServerEnabled()) return mcpServerList;
 
         synchronized (this) {
-            if (mcpServer == null || !mcpServer.isRunning()) {
-                return mcpServerList;
+            if (mcpServer != null && mcpServer.isRunning()) {
+                // Auth-capable agents (opencode, goose, ...) get the token-protected url
+                String url = mcpAuthRequired ? mcpServer.getAuthenticatedUrl() : mcpServer.getUrl();
+                mcpServerList.add(Map.of(
+                        "headers", List.of(),
+                        "type", "http",
+                        "name", "nb",
+                        "url", url
+                ));
             }
-            // Auth-capable agents (opencode, goose, ...) get the token-protected url
-            String url = mcpAuthRequired ? mcpServer.getAuthenticatedUrl() : mcpServer.getUrl();
-            mcpServerList.add(Map.of(
-                    "headers", List.of(),
-                    "type", "http",
-                    "name", "nb",
-                    "url", url
-            ));
         }
+        // User-supplied servers follow the internal entry and are sent even when the
+        // embedded server failed to start, so an extra server does not depend on it.
+        mcpServerList.addAll(ExtraMcpServers.parseStored(PluginSettings.getExtraMcpServers()));
         return mcpServerList;
     }
 
