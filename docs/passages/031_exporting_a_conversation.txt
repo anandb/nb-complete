@@ -10,6 +10,7 @@
 
 The share button on the toolbar exports the session to a file. Clicking it opens a small menu where you can choose between **Markdown** and **HTML** — HTML output mimics the sidebar chat view, including the expandable activity panels and chat styling.
 
+When older messages are trimmed from the view, the export dialog offers a choice: export what is displayed, or export the **full transcript**. The full transcript is fetched from the agent in the background — the chat view is left untouched, with its trimming, scroll position and pinned messages as they were. It is unavailable while a response is still running, and the agent must support session replay.
 
 > [[Customising the Toolbar]]
 > [[Message History]]

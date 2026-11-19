@@ -186,6 +186,7 @@ public class MessageSender {
             return;
         }
 
+
         if (text.isEmpty() && attachmentManager.getAttachments().isEmpty()) {
             return;
         }
@@ -293,7 +294,6 @@ public class MessageSender {
         return true;
     }
 
-    /** Issues session/prompt for an accepted send and wires its completion handlers. */
     private void dispatchPrompt(String sessionId, String text, SlashRouting slash,
             boolean midTurn, boolean turnEnded, boolean preserveComposer) {
         ProcessControl sendProc = processService.get();
@@ -566,6 +566,7 @@ public class MessageSender {
     private boolean isMidTurn(boolean turnEnded) {
         return !turnEnded || !sessionService.get().canSendMessage();
     }
+
 
     /** Puts a failed send's attachments back in the composer. {@link AttachmentManager#add}
      *  enforces the caps, so files attached during the flight can leave no room — a dropped

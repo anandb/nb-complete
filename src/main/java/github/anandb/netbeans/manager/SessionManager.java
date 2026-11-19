@@ -29,12 +29,13 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.concurrent.TimeoutException;
 import java.util.function.BiFunction;
@@ -52,7 +53,13 @@ import java.util.logging.Level;
 import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.contract.SessionListener;
 import github.anandb.netbeans.contract.SessionQuery;
+import github.anandb.netbeans.contract.ContextReportQuery;
+import github.anandb.netbeans.contract.SessionExportControl;
+import github.anandb.netbeans.contract.UIHandler;
+import github.anandb.netbeans.contract.UpdateDispatcher;
 import github.anandb.netbeans.manager.strategy.StrategyRegistry;
+import github.anandb.netbeans.model.ModelRecords.PlanEntry;
+import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.ContextReport;
 import github.anandb.netbeans.model.SessionState;
 import github.anandb.netbeans.model.SessionUpdate;
@@ -95,10 +102,11 @@ import github.anandb.netbeans.model.Harness;
  */
 @ServiceProviders({
     @ServiceProvider(service = SessionControl.class),
-    @ServiceProvider(service = github.anandb.netbeans.contract.ContextReportQuery.class)
+    @ServiceProvider(service = ContextReportQuery.class),
+    @ServiceProvider(service = SessionExportControl.class)
 })
 public class SessionManager implements SessionQuery, SessionControl,
-        github.anandb.netbeans.contract.ContextReportQuery {
+        ContextReportQuery, SessionExportControl {
 
 
     /** Returns the harness id configured for the current agent, or null. */
@@ -389,6 +397,27 @@ public class SessionManager implements SessionQuery, SessionControl,
     private volatile String loadedSessionId;
     private volatile long loadedSessionGeneration = -1;
 
+    /**
+     * Active background transcript capture, or null. While set, replayed
+     * {@code session/update} notifications for its session are collected for
+     * export and never routed to the display pipeline.
+     */
+    private final AtomicReference<TranscriptCapture> transcriptCapture = new AtomicReference<>();
+    private volatile long transcriptCaptureMaxDrainMs = TranscriptCapture.DRAIN_MAX_MS;
+    private volatile long transcriptCaptureTimeoutMs = TimeUnit.MINUTES.toMillis(2);
+    private volatile boolean turnInFlight;
+    private final Object turnAdmissionLock = new Object();
+
+    /** Test hook for exercising the capture drain deadline without waiting ten seconds. */
+    void setTranscriptCaptureMaxDrainMsForTest(long maxDrainMs) {
+        transcriptCaptureMaxDrainMs = maxDrainMs;
+    }
+
+    /** Test hook for exercising the whole-capture timeout without waiting two minutes. */
+    void setTranscriptCaptureTimeoutMsForTest(long timeoutMs) {
+        transcriptCaptureTimeoutMs = timeoutMs;
+    }
+
     public SessionManager() {
         ProjectQuery projectQuery = Lookup.getDefault().lookup(ProjectQuery.class);
         if (projectQuery != null) {
@@ -443,11 +472,26 @@ public class SessionManager implements SessionQuery, SessionControl,
             update.update().sessions().forEach(cacheManager::cacheSession);
         }
 
+        String updateSessionId = update.params() != null ? update.params().sessionId() : null;
+
+        // A background transcript capture owns the replay stream for its session:
+        // collect it for export instead of routing it to the display pipeline.
+        TranscriptCapture capture = transcriptCapture.get();
+        if (capture != null) {
+            if (capture.serverGeneration() != processManager.serverGeneration()) {
+                // A new server process owns the stream now: the captured replay
+                // is dead, and its orphan load must not leak to the display.
+                abortTranscriptCapture(new IllegalStateException("the server was restarted"));
+            } else if (capture.accepts(updateSessionId)) {
+                capture.collect(update);
+                return;
+            }
+        }
+
         // Capture once: currentSessionId is volatile and can change between the
         // equality check and the descendant query, routing updates to the wrong
         // session (TOCTOU).
         String currentSid = this.currentSessionId;
-        String updateSessionId = update.params() != null ? update.params().sessionId() : null;
         if (updateSessionId != null
                 && (updateSessionId.equals(currentSid)
                     || cacheManager.isDescendantOfCurrent(updateSessionId, currentSid))) {
@@ -854,7 +898,10 @@ public class SessionManager implements SessionQuery, SessionControl,
     private CompletableFuture<List<SessionConfigOption>> sendLoadSessionRequest(
             String sessionId, String cwd, long start, boolean forceLoad, boolean readOnlyRetry) {
         boolean resumeExisting = !forceLoad && shouldResumeExisting(sessionId, cwd);
-        return processManager.whenReady()
+        // The wire-level request future, so a cancel of the returned chain can
+        // reach the RPC instead of abandoning it as an orphan load.
+        AtomicReference<CompletableFuture<JsonNode>> rpc = new AtomicReference<>();
+        CompletableFuture<List<SessionConfigOption>> future = processManager.whenReady()
                 .thenCompose(v -> processManager.getToolExecutor().waitForReady())
                 .orTimeout(2, TimeUnit.MINUTES)
                 // Only the session loaded by THIS server process can hold in-flight
@@ -867,9 +914,13 @@ public class SessionManager implements SessionQuery, SessionControl,
                 .thenCompose(v -> !resumeExisting && !readOnlyRetry && shouldCloseBeforeLoad(sessionId)
                         ? rpcClient.closeBeforeLoad(sessionId)
                         : CompletableFuture.completedFuture(null))
-                .thenCompose(v -> resumeExisting
-                        ? rpcClient.resumeSession(sessionId, cwd, !readOnlyRetry)
-                        : rpcClient.loadSessionFromServer(sessionId, cwd, !readOnlyRetry))
+                .thenCompose(v -> {
+                    CompletableFuture<JsonNode> request = resumeExisting
+                            ? rpcClient.resumeSession(sessionId, cwd, !readOnlyRetry)
+                            : rpcClient.loadSessionFromServer(sessionId, cwd, !readOnlyRetry);
+                    rpc.set(request);
+                    return request;
+                })
                 .thenApply(res -> {
                     long durationMs = (System.nanoTime() - start) / 1_000_000;
                     // Record only on success: this thenApply is skipped on error.
@@ -904,6 +955,244 @@ public class SessionManager implements SessionQuery, SessionControl,
                     }
                     return null;
                 });
+        future.whenComplete((res, ex) -> {
+            if (ex instanceof CancellationException) {
+                CompletableFuture<JsonNode> request = rpc.get();
+                if (request != null) {
+                    request.cancel(true);
+                }
+            }
+        });
+        return future;
+    }
+
+    // ---------------------------------------------------------------
+    // Background transcript capture (full-session export)
+    // ---------------------------------------------------------------
+
+    @Override
+    public boolean isTranscriptCaptureActive() {
+        return transcriptCapture.get() != null;
+    }
+
+    @Override
+    public boolean isTranscriptCaptureActive(String sessionId) {
+        TranscriptCapture capture = transcriptCapture.get();
+        return capture != null && sessionId != null && sessionId.equals(capture.sessionId());
+    }
+
+
+    /**
+     * Replays the current session's full transcript through a background
+     * {@code session/load} and returns it as {@link ProcessedMessage}s. The
+     * replay never reaches the display: {@link #handleSseUpdate} routes it to
+     * the capture's collector for the drain window, and the collected updates
+     * are dispatched through the {@link UpdateDispatcher} with a collecting
+     * {@link UIHandler} once the replay goes quiet. No session events are
+     * fired, so the thread keeps its trimmed state, scroll position and pins.
+     * <p>
+     * The load cancels/closes the session on the server first, so a turn in
+     * flight would be killed: the caller gates on turn-idle, and the UI blocks
+     * sends while a capture is active (a live turn's updates would be swallowed
+     * by the collector).
+     */
+    @Override
+    public CompletableFuture<List<ProcessedMessage>> captureTranscript(String sessionId) {
+        if (isBlank(sessionId) || !sessionId.equals(currentSessionId)) {
+            return CompletableFuture.failedFuture(new IllegalStateException(
+                    "only the current session can be exported in the background"));
+        }
+        if (processManager.isSessionLoadUnsupported()) {
+            return CompletableFuture.failedFuture(new IllegalStateException(
+                    "the harness does not implement session/load"));
+        }
+        if (!stateMachine.canLoadSession()) {
+            return CompletableFuture.failedFuture(new IllegalStateException(
+                    "the session is busy (state " + stateMachine.getState() + ")"));
+        }
+        if (turnInFlight) {
+            return CompletableFuture.failedFuture(new IllegalStateException(
+                    "a user turn is still running"));
+        }
+        TranscriptCapture existing = transcriptCapture.get();
+        if (existing != null) {
+            return CompletableFuture.failedFuture(new IllegalStateException(
+                    "a transcript export is already running"));
+        }
+
+        String workingCwd = getSessionDirectory(sessionId);
+        if (isBlank(workingCwd)) {
+            workingCwd = lastProjectDir;
+        }
+        if (isBlank(workingCwd)) {
+            return CompletableFuture.failedFuture(new IllegalStateException(
+                    "no working directory known for the session"));
+        }
+
+        final String targetCwd = ProjectPaths.nativeForm(workingCwd);
+        final long start = System.nanoTime();
+        // Replay tool calls reuse the live session's message ids; without this
+        // the tool-call cache would drop them as already completed.
+        TranscriptCapture capture = new TranscriptCapture(sessionId, processManager.serverGeneration(),
+                sid -> cacheManager.isDescendantOfCurrent(sid, sessionId), transcriptCaptureMaxDrainMs);
+        synchronized (turnAdmissionLock) {
+            if (turnInFlight) {
+                return CompletableFuture.failedFuture(new IllegalStateException(
+                        "a user turn is still running"));
+            }
+            if (!transcriptCapture.compareAndSet(null, capture)) {
+                return CompletableFuture.failedFuture(new IllegalStateException(
+                        "a transcript export is already running"));
+            }
+            // Replay tool calls reuse live message ids, so invalidate only after
+            // this capture has won admission.
+            StrategyRegistry.invalidateSession(sessionId);
+        }
+
+        CompletableFuture.delayedExecutor(transcriptCaptureTimeoutMs, TimeUnit.MILLISECONDS)
+                .execute(() -> {
+                    if (transcriptCapture.compareAndSet(capture, null)) {
+                        capture.fail(new TimeoutException("transcript export exceeded capture deadline"));
+                    }
+                });
+
+        explicitSessionOps.incrementAndGet();
+        CompletableFuture<List<SessionConfigOption>> loadFuture = withMcpFallback("session/load (export)",
+                () -> withStartupRetry("session/load (export)",
+                        () -> sendExportLoad(capture, sessionId, targetCwd, start, false), 0), start)
+                .handle((res, ex) -> {
+                    if (ex != null && isLostTurn(ex)) {
+                        // Same recovery as a display load: re-attach read-only so
+                        // the transcript still loads (Hermes unknown_execution).
+                        LOG.info("session/load (export): lost turn blocks the attach for {0}, "
+                                + "retrying without editor MCP servers", sessionId);
+                        capture.resetForRetry();
+                        return withMcpFallback("session/load (export retry)",
+                                () -> withStartupRetry("session/load (export retry)",
+                                        () -> sendExportLoad(capture, sessionId, targetCwd, start, true), 0), start);
+                    }
+                    return ex == null ? CompletableFuture.completedFuture(res)
+                            : CompletableFuture.<List<SessionConfigOption>>failedFuture(ex);
+                })
+                .thenCompose(f -> f);
+        loadFuture.whenComplete((res, ex) -> {
+                    if (ex != null && isMethodNotFound(ex)) {
+                        processManager.markSessionLoadUnsupported();
+                    }
+                    if (ex != null) {
+                        LOG.warn("session/load (export) failed: {0}", rootMessage(ex));
+                        abortTranscriptCapture(ex);
+                        return;
+                    }
+                    if (processManager.isSessionLoadUnsupported()) {
+                        abortTranscriptCapture(new IllegalStateException(
+                                "the harness does not implement session/load"));
+                        return;
+                    }
+                    capture.markResponseReceived();
+                    waitForQuietDrain(capture);
+                });
+
+        return capture.result().whenComplete((messages, ex) -> explicitSessionOps.decrementAndGet());
+    }
+
+    /** Issues the export load and registers the raw RPC future so an abort can cancel it. */
+    private CompletableFuture<List<SessionConfigOption>> sendExportLoad(TranscriptCapture capture,
+            String sessionId, String cwd, long start, boolean readOnlyRetry) {
+        CompletableFuture<List<SessionConfigOption>> raw =
+                sendLoadSessionRequest(sessionId, cwd, start, true, readOnlyRetry);
+        capture.setLoadFuture(raw);
+        return raw;
+    }
+
+    /**
+     * Polls until the replay has been quiet for {@link TranscriptCapture#DRAIN_QUIET_MS}
+     * (harnesses stream replay notifications around and after the load response),
+     * then converts the collected updates to messages and completes the capture.
+     */
+    private void waitForQuietDrain(TranscriptCapture capture) {
+        CompletableFuture.delayedExecutor(TranscriptCapture.DRAIN_POLL_MS, TimeUnit.MILLISECONDS)
+                .execute(() -> {
+                    if (transcriptCapture.get() != capture) {
+                        // Aborted elsewhere (session switch, load failure); the
+                        // aborting side already failed the future.
+                        return;
+                    }
+                    if (capture.isExhausted()) {
+                        if (transcriptCapture.compareAndSet(capture, null)) {
+                            capture.fail(new TimeoutException("session replay exceeded export drain deadline"));
+                        }
+                        return;
+                    }
+                    if (!capture.isQuiet()) {
+                        waitForQuietDrain(capture);
+                        return;
+                    }
+                    if (transcriptCapture.get() == capture) {
+                        try {
+                            capture.succeed(dispatchCaptured(capture.drain()));
+                        } catch (RuntimeException e) {
+                            LOG.warn("Transcript capture dispatch failed: {0}",
+                                    ExceptionUtils.getMessage(e), e);
+                            capture.fail(e);
+                        } finally {
+                            transcriptCapture.compareAndSet(capture, null);
+                        }
+                    }
+                });
+    }
+
+    /**
+     * Replays the captured updates through the shared dispatch logic (noise
+     * filtering, tool-call accumulation, steer-echo suppression) with a
+     * collecting handler, so the export sees exactly what the display would.
+     */
+    private List<ProcessedMessage> dispatchCaptured(List<SessionUpdate> updates) {
+        UpdateDispatcher dispatcher = Lookup.getDefault().lookup(UpdateDispatcher.class);
+        if (dispatcher == null) {
+            throw new IllegalStateException("UpdateDispatcher not found in Lookup");
+        }
+        List<ProcessedMessage> collected = new ArrayList<>(updates.size());
+        UIHandler collector = new UIHandler() {
+            @Override
+            public void displayMessage(ProcessedMessage pm) {
+                collected.add(pm);
+            }
+
+            @Override
+            public void updateConfig(List<SessionConfigOption> options) {
+            }
+
+            @Override
+            public void refreshSessions() {
+            }
+
+            @Override
+            public void updateUsage(long used, long size) {
+            }
+
+            @Override
+            public void updatePlan(List<PlanEntry> entries) {
+            }
+        };
+        for (SessionUpdate update : updates) {
+            dispatcher.handle(update, collector);
+        }
+        return collected;
+    }
+
+    /** Fails and unregisters the active capture, if any. */
+    private void abortTranscriptCapture(Throwable cause) {
+        TranscriptCapture capture = transcriptCapture.getAndSet(null);
+        if (capture != null) {
+            capture.cancelLoad();
+            capture.fail(cause);
+        }
+    }
+
+    @Override
+    public void cancelTranscriptCapture() {
+        abortTranscriptCapture(new IllegalStateException("a user turn started"));
     }
 
     @Override
@@ -1121,6 +1410,11 @@ public class SessionManager implements SessionQuery, SessionControl,
     }
 
     private boolean loadSession(String sessionId, boolean isStartup, boolean forceLoad) {
+        // A display load replays the same session/update stream the capture
+        // collector is swallowing; hand the replay back to the display by
+        // failing the capture first.
+        abortTranscriptCapture(new IllegalStateException("the session was reloaded"));
+
         if (processManager.isSessionLoadUnsupported()) {
             // Discovered on a previous call; do not clear the current session or
             // re-issue a request the process already answered with -32601. Announce
@@ -1536,6 +1830,7 @@ public class SessionManager implements SessionQuery, SessionControl,
      * {@link ProcessManager#restartServer()} before the process is torn down.
      */
     public void resetForServerRestart() {
+        abortTranscriptCapture(new IllegalStateException("the server was restarted"));
         if (stateMachine.getState() != SessionState.IDLE
                 && stateMachine.transitionTo(SessionState.IDLE)) {
             LOG.info("resetForServerRestart: transitioning to IDLE");
@@ -1575,8 +1870,19 @@ public class SessionManager implements SessionQuery, SessionControl,
         }, 5000);
     }
 
+
+    @Override
+    public void onTurnStarted() {
+        synchronized (turnAdmissionLock) {
+            turnInFlight = true;
+        }
+    }
+
     @Override
     public void onTurnEnded() {
+        synchronized (turnAdmissionLock) {
+            turnInFlight = false;
+        }
         if (stateMachine.transitionToIf(SessionState.STOPPING, SessionState.STREAMING)) {
             LOG.info("onTurnEnded: transitioning STOPPING -> STREAMING");
         } else {

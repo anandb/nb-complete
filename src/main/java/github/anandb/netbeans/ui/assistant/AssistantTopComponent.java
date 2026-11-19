@@ -12,6 +12,8 @@ import java.awt.FontMetrics;
 import java.awt.Desktop;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
@@ -42,7 +44,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import github.anandb.netbeans.contract.PermissionHandler;
 import github.anandb.netbeans.contract.SessionControl;
+import github.anandb.netbeans.contract.SessionExportControl;
 import github.anandb.netbeans.contract.ProcessControl;
+import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionItem;
@@ -148,7 +152,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final JPanel header;
     private final transient MessageHistory messageHistory = new MessageHistory();
     private final transient StatusController statusController;
-    private volatile String pendingExportFormat;
     private final transient AttachmentUiHandler attachmentUiHandler;
     private final transient SessionDropdownHandler sessionDropdownHandler;
     private final transient ComponentLifecycleHandler componentLifecycleHandler;
@@ -865,7 +868,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     void exportConversationAs(String format) {
-        // If messages are being trimmed, ask user whether to show all first.
+        // If messages are being trimmed, ask whether to include all of them.
         if (!chatPanel.isKeepOlderMessages()) {
             NotifyDescriptor nd = new NotifyDescriptor(
                     NbBundle.getMessage(UIBundle.class, "MSG_ExportPrompt"),
@@ -879,33 +882,132 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
                     NbBundle.getMessage(UIBundle.class, "BTN_ExportDisplayed"));
             Object choice = DialogDisplayer.getDefault().notify(nd);
             if (NbBundle.getMessage(UIBundle.class, "BTN_ExportAll").equals(choice)) {
-                // Reload then export via flush timer callback.
-                pendingExportFormat = format;
-                chatPanel.setOnMessagesStable(() -> {
-                    String fmt = pendingExportFormat;
-                    pendingExportFormat = null;
-                    chatPanel.setOnMessagesStable(null);
-                    if (fmt != null) exportConversationAs(fmt);
-                });
-                chatPanel.setKeepOlderMessages(true);
+                exportFullTranscript(format);
                 return;
             }
             if (choice == null || choice == NotifyDescriptor.CLOSED_OPTION) return;
         }
-        pendingExportFormat = null;
+        exportDisplayedTranscript(format);
+    }
+
+    /** Serializes the messages currently shown in the thread. */
+    private void exportDisplayedTranscript(String format) {
         String currentId = sessionService.get().getCurrentSessionId();
         String title = currentId != null ? sessionService.get().getSessionTitle(currentId) : null;
         if ("html".equals(format)) {
             String html = chatPanel.getConversationAsHtml(title);
             if (isBlank(html)) return;
             HtmlConversationExporter.export(this, html,
-                    HtmlConversationExporter.defaultFileName(title), this::showExported);
+                    HtmlConversationExporter.defaultFileName(title), exportOutcomeListener());
         } else {
             String markdown = chatPanel.getConversationAsMarkdown(title);
             if (isBlank(markdown)) return;
             ConversationExporter.export(this, markdown,
-                    ConversationExporter.defaultFileName(title), this::showExported);
+                    ConversationExporter.defaultFileName(title), exportOutcomeListener());
         }
+    }
+
+    /**
+     * Exports the FULL transcript by replaying {@code session/load} in the
+     * background. The thread is left exactly as it is — trim state, scroll
+     * position and pins. The load cancels the session on the server first, so
+     * this refuses while a turn is running; sends are blocked for the (short)
+     * capture window by the send gate.
+     */
+    private void exportFullTranscript(String format) {
+        String currentId = sessionService.get().getCurrentSessionId();
+        if (currentId == null) {
+            statusController.setStatus("STATUS_NoSession");
+            return;
+        }
+        if (!sessionLifecycleHandler.isTurnEnded()) {
+            statusController.setStatus("STATUS_ExportBusyTurn");
+            return;
+        }
+        SessionExportControl export = PlatformBridge.serviceSafe(SessionExportControl.class);
+        if (export == null) {
+            statusController.setStatus("STATUS_ExportFailed", "export service unavailable");
+            return;
+        }
+        String title = sessionService.get().getSessionTitle(currentId);
+        statusController.setStatus("STATUS_Exporting");
+        export.captureTranscript(currentId).whenComplete((messages, ex) -> {
+            if (ex != null) {
+                String reason = rootReason(ex);
+                LOG.warn("Full-transcript export failed: {0}", reason);
+                SwingUtilities.invokeLater(() ->
+                        statusController.setStatus("STATUS_ExportFailed", reason));
+                return;
+            }
+            if (messages == null || messages.isEmpty()) {
+                SwingUtilities.invokeLater(() ->
+                        statusController.setStatus("STATUS_ExportFailed", "empty transcript"));
+                return;
+            }
+            // Render off the EDT: the HTML pass runs flexmark over every message.
+            String content = renderCapturedTranscript(messages, format, title);
+            SwingUtilities.invokeLater(() -> {
+                if (isBlank(content)) {
+                    statusController.setStatus("STATUS_ExportFailed", "empty transcript");
+                    return;
+                }
+                if ("html".equals(format)) {
+                    HtmlConversationExporter.export(AssistantTopComponent.this, content,
+                            HtmlConversationExporter.defaultFileName(title), exportOutcomeListener());
+                } else {
+                    ConversationExporter.export(AssistantTopComponent.this, content,
+                            ConversationExporter.defaultFileName(title), exportOutcomeListener());
+                }
+            });
+        });
+    }
+
+    /** Renders the captured transcript; called on the capture future's thread. */
+    private static String renderCapturedTranscript(List<ProcessedMessage> messages, String format,
+            String title) {
+        boolean strips = stripsSystemReminders();
+        return "html".equals(format)
+                ? HtmlConversationExporter.generateHtml(messages, title, strips)
+                : ConversationExporter.generateMarkdown(messages, title, strips);
+    }
+
+    /** The active harness folds {@code <system-reminder>} blocks into echoed user text. */
+    private static boolean stripsSystemReminders() {
+        ProcessControl pc = PlatformBridge.processControl();
+        Harness caps = pc == null ? null : pc.getCapabilities();
+        return caps != null && caps.stripsSystemReminders();
+    }
+
+    /** Unwraps completion layers to the first message worth showing. */
+    private static String rootReason(Throwable ex) {
+        Throwable cause = ex;
+        while (cause.getCause() != null) {
+            cause = cause.getCause();
+        }
+        String msg = cause.getMessage();
+        return msg != null ? msg : cause.getClass().getSimpleName();
+    }
+
+    /** Status feedback for every export outcome; clears the busy row when nothing is written. */
+    private ConversationExporter.ExportListener exportOutcomeListener() {
+        return new ConversationExporter.ExportListener() {
+            @Override
+            public void exported(File file) {
+                showExported(file);
+            }
+
+            @Override
+            public void cancelled() {
+                SwingUtilities.invokeLater(() ->
+                        statusController.setStatus("STATUS_ExportCancelled"));
+            }
+
+            @Override
+            public void failed(IOException cause) {
+                SwingUtilities.invokeLater(() ->
+                        statusController.setStatus("STATUS_ExportFailed", cause.getMessage()));
+            }
+        };
     }
 
     /** Brief confirmation in the status row once an export file was written. */

@@ -17,6 +17,7 @@ import java.util.concurrent.TimeUnit;
 
 import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.contract.SessionQuery;
+import github.anandb.netbeans.contract.SessionExportControl;
 import github.anandb.netbeans.contract.UIHandler;
 import github.anandb.netbeans.contract.UpdateDispatcher;
 import github.anandb.netbeans.contract.UsageStatsStore;
@@ -638,6 +639,10 @@ public class StrategyRegistry implements UpdateDispatcher {
     }
 
     private static boolean captureAllowed() {
+        SessionExportControl export = Lookup.getDefault().lookup(SessionExportControl.class);
+        if (export != null && export.isTranscriptCaptureActive()) {
+            return false;
+        }
         SessionQuery sessions = Lookup.getDefault().lookup(SessionQuery.class);
         return shouldCapture(sessions != null ? sessions.getCurrentState() : null);
     }

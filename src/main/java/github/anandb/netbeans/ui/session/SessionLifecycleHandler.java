@@ -11,9 +11,10 @@ import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.SwingUtilities;
 import github.anandb.netbeans.contract.SessionListener;
+import github.anandb.netbeans.contract.SessionExportControl;
 import github.anandb.netbeans.contract.UIHandler;
-import github.anandb.netbeans.model.ModelRecords.PlanEntry;
 import github.anandb.netbeans.contract.PinnedMessageControl;
+import github.anandb.netbeans.model.ModelRecords.PlanEntry;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.contract.ProcessControl;
@@ -34,9 +35,9 @@ import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.chat.ChatThreadPanel;
 import github.anandb.netbeans.ui.chat.PlanPanel;
 import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
-import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.assistant.MiniAssistantDialog;
 import github.anandb.netbeans.ui.assistant.ChatLayoutBuilder;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.platform.SessionService;
 import github.anandb.netbeans.ui.platform.ProcessService;
@@ -188,6 +189,12 @@ public class SessionLifecycleHandler implements SessionListener {
 
     /** Marks a user {@code session/prompt} as in flight (not preamble/reconnect). */
     public void onUserPromptSent() {
+        SessionControl sessions = PlatformBridge.sessionControl();
+        SessionExportControl export = PlatformBridge.serviceSafe(SessionExportControl.class);
+        if (export != null && export.isTranscriptCaptureActive(sessions.getCurrentSessionId())) {
+            export.cancelTranscriptCapture();
+        }
+        sessions.onTurnStarted();
         userPromptInFlight = true;
         turnEnded = false;
     }

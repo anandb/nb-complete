@@ -158,8 +158,6 @@ public class ChatThreadPanel extends JPanel {
     // --- Callbacks ---
     /** Debounced flush timer. Reset on each processed message, fires 300ms after last drain. */
     private final Timer flushTimer;
-    /** Callback fired when flush timer completes (messages stable). Used for post-reload export. */
-    private transient volatile Runnable onMessagesStable;
 
 
     public ChatThreadPanel() {
@@ -268,8 +266,6 @@ public class ChatThreadPanel extends JPanel {
             if (isDisplayable()) {
                 stopStreaming();
             }
-            Runnable cb = onMessagesStable;
-            if (cb != null) cb.run();
         });
         flushTimer.setRepeats(false);
     }
@@ -1287,11 +1283,6 @@ public class ChatThreadPanel extends JPanel {
         this.currentSessionId = sessionId;
     }
 
-    /** Register a callback fired when the flush timer completes (messages stable). */
-    public void setOnMessagesStable(Runnable cb) {
-        this.onMessagesStable = cb;
-    }
-
     public void setKeepOlderMessages(boolean keep) {
         keepOlderMessages = keep;
         if (keep) {
@@ -1452,10 +1443,10 @@ public class ChatThreadPanel extends JPanel {
             return;
         }
         // Park the debounced flush timer so it can't fire between chunks and
-        // prematurely finalize / trip onMessagesStable. Re-armed unconditionally
-        // once the render settles so a reloaded streaming tail bubble is always
-        // finalized (the drain path restarts it per-message, so this only matters
-        // for the load/reload render path).
+        // prematurely finalize. Re-armed unconditionally once the render
+        // settles so a reloaded streaming tail bubble is always finalized
+        // (the drain path restarts it per-message, so this only matters for
+        // the load/reload render path).
         flushTimer.stop();
         loadRenderInProgress = true;
         isBatchMode = true;

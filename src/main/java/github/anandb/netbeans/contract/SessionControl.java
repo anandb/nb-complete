@@ -123,7 +123,12 @@ public interface SessionControl extends SessionQuery {
     /** Stops the current message stream. */
     void stopCurrentMessage();
 
-    /** Notifies that the current turn has ended. */
+
+    /** Notifies lifecycle services that a user turn has been accepted. */
+    default void onTurnStarted() {
+    }
+
+    /** Notifies lifecycle services that the current turn has ended. */
     void onTurnEnded();
 
     /** Returns true if the state machine allows sending a new message. */

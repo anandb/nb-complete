@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.JsonNode;
 import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.contract.ProcessControl;
+import github.anandb.netbeans.contract.SessionExportControl;
 import github.anandb.netbeans.contract.UsageStatsStore;
 import github.anandb.netbeans.contract.UIHandler;
 import github.anandb.netbeans.contract.UsageStatsStore.GroupBy;
@@ -224,6 +225,17 @@ class StrategyRegistryCaptureTest {
         assertEquals(0.0, store.usage.get(0).costAmount(), 1e-9);
         assertEquals(55674L, store.usage.get(0).used());
         assertEquals("USD", store.usage.get(0).costCurrency());
+    }
+
+    @Test
+    void transcriptReplayDoesNotRecordUsageStats() {
+        SessionExportControl export = mock(SessionExportControl.class);
+        when(export.isTranscriptCaptureActive()).thenReturn(true);
+        when(lookupInstance.lookup(SessionExportControl.class)).thenReturn(export);
+
+        registry().handle(assistantChunk("replay-a1"), noopHandler());
+
+        assertTrue(store.messages.isEmpty(), "historical export replay must not count as a live message");
     }
 
     @Test

@@ -32,8 +32,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.List;
-
 import org.netbeans.api.project.Project;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
@@ -74,6 +75,8 @@ import github.anandb.netbeans.model.ModelsInfo;
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionState;
+import github.anandb.netbeans.model.MessageType;
+import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.PluginSettings;
@@ -802,6 +805,211 @@ class SessionManagerTest {
 
         assertNull(sessionManager.loadSessionFromServer("s1", "/p").get(5, TimeUnit.SECONDS));
         verify(processManager).markSessionLoadUnsupported();
+    }
+
+    // ---- background transcript capture (full-session export) ---------------
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void captureTranscriptReplaysTheTranscriptWithoutTouchingTheDisplay() throws Exception {
+        seedCachedSession("s1", "/p");
+        stubSessionLoad(mapper.createObjectNode());
+        driveToStreaming("s1");
+        ArgumentCaptor<Consumer<SessionUpdate>> sse = ArgumentCaptor.forClass(Consumer.class);
+        verify(processManager).addSseListener(sse.capture());
+        AtomicInteger routedToDisplay = new AtomicInteger();
+        sessionManager.addSessionListener(new SessionListener() {
+            @Override public void onSessionListUpdated(List<Session> s) {}
+            @Override public void onSessionStarted(String id) {}
+            @Override public void onSessionLoaded(String id, List<SessionConfigOption> o, boolean b) {}
+            @Override public void onSessionLoading(boolean l) {}
+            @Override public void onSessionError(String m) {}
+            @Override public void onSessionUpdate(SessionUpdate u) { routedToDisplay.incrementAndGet(); }
+            @Override public void onSessionRenamed(String id) {}
+        });
+
+        CompletableFuture<List<ProcessedMessage>> future = sessionManager.captureTranscript("s1");
+        assertTrue(sessionManager.isTranscriptCaptureActive());
+        sse.getValue().accept(update("s1", chunk(MessageType.user_message_chunk, "hello", "cap-u1")));
+        sse.getValue().accept(update("s1", chunk(MessageType.agent_message_chunk, "hi", "cap-a1")));
+
+        List<ProcessedMessage> transcript = future.get(15, TimeUnit.SECONDS);
+
+        assertEquals(2, transcript.size());
+        assertEquals(MessageType.user_message_chunk, transcript.get(0).messageType());
+        assertEquals("hello", transcript.get(0).text());
+        assertEquals(MessageType.agent_message_chunk, transcript.get(1).messageType());
+        assertEquals(0, routedToDisplay.get(), "the replay must never reach the display pipeline");
+        assertFalse(sessionManager.isTranscriptCaptureActive());
+        assertEquals("s1", sessionManager.getCurrentSessionId(), "the current session is untouched");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void captureTranscriptKeepsCollectorOpenForReplayAfterLoadResponse() throws Exception {
+        seedCachedSession("s1", "/p");
+        CompletableFuture<JsonNode> loadResponse = new CompletableFuture<>();
+        when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(loadResponse);
+        driveToStreaming("s1");
+        ArgumentCaptor<Consumer<SessionUpdate>> sse = ArgumentCaptor.forClass(Consumer.class);
+        verify(processManager).addSseListener(sse.capture());
+
+        CompletableFuture<List<ProcessedMessage>> future = sessionManager.captureTranscript("s1");
+        Thread.sleep(350);
+        loadResponse.complete(mapper.createObjectNode());
+        Thread.sleep(200);
+        sse.getValue().accept(update("s1", chunk(MessageType.agent_message_chunk,
+                "replayed after response", "late-a1")));
+
+        List<ProcessedMessage> transcript = future.get(5, TimeUnit.SECONDS);
+
+        assertEquals(1, transcript.size());
+        assertEquals("replayed after response", transcript.get(0).text());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void captureTranscriptFailsInsteadOfExportingPartialHistoryAtDeadline() throws Exception {
+        seedCachedSession("s1", "/p");
+        stubSessionLoad(mapper.createObjectNode());
+        driveToStreaming("s1");
+        sessionManager.setTranscriptCaptureMaxDrainMsForTest(1);
+        ArgumentCaptor<Consumer<SessionUpdate>> sse = ArgumentCaptor.forClass(Consumer.class);
+        verify(processManager).addSseListener(sse.capture());
+
+        CompletableFuture<List<ProcessedMessage>> future = sessionManager.captureTranscript("s1");
+        sse.getValue().accept(update("s1", chunk(MessageType.agent_message_chunk, "partial", "partial-a1")));
+
+        assertThrows(ExecutionException.class, () -> future.get(5, TimeUnit.SECONDS));
+        assertFalse(sessionManager.isTranscriptCaptureActive());
+    }
+
+    @Test
+    void captureTranscriptRefusesWhileAUserTurnIsRunning() throws Exception {
+        seedCachedSession("s1", "/p");
+        driveToStreaming("s1");
+        sessionManager.onTurnStarted();
+
+        CompletableFuture<List<ProcessedMessage>> future = sessionManager.captureTranscript("s1");
+
+        assertTrue(future.isCompletedExceptionally());
+        verify(processManager, never()).sendRequest(eq("session/load"), any(),
+                eq(2L), eq(TimeUnit.MINUTES));
+    }
+
+    @Test
+    void captureTranscriptFailsWhenLoadNeverCompletes() throws Exception {
+        seedCachedSession("s1", "/p");
+        when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(new CompletableFuture<>());
+        driveToStreaming("s1");
+        sessionManager.setTranscriptCaptureTimeoutMsForTest(1);
+
+        CompletableFuture<List<ProcessedMessage>> future = sessionManager.captureTranscript("s1");
+
+        assertThrows(ExecutionException.class, () -> future.get(5, TimeUnit.SECONDS));
+        assertFalse(sessionManager.isTranscriptCaptureActive());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void lostTurnRetryDoesNotDuplicateCollectedReplay() throws Exception {
+        seedCachedSession("s1", "/p");
+        CompletableFuture<JsonNode> firstLoad = new CompletableFuture<>();
+        CompletableFuture<JsonNode> retryLoad = new CompletableFuture<>();
+        when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(firstLoad, retryLoad);
+        driveToStreaming("s1");
+        ArgumentCaptor<Consumer<SessionUpdate>> sse = ArgumentCaptor.forClass(Consumer.class);
+        verify(processManager).addSseListener(sse.capture());
+
+        CompletableFuture<List<ProcessedMessage>> future = sessionManager.captureTranscript("s1");
+        SessionUpdate replay = update("s1", chunk(MessageType.agent_message_chunk, "replayed", "retry-a1"));
+        sse.getValue().accept(replay);
+        ObjectNode details = mapper.createObjectNode().put("details", "unknown_execution");
+        firstLoad.completeExceptionally(new AcpRpcException(AcpRpcException.INTERNAL_ERROR,
+                "Internal error", details));
+        retryLoad.complete(mapper.createObjectNode());
+        sse.getValue().accept(replay);
+
+        List<ProcessedMessage> transcript = future.get(5, TimeUnit.SECONDS);
+
+        assertEquals(1, transcript.size());
+        assertEquals("replayed", transcript.get(0).text());
+    }
+
+    @Test
+    void displayReloadCancelsTheExportLoadRequest() throws Exception {
+        seedCachedSession("s1", "/p");
+        CompletableFuture<JsonNode> exportLoad = new CompletableFuture<>();
+        when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(exportLoad, CompletableFuture.completedFuture(mapper.createObjectNode()));
+        driveToStreaming("s1");
+
+        CompletableFuture<List<ProcessedMessage>> future = sessionManager.captureTranscript("s1");
+        assertTrue(sessionManager.loadSession("s1"));
+
+        assertTrue(exportLoad.isCancelled());
+        assertThrows(ExecutionException.class, () -> future.get(5, TimeUnit.SECONDS));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void serverRestartAbortsTheActiveCapture() throws Exception {
+        seedCachedSession("s1", "/p");
+        stubSessionLoad(mapper.createObjectNode());
+        when(processManager.serverGeneration()).thenReturn(1L);
+        driveToStreaming("s1");
+        CompletableFuture<List<ProcessedMessage>> future = sessionManager.captureTranscript("s1");
+        assertTrue(sessionManager.isTranscriptCaptureActive());
+        ArgumentCaptor<Consumer<SessionUpdate>> sse = ArgumentCaptor.forClass(Consumer.class);
+        verify(processManager).addSseListener(sse.capture());
+
+        when(processManager.serverGeneration()).thenReturn(2L);
+        sse.getValue().accept(update("other", chunk(MessageType.agent_message_chunk, "late", "late-1")));
+
+        assertThrows(ExecutionException.class, () -> future.get(5, TimeUnit.SECONDS));
+        assertFalse(sessionManager.isTranscriptCaptureActive());
+    }
+
+    @Test
+    void captureTranscriptRefusesASessionThatIsNotCurrent() throws Exception {
+        driveToStreaming("s1");
+
+        CompletableFuture<List<ProcessedMessage>> future = sessionManager.captureTranscript("other");
+
+        assertTrue(future.isCompletedExceptionally());
+        assertFalse(sessionManager.isTranscriptCaptureActive());
+    }
+
+    @Test
+    void captureTranscriptIsAbortedByADisplayReloadOfTheSameSession() throws Exception {
+        seedCachedSession("s1", "/p");
+        stubSessionLoad(mapper.createObjectNode());
+        driveToStreaming("s1");
+
+        CompletableFuture<List<ProcessedMessage>> future = sessionManager.captureTranscript("s1");
+        assertTrue(sessionManager.loadSession("s1"));
+
+        assertThrows(ExecutionException.class, () -> future.get(5, TimeUnit.SECONDS));
+        assertFalse(sessionManager.isTranscriptCaptureActive());
+    }
+
+    private static SessionUpdate update(String sessionId, SessionUpdate.UpdateData data) {
+        return new SessionUpdate(SessionUpdate.JSONRPC_VERSION, SessionUpdate.METHOD,
+                new SessionUpdate.Params(sessionId, data));
+    }
+
+    private static SessionUpdate.UpdateData chunk(MessageType type, String text, String messageId) {
+        ObjectNode content = mapper().createObjectNode();
+        content.put("text", text);
+        return new SessionUpdate.UpdateData(type, null, null, messageId, content, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null, null, null);
+    }
+
+    private static ObjectMapper mapper() {
+        return MapperSupplier.get();
     }
 
     @Test

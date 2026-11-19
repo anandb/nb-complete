@@ -20,6 +20,7 @@ import com.vladsch.flexmark.parser.Parser;
 import com.vladsch.flexmark.util.data.MutableDataSet;
 
 import github.anandb.netbeans.pattern.TitleSanitizePattern;
+import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.XmlUtils;
@@ -225,6 +226,26 @@ public final class HtmlConversationExporter {
             }
         }
 
+        return finishPage(setup);
+    }
+
+    /**
+     * Builds the export page from a captured transcript (background full-session
+     * export; the messages are never rendered into the thread). Content rules
+     * mirror the panel version, via the shared entry extraction.
+     */
+    public static String generateHtml(List<ProcessedMessage> messages,
+            String sessionTitle, boolean stripsSystemReminders) {
+        PageSetup setup = initPage(sessionTitle);
+        for (ConversationExporter.ExportEntry entry
+                : ConversationExporter.toExportEntries(messages, stripsSystemReminders)) {
+            switch (entry.role()) {
+                case "user" -> setup.body().append(buildUserHtml(entry.text(), setup.dark()));
+                case "thought" -> setup.body().append(buildThoughtHtml(entry.text(), setup.theme()));
+                case "tool" -> setup.body().append(buildToolHtml(entry.text(), entry.toolTitle(), setup.dark()));
+                default -> setup.body().append(buildAssistantHtml(entry.text(), setup.theme()));
+            }
+        }
         return finishPage(setup);
     }
 
