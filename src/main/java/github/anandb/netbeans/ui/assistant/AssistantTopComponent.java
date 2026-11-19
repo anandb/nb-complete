@@ -59,8 +59,6 @@ import github.anandb.netbeans.support.ProjectPaths;
 import java.awt.Frame;
 import java.awt.Window;
 import java.awt.Rectangle;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
@@ -174,8 +172,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private volatile boolean binaryNotFound = false;
     /** Enables/disables all session toolbar controls. Used by session lifecycle and processing listener. */
     private Consumer<Boolean> sessionActiveCallback;
-    private transient Timer attentionPeriodicTimer;
-    private transient Timer attentionShakeTimer;
     /** One-shot timer that fires the combined queued-message send 400ms after
      *  turn end. Kept in a field so removeNotify() can cancel a pending send
      *  instead of leaking a timer that holds the panel. */
@@ -626,7 +622,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private void updateNewSessionBtnState() {
         Project[] projects = projectContext.getAllOpenProjects();
         newSessionBtn.setEnabled(!binaryNotFound && projects != null && projects.length > 0 && !processing);
-        updateAttentionAnimation();
     }
 
     /** Applies harness capability flags to queueing, token-stats, and tooltip. */
@@ -649,80 +644,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         tokenUsageBtn.setVisible(true);
         tokenUsageBtn.setEnabled(true);
     }
-    private void updateAttentionAnimation() {
-        Project[] projects = projectContext.getAllOpenProjects();
-        boolean projectsOpen = (projects != null && projects.length > 0);
-        boolean hasSession = sessionService.get().getCurrentSessionId() != null;
-        boolean shouldAnimate = projectsOpen && !hasSession && isOpened();
-
-        if (shouldAnimate) {
-            if (attentionPeriodicTimer == null) {
-                attentionPeriodicTimer = new Timer(8000, e -> {
-                    if (isOpened() && isShowing()) {
-                        triggerAttentionShake();
-                    }
-                });
-                attentionPeriodicTimer.setRepeats(true);
-                attentionPeriodicTimer.start();
-                if (isOpened() && isShowing()) {
-                    triggerAttentionShake();
-                }
-            }
-        } else {
-            stopAttentionAnimation();
-        }
-    }
-
-    private void stopAttentionAnimation() {
-        if (attentionPeriodicTimer != null) {
-            attentionPeriodicTimer.stop();
-            attentionPeriodicTimer = null;
-        }
-        if (attentionShakeTimer != null) {
-            attentionShakeTimer.stop();
-            attentionShakeTimer = null;
-        }
-        if (newSessionBtn instanceof AttentionButton ab) {
-            ab.setOffsetAndHighlight(0, 0, 0.0f);
-        }
-    }
-
-    private void triggerAttentionShake() {
-        if (!(newSessionBtn instanceof AttentionButton ab)) {
-            return;
-        }
-        if (!ab.isEnabled()) {
-            return;
-        }
-
-        if (attentionShakeTimer != null && attentionShakeTimer.isRunning()) {
-            return;
-        }
-
-        final int[] yOffsets = {0, -2, -4, -6, -7, -6, -4, -2, 0, -1, -3, -4, -3, -1, 0};
-        final int[] xOffsets = {0, -2, 2, -2, 2, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0};
-        final float[] alphas = {0.0f, 0.3f, 0.6f, 0.9f, 1.0f, 0.9f, 0.6f, 0.3f, 0.0f, 0.2f, 0.5f, 0.6f, 0.5f, 0.2f, 0.0f};
-
-        attentionShakeTimer = new Timer(30, new ActionListener() {
-            private int frame = 0;
-
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (frame < yOffsets.length) {
-                    ab.setOffsetAndHighlight(xOffsets[frame], yOffsets[frame], alphas[frame]);
-                    frame++;
-                } else {
-                    ab.setOffsetAndHighlight(0, 0, 0.0f);
-                    if (attentionShakeTimer != null) {
-                        attentionShakeTimer.stop();
-                        attentionShakeTimer = null;
-                    }
-                }
-            }
-        });
-        attentionShakeTimer.start();
-    }
-
     void showProjectPickerPopup(JComponent parent) {
         componentLifecycleHandler.showProjectPickerPopup(parent);
     }
@@ -1066,14 +987,12 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     @Override
     public void componentActivated() {
         componentLifecycleHandler.componentActivated();
-        updateAttentionAnimation();
     }
 
     @Override
     public void componentDeactivated() {
         super.componentDeactivated();
         componentLifecycleHandler.componentDeactivated();
-        updateAttentionAnimation();
     }
 
     public void toggleVisibility() {
@@ -1094,7 +1013,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     public void componentClosed() {
         // Resources (listeners, handlers, messages) stay alive across all close/reopen cycles.
         saveDockState();
-        stopAttentionAnimation();
     }
 
     @Override
@@ -1105,7 +1023,6 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
         // On subsequent opens, resources are already alive — no reinit needed.
         restoreDockState();
-        updateAttentionAnimation();
     }
 
     @Override
@@ -1123,12 +1040,10 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         revalidate();
         validate();
         repaint();
-        updateAttentionAnimation();
     }
 
     @Override
     public void removeNotify() {
-        stopAttentionAnimation();
         queueManager.stopAnimations();
         if (turnEndFlushTimer != null) {
             turnEndFlushTimer.stop();
