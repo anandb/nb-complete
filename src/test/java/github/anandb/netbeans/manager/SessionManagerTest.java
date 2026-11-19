@@ -892,6 +892,32 @@ class SessionManagerTest {
     }
 
     @Test
+    void aRestartOrSessionLoadClearsTheInFlightTurnMarker() throws Exception {
+        seedCachedSession("s1", "/p");
+        when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(new CompletableFuture<>());
+        driveToStreaming("s1");
+        sessionManager.onTurnStarted();
+        assertTrue(turnInFlight());
+
+        sessionManager.resetForServerRestart();
+        assertFalse(turnInFlight(), "a server restart must clear the in-flight turn");
+
+        sessionManager.onTurnStarted();
+        var load = SessionManager.class.getDeclaredMethod("loadSession",
+                String.class, boolean.class, boolean.class);
+        load.setAccessible(true);
+        load.invoke(sessionManager, "s1", false, false);
+        assertFalse(turnInFlight(), "a display session load must clear the in-flight turn");
+    }
+
+    private boolean turnInFlight() throws Exception {
+        var field = SessionManager.class.getDeclaredField("turnInFlight");
+        field.setAccessible(true);
+        return field.getBoolean(sessionManager);
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     void captureTranscriptFailsInsteadOfExportingPartialHistoryAtDeadline() throws Exception {
         seedCachedSession("s1", "/p");

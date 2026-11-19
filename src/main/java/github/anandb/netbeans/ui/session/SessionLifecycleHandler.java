@@ -405,6 +405,10 @@ public class SessionLifecycleHandler implements SessionListener {
         }
 
         if (endOfTurn) {
+            // The SSE signal is authoritative for the session service too (the RPC
+            // result may be lost or arrive late): clear the in-flight turn so a
+            // transcript export is never left permanently refused.
+            runTurnEndedOffEdt();
             // Debounce finalization via the panel's shared flush timer (reset on
             // every processed message), so it fires 300ms after the last one drains.
             // Also re-enable send/toolbar here — the RPC result may be lost or

@@ -1428,6 +1428,9 @@ public class SessionManager implements SessionQuery, SessionControl,
         // collector is swallowing; hand the replay back to the display by
         // failing the capture first.
         abortTranscriptCapture(new IllegalStateException("the session was reloaded"));
+        // The load takes ownership of the session: a turn still marked in flight
+        // for its previous view must not block later transcript exports.
+        clearInFlightTurn();
 
         if (processManager.isSessionLoadUnsupported()) {
             // Discovered on a previous call; do not clear the current session or
@@ -1845,6 +1848,9 @@ public class SessionManager implements SessionQuery, SessionControl,
      */
     public void resetForServerRestart() {
         abortTranscriptCapture(new IllegalStateException("the server was restarted"));
+        // In-flight prompts die with the connection; the marker must not survive
+        // the restart or every later export refuses with "a turn is running".
+        clearInFlightTurn();
         if (stateMachine.getState() != SessionState.IDLE
                 && stateMachine.transitionTo(SessionState.IDLE)) {
             LOG.info("resetForServerRestart: transitioning to IDLE");
@@ -1884,6 +1890,14 @@ public class SessionManager implements SessionQuery, SessionControl,
         }, 5000);
     }
 
+
+    /** Clears the in-flight turn marker: a session load or server restart takes
+     *  ownership of the session, so the old turn can no longer block a capture. */
+    private void clearInFlightTurn() {
+        synchronized (turnAdmissionLock) {
+            turnInFlight = false;
+        }
+    }
 
     @Override
     public void onTurnStarted() {

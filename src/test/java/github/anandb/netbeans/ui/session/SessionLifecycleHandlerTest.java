@@ -12,6 +12,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -28,6 +29,7 @@ import org.mockito.MockedStatic;
 import org.openide.util.NbPreferences;
 
 import github.anandb.netbeans.contract.SessionControl;
+import github.anandb.netbeans.contract.UpdateDispatcher;
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ModelRecords.PlanEntry;
 import github.anandb.netbeans.model.ProcessedMessage;
@@ -189,6 +191,24 @@ class SessionLifecycleHandlerTest {
 
     private void flushEdt() throws Exception {
         SwingUtilities.invokeAndWait(() -> { });
+    }
+
+    @Test
+    void anAuthoritativeSseTurnEndClearsTheSessionTurn() {
+        setUpMocks(false);
+        UpdateDispatcher dispatcher = (update, handler) -> { };
+        PlatformBridge bridge = mock(PlatformBridge.class);
+        when(bridge.service(UpdateDispatcher.class)).thenReturn(dispatcher);
+        platformBridgeMock.when(PlatformBridge::get).thenReturn(bridge);
+        SessionLifecycleHandler handler = newHandler();
+        SessionUpdate.UpdateData data = new SessionUpdate.UpdateData(MessageType.end_turn,
+                null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null);
+
+        handler.onSessionUpdate(new SessionUpdate(SessionUpdate.JSONRPC_VERSION,
+                SessionUpdate.METHOD, new SessionUpdate.Params("s1", data)));
+
+        verify(sessionControl, timeout(2000)).onTurnEnded();
     }
 
     private void stubCurrent(String currentId) {
