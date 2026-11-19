@@ -24,8 +24,31 @@ public interface DiffRangeControl {
      *        working tree (including untracked files)
      * @param lastCommits when set, start at the oldest of the last N commits
      *        before the end revision instead of using {@code fromRevision}
-     * @return {@code null} when the viewer was opened, otherwise a
-     *         human-readable error
+     * @return {@link Outcome#ok()} when the viewer was opened; the error
+     *         otherwise, with {@code vcsFailure} marking a broken VCS command
      */
-    String openDiffRange(File repoDir, String fromRevision, String toRevision, Integer lastCommits);
+    Outcome openDiffRange(File repoDir, String fromRevision, String toRevision, Integer lastCommits);
+
+    /**
+     * One open request's outcome: a null error means the diff was opened.
+     * {@code vcsFailure} marks a timed-out, truncated or nonzero VCS command —
+     * the command itself is broken, so tools report it as fatal rather than
+     * retrying the same arguments.
+     */
+    record Outcome(String error, boolean vcsFailure) {
+        /** The diff opened. */
+        public static Outcome ok() {
+            return new Outcome(null, false);
+        }
+
+        /** The request was invalid (bad revision, no repository, no range). */
+        public static Outcome invalid(String message) {
+            return new Outcome(message, false);
+        }
+
+        /** A VCS subprocess failed, timed out or was truncated. */
+        public static Outcome vcs(String message) {
+            return new Outcome(message, true);
+        }
+    }
 }

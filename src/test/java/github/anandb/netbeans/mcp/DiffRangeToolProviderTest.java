@@ -76,6 +76,9 @@ class DiffRangeToolProviderTest {
         when(mockLookup.lookup(DiffRangeControl.class)).thenReturn(control);
         when(mockLookup.lookup(ProjectQuery.class)).thenReturn(projectQuery);
         when(projectQuery.getAllOpenProjects()).thenReturn(new Project[0]);
+        // The port returns a typed outcome now; an unstubbed call means success.
+        when(control.openDiffRange(any(), any(), any(), any()))
+                .thenReturn(DiffRangeControl.Outcome.ok());
 
         fileUtilMock = mockStatic(FileUtil.class);
         provider = new DiffRangeToolProvider();
@@ -327,13 +330,29 @@ class DiffRangeToolProviderTest {
         File repo = vcsRepo("repo", ".git");
         openProjectAt(tempDir.toFile());
         when(control.openDiffRange(repo, "HEAD~9", null, null))
-                .thenReturn("Unknown Git revision: HEAD~9");
+                .thenReturn(DiffRangeControl.Outcome.invalid("Unknown Git revision: HEAD~9"));
 
         Map<String, Object> result = diffRange().execute(
                 new DiffRangeInput(repo.getAbsolutePath(), "HEAD~9", null, null));
 
         assertEquals("error", result.get("status"));
         assertEquals("Unknown Git revision: HEAD~9", result.get("message"));
+    }
+
+    @Test
+    void reportsBrokenVcsCommandsAsFatal() throws Exception {
+        File repo = vcsRepo("repo", ".git");
+        openProjectAt(tempDir.toFile());
+        when(control.openDiffRange(repo, "HEAD", null, null))
+                .thenReturn(DiffRangeControl.Outcome.vcs("git diff timed out"));
+
+        Map<String, Object> result = diffRange().execute(
+                new DiffRangeInput(repo.getAbsolutePath(), "HEAD", null, null));
+
+        assertEquals("error", result.get("status"));
+        assertEquals("git diff timed out", result.get("message"));
+        assertEquals(Boolean.TRUE, result.get("fatal"),
+                "a timed-out VCS command must be fatal, not a plain error");
     }
 
     private void noOpenProjects() {

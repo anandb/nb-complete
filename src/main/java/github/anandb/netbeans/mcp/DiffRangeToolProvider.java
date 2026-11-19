@@ -102,9 +102,14 @@ public class DiffRangeToolProvider {
                         LOG.info("diff_range tool called: repo={0}, from={1}, to={2}, lastCommits={3}",
                                 info.rootDir().getAbsolutePath(), from, to, lastCommits);
 
-                        String error = control.openDiffRange(info.rootDir(), from, to, lastCommits);
-                        if (error != null) {
-                            return ToolResults.error(error);
+                        DiffRangeControl.Outcome outcome =
+                                control.openDiffRange(info.rootDir(), from, to, lastCommits);
+                        if (outcome.error() != null) {
+                            // A broken VCS command is fatal (per the MCP error
+                            // policy); an invalid request stays a plain error.
+                            return outcome.vcsFailure()
+                                    ? ToolResults.fatal(outcome.error())
+                                    : ToolResults.error(outcome.error());
                         }
                         String message;
                         if (lastCommits != null) {

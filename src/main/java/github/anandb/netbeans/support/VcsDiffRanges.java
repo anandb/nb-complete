@@ -298,10 +298,10 @@ public final class VcsDiffRanges {
 
     private static void requireSuccess(VcsUtils.CapturedCommand result, String label) throws IOException {
         if (result.timedOut()) {
-            throw new IOException(label + " timed out");
+            throw new VcsCommandException(label + " timed out");
         }
         if (result.truncated()) {
-            throw new IOException(label + " output exceeded the capture limit");
+            throw new VcsCommandException(label + " output exceeded the capture limit");
         }
         if (result.exitCode() != 0) {
             String detail = FatalPrefixPattern.stripFrom(result.output()).trim();
@@ -309,7 +309,7 @@ public final class VcsDiffRanges {
             if (newline >= 0) {
                 detail = detail.substring(0, newline).trim();
             }
-            throw new IOException(detail.isEmpty() ? label + " failed" : detail);
+            throw new VcsCommandException(detail.isEmpty() ? label + " failed" : detail);
         }
     }
 

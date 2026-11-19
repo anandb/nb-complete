@@ -7,13 +7,17 @@ import java.util.List;
 import javax.swing.SwingUtilities;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.openide.awt.NotificationDisplayer;
+import org.openide.util.NbBundle;
 import org.openide.util.RequestProcessor;
 import org.openide.util.lookup.ServiceProvider;
 
 import github.anandb.netbeans.contract.DiffRangeControl;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.VcsCommandException;
 import github.anandb.netbeans.support.VcsDiffRanges;
 import github.anandb.netbeans.support.VcsUtils;
+import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.editor.StashDiffAction.FileDiff;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
@@ -33,13 +37,13 @@ public final class DiffRangeViewer implements DiffRangeControl {
     private static final RequestProcessor LOAD_RP = new RequestProcessor("DiffRange-load", 4);
 
     @Override
-    public String openDiffRange(File repoDir, String fromRevision, String toRevision, Integer lastCommits) {
+    public Outcome openDiffRange(File repoDir, String fromRevision, String toRevision, Integer lastCommits) {
         if (repoDir == null) {
-            return "Repository directory is required";
+            return Outcome.invalid("Repository directory is required");
         }
         VcsUtils.VcsInfo info = VcsDiffRanges.findRepo(repoDir.getAbsolutePath());
         if (info == null) {
-            return "Not a Git or Mercurial repository: " + repoDir;
+            return Outcome.invalid("Not a Git or Mercurial repository: " + repoDir);
         }
         String defaultTip = VcsDiffRanges.defaultTip(info.type());
         boolean workingTree = isBlank(toRevision);
@@ -48,7 +52,7 @@ public final class DiffRangeViewer implements DiffRangeControl {
         try {
             String error = VcsDiffRanges.validateRevision(info.rootDir(), info.type(), tip);
             if (error != null) {
-                return error;
+                return Outcome.invalid(error);
             }
             String from;
             String title;
@@ -62,12 +66,12 @@ public final class DiffRangeViewer implements DiffRangeControl {
                 }
             } else {
                 if (isBlank(fromRevision)) {
-                    return "fromRevision is required unless lastCommits is set";
+                    return Outcome.invalid("fromRevision is required unless lastCommits is set");
                 }
                 from = fromRevision.trim();
                 error = VcsDiffRanges.validateRevision(info.rootDir(), info.type(), from);
                 if (error != null) {
-                    return error;
+                    return Outcome.invalid(error);
                 }
                 title = from + ".." + targetName;
             }
@@ -76,14 +80,19 @@ public final class DiffRangeViewer implements DiffRangeControl {
             List<VcsDiffRanges.ChangedFile> changed =
                     VcsDiffRanges.listChanges(info.rootDir(), info.type(), from, to);
             if (changed.isEmpty()) {
-                return "No changes between " + from + " and " + targetName;
+                return Outcome.invalid("No changes between " + from + " and " + targetName);
             }
             title += " (" + changed.size() + " file" + (changed.size() == 1 ? "" : "s") + ")";
             loadAndOpen(info, from, to, changed, title);
-            return null;
+            return Outcome.ok();
+        } catch (VcsCommandException e) {
+            // The VCS command itself failed — fatal for the tool: retrying
+            // the same arguments cannot succeed.
+            return Outcome.vcs(e.getMessage());
         } catch (Exception e) {
             String message = e.getMessage();
-            return message != null && !message.isBlank() ? message : "Failed to open diff range";
+            return Outcome.invalid(message != null && !message.isBlank() ? message
+                    : "Failed to open diff range");
         }
     }
 
@@ -110,6 +119,18 @@ public final class DiffRangeViewer implements DiffRangeControl {
             } catch (Exception e) {
                 LOG.warn("Failed to load diff range {0}..{1}: {2}", from, to,
                         ExceptionUtils.getMessage(e));
+                String detail = e.getMessage();
+                String reason = detail != null && !detail.isBlank() ? detail
+                        : ExceptionUtils.getMessage(e);
+                String message = NbBundle.getMessage(UIBundle.class,
+                        "MSG_DiffRangeLoadFailed", reason == null ? "" : reason);
+                SwingUtilities.invokeLater(() -> {
+                    NotificationDisplayer displayer = NotificationDisplayer.getDefault();
+                    if (displayer != null) {
+                        displayer.notify(title, NotificationDisplayer.Priority.HIGH.getIcon(),
+                                message, null, NotificationDisplayer.Priority.HIGH);
+                    }
+                });
             }
         });
     }

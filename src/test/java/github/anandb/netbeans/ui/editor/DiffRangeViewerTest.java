@@ -12,6 +12,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import github.anandb.netbeans.contract.DiffRangeControl;
 /**
  * Error and early-return paths of the {@link DiffRangeViewer} port adapter.
  * The success path opens a Swing TopComponent and is covered manually.
@@ -26,7 +27,7 @@ class DiffRangeViewerTest {
     @Test
     void rejectsMissingRepository() {
         assertEquals("Repository directory is required",
-                viewer.openDiffRange(null, "HEAD~1", null, null));
+                viewer.openDiffRange(null, "HEAD~1", null, null).error());
     }
 
     @Test
@@ -35,7 +36,7 @@ class DiffRangeViewerTest {
         assertTrue(plain.mkdirs());
 
         assertEquals("Not a Git or Mercurial repository: " + plain,
-                viewer.openDiffRange(plain, "HEAD~1", null, null));
+                viewer.openDiffRange(plain, "HEAD~1", null, null).error());
     }
 
     @Test
@@ -43,7 +44,7 @@ class DiffRangeViewerTest {
         File repo = initGitRepo();
 
         assertEquals("Unknown Git revision: nope",
-                viewer.openDiffRange(repo, "nope", null, null));
+                viewer.openDiffRange(repo, "nope", null, null).error());
     }
 
     @Test
@@ -51,7 +52,7 @@ class DiffRangeViewerTest {
         File repo = initGitRepo();
 
         assertEquals("lastCommits must be at least 1",
-                viewer.openDiffRange(repo, null, null, 0));
+                viewer.openDiffRange(repo, null, null, 0).error());
     }
 
     @Test
@@ -59,7 +60,7 @@ class DiffRangeViewerTest {
         File repo = initGitRepo();
 
         assertEquals("No changes between HEAD and HEAD",
-                viewer.openDiffRange(repo, "HEAD", "HEAD", null));
+                viewer.openDiffRange(repo, "HEAD", "HEAD", null).error());
     }
 
     @Test
@@ -67,7 +68,19 @@ class DiffRangeViewerTest {
         File repo = initGitRepo();
 
         assertEquals("No changes between HEAD and working tree",
-                viewer.openDiffRange(repo, "HEAD", null, null));
+                viewer.openDiffRange(repo, "HEAD", null, null).error());
+    }
+
+    @Test
+    void classifiesBrokenVcsCommandsAsFatal() throws Exception {
+        // A corrupt index makes git diff fail while the revisions still
+        // validate — the command is broken, so the outcome must be fatal.
+        File repo = initGitRepo();
+        Files.write(new File(new File(repo, ".git"), "index").toPath(), new byte[] {1, 2, 3});
+
+        DiffRangeControl.Outcome outcome = viewer.openDiffRange(repo, "HEAD", null, null);
+
+        assertTrue(outcome.vcsFailure(), "a nonzero git diff must be fatal, got: " + outcome.error());
     }
 
     private File initGitRepo() throws Exception {
