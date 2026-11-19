@@ -8,12 +8,14 @@ import java.util.Map;
 
 import github.anandb.netbeans.pattern.GitDiffTargetPattern;
 import github.anandb.netbeans.pattern.SinceFilterPattern;
+import github.anandb.netbeans.stereotype.McpToolProvider;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
 /**
  * Registers MCP tools for git operations: status, diff, log, and file history.
  */
+@McpToolProvider
 public class GitToolProvider {
 
     public void registerTools(McpTools mcpTools) {

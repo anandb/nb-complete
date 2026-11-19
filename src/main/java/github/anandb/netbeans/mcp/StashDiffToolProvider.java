@@ -6,6 +6,7 @@ import github.anandb.netbeans.contract.ProjectQuery;
 import github.anandb.netbeans.contract.StashDiffControl;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.stereotype.McpToolProvider;
 
 import java.io.File;
 import java.util.Map;
@@ -14,6 +15,7 @@ import org.netbeans.api.project.Project;
 import org.openide.filesystems.FileUtil;
 import org.openide.util.Lookup;
 
+@McpToolProvider
 public class StashDiffToolProvider {
 
     private static final Logger LOG = Logger.from(StashDiffToolProvider.class);

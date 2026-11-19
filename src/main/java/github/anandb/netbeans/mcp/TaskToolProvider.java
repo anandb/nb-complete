@@ -21,11 +21,13 @@ import github.anandb.netbeans.pattern.PriorityPattern;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.FileAccessGuard;
 import github.anandb.netbeans.support.ProjectPaths;
+import github.anandb.netbeans.stereotype.McpToolProvider;
 
 /**
  * Registers the {@code add_task} MCP tool so the chat plugin (or any ACP
  * client) can create tasks directly in a Beanbot Tasks repository.
  */
+@McpToolProvider
 public class TaskToolProvider {
 
     private static final Logger LOG = Logger.from(TaskToolProvider.class);

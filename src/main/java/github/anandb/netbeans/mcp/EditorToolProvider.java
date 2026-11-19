@@ -7,6 +7,7 @@ import github.anandb.netbeans.contract.EditorContextQuery;
 import github.anandb.netbeans.contract.SessionControl;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.ProjectPaths;
+import github.anandb.netbeans.stereotype.McpToolProvider;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 
@@ -29,6 +30,7 @@ import static org.apache.commons.lang3.StringUtils.defaultIfBlank;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
+@McpToolProvider
 public class EditorToolProvider {
 
     private static final Logger LOG = Logger.from(EditorToolProvider.class);

@@ -8,6 +8,7 @@ import java.util.Map;
 
 import github.anandb.netbeans.pattern.HgDiffTargetPattern;
 import github.anandb.netbeans.pattern.SinceFilterPattern;
+import github.anandb.netbeans.stereotype.McpToolProvider;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
@@ -19,6 +20,7 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
  * user-supplied revision/date tokens are validated against safe patterns so
  * option flags cannot be smuggled into the argv.
  */
+@McpToolProvider
 public class HgToolProvider {
 
     /** One-line template shared by hg_log and hg_file_hist (tab-separated). */

@@ -5,6 +5,7 @@ import java.security.SecureRandom;
 import java.util.logging.Level;
 
 import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.stereotype.Boundary;
 import org.openide.util.RequestProcessor;
 
 import github.anandb.netbeans.support.Logger;
@@ -14,6 +15,7 @@ import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
 
+@Boundary
 public class McpServer {
 
     private static final Logger LOG = Logger.from(McpServer.class);

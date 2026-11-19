@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import github.anandb.netbeans.contract.ProjectQuery;
 import github.anandb.netbeans.support.ProjectPaths;
+import github.anandb.netbeans.stereotype.McpToolProvider;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,6 +18,7 @@ import org.openide.util.Lookup;
  * providers are fire-and-forget and return no result to the agent, so they
  * provide no feedback loop. Only tools that return real data are registered.
  */
+@McpToolProvider
 public class ProjectToolProvider {
 
     public void registerTools(McpTools mcpTools) {

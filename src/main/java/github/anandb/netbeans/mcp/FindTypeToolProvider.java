@@ -29,6 +29,7 @@ import org.netbeans.api.project.Project;
 
 import github.anandb.netbeans.contract.ProjectQuery;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.stereotype.McpToolProvider;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
@@ -37,6 +38,7 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
  * Type. The GUI action is internal to the jumpto module and modal, so this tool
  * searches the public {@link ClassIndex} API instead and returns paths.
  */
+@McpToolProvider
 final class FindTypeToolProvider {
 
     private static final Logger LOG = Logger.from(FindTypeToolProvider.class);

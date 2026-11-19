@@ -1,6 +1,7 @@
 package github.anandb.netbeans.mcp;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import github.anandb.netbeans.stereotype.McpToolInput;
 
 /**
  * Input for the {@code find_file} MCP tool.
@@ -10,5 +11,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  *              {@code projects} (every open project)
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
+@McpToolInput
 public record FindFileInput(String query, String scope) {
 }

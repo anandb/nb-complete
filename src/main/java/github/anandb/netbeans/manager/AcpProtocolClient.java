@@ -35,6 +35,7 @@ import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MapperSupplier;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.WireLogger;
+import github.anandb.netbeans.stereotype.Boundary;
 
 import static github.anandb.netbeans.support.AgentUtils.closeQuietly;
 
@@ -78,6 +79,7 @@ import static github.anandb.netbeans.support.AgentUtils.closeQuietly;
  * inserting the future into {@code pendingRequests}, removing the orphan if
  * {@code close()} drained the map in the race window.
  */
+@Boundary
 public class AcpProtocolClient implements Closeable {
     private static final Logger LOG = Logger.from(AcpProtocolClient.class);
     private static final ObjectMapper MAPPER = MapperSupplier.get();

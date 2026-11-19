@@ -14,6 +14,7 @@ import github.anandb.netbeans.support.FileAccessGuard;
 import github.anandb.netbeans.support.SecretPaths;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.RunCommandPolicy;
+import github.anandb.netbeans.stereotype.McpToolProvider;
 import static github.anandb.netbeans.mcp.ProjectPathGuard.outsideProjectError;
 
 import java.io.BufferedReader;
@@ -43,6 +44,7 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
  * Registers MCP tools for file system operations: read, write, replace,
  * insert, search, list directory and run command.
  */
+@McpToolProvider
 public class FileSystemToolProvider {
 
     private static final Logger LOG = Logger.from(FileSystemToolProvider.class);

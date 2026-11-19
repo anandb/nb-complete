@@ -16,6 +16,7 @@ import github.anandb.netbeans.contract.FileCacheQuery;
 import github.anandb.netbeans.contract.SessionQuery;
 import github.anandb.netbeans.pattern.FileNameMatcher;
 import github.anandb.netbeans.support.FileAccessGuard;
+import github.anandb.netbeans.stereotype.McpToolProvider;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
@@ -31,6 +32,7 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
  * automatically, and an empty scoped answer is retried across projects before it is reported —
  * a directory the index cannot cover must not read as "no such file".</p>
  */
+@McpToolProvider
 final class FindFileToolProvider {
 
     /** The tool returns at most this many matches; the description states it. */
