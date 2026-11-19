@@ -1,5 +1,7 @@
 package github.anandb.netbeans.mcp;
 
+import github.anandb.netbeans.mcp.input.StashDiffInput;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;

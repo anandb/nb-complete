@@ -1,8 +1,12 @@
-package github.anandb.netbeans.mcp;
+package github.anandb.netbeans.mcp.input;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import github.anandb.netbeans.stereotype.McpToolInput;
 
+/** MCP input for the {@code close_task} tool. */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @McpToolInput
-public record StashDiffInput(Integer stashIndex, String repoDir) {}
+public record CloseTaskInput(
+    String repoId,
+    String taskId
+) {}

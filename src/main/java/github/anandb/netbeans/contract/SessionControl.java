@@ -1,5 +1,7 @@
 package github.anandb.netbeans.contract;
 
+import github.anandb.netbeans.stereotype.HexagonalPort;
+
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import java.util.Collection;
@@ -11,6 +13,7 @@ import java.util.function.BiFunction;
  * Write operations for session lifecycle management.
  * UI layer should depend on this interface rather than the concrete SessionManager.
  */
+@HexagonalPort
 public interface SessionControl extends SessionQuery {
 
     /** Registers a session lifecycle listener. */

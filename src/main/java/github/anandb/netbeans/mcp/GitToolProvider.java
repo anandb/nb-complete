@@ -1,5 +1,10 @@
 package github.anandb.netbeans.mcp;
 
+import github.anandb.netbeans.mcp.input.FileHistoryInput;
+import github.anandb.netbeans.mcp.input.GitDiffInput;
+import github.anandb.netbeans.mcp.input.GitLogInput;
+import github.anandb.netbeans.mcp.input.GitStatusInput;
+
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.util.ArrayList;

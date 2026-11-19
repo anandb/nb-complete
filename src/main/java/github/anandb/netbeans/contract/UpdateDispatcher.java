@@ -1,5 +1,7 @@
 package github.anandb.netbeans.contract;
 
+import github.anandb.netbeans.stereotype.HexagonalPort;
+
 import github.anandb.netbeans.model.SessionUpdate;
 
 /**
@@ -7,6 +9,7 @@ import github.anandb.netbeans.model.SessionUpdate;
  * Implementations process {@link SessionUpdate} events and route them
  * to the appropriate UI handlers.
  */
+@HexagonalPort
 public interface UpdateDispatcher {
 
     /** Handles a session update by routing it through the strategy chain. */

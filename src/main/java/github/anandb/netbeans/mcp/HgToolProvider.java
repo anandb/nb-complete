@@ -1,5 +1,10 @@
 package github.anandb.netbeans.mcp;
 
+import github.anandb.netbeans.mcp.input.HgDiffInput;
+import github.anandb.netbeans.mcp.input.HgFileHistoryInput;
+import github.anandb.netbeans.mcp.input.HgLogInput;
+import github.anandb.netbeans.mcp.input.HgStatusInput;
+
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.util.ArrayList;

@@ -1,4 +1,4 @@
-package github.anandb.netbeans.contract;
+package github.anandb.netbeans.model;
 
 import java.util.ArrayList;
 import java.util.List;

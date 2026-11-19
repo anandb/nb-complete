@@ -1,5 +1,7 @@
 package github.anandb.netbeans.contract;
 
+import github.anandb.netbeans.stereotype.HexagonalPort;
+
 import github.anandb.netbeans.model.UsageRecords.ToolCallStatus;
 
 /**
@@ -10,6 +12,7 @@ import github.anandb.netbeans.model.UsageRecords.ToolCallStatus;
  * <p>An implementation must never block the caller and must never throw: a tool
  * results in the harness are more important than a captured row.</p>
  */
+@HexagonalPort
 public interface ToolCallRecorder {
 
     /**

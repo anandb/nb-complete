@@ -1,5 +1,10 @@
 package github.anandb.netbeans.mcp;
 
+import github.anandb.netbeans.mcp.input.FileHistoryInput;
+import github.anandb.netbeans.mcp.input.GitDiffInput;
+import github.anandb.netbeans.mcp.input.GitLogInput;
+import github.anandb.netbeans.mcp.input.GitStatusInput;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;

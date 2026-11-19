@@ -1,5 +1,7 @@
 package github.anandb.netbeans.contract;
 
+import github.anandb.netbeans.stereotype.HexagonalPort;
+
 import org.netbeans.api.project.Project;
 
 import java.util.function.Consumer;
@@ -17,6 +19,7 @@ import java.util.function.Consumer;
  * Not Swing-free — carries {@link Project} (a NetBeans API type). This is a
  * platform boundary type, so NetBeans types are expected here.
  */
+@HexagonalPort
 public interface ProjectQuery {
 
     /**

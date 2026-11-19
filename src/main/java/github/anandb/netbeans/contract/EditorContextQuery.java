@@ -1,11 +1,14 @@
 package github.anandb.netbeans.contract;
 
+import github.anandb.netbeans.stereotype.HexagonalPort;
+
 import java.util.Map;
 
 /**
  * Port for capturing editor context (file path, selection, cursor position).
  * Used by MCP tools to provide context to the AI without depending on ui/ layer.
  */
+@HexagonalPort
 public interface EditorContextQuery {
 
     /**

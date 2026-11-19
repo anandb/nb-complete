@@ -1,5 +1,7 @@
 package github.anandb.netbeans.mcp;
 
+import github.anandb.netbeans.mcp.input.FindTypeInput;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;

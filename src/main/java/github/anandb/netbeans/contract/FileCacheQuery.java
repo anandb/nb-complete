@@ -1,5 +1,7 @@
 package github.anandb.netbeans.contract;
 
+import github.anandb.netbeans.stereotype.HexagonalPort;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -11,6 +13,7 @@ import org.openide.filesystems.FileObject;
  *
  * <p>Layer: contract (lowest) — imports only java.util and openide.filesystems.</p>
  */
+@HexagonalPort
 public interface FileCacheQuery {
 
     /** Returns {@code true} if the initial cache build has completed. */

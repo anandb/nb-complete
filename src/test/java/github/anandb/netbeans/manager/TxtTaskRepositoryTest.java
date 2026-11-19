@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.openide.util.RequestProcessor;
 
-import github.anandb.netbeans.contract.TaskInput;
+import github.anandb.netbeans.model.TaskInput;
 import github.anandb.netbeans.model.TaskRecord;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

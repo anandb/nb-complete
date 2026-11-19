@@ -1,5 +1,7 @@
 package github.anandb.netbeans.contract;
 
+import github.anandb.netbeans.stereotype.HexagonalPort;
+
 import github.anandb.netbeans.model.UsageRecords.MessageEvent;
 import github.anandb.netbeans.model.UsageRecords.MessageUsageRow;
 import github.anandb.netbeans.model.UsageRecords.PromptUsageRow;
@@ -18,6 +20,7 @@ import java.util.List;
  * methods enqueue and return, so an EDT caller is never blocked on I/O. The
  * query method may block on the database and is documented for background use.</p>
  */
+@HexagonalPort
 public interface UsageStatsStore {
 
     /** Records a {@code usage_update} notification as one row. Never blocks on I/O. */

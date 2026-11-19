@@ -1,5 +1,7 @@
 package github.anandb.netbeans.contract;
 
+import github.anandb.netbeans.stereotype.HexagonalPort;
+
 import java.util.List;
 
 import github.anandb.netbeans.model.ModelRecords.PlanEntry;
@@ -7,6 +9,7 @@ import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionConfigOption;
 
 /** Receives processed content and dispatches to UI thread for rendering. */
+@HexagonalPort
 public interface UIHandler {
 
     /** Renders a processed message in the chat panel. */

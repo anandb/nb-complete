@@ -21,7 +21,7 @@ import org.openide.NotifyDescriptor;
 import org.openide.util.RequestProcessor;
 import org.openide.util.lookup.ServiceProvider;
 
-import github.anandb.netbeans.contract.TaskInput;
+import github.anandb.netbeans.model.TaskInput;
 import github.anandb.netbeans.contract.TaskRepositoryControl;
 import github.anandb.netbeans.model.TaskRecord;
 import github.anandb.netbeans.support.Logger;

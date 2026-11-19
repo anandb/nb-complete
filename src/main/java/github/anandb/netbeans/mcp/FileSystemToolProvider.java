@@ -1,5 +1,14 @@
 package github.anandb.netbeans.mcp;
 
+import github.anandb.netbeans.mcp.input.DeleteLinesInput;
+import github.anandb.netbeans.mcp.input.InsertInFileInput;
+import github.anandb.netbeans.mcp.input.ListDirectoryInput;
+import github.anandb.netbeans.mcp.input.ReadFileInput;
+import github.anandb.netbeans.mcp.input.ReplaceLinesInput;
+import github.anandb.netbeans.mcp.input.RunCommandInput;
+import github.anandb.netbeans.mcp.input.SearchProjectInput;
+import github.anandb.netbeans.mcp.input.WriteToFileInput;
+
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import github.anandb.netbeans.contract.ProjectQuery;

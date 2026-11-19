@@ -1,5 +1,7 @@
 package github.anandb.netbeans.contract;
 
+import github.anandb.netbeans.stereotype.HexagonalPort;
+
 import java.util.Set;
 
 /**
@@ -7,6 +9,7 @@ import java.util.Set;
  * UI layer depends on this interface (via Lookup) to query and toggle pin state.
  * Implementations handle persistence (NbPreferences).
  */
+@HexagonalPort
 public interface PinnedMessageControl {
 
     /** Returns {@code true} if the given message is pinned within the session. */

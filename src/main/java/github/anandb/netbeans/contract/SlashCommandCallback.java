@@ -1,11 +1,14 @@
 package github.anandb.netbeans.contract;
 
+import github.anandb.netbeans.stereotype.HexagonalPort;
+
 /**
  * Callback interface for slash commands to trigger UI actions.
  * Implementations bridge from the command interceptor (background) to
  * the Swing UI thread for operations like opening combo popups, toggling
  * panels, and displaying tool messages.
  */
+@HexagonalPort
 public interface SlashCommandCallback {
 
     /** Expands the options panel if it is currently collapsed. */

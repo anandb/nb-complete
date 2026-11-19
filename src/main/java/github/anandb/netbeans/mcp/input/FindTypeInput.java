@@ -1,4 +1,4 @@
-package github.anandb.netbeans.mcp;
+package github.anandb.netbeans.mcp.input;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import github.anandb.netbeans.stereotype.McpToolInput;

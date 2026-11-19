@@ -1,12 +1,9 @@
-package github.anandb.netbeans.mcp;
+package github.anandb.netbeans.mcp.input;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import github.anandb.netbeans.stereotype.McpToolInput;
 
-/** MCP input for the {@code search_task} tool. */
+/** MCP input for the hg_status tool. */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @McpToolInput
-public record SearchTaskInput(
-    String repoId,
-    String query
-) {}
+public record HgStatusInput(String repoDir) {}

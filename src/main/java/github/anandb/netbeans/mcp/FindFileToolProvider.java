@@ -1,5 +1,7 @@
 package github.anandb.netbeans.mcp;
 
+import github.anandb.netbeans.mcp.input.FindFileInput;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;

@@ -1,5 +1,7 @@
 package github.anandb.netbeans.contract;
 
+import github.anandb.netbeans.stereotype.HexagonalPort;
+
 import github.anandb.netbeans.model.MigrationReport;
 import github.anandb.netbeans.model.SessionMetadata;
 
@@ -18,6 +20,7 @@ import java.util.Map;
  * <p>Nothing in this contract throws for a data problem: a migration that meets
  * unusable legacy entries reports them rather than failing.</p>
  */
+@HexagonalPort
 public interface SessionStore {
 
     /** Bucket holding sessions of a harness that is not configured. */

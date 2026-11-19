@@ -1,5 +1,7 @@
 package github.anandb.netbeans.contract;
 
+import github.anandb.netbeans.stereotype.HexagonalPort;
+
 import github.anandb.netbeans.model.Session;
 
 import github.anandb.netbeans.model.SessionConfigOption;
@@ -11,6 +13,7 @@ import java.util.concurrent.CompletableFuture;
  * Read-only queries on the current session state.
  * UI layer should depend on this interface rather than the concrete SessionManager.
  */
+@HexagonalPort
 public interface SessionQuery {
 
     /** Returns the current active session ID, or null if no session is active. */

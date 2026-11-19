@@ -19,7 +19,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 
-import github.anandb.netbeans.contract.TaskInput;
+import github.anandb.netbeans.model.TaskInput;
 
 /**
  * Chip-based multi-select editor. Selected values are shown as removable pills;

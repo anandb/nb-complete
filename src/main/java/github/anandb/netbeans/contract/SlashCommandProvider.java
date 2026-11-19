@@ -1,6 +1,9 @@
 package github.anandb.netbeans.contract;
 
+import github.anandb.netbeans.stereotype.HexagonalPort;
+
 /** SPI for registering slash commands via @ServiceProvider. */
+@HexagonalPort
 public interface SlashCommandProvider {
 
     /** @return command string including leading slash, e.g. "/new". */

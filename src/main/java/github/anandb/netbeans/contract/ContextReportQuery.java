@@ -1,5 +1,7 @@
 package github.anandb.netbeans.contract;
 
+import github.anandb.netbeans.stereotype.HexagonalPort;
+
 import java.util.concurrent.CompletableFuture;
 
 import github.anandb.netbeans.model.ContextReport;
@@ -9,6 +11,7 @@ import github.anandb.netbeans.model.ContextReport;
  * goose's {@code _goose/unstable/context/report} can answer; for any other agent
  * {@link #canReportContext()} is false and callers show nothing.
  */
+@HexagonalPort
 public interface ContextReportQuery {
 
     /** True when the harness can break down what fills the session's context window. */

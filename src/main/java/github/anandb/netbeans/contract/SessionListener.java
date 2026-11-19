@@ -1,11 +1,14 @@
 package github.anandb.netbeans.contract;
 
+import github.anandb.netbeans.stereotype.HexagonalPort;
+
 import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.SessionUpdate;
 import java.util.List;
 
 /** Listener for session lifecycle events. */
+@HexagonalPort
 public interface SessionListener {
 
     /** Fired when the list of available sessions changes. */

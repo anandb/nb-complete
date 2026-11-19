@@ -1,5 +1,9 @@
 package github.anandb.netbeans.mcp;
 
+import github.anandb.netbeans.mcp.input.EmptyToolInput;
+import github.anandb.netbeans.mcp.input.OpenFileInput;
+import github.anandb.netbeans.mcp.input.RenameSessionInput;
+
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 

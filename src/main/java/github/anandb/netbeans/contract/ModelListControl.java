@@ -1,5 +1,7 @@
 package github.anandb.netbeans.contract;
 
+import github.anandb.netbeans.stereotype.HexagonalPort;
+
 import github.anandb.netbeans.model.AvailableModel;
 import java.util.List;
 
@@ -15,6 +17,7 @@ import java.util.List;
  *
  * <p>Layer: contract — imports only {@code model/}.</p>
  */
+@HexagonalPort
 public interface ModelListControl {
 
     /** Returns the last known model list for the harness, or an empty list. */

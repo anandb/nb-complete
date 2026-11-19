@@ -1,5 +1,7 @@
 package github.anandb.netbeans.contract;
 
+import github.anandb.netbeans.stereotype.HexagonalPort;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.Map;
@@ -13,6 +15,7 @@ import github.anandb.netbeans.model.Harness;
  * Control interface for the ACP process and message sending.
  * UI layer should depend on this interface rather than the concrete ProcessManager.
  */
+@HexagonalPort
 public interface ProcessControl {
 
     /** Ensures the server process is started. */

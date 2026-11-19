@@ -1,5 +1,7 @@
 package github.anandb.netbeans.contract;
 
+import github.anandb.netbeans.stereotype.HexagonalPort;
+
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -7,6 +9,7 @@ import java.util.concurrent.CompletableFuture;
  * Lower layers should depend on this interface rather than the concrete
  * manager/UpdateCheckerService.
  */
+@HexagonalPort
 public interface UpdateCheckerControl {
 
     /** Starts the background update-check loop. Safe to call multiple times. */

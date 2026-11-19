@@ -1,11 +1,14 @@
 package github.anandb.netbeans.contract;
 
+import github.anandb.netbeans.stereotype.HexagonalPort;
+
 import java.io.File;
 
 /**
  * Port for opening stash diffs from non-UI layers (e.g. MCP tools).
  * Implementations live in {@code ui/}; consumers look up via {@code Lookup}.
  */
+@HexagonalPort
 public interface StashDiffControl {
 
     /** Open the stash diff viewer for the given stash index. */

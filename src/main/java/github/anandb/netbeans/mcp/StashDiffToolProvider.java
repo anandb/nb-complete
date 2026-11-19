@@ -1,5 +1,7 @@
 package github.anandb.netbeans.mcp;
 
+import github.anandb.netbeans.mcp.input.StashDiffInput;
+
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import github.anandb.netbeans.contract.ProjectQuery;

@@ -1,7 +1,10 @@
 package github.anandb.netbeans.contract;
 
+import github.anandb.netbeans.stereotype.HexagonalPort;
+
 import java.util.List;
 
+import github.anandb.netbeans.model.TaskInput;
 import github.anandb.netbeans.model.TaskRecord;
 
 /**
@@ -16,6 +19,7 @@ import github.anandb.netbeans.model.TaskRecord;
  * <p>Only this port (and the {@code BugtrackingConnector}) is looked up globally;
  * the underlying provider interfaces are never registered as services.</p>
  */
+@HexagonalPort
 public interface TaskRepositoryControl {
 
     /** The ids of all known repositories. */

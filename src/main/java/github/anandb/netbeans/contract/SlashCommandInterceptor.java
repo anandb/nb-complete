@@ -1,5 +1,7 @@
 package github.anandb.netbeans.contract;
 
+import github.anandb.netbeans.stereotype.HexagonalPort;
+
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import github.anandb.netbeans.model.ModelRecords.CommandInfo;
@@ -9,6 +11,7 @@ import org.openide.util.Lookup;
  * Intercepts slash commands typed in the chat input. Commands starting
  * with "/" are matched against registered handlers before being sent to the AI.
  */
+@HexagonalPort
 public interface SlashCommandInterceptor {
 
     /** Registers the callback for triggering UI actions from commands. */

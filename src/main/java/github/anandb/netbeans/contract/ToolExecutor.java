@@ -1,5 +1,7 @@
 package github.anandb.netbeans.contract;
 
+import github.anandb.netbeans.stereotype.HexagonalPort;
+
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -9,6 +11,7 @@ import github.anandb.netbeans.model.Harness;
  * Port for MCP tool execution capabilities.
  * Replaces the upward dependency from manager/ to mcp/McpManager.
  */
+@HexagonalPort
 public interface ToolExecutor {
 
     /** Starts the MCP tool server. */

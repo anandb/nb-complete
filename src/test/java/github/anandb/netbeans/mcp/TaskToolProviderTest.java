@@ -1,5 +1,10 @@
 package github.anandb.netbeans.mcp;
 
+import github.anandb.netbeans.mcp.input.AddTaskInput;
+import github.anandb.netbeans.mcp.input.CloseTaskInput;
+import github.anandb.netbeans.mcp.input.SearchTaskInput;
+import github.anandb.netbeans.mcp.input.UpdateTaskInput;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -34,7 +39,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import github.anandb.netbeans.contract.ProjectQuery;
 import github.anandb.netbeans.contract.SessionQuery;
-import github.anandb.netbeans.contract.TaskInput;
+import github.anandb.netbeans.model.TaskInput;
 import github.anandb.netbeans.contract.TaskRepositoryControl;
 import github.anandb.netbeans.model.TaskRecord;
 import github.anandb.netbeans.support.MapperSupplier;

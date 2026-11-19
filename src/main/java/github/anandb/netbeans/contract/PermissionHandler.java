@@ -1,9 +1,12 @@
 package github.anandb.netbeans.contract;
 
+import github.anandb.netbeans.stereotype.HexagonalPort;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.concurrent.CompletableFuture;
 
 /** Handles session/request_permission from the ACP server. */
+@HexagonalPort
 public interface PermissionHandler {
 
     /** Completes response future with user's decision ("allow" or "deny"). */

@@ -1,5 +1,7 @@
 package github.anandb.netbeans.mcp;
 
+import github.anandb.netbeans.mcp.input.AddTaskInput;
+
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;

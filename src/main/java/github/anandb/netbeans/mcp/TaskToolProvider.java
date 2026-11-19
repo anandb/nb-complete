@@ -1,5 +1,10 @@
 package github.anandb.netbeans.mcp;
 
+import github.anandb.netbeans.mcp.input.AddTaskInput;
+import github.anandb.netbeans.mcp.input.CloseTaskInput;
+import github.anandb.netbeans.mcp.input.SearchTaskInput;
+import github.anandb.netbeans.mcp.input.UpdateTaskInput;
+
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.io.File;
@@ -13,7 +18,7 @@ import org.netbeans.api.project.Project;
 
 import github.anandb.netbeans.contract.ProjectQuery;
 import github.anandb.netbeans.contract.SessionQuery;
-import github.anandb.netbeans.contract.TaskInput;
+import github.anandb.netbeans.model.TaskInput;
 import github.anandb.netbeans.contract.TaskRepositoryControl;
 import github.anandb.netbeans.model.TaskRecord;
 import github.anandb.netbeans.model.TaskStatus;
