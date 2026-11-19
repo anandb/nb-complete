@@ -62,9 +62,6 @@ final class PrefsMigration {
     /** Set once {@code modelList.*} keys have been copied into {@code harness_model}. */
     private static final String MODELS_MIGRATED_KEY = "models_migrated";
 
-    /** Input-history cap, matching the value {@code MessageHistory} enforced. */
-    private static final int HISTORY_CAP = 1024;
-
     /** Retention cap on the skip reasons a {@code MigrationReport} carries. */
     private static final int MAX_REPORT_REASONS = 10;
 
@@ -360,7 +357,7 @@ final class PrefsMigration {
         }
         // Position 0 is the oldest, so writing in position order keeps the
         // auto-increment sequence newest-last, which is the exposed order.
-        while (byPosition.size() > HISTORY_CAP) {
+        while (byPosition.size() > SessionStore.INPUT_HISTORY_CAP) {
             Integer dropped = byPosition.keySet().iterator().next();
             byPosition.remove(dropped);
             consumed.add(keyByPosition.remove(dropped));

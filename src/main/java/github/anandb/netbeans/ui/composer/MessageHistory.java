@@ -19,8 +19,6 @@ import github.anandb.netbeans.ui.platform.PlatformBridge;
  */
 public class MessageHistory {
 
-    private static final int MAX_SIZE = 1024;
-
     private final SessionStore store;
     /** Used only when no store is registered, which is the unit-test case. */
     private final List<String> local = new ArrayList<>();
@@ -54,7 +52,7 @@ public class MessageHistory {
             store.appendInputHistory(text);
         } else {
             local.add(text);
-            while (local.size() > MAX_SIZE) {
+            while (local.size() > SessionStore.INPUT_HISTORY_CAP) {
                 local.remove(0);
             }
         }

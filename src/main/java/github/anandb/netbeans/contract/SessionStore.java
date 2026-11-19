@@ -23,6 +23,13 @@ public interface SessionStore {
     /** Bucket holding sessions of a harness that is not configured. */
     String NO_HARNESS = "default";
 
+    /**
+     * Most input-history entries kept — in memory and in the table. Older entries are
+     * dropped on append, the table is pruned to the same size, and the legacy preference
+     * import stops here. One constant so the three paths cannot disagree.
+     */
+    int INPUT_HISTORY_CAP = 256;
+
     /** Normalises a harness id to its metadata bucket name. */
     static String bucketName(String harnessId) {
         return harnessId == null || harnessId.isBlank() ? NO_HARNESS : harnessId;

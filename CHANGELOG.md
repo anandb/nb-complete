@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Features
+- **Shorter input history**: the `Up`/`Down` and `Ctrl+R` history keeps the newest **256** submitted inputs (down from 1024), in memory and in the database; a longer history stored by an earlier build is trimmed on the next load.
 - **Reset the token statistics**: the Token Stats panel has a **Reset** button that deletes every captured token, cost, message and tool-call record from the local database so all figures read zero. It warns that the delete is permanent and asks for confirmation first; sessions, pinned messages, input history and cached model lists are kept.
 
 ### Fixes

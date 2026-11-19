@@ -1050,15 +1050,36 @@ class H2UsageStatsStoreTest {
     }
 
     @Test
-    void historyIsCappedAndDropsTheOldest() {
-        for (int i = 0; i < 1030; i++) {
+    void historyIsCappedAndDropsTheOldest() throws SQLException {
+        int cap = github.anandb.netbeans.contract.SessionStore.INPUT_HISTORY_CAP;
+        for (int i = 0; i < cap + 6; i++) {
             store.appendInputHistory("entry-" + i);
         }
         List<String> history = store.inputHistory();
 
-        assertEquals(1024, history.size());
+        assertEquals(cap, history.size());
         assertEquals("entry-6", history.get(0), "the oldest entries are dropped first");
-        assertEquals("entry-1029", history.get(history.size() - 1), "the newest is last");
+        assertEquals("entry-" + (cap + 5), history.get(history.size() - 1), "the newest is last");
+        barrier();
+        assertEquals(cap, scalarLong("SELECT COUNT(*) FROM input_history"),
+                "the table is pruned to the same cap, not just the in-memory list");
+    }
+
+    @Test
+    void aHistoryWrittenByAnEarlierBuildIsTrimmedOnLoad() throws SQLException {
+        int cap = github.anandb.netbeans.contract.SessionStore.INPUT_HISTORY_CAP;
+        store.query(1, null, NOW);
+        for (int i = 0; i < cap + 40; i++) {
+            execute("INSERT INTO input_history (text) VALUES ('old-" + i + "')");
+        }
+
+        store.load();
+
+        List<String> history = store.inputHistory();
+        assertEquals(cap, history.size(), "a longer stored history is trimmed to the cap on load");
+        assertEquals("old-" + (cap + 39), history.get(history.size() - 1), "the newest survives");
+        assertEquals(cap, scalarLong("SELECT COUNT(*) FROM input_history"),
+                "the table is trimmed too, so the cap holds without waiting for an append");
     }
 
     @Test

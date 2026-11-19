@@ -26,9 +26,6 @@ import github.anandb.netbeans.support.Logger;
  */
 final class SessionDatasets {
 
-    /** Input-history cap, matching the value {@code MessageHistory} enforced. */
-    static final int HISTORY_CAP = 1024;
-
     /**
      * Input history, newest last. An immutable value published by a single
      * reference assignment, so a reader from the EDT always sees either the
@@ -70,7 +67,7 @@ final class SessionDatasets {
         }
         List<String> next = new ArrayList<>(current);
         next.add(text);
-        while (next.size() > HISTORY_CAP) {
+        while (next.size() > SessionStore.INPUT_HISTORY_CAP) {
             next.remove(0);
         }
         history = List.copyOf(next);
@@ -240,6 +237,12 @@ final class SessionDatasets {
                 loaded.add(rs.getString(1));
             }
         }
+        // A table written by an earlier build can hold more than the current cap; keep the
+        // newest and bring the table itself back to the cap while we are on its thread.
+        while (loaded.size() > SessionStore.INPUT_HISTORY_CAP) {
+            loaded.remove(0);
+        }
+        pruneHistory(db);
         // One assignment, so a reader never observes an empty intermediate state.
         history = List.copyOf(loaded);
     }
@@ -374,11 +377,11 @@ final class SessionDatasets {
         }
     }
 
-    /** Drops all but the newest {@code HISTORY_CAP} history rows. */
+    /** Drops all but the newest {@link SessionStore#INPUT_HISTORY_CAP} history rows. */
     private void pruneHistory(Db db) throws SQLException {
         Long oldestKept = null;
         try (PreparedStatement ps = db.connection().prepareStatement(Sql.get("prune_history_seq"))) {
-            ps.setInt(1, HISTORY_CAP - 1);
+            ps.setInt(1, SessionStore.INPUT_HISTORY_CAP - 1);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     oldestKept = rs.getLong(1);
