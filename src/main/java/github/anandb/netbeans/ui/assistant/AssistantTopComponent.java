@@ -865,7 +865,14 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         }
         SessionExportControl export = PlatformBridge.serviceSafe(SessionExportControl.class);
         if (export == null) {
-            statusController.setStatus("STATUS_ExportFailed", "export service unavailable");
+            statusController.setStatus("STATUS_ExportFailed",
+                    NbBundle.getMessage(UIBundle.class, "MSG_ExportNoService"));
+            return;
+        }
+        if (export.isTranscriptCaptureActive()) {
+            // One capture at a time: a second would race the first for the
+            // session/load stream and its file chooser.
+            statusController.setStatus("STATUS_ExportBusy");
             return;
         }
         String title = sessionService.get().getSessionTitle(currentId);
@@ -880,14 +887,16 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
             }
             if (messages == null || messages.isEmpty()) {
                 SwingUtilities.invokeLater(() ->
-                        statusController.setStatus("STATUS_ExportFailed", "empty transcript"));
+                        statusController.setStatus("STATUS_ExportFailed",
+                                NbBundle.getMessage(UIBundle.class, "MSG_ExportEmptyTranscript")));
                 return;
             }
             // Render off the EDT: the HTML pass runs flexmark over every message.
             String content = renderCapturedTranscript(messages, format, title);
             SwingUtilities.invokeLater(() -> {
                 if (isBlank(content)) {
-                    statusController.setStatus("STATUS_ExportFailed", "empty transcript");
+                    statusController.setStatus("STATUS_ExportFailed",
+                            NbBundle.getMessage(UIBundle.class, "MSG_ExportEmptyTranscript"));
                     return;
                 }
                 if ("html".equals(format)) {
