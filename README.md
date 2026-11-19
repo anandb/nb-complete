@@ -155,16 +155,16 @@ All source lives under `src/main/java/github/anandb/netbeans/`:
 
 | Package | Files | Role |
 | --- | --- | --- |
-| `contract/` | 29 | Service interfaces — the ports (UI callbacks, session & process control, permission & request handlers, pinned message control, usage/session stores, tool execution) |
+| `contract/` | 27 | Service interfaces — the ports (UI callbacks, session & process control, permission & request handlers, pinned message control, usage/session stores, tool execution) |
 | `db/` | 8 | H2 persistence layer (usage-stats store, session store, pinned-message and model-list caches, SQL loader, preference migration) |
-| `manager/` | 30 | Core orchestration, protocol clients, session management, process lifecycle (includes `strategy/`, file cache, VCS ignore) |
-| `mcp/` | 47 | MCP server integration (editor, filesystem, VCS, task and project tool providers, tool input records, message servlet) |
-| `model/` | 33 | ACP-compliant data models (session, messages, updates, config options, colour tokens, usage records); `harness-catalog.yaml` holds the harness definitions |
+| `manager/` | 33 | Core orchestration, protocol clients, session management, process lifecycle (includes `strategy/`, file cache, VCS ignore) |
+| `mcp/` | 49 | MCP server integration (editor, filesystem, VCS, task and project tool providers, tool input records, message servlet) |
+| `model/` | 34 | ACP-compliant data models (session, messages, updates, config options, colour tokens, usage records); `harness-catalog.yaml` holds the harness definitions |
 | `pattern/` | 43 | Compiled regex patterns (pure constants, no dependencies; consumed by all layers) |
 | `project/` | 13 | NetBeans lifecycle hooks, project manager (includes `mdproject/`, the markdown project type) |
-| `support/` | 46 | Utilities (logging, JSON mapping, text scanning, constants, browser helpers, shortcut utils, binary resolution, steering requests) |
+| `support/` | 49 | Utilities (logging, JSON mapping, text scanning, constants, browser helpers, shortcut utils, binary resolution, steering requests) |
 | `tasks/` | 17 | todo.txt task repository integration (bugtracking providers, issue cache, task editors) |
-| `ui/` | 143 | Swing components, platform integration, markdown project UI (chat, bubbles, theming, options, stash diff, file search, export, send-to-assistant actions) |
+| `ui/` | 148 | Swing components, platform integration, markdown project UI (chat, bubbles, theming, options, stash diff, file search, export, send-to-assistant actions) |
 
 Counts are recursive and current; adjust the row when you add or remove a class.
 

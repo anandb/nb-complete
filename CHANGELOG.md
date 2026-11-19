@@ -4,12 +4,20 @@
 
 ### Features
 - **Shorter input history**: the `Up`/`Down` and `Ctrl+R` history keeps the newest **256** submitted inputs (down from 1024), in memory and in the database; a longer history stored by an earlier build is trimmed on the next load.
-- **Reset the token statistics**: the Token Stats panel has a **Reset** button that deletes every captured token, cost, message and tool-call record from the local database so all figures read zero. It warns that the delete is permanent and asks for confirmation first; sessions, pinned messages, input history and cached model lists are kept.
+- **Export the full transcript in the background**: when older messages are trimmed from the view, the export dialog offers the full transcript; it is fetched by replaying `session/load` without disturbing the displayed thread, and prompt sends wait for the (short) capture.
+- **`diff_range` MCP tool**: opens a multi-file diff for a commit range or from a revision to the working tree, for Git and Mercurial; a broken VCS command is reported as fatal.
+- **Extra MCP servers**: an ACP `mcpServers` JSON array in Options is sent with `session/new` and `session/load` alongside the internal Beanbot server; the internal-server toggle no longer drops it, and the editor validates while you type.
+- **Git blame first names**: an option (off by default) shows the commit author's first name in annotations; Toggle Annotations is bound to Alt+F10.
 
 ### Fixes
 - **A long tool title no longer paints a clipped second line**: the tool/thought header elided its parameter *after* laying the title row out, so a parameter wider than the row wrapped onto a second row that the one-line header clipped to a few pixels just above the card border. The title row is now a single line (`BorderLayout`, parameter in the center) and the parameter is fitted before the row is laid out.
 - **Negative harness figures are ignored**: Claude has reported negative cost and cache values, which pulled **Total Cost** below zero. Every reported figure (cost, tokens, cache traffic, context gauge, tool durations) is clamped to zero when captured, a cost figure that drops below what the session already reported stores no new spend instead of a negative delta, and the aggregates ignore negative rows already in the database — so the panel never shows a negative total.
 - **A failed request no longer hides the server's own explanation**: a harness that puts the cause in `error.data` (goose's bare `missing required key OPENCODE_API_KEY`, Hermes' `details`) now shows it in the log, status line and error bubble instead of only `Internal error`. The thinking dropdown sends the config id the current session declared (goose's `thinking_effort`, not an earlier session's `effort`, which the server rejected with `Invalid params`) and sends nothing when the session declares none; a session load clears the previous session's id and levels.
+- **A failed session/load is reported in the thread**: the reason (harness `error.data` included) appears as a notice instead of an empty, apparently loaded session.
+- **Steer failures show the harness's own explanation** instead of only `Internal error`, matching prompt failures.
+- **The context-usage meter's tooltip anchors above the status row** so it can no longer fall off screen.
+- **The new-session button no longer wobbles** for attention.
+- **API**: `github.anandb.netbeans.contract` is no longer an exported NBM package — `contract/` is internal ports now. MCP token auth is purely catalog-driven: omp skips token-protected URLs, and a bare `pi`/`pi-agent` binary resolves to the unknown harness (token-protected).
 
 ## v1.31.0 (Changes since v1.30.0)
 

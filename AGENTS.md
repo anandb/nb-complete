@@ -126,7 +126,9 @@
 ### Layer Model (dependencies flow downward only)
 `ui/`, `manager/`, `mcp/` and `db/` are adapters over `contract/` and `model/`. `project/` and
 `tasks/` are satellites; `support/` provides shared utilities. Dependencies flow downward to
-`contract/`/`model/`; `model/` is a leaf. `manager/` and `mcp/` are peers.
+`contract/`/`model/`; `model/` is a leaf. `manager/` and `mcp/` are peers. `stereotype/` is a
+dependency-free leaf of marker annotations (`@HexagonalPort`, `@Boundary`, `@McpToolInput`,
+`@McpToolProvider`) carried by `contract/`, `manager/` and `mcp/` classes; it imports nothing.
 
 ### Forbidden Patterns (do NOT introduce these)
 - No upward dependencies: `manager/` must not import `ui/`; `ui/` uses `contract/`, not
@@ -136,7 +138,8 @@
 
 ### Adding New Code
 - `manager/`, `mcp/`, and `ui/` depend on `contract/` ports; UI must not call concrete managers.
-  New `contract/` types import only `model/`; keep `model/` dependency-free.
+  New `contract/` types import only `model/` and the `stereotype/` marker annotations; keep
+  `model/` dependency-free.
 - Register MCP providers from `McpServer.start()`; filesystem/git/hg tools must use
   `ProjectPathGuard`. Keep `support/` utilities dependency-light.
 
