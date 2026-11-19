@@ -4,13 +4,16 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Point;
 import java.awt.RenderingHints;
+import java.awt.event.MouseEvent;
 import java.text.NumberFormat;
 import java.util.Locale;
 
 import javax.swing.JComponent;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
+import javax.swing.JToolTip;
 
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
@@ -117,6 +120,19 @@ public final class ContextUsageMeter extends JComponent {
         fraction = UNKNOWN_FRACTION;
         setToolTipText(null);
         repaint();
+    }
+
+    /** The meter sits in the bottom status row, so Swing's default placement
+     *  (below the component) can fall off screen. Anchor the tooltip above it. */
+    @Override
+    public Point getToolTipLocation(MouseEvent event) {
+        JToolTip tip = createToolTip();
+        if (tip == null) {
+            return new Point(0, -getHeight() - VERTICAL_MARGIN);
+        }
+        tip.setTipText(getToolTipText());
+        Dimension size = tip.getPreferredSize();
+        return new Point(0, -size.height - VERTICAL_MARGIN);
     }
 
     public double getFraction() {

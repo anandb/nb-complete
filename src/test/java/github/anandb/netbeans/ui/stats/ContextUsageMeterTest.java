@@ -53,6 +53,7 @@ class ContextUsageMeterTest {
         m.setUsage(100, 0);
         assertEquals(NbBundle.getMessage(UIBundle.class,
                 "HINT_ContextUsageUnavailable"), m.getToolTipText());
+        assertTrue(m.getToolTipText().contains("right-click for options"));
     }
 
     @Test
@@ -65,6 +66,16 @@ class ContextUsageMeterTest {
                 "HINT_ContextUsage", java.text.NumberFormat.getInstance().format(12400L),
                 java.text.NumberFormat.getInstance().format(200000L));
         assertEquals(expected, tip);
+        assertTrue(tip.contains("right-click for options"));
+    }
+
+    @Test
+    void tooltipIsAnchoredAboveTheMeter() {
+        ContextUsageMeter m = new ContextUsageMeter();
+        m.setUsage(100, 200);
+        java.awt.Point location = m.getToolTipLocation(null);
+        assertNotNull(location);
+        assertTrue(location.y < 0, "tooltip must sit above the meter, was y=" + location.y);
     }
 
     @Test
