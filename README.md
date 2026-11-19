@@ -11,14 +11,14 @@
 
 BeanBot is a NetBeans IDE plugin designed to provide integrated AI capabilities through the Agent Client Protocol (ACP). It offers a structured chat interface for technical assistance, including code generation, project analysis, and automated task execution.
 
-| | | | |
-| :---: | :---: | :---: | :---: |
-| <img src="screenshots/img-2026-11-18%2022.26.06.png" alt="Chat with tool activity, execution steps and a code block" height="300"> | <img src="screenshots/img-2026-11-18%2022.41.21.png" alt="Test run and per-module coverage summary" height="300"> | <img src="screenshots/img-2026-11-18%2022.43.02.png" alt="Token statistics for the current project" height="300"> | <img src="screenshots/img-2026-11-18%2022.44.02.png" alt="Keyboard shortcuts reference" height="300"> |
-| Chat and tool activity | Test and coverage summary | Token statistics | Keyboard shortcuts |
+| | | |
+| :---: | :---: | :---: |
+| <img src="screenshots/img-2026-11-18%2022.26.06.png" alt="Chat with tool activity, execution steps and a code block" height="430"> | <img src="screenshots/img-2026-11-18%2022.41.21.png" alt="Table Rendering" height="430"> | <img src="screenshots/img-2026-11-18%2022.43.02.png" alt="Token statistics for the current project" height="430"> |
+| Chat and tool activity | Table Rendering | Token statistics |
 
 | | |
 | :---: | :---: |
-| <img src="screenshots/img-2026-11-18%2022.46.21.png" alt="Mini assistant window" height="170"> | <img src="screenshots/img-2026-11-18%2022.59.58.png" alt="Tool permission request" height="170"> |
+| <img src="screenshots/img-2026-11-18%2022.46.21.png" alt="Mini assistant window" height="190"> | <img src="screenshots/img-2026-11-18%2022.59.58.png" alt="Tool permission request" height="190"> |
 | Mini assistant | Tool permission request |
 
 ---
@@ -281,5 +281,5 @@ This software is released under the Apache License, Version 2.0. Further details
 
 ## Support
 
-If you find BeanBot useful, consider [sponsoring](https://www.buymeacoffee.com/anandb) the project to support its continued development and maintenance.
+If you find BeanBot useful, consider [supporting](https://www.buymeacoffee.com/anandb) the project to support its continued development and maintenance.
 BeanBot is free and open source. Donations are entirely optional, and using the project does not require payment.
