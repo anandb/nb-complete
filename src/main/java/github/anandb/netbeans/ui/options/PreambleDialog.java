@@ -1,5 +1,6 @@
 package github.anandb.netbeans.ui.options;
 
+import java.awt.BorderLayout;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.awt.Dialog;
@@ -14,7 +15,6 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
 import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
@@ -104,15 +104,14 @@ final class PreambleDialog extends JDialog {
         buttonPanel.add(cancelButton);
         buttonPanel.add(okButton);
 
-        JPanel contentPanel = new JPanel();
-        contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+        JPanel contentPanel = new JPanel(new BorderLayout());
 
         JLabel descLabel = new JLabel(NbBundle.getMessage(UIBundle.class, "LBL_PreambleDescription"));
         descLabel.setBorder(BorderFactory.createEmptyBorder(8, 8, 4, 8));
-        contentPanel.add(descLabel);
+        contentPanel.add(descLabel, BorderLayout.NORTH);
 
-        contentPanel.add(scrollPane);
-        contentPanel.add(buttonPanel);
+        contentPanel.add(scrollPane, BorderLayout.CENTER);
+        contentPanel.add(buttonPanel, BorderLayout.SOUTH);
 
         setContentPane(contentPanel);
         addWindowListener(new WindowAdapter() {
