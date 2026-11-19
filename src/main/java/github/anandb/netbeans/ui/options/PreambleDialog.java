@@ -63,6 +63,7 @@ final class PreambleDialog extends JDialog {
         preambleArea.setWrapStyleWord(true);
         preambleArea.setTabSize(2);
         preambleArea.setText(currentText);
+        preambleArea.discardAllEdits();
 
         RTextScrollPane scrollPane = new RTextScrollPane(preambleArea, true);
         scrollPane.setFoldIndicatorEnabled(false);
@@ -84,10 +85,11 @@ final class PreambleDialog extends JDialog {
         copySystemButton.addActionListener(e -> copyConsolidatedPrompt());
 
         JButton resetButton = new JButton(NbBundle.getMessage(UIBundle.class, "LBL_PreambleReset"));
-        resetButton.addActionListener(e -> preambleArea.setText(PluginSettings.getDefaultPreamble()));
+        resetButton.addActionListener(e ->
+                SyntaxAreaEdits.replaceAll(preambleArea, PluginSettings.getDefaultPreamble()));
 
         JButton clearButton = new JButton(NbBundle.getMessage(UIBundle.class, "LBL_PreambleClear"));
-        clearButton.addActionListener(e -> preambleArea.setText(""));
+        clearButton.addActionListener(e -> SyntaxAreaEdits.replaceAll(preambleArea, ""));
 
         JButton cancelButton = new JButton(NbBundle.getMessage(UIBundle.class, "BTN_Cancel"));
         cancelButton.addActionListener(e -> dispose());

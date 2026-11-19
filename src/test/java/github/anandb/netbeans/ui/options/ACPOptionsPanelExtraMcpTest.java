@@ -144,6 +144,37 @@ class ACPOptionsPanelExtraMcpTest {
     }
 
     @Test
+    void insertingAnExampleUndoesBackToThePreviousText() throws Exception {
+        PluginSettings.setExtraMcpServers(ExtraMcpServers.HTTP_EXAMPLE);
+        ACPOptionsPanel panel = new ACPOptionsPanel(new ACPOptionsPanelController());
+        panel.load();
+        RSyntaxTextArea area = area(panel);
+        String before = area.getText();
+
+        String label = NbBundle.getMessage(UIBundle.class, "LBL_InsertStdioMcpExample");
+        AbstractButton insert = findButton(panel, label);
+        assertNotNull(insert, label);
+        SwingUtilities.invokeAndWait(insert::doClick);
+        assertTrue(area.getText().contains("example-stdio"), area.getText());
+
+        SwingUtilities.invokeAndWait(area::undoLastAction);
+
+        assertEquals(before, area.getText());
+    }
+
+    @Test
+    void loadLeavesNoUndoableLoadStep() throws Exception {
+        PluginSettings.setExtraMcpServers(ExtraMcpServers.HTTP_EXAMPLE);
+        ACPOptionsPanel panel = new ACPOptionsPanel(new ACPOptionsPanelController());
+        panel.load();
+        RSyntaxTextArea area = area(panel);
+
+        area.undoLastAction();
+
+        assertEquals(ExtraMcpServers.HTTP_EXAMPLE.trim(), area.getText());
+    }
+
+    @Test
     void generalPageOffersBothExampleButtons() {
         ACPOptionsPanel panel = new ACPOptionsPanel(new ACPOptionsPanelController());
 
@@ -176,6 +207,21 @@ class ACPOptionsPanelExtraMcpTest {
         JLabel label = (JLabel) field.get(panel);
         assertNotNull(label);
         return label;
+    }
+
+    private static AbstractButton findButton(Container container, String label) {
+        for (Component child : container.getComponents()) {
+            if (child instanceof AbstractButton button && label.equals(button.getText())) {
+                return button;
+            }
+            if (child instanceof Container nested) {
+                AbstractButton found = findButton(nested, label);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
     }
 
     private static void collectButtons(Container container, List<String> labels) {

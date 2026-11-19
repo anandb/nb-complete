@@ -1241,7 +1241,8 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
 
     /** Loads the example as the most recent server entry, keeping the editor a valid ACP array. */
     private void insertMcpExample(String example) {
-        extraMcpServersArea.setText(ExtraMcpServers.insertExample(extraMcpServersArea.getText(), example));
+        SyntaxAreaEdits.replaceAll(extraMcpServersArea,
+                ExtraMcpServers.insertExample(extraMcpServersArea.getText(), example));
         extraMcpServersArea.setCaretPosition(extraMcpServersArea.getDocument().getLength());
     }
 
@@ -1442,6 +1443,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         mcpServerCheckbox.setSelected(PluginSettings.isMcpServerEnabled());
         mcpPortSpinner.setValue(PluginSettings.getMcpServerPort());
         extraMcpServersArea.setText(PluginSettings.getExtraMcpServers());
+        extraMcpServersArea.discardAllEdits();
         extraMcpServersArea.setCaretPosition(0);
         useWslCheckbox.setSelected(PluginSettings.isUseWsl());
         updateGeminiModelHint();
