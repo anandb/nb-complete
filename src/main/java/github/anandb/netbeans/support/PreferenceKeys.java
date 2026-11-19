@@ -87,6 +87,9 @@ public final class PreferenceKeys {
     public static final String ACTIONS_QUICK_JUMP = "actions.quickJump";
     public static final String ACTIONS_COPY_ALL_ITEMS = "actions.copyAllItems";
 
+    /** Whether git blame annotations show the commit author's first name instead of the email user name. */
+    public static final String GIT_ANNOTATIONS_FIRST_NAME = "git.annotationsFirstName";
+
     /** Whether the Markdown project type factory is enabled (enabled by default). */
     public static final String ACTIONS_MARKDOWN_PROJECT = "actions.markdownProject";
 

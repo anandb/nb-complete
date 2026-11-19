@@ -130,6 +130,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private JCheckBox taskRepositoryCheckbox;
     private JCheckBox markdownProjectCheckbox;
     private JCheckBox diffIdeFontCheckbox;
+    private JCheckBox gitFirstNameCheckbox;
     private JCheckBox mcpServerCheckbox;
     private JSpinner mcpPortSpinner;
     private JCheckBox useWslCheckbox;
@@ -252,6 +253,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         taskRepositoryCheckbox = new JCheckBox();
         markdownProjectCheckbox = new JCheckBox();
         diffIdeFontCheckbox = new JCheckBox();
+        gitFirstNameCheckbox = new JCheckBox();
         mcpServerCheckbox = new JCheckBox();
         preambleEnabledCheckbox = new JCheckBox();
         projectSwitchRestartCheckbox = new JCheckBox();
@@ -580,6 +582,12 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         diffIdeFontCheckbox.setToolTipText(tooltip("TT_DiffIdeFont"));
         diffIdeFontCheckbox.addActionListener(evt -> controller.changed());
         actionsPanel.add(diffIdeFontCheckbox, UIUtils.createGbc(0, 3, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
+
+        gitFirstNameCheckbox.setText(NbBundle.getMessage(UIBundle.class, "LBL_EnableGitFirstName"));
+        gitFirstNameCheckbox.setToolTipText(tooltip("TT_EnableGitFirstName"));
+        gitFirstNameCheckbox.addActionListener(evt -> controller.changed());
+        actionsPanel.add(gitFirstNameCheckbox, UIUtils.createGbc(0, 4, 1.0, 0, GridBagConstraints.HORIZONTAL,
                 GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
 
         JPanel contextActionsPanel = buildContextActionsPage();
@@ -1237,6 +1245,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         stashDiffCheckbox.setSelected(PluginSettings.isStashDiffEnabled());
         quickJumpCheckbox.setSelected(PluginSettings.isQuickJumpEnabled());
         copyAllItemsCheckbox.setSelected(PluginSettings.isCopyAllItemsEnabled());
+        gitFirstNameCheckbox.setSelected(PluginSettings.isGitAnnotationsFirstName());
         miniAssistantCheckbox.setSelected(PluginSettings.isMiniAssistantEnabled());
         taskRepositoryCheckbox.setSelected(PluginSettings.isTaskRepositoryEnabled());
         fsPolicyCombo.setSelectedItem(PluginSettings.getAcpFsPolicy());
@@ -1696,6 +1705,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         PluginSettings.setStashDiffEnabled(stashDiffCheckbox.isSelected());
         PluginSettings.setQuickJumpEnabled(quickJumpCheckbox.isSelected());
         PluginSettings.setCopyAllItemsEnabled(copyAllItemsCheckbox.isSelected());
+        PluginSettings.setGitAnnotationsFirstName(gitFirstNameCheckbox.isSelected());
         PluginSettings.setMiniAssistantEnabled(miniAssistantCheckbox.isSelected());
         PluginSettings.setTaskRepositoryEnabled(taskRepositoryCheckbox.isSelected());
         PluginSettings.setAcpFsPolicy((AcpFsPolicy) fsPolicyCombo.getSelectedItem());

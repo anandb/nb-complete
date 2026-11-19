@@ -260,7 +260,7 @@ public class GoToFileDialog extends JDialog {
             // Only a query that actually scanned the index is a search worth timing; a skipped
             // keystroke must not log a 0 ms "search".
             if (scanned) {
-                LOG.info("Jump-to-file search for ''{0}'': {1} result(s) from {2} indexed file(s) in {3} ms",
+                LOG.fine("Jump-to-file search for ''{0}'': {1} result(s) from {2} indexed file(s) in {3} ms",
                         text, results, indexed,
                         String.format(Locale.ROOT, "%.2f", (System.nanoTime() - startedAt) / 1_000_000.0));
             }

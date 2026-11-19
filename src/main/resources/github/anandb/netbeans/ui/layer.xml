@@ -73,6 +73,9 @@
         </folder>
     </folder>
     <folder name="Shortcuts">
+        <file name="A-F10.shadow">
+            <attr name="originalFile" stringvalue="Actions/Edit/github-anandb-netbeans-ui-ShowAnnotationsAction.instance"/>
+        </file>
         <file name="D-L.shadow">
             <attr name="originalFile" stringvalue="Actions/Window/github-anandb-netbeans-ui-ToggleAssistantAction.instance"/>
         </file>

@@ -42,6 +42,7 @@ public final class PluginSettings {
     private static volatile boolean cachedCompactJsonEnabled = true;
     private static volatile boolean cachedSearchWebEnabled = true;
     private static volatile boolean cachedShowAnnotationsEnabled = true;
+    private static volatile boolean cachedGitAnnotationsFirstName;
     private static volatile boolean cachedViewFileHistoryEnabled = true;
     private static volatile boolean cachedStashDiffEnabled = true;
     private static volatile boolean cachedQuickJumpEnabled = true;
@@ -118,6 +119,7 @@ public final class PluginSettings {
         cachedCompactJsonEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_COMPACT_JSON, true);
         cachedSearchWebEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_SEARCH_WEB, true);
         cachedShowAnnotationsEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_SHOW_ANNOTATIONS, true);
+        cachedGitAnnotationsFirstName = prefs.getBoolean(PreferenceKeys.GIT_ANNOTATIONS_FIRST_NAME, false);
         cachedViewFileHistoryEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_VIEW_FILE_HISTORY, true);
         cachedStashDiffEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_STASH_DIFF, true);
         cachedQuickJumpEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_QUICK_JUMP, true);
@@ -291,6 +293,8 @@ public final class PluginSettings {
             cachedSearchWebEnabled = prefs().getBoolean(PreferenceKeys.ACTIONS_SEARCH_WEB, true);
         } else if (PreferenceKeys.ACTIONS_SHOW_ANNOTATIONS.equals(evt.getKey())) {
             cachedShowAnnotationsEnabled = prefs().getBoolean(PreferenceKeys.ACTIONS_SHOW_ANNOTATIONS, true);
+        } else if (PreferenceKeys.GIT_ANNOTATIONS_FIRST_NAME.equals(evt.getKey())) {
+            cachedGitAnnotationsFirstName = prefs().getBoolean(PreferenceKeys.GIT_ANNOTATIONS_FIRST_NAME, false);
         } else if (PreferenceKeys.ACTIONS_VIEW_FILE_HISTORY.equals(evt.getKey())) {
             cachedViewFileHistoryEnabled = prefs().getBoolean(PreferenceKeys.ACTIONS_VIEW_FILE_HISTORY, true);
         } else if (PreferenceKeys.ACTIONS_STASH_DIFF.equals(evt.getKey())) {
@@ -434,6 +438,17 @@ public final class PluginSettings {
     public static void setShowAnnotationsEnabled(boolean enabled) {
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.ACTIONS_SHOW_ANNOTATIONS, enabled);
         cachedShowAnnotationsEnabled = enabled;
+    }
+
+    /** Whether git blame annotations show the author's first name (off by default). */
+    public static boolean isGitAnnotationsFirstName() {
+        return cachedGitAnnotationsFirstName;
+    }
+
+    public static void setGitAnnotationsFirstName(boolean enabled) {
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .putBoolean(PreferenceKeys.GIT_ANNOTATIONS_FIRST_NAME, enabled);
+        cachedGitAnnotationsFirstName = enabled;
     }
 
     /** Whether the View File History editor context menu action is enabled. */

@@ -602,6 +602,30 @@ divider and the input area (it must borrow space from the thread only).
 Capture the update's session id before `invokeLater`; on the EDT, drop it if it no longer matches
 `SessionControl.getCurrentSessionId()`.
 
+### Git Annotations First Name Display
+
+`GitAnnotationsFirstName` shows the commit author's first name in git blame annotations when the
+**Show first name in git annotations** option (IDE Extensions › Features) is on. It is triggered
+from `ShowAnnotationsAction` (Toggle Annotations) after the git action runs: blame is asynchronous,
+so a bounded EDT poll waits for `AnnotationBar.elementAnnotations` and rewrites each line's private
+`authorShort`, then stops. Lines are processed in document order and the name alternates between
+title case and lower case per author block as a visual change hint. Toggle Annotations has the
+default **Alt+F10** binding (`Shortcuts/A-F10.shadow` in `ui/layer.xml`); a user shortcut belongs on
+that action, not on the IDE's own Show Annotations action, which has no listener seam. A bar's
+applied map is recorded so a repeat toggle does not redo the work. `ShowAnnotationsAction` also sets
+`NAME` in its constructor: the Keymap dialog drops actions whose `NAME` is empty, so without it the
+action is missing from Tools › Options › Keymap and cannot be bound.
+
+Known limits, do not "fix" them by adding machinery:
+- `AnnotationBar` is final and renders exactly `COMMIT_ID`, `DATE`, `AUTHOR`; there is no extra
+  display field or formatter SPI. The Author column must be displayed; when it is hidden the name
+  cannot render. Do not force `DisplayField.AUTHOR.visible` or write the display-field mask.
+- Do not add a popup/menu item to the annotation bar, and do not install a global
+  `RepaintManager`; both were rejected as too intrusive for this feature.
+- Annotations shown through the IDE's own versioning menus, or re-fetched for a revision, keep
+  NetBeans formatting until Toggle Annotations is used again. Turning the option off leaves names
+  already on screen until the next toggle. Both are accepted.
+
 ### Editor Context Capture
 Return `null` when no real editor `FileObject` exists; callers then omit context (do not send
 phantom paths).

@@ -3,6 +3,8 @@ package github.anandb.netbeans.ui.editor;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import javax.swing.Action;
+import javax.swing.text.JTextComponent;
+import org.netbeans.api.editor.EditorRegistry;
 import org.netbeans.modules.versioning.spi.VCSAnnotator;
 import org.netbeans.modules.versioning.spi.VCSContext;
 import org.netbeans.modules.versioning.spi.VersioningSupport;
@@ -14,8 +16,10 @@ import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
 import org.openide.loaders.DataObject;
 import org.openide.nodes.Node;
+import org.openide.util.NbBundle;
 
 import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.ui.UIBundle;
 
 /**
  * Editor context menu action: toggles the versioning system's annotations
@@ -27,6 +31,14 @@ import github.anandb.netbeans.support.PluginSettings;
 @ActionRegistration(displayName = "#CTL_ShowAnnotationsAction", lazy = false)
 @ActionReference(path = "Editors/Popup", position = 9020)
 public final class ShowAnnotationsAction extends BaseVersioningEditorAction {
+
+    /**
+     * Published with a NAME so the action is listed in Tools › Options › Keymap
+     * (that dialog drops actions whose NAME is empty) and can be bound there.
+     */
+    public ShowAnnotationsAction() {
+        putValue(NAME, NbBundle.getMessage(UIBundle.class, "CTL_ShowAnnotationsAction"));
+    }
 
     @Override
     protected String getDisplayNameKey() {
@@ -63,7 +75,11 @@ public final class ShowAnnotationsAction extends BaseVersioningEditorAction {
             }
             String name = (String) a.getValue(Action.NAME);
             if (name != null && name.toLowerCase().contains("annot")) {
+                JTextComponent editor = EditorRegistry.lastFocusedComponent();
                 a.actionPerformed(e);
+                if (vcs.getClass().getName().startsWith("org.netbeans.modules.git.")) { // NOI18N
+                    GitAnnotationsFirstName.applyWhenShown(editor);
+                }
                 return;
             }
         }
