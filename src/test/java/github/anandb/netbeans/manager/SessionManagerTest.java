@@ -916,8 +916,9 @@ class SessionManagerTest {
     @Test
     void captureTranscriptFailsWhenLoadNeverCompletes() throws Exception {
         seedCachedSession("s1", "/p");
+        CompletableFuture<JsonNode> load = new CompletableFuture<>();
         when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
-                .thenReturn(new CompletableFuture<>());
+                .thenReturn(load);
         driveToStreaming("s1");
         sessionManager.setTranscriptCaptureTimeoutMsForTest(1);
 
@@ -925,6 +926,7 @@ class SessionManagerTest {
 
         assertThrows(ExecutionException.class, () -> future.get(5, TimeUnit.SECONDS));
         assertFalse(sessionManager.isTranscriptCaptureActive());
+        assertTrue(load.isCancelled(), "the deadline must cancel the in-flight load, not just fail the export");
     }
 
     @Test

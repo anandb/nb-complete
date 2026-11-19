@@ -1051,8 +1051,11 @@ public class SessionManager implements SessionQuery, SessionControl,
 
         CompletableFuture.delayedExecutor(transcriptCaptureTimeoutMs, TimeUnit.MILLISECONDS)
                 .execute(() -> {
-                    if (transcriptCapture.compareAndSet(capture, null)) {
-                        capture.fail(new TimeoutException("transcript export exceeded capture deadline"));
+                    // Cancel the load too: a deadline that only fails the future leaves
+                    // the server replaying into the display pipeline and the usage DB.
+                    if (transcriptCapture.get() == capture) {
+                        abortTranscriptCapture(new TimeoutException(
+                                "transcript export exceeded capture deadline"));
                     }
                 });
 
@@ -1119,8 +1122,11 @@ public class SessionManager implements SessionQuery, SessionControl,
                         return;
                     }
                     if (capture.isExhausted()) {
-                        if (transcriptCapture.compareAndSet(capture, null)) {
-                            capture.fail(new TimeoutException("session replay exceeded export drain deadline"));
+                        // Aborting, not just failing: the in-flight load must be
+                        // cancelled or its replay leaks into the display pipeline.
+                        if (transcriptCapture.get() == capture) {
+                            abortTranscriptCapture(new TimeoutException(
+                                    "session replay exceeded export drain deadline"));
                         }
                         return;
                     }
