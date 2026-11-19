@@ -109,6 +109,21 @@ class ACPOptionsPanelExtraMcpTest {
     }
 
     @Test
+    void oversizedValidDraftShowsTheStoreTimeLimit() throws Exception {
+        ACPOptionsPanel panel = new ACPOptionsPanel(new ACPOptionsPanelController());
+        panel.load();
+        RSyntaxTextArea area = area(panel);
+        String oversized = "[{\"name\":\"x\",\"command\":\"/bin/x\",\"args\":[\""
+                + "A".repeat(java.util.prefs.Preferences.MAX_VALUE_LENGTH) + "\"],\"env\":[]}]";
+
+        SwingUtilities.invokeAndWait(() -> area.setText(oversized));
+        JLabel label = validationLabel(panel);
+
+        assertTrue(label.getText().contains("cannot be saved"),
+                "an oversized draft must not show the valid check: " + label.getText());
+    }
+
+    @Test
     void blankDraftReportsNoServers() throws Exception {
         ACPOptionsPanel panel = new ACPOptionsPanel(new ACPOptionsPanelController());
         panel.load();

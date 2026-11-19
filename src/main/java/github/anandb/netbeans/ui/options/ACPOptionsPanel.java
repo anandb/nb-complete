@@ -1271,6 +1271,16 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         }
         try {
             int count = ExtraMcpServers.parse(text).size();
+            if (text.length() > Preferences.MAX_VALUE_LENGTH) {
+                // Mirror the store-time limit: a valid but oversized draft shows
+                // the invalid state instead of a green check that cannot be saved.
+                extraMcpValidationLabel.setIcon(ThemeManager.getIcon("x.svg", 14));
+                extraMcpValidationLabel.setText(NbBundle.getMessage(UIBundle.class,
+                        "MSG_McpJsonTooLong", Preferences.MAX_VALUE_LENGTH));
+                extraMcpValidationLabel.setForeground(invalidColor);
+                extraMcpValidationLabel.setToolTipText(null);
+                return;
+            }
             extraMcpValidationLabel.setIcon(ThemeManager.getIcon("check.svg", 14));
             extraMcpValidationLabel.setText(NbBundle.getMessage(UIBundle.class,
                     count == 1 ? "MSG_McpJsonValidOne" : "MSG_McpJsonValidMany", count));
