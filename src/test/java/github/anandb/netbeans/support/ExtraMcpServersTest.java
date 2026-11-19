@@ -88,8 +88,31 @@ class ExtraMcpServersTest {
                 ExtraMcpServers.insertExample("", ExtraMcpServers.STDIO_EXAMPLE));
         assertEquals(ExtraMcpServers.STDIO_EXAMPLE,
                 ExtraMcpServers.insertExample("not json", ExtraMcpServers.STDIO_EXAMPLE));
-        assertEquals(ExtraMcpServers.HTTP_EXAMPLE,
+        // A duplicate name no longer wipes the draft: the example replaces its
+        // own entry, so the result is the refreshed example content.
+        List<Map<String, Object>> refreshed = ExtraMcpServers.parse(
                 ExtraMcpServers.insertExample(ExtraMcpServers.HTTP_EXAMPLE, ExtraMcpServers.HTTP_EXAMPLE));
+        assertEquals(1, refreshed.size());
+        assertEquals("example-http", refreshed.get(0).get("name"));
+        assertEquals("https://mcp.example.com/mcp", refreshed.get(0).get("url"));
+    }
+
+    @Test
+    void insertExampleUpdatesTheDuplicateAndKeepsUnrelatedServers() {
+        String current = "[{\"name\":\"example-http\",\"type\":\"http\","
+                + "\"url\":\"https://old.example/mcp\",\"headers\":[]},"
+                + "{\"name\":\"mine\",\"type\":\"http\",\"url\":\"https://my.example/mcp\",\"headers\":[]}]";
+
+        List<Map<String, Object>> servers =
+                ExtraMcpServers.parse(ExtraMcpServers.insertExample(current, ExtraMcpServers.HTTP_EXAMPLE));
+
+        assertEquals(2, servers.size());
+        Map<String, Object> updated = servers.stream()
+                .filter(s -> "example-http".equals(s.get("name"))).findFirst().orElseThrow();
+        assertEquals("https://mcp.example.com/mcp", updated.get("url"),
+                "the example replaces the stale entry, not the whole draft");
+        assertTrue(servers.stream().anyMatch(s -> "mine".equals(s.get("name"))),
+                "unrelated servers survive a repeated example click");
     }
 
     @Test

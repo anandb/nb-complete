@@ -116,20 +116,28 @@ public final class ExtraMcpServers {
     }
 
     /**
-     * Appends an example to the editor text while keeping the result a valid ACP array. Blank or
-     * invalid text is replaced by the example; when the example's server name already exists, the
-     * example replaces the text instead of producing a duplicate.
+     * Appends an example to the editor text while keeping the result a valid ACP
+     * array. Blank or invalid text is replaced by the example; entries whose name
+     * the example reuses are dropped first, so a repeated example click updates
+     * the example without discarding the user's other servers.
      */
     public static String insertExample(String currentJson, String exampleJson) {
         if (currentJson == null || currentJson.isBlank()) {
             return exampleJson;
         }
         try {
+            Set<String> exampleNames = new HashSet<>();
+            for (Map<String, Object> server : parse(exampleJson)) {
+                if (server.get("name") instanceof String name) {
+                    exampleNames.add(name);
+                }
+            }
             List<Map<String, Object>> merged = new ArrayList<>(parse(currentJson));
+            // Drop only the entries the example replaces; unrelated servers survive.
+            merged.removeIf(server -> server.get("name") instanceof String name
+                    && exampleNames.contains(name));
             merged.addAll(parse(exampleJson));
-            String text = pretty(merged);
-            parse(text);
-            return text;
+            return pretty(merged);
         } catch (IllegalArgumentException e) {
             return exampleJson;
         }
