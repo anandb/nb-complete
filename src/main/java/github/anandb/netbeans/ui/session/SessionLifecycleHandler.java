@@ -799,6 +799,10 @@ public class SessionLifecycleHandler implements SessionListener {
             // race the replayed plan updates.
             if (isLoading) {
                 planPanel.clear();
+                // Until the new session reports its own config options, the combos and their
+                // ids still describe the previous harness; a selection made in that window
+                // must never be sent with the old harness's config id.
+                configPanelController.clearSessionConfig();
                 // A new session lifecycle re-locks the composer if it has a config gate;
                 // a gate abandoned mid-way must never keep the next session shut.
                 statusController.setComposerLocked(false);

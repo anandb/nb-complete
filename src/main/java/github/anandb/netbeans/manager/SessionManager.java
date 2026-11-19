@@ -941,7 +941,7 @@ public class SessionManager implements SessionQuery, SessionControl,
                         // (e.g. the server does not accept the selected effort level).
                         // Log the message WITHOUT the Throwable — passing it routes the
                         // record to NetBeans' Exceptions/Notifications panel.
-                        LOG.warn("Failed to set config {0}: {1}", configId, ExceptionUtils.getMessage(ex));
+                        LOG.warn("Failed to set config {0}: {1}", configId, rootMessage(ex));
                     }
                 });
     }
@@ -1698,8 +1698,9 @@ public class SessionManager implements SessionQuery, SessionControl,
 
     /**
      * Unwrap the cause chain and return the root error message, appending the
-     * harness's {@code error.data.details} when it sent one — a generic
-     * "Internal error" alone hides the actual cause (e.g. an unstorable model).
+     * harness's {@code error.data.details} (or its textual {@code error.data}) when it
+     * sent one — a generic "Internal error" alone hides the actual cause, such as an
+     * unstorable model or goose's missing provider key.
      */
     static String rootMessage(Throwable ex) {
         Throwable cause = ex;
@@ -1711,8 +1712,8 @@ public class SessionManager implements SessionQuery, SessionControl,
             msg = ExceptionUtils.getMessage(ex);
         }
         if (cause instanceof RpcFailure failure) {
-            String details = failure.dataField("details");
-            if (details != null && !details.isBlank() && (msg == null || !msg.contains(details))) {
+            String details = failure.serverDetail();
+            if (details != null && (msg == null || !msg.contains(details))) {
                 return msg == null ? details : msg + ": " + details;
             }
         }

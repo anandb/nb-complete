@@ -444,6 +444,19 @@ public class MessageSender {
     }
 
 
+    /** Failure text for logs and status: the harness's own explanation ({@code data.details} or
+     *  a textual {@code error.data}, whichever it sent — goose puts the actionable cause in a
+     *  bare string), else the RPC message. */
+    private static String failureReason(Throwable ex) {
+        RpcFailure failure = RpcFailure.find(ex);
+        String detail = failure != null ? failure.serverDetail() : null;
+        if (detail != null) {
+            return detail;
+        }
+        String message = ExceptionUtils.getMessage(ex);
+        return message != null ? message : ex.getClass().getSimpleName();
+    }
+
     /**
      * Text for a failed prompt. goose classifies its failures in {@code error.data}: an
      * {@code auth_required} code or a {@code credits_exhausted} reason tells the user what to do,
@@ -497,12 +510,11 @@ public class MessageSender {
                     gen, sendGeneration.get());
             return;
         }
-        LOG.info("RPC exceptionally fired: {0}", ExceptionUtils.getMessage(ex));
+        String reason = failureReason(ex);
+        LOG.info("RPC exceptionally fired: {0}", reason);
         // The echo bubble was never delivered: drop it so resending the restored text does
         // not draw a second identical bubble (user bubbles never merge).
         chatPanel.removeMessageBubble(payload.clientMessageId());
-        String reason = ExceptionUtils.getMessage(ex) != null
-                ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName();
         statusController.setStatus("STATUS_Error", reason);
         chatPanel.addMessage(ProcessedMessage.createError(
                 MessageType.error_response,
@@ -1028,16 +1040,14 @@ public class MessageSender {
                                     gen, sendGeneration.get());
                             return;
                         }
-                        statusController.setStatus("STATUS_Error",
-                            ExceptionUtils.getMessage(ex) != null ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName());
+                        String queuedReason = failureReason(ex);
+                        statusController.setStatus("STATUS_Error", queuedReason);
                         statusController.stopThinking();
                         statusController.disarmRunWatchdog();
                         chatPanel.stopStreaming();
                         // The combined echo never reached the server: drop it so flushing the
                         // restored text again does not leave two identical user bubbles.
                         chatPanel.removeMessageBubble(clientMessageId);
-                        String queuedReason = ExceptionUtils.getMessage(ex) != null
-                                ? ExceptionUtils.getMessage(ex) : ex.getClass().getSimpleName();
                         chatPanel.addMessage(ProcessedMessage.createError(
                                 MessageType.error_response,
                                 promptFailureText(ex, queuedReason),

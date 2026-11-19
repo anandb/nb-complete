@@ -107,6 +107,11 @@ public class ConfigPanelController {
     private final ModelVariantResolver modelResolver = new ModelVariantResolver();
     private SessionConfigOption thinkingConfigOption;
     private volatile String thinkingConfigId;
+    /** Server config ids of the model/mode options, resolved live by {@link #configIdFor}.
+     *  Cleared on session start: an id learned from one harness must never be sent to another
+     *  (a mode option may be named "agent", a thinking option "effort" or "thinking_effort"). */
+    private volatile String modelConfigId;
+    private volatile String modeConfigId;
     /** The ACP configOptions entry backing the mode/agent combo; its server
      *  declared name is the label terminology for the combo (falls back to
      *  "Agent" when absent). */
@@ -284,7 +289,7 @@ public class ConfigPanelController {
     private void triggerComboSelection(JComboBox<ConfigItem> combo, ConfigItem selected) {
         if (selected == null || isUpdatingConfigControls) return;
 
-        String configId = (combo == modelCombo) ? "model" : (combo == modeCombo) ? "mode" : thinkingConfigId();
+        String configId = configIdFor(combo);
         String currentId = sessionService.get().getCurrentSessionId();
 
         // Hermes-style agents expose model switching as a dedicated
@@ -292,7 +297,7 @@ public class ConfigPanelController {
         // silently stored but never switches the model there.
         boolean useSetModel = combo == modelCombo && agentSupportsSessionSetModel();
 
-        if (currentId != null) {
+        if (currentId != null && configId != null) {
             if (useSetModel) {
                 sessionService.get().setSessionModel(currentId, selected.value());
             } else if (combo == modeCombo && agentSupportsSessionSetMode()) {
@@ -343,9 +348,55 @@ public class ConfigPanelController {
     /** Prevents SSE/RPC-triggered combo repopulation while user picks model/level. */
     public void setConfigConfirmActive(boolean active) { this.configConfirmActive = active; }
 
-    /** Returns the server config id for the thinking/effort option ("effort" on OpenCode's ACP). */
+    /** Returns the server config id of the thinking/effort option the session declared, or
+     *  null when it declared none. Never guessed: a harness names this option differently
+     *  ("effort" on OpenCode, "thinking_effort" on goose), and sending an id the server does
+     *  not know is rejected with {@code Invalid params}. */
     private String thinkingConfigId() {
-        return thinkingConfigId != null ? thinkingConfigId : "effort";
+        return nonBlank(thinkingConfigId);
+    }
+
+    /**
+     * The config id to send for a combo, resolved live. The id a listener captured when it was
+     * installed can belong to the previous session or harness, so it is never used to send;
+     * only the ids the current session declared are. A blank thinking id means the session
+     * declared none, and nothing must be sent — guessing "effort" made goose answer
+     * {@code Invalid params: Unsupported config option}.
+     */
+    private String configIdFor(JComboBox<ConfigItem> combo) {
+        if (combo == modelCombo) {
+            return modelConfigId != null ? modelConfigId : "model";
+        }
+        if (combo == modeCombo) {
+            return modeConfigId != null ? modeConfigId : "mode";
+        }
+        return thinkingConfigId();
+    }
+
+    /** Null for null/blank text, so an id-less option can never be sent as {@code configId: ""}. */
+    private static String nonBlank(String id) {
+        return id == null || id.isBlank() ? null : id;
+    }
+
+    /**
+     * Forgets everything one session taught the panel about its config options. Called when a
+     * session load starts: until the new session reports its own options, the combos and ids
+     * still describe the previous harness, and a selection made in that window used to be sent
+     * with the old harness's id. EDT only.
+     */
+    public void clearSessionConfig() {
+        thinkingConfigOption = null;
+        thinkingConfigId = null;
+        modelConfigId = null;
+        modeConfigId = null;
+        isUpdatingConfigControls = true;
+        try {
+            thinkingCombo.removeAllItems();
+            this.thinkingEnabled = false;
+            applyEnabledState();
+        } finally {
+            isUpdatingConfigControls = false;
+        }
     }
 
     /** True when the connected agent delivers modes via the session/new field and supports ACP session/set_mode.
@@ -481,12 +532,14 @@ public class ConfigPanelController {
                 for (SessionConfigOption opt : options) {
                     if ("model".equals(opt.category())) {
                         modelOption = opt;
+                        modelConfigId = nonBlank(opt.id());
                     } else if ("mode".equals(opt.category())) {
                         modeOpt = opt;
+                        modeConfigId = nonBlank(opt.id());
                     } else if (isThinkingCategory(opt.category())) {
                         thinkingDeclared = true;
                         thinkingConfigOption = opt;
-                        thinkingConfigId = opt.id();
+                        thinkingConfigId = nonBlank(opt.id());
                     }
                 }
                 // Label follows the source the mode values came from (modes field
@@ -533,7 +586,7 @@ public class ConfigPanelController {
                     }
 
                     if (combo.getActionListeners().length == 0) {
-                        setupConfigCombo(combo, opt.id());
+                        setupConfigCombo(combo);
                     }
 
                     if (selected != null) {
@@ -582,7 +635,7 @@ public class ConfigPanelController {
                 applyEnabledState();
                 SwingUtilities.invokeLater(() -> tabNameUpdater.accept(buildTabLabel()));
                 if (thinkingCombo.getActionListeners().length == 0) {
-                    setupConfigCombo(thinkingCombo, thinkingConfigId());
+                    setupConfigCombo(thinkingCombo);
                 }
             } finally {
                 isUpdatingConfigControls = false;
@@ -609,9 +662,9 @@ public class ConfigPanelController {
             }
         }
         thinkingConfigOption = thinkingOpt;
-        if (thinkingOpt != null) {
-            thinkingConfigId = thinkingOpt.id();
-        }
+        // Clear the id with the option: a harness whose model declares no effort level must
+        // not leave the previous harness's id behind for the next send.
+        thinkingConfigId = thinkingOpt != null ? nonBlank(thinkingOpt.id()) : null;
         isUpdatingConfigControls = true;
         try {
             ConfigItem prev = (ConfigItem) thinkingCombo.getSelectedItem();
@@ -966,7 +1019,7 @@ public class ConfigPanelController {
         }
     }
 
-    private void setupConfigCombo(JComboBox<ConfigItem> combo, String configId) {
+    private void setupConfigCombo(JComboBox<ConfigItem> combo) {
         Font btnFont = UIManager.getFont("Button.font");
         if (btnFont != null) {
             combo.setFont(btnFont);
@@ -1015,10 +1068,15 @@ public class ConfigPanelController {
                 if (isUpdatingConfigControls) return;
 
                 ConfigItem selected = resolveComboSelection(combo, combo.getSelectedItem());
-                if (selected != null && sessionService.get().getCurrentSessionId() != null) {
+                // Never send the id captured when the listener was installed: it can belong to
+                // the previous session/harness ("effort" before goose's "thinking_effort").
+                // Resolved live; null means this session declared no such option.
+                String sendConfigId = configIdFor(combo);
+                if (selected != null && sendConfigId != null
+                        && sessionService.get().getCurrentSessionId() != null) {
                     String currentId = sessionService.get().getCurrentSessionId();
                     String prevModelId = combo == modelCombo ? modelResolver.getLastSelectedModelId() : null;
-                    LOG.fine("Config update: {0}={1} for session {2}", new Object[]{configId, selected.value(), currentId});
+                    LOG.fine("Config update: {0}={1} for session {2}", new Object[]{sendConfigId, selected.value(), currentId});
                     if (combo == modeCombo && agentSupportsSessionSetMode()) {
                         sessionService.get().setSessionMode(currentId, selected.value())
                             .exceptionally(ex -> {
@@ -1036,9 +1094,9 @@ public class ConfigPanelController {
                                 return null;
                             });
                     } else {
-                        sessionService.get().setSessionConfigOption(currentId, configId, selected.value())
+                        sessionService.get().setSessionConfigOption(currentId, sendConfigId, selected.value())
                             .exceptionally(ex -> {
-                                LOG.warn("Failed to set config {0}: {1}", configId, ExceptionUtils.getMessage(ex));
+                                LOG.warn("Failed to set config {0}: {1}", sendConfigId, ExceptionUtils.getMessage(ex));
                                 restorePreviousComboSelection(combo, prePopupSelection[0], prevModelId);
                                 return null;
                             });

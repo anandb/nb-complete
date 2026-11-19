@@ -55,6 +55,11 @@ public final class AcpRpcException extends RuntimeException implements RpcFailur
         return value != null && value.isTextual() ? value.asText() : null;
     }
 
+    @Override
+    public String dataText() {
+        return data != null && data.isTextual() ? data.asText() : null;
+    }
+
     /** True when the server does not implement the requested method. */
     public boolean isMethodNotFound() {
         return code == METHOD_NOT_FOUND;

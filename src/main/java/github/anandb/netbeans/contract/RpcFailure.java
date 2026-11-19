@@ -31,6 +31,29 @@ public interface RpcFailure {
      */
     String dataField(String field);
 
+    /**
+     * The error's {@code data} as text when the server sent a bare string, or null when it
+     * sent an object or nothing. goose reports provider failures this way
+     * ({@code "missing required key OPENCODE_API_KEY"}), where {@code dataField} finds no
+     * object field and the generic {@code message} is all that would otherwise survive.
+     */
+    String dataText();
+
+    /**
+     * The harness's own explanation, from wherever it put it: the object field {@code details},
+     * else a bare-string {@code data}, else null. Harnesses disagree — Hermes answers
+     * {@code details: unknown_execution}, goose a bare string ("missing required key …") — and
+     * the generic JSON-RPC message alone hides the cause.
+     */
+    default String serverDetail() {
+        String details = dataField("details");
+        if (details != null && !details.isBlank()) {
+            return details;
+        }
+        String text = dataText();
+        return text != null && !text.isBlank() ? text : null;
+    }
+
     /** The failure inside a (possibly wrapped) throwable, or null when it is not an RPC failure. */
     static RpcFailure find(Throwable ex) {
         Throwable current = ex;

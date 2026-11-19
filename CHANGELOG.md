@@ -1,5 +1,10 @@
 # Release Notes
 
+## Unreleased
+
+### Fixes
+- **A failed request no longer hides the server's own explanation**: a harness that puts the cause in `error.data` (goose's bare `missing required key OPENCODE_API_KEY`, Hermes' `details`) now shows it in the log, status line and error bubble instead of only `Internal error`. The thinking dropdown sends the config id the current session declared (goose's `thinking_effort`, not an earlier session's `effort`, which the server rejected with `Invalid params`) and sends nothing when the session declares none; a session load clears the previous session's id and levels.
+
 ## v1.31.0 (Changes since v1.30.0)
 
 ### Features

@@ -1973,6 +1973,18 @@ class SessionManagerTest {
     }
 
     @Test
+    void rootMessageSurfacesTextualHarnessErrorData() {
+        // goose puts provider failures in a bare-string error.data, not data.details.
+        JsonNode data = mapper.getNodeFactory()
+                .textNode("Error getting agent reply: missing required key OPENCODE_API_KEY");
+        AcpRpcException rpc = new AcpRpcException(AcpRpcException.INTERNAL_ERROR, "Internal error", data);
+
+        assertEquals("AcpRpcException: Internal error: Error getting agent reply: "
+                + "missing required key OPENCODE_API_KEY",
+                SessionManager.rootMessage(new java.util.concurrent.CompletionException(rpc)));
+    }
+
+    @Test
     void getSessionsFallbackTitleToSessionIdWhenServerOmitsTitle() throws Exception {
         // Pi's session/list may return sessions without a title field.
         // The dropdown should show the GUID, not null.

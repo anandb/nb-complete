@@ -661,6 +661,47 @@ class MessageSenderTurnRoutesTest {
         assertTrue(!lastErrorText().contains("Sign in"), "no auth hint on an unrelated failure");
     }
 
+    @Test
+    void aGenericInternalErrorShowsTheServersTextualDetail() throws Exception {
+        // goose answers a provider-key failure with -32603 "Internal error" and the cause as a
+        // bare string in error.data; the bubble must carry the cause, not just the generic text.
+        session(true);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.GOOSE);
+        when(proc.sendMessage(anyString(), anyString(), any(), any()))
+                .thenReturn(CompletableFuture.failedFuture(new FakeRpcFailure(
+                        RpcFailure.INTERNAL_ERROR, "Internal error", Map.of(),
+                        "Error getting agent reply: missing required key OPENCODE_API_KEY")));
+        input.append("hello");
+
+        sender.sendMessage();
+        drainEdt();
+
+        String text = lastErrorText();
+        assertTrue(text.contains("missing required key OPENCODE_API_KEY"),
+                "the actionable error.data string must reach the user: " + text);
+    }
+
+    @Test
+    void aGenericInternalErrorShowsTheObjectDetailsToo() throws Exception {
+        // Harnesses that put the cause in error.data.details (Hermes' unknown_execution, a
+        // stored model the server dropped) must not show only the generic message either —
+        // the prompt path and SessionManager.rootMessage read the same field.
+        session(true);
+        when(proc.getCapabilities()).thenReturn(HarnessCatalog.HERMES);
+        when(proc.sendMessage(anyString(), anyString(), any(), any()))
+                .thenReturn(CompletableFuture.failedFuture(new FakeRpcFailure(
+                        RpcFailure.INTERNAL_ERROR, "Internal error",
+                        Map.of("details", "unknown_execution"), null)));
+        input.append("hello");
+
+        sender.sendMessage();
+        drainEdt();
+
+        String text = lastErrorText();
+        assertTrue(text.contains("unknown_execution"),
+                "the error.data.details cause must reach the user: " + text);
+    }
+
     /** The text of the last error bubble drawn. */
     private String lastErrorText() {
         ArgumentCaptor<ProcessedMessage> drawn = ArgumentCaptor.forClass(ProcessedMessage.class);
@@ -677,11 +718,17 @@ class MessageSenderTurnRoutesTest {
         private static final long serialVersionUID = 1L;
         private final int code;
         private final Map<String, String> data;
+        private final String dataText;
 
         FakeRpcFailure(int code, String message, Map<String, String> data) {
+            this(code, message, data, null);
+        }
+
+        FakeRpcFailure(int code, String message, Map<String, String> data, String dataText) {
             super(message);
             this.code = code;
             this.data = data;
+            this.dataText = dataText;
         }
 
         @Override
@@ -692,6 +739,11 @@ class MessageSenderTurnRoutesTest {
         @Override
         public String dataField(String field) {
             return data.get(field);
+        }
+
+        @Override
+        public String dataText() {
+            return dataText;
         }
     }
 
