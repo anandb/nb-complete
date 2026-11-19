@@ -23,6 +23,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
+import javax.accessibility.Accessible;
+import javax.accessibility.AccessibleContext;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -517,7 +519,7 @@ public final class WelcomeScreen {
      * layout pass, so long copy clipped to one line; this leaf paints the wrapped text itself and
      * derives its height from the width its parent actually gives it.
      */
-    private static final class WrappingText extends JComponent {
+    private static final class WrappingText extends JComponent implements Accessible {
         private static final long serialVersionUID = 1L;
 
         private final String text;
@@ -536,6 +538,19 @@ public final class WelcomeScreen {
             // Painted text is invisible to assistive technology unless the
             // component exposes it; announce it as the accessible name.
             getAccessibleContext().setAccessibleName(text);
+        }
+
+        /** {@link JComponent} has no context of its own; a Swing leaf must create one. */
+        @Override
+        public AccessibleContext getAccessibleContext() {
+            if (accessibleContext == null) {
+                accessibleContext = new AccessibleWrappingText();
+            }
+            return accessibleContext;
+        }
+
+        private final class AccessibleWrappingText extends AccessibleJComponent {
+            private static final long serialVersionUID = 1L;
         }
 
         /** Width the copy wraps at; the card sets it before and during layout. */
