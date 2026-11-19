@@ -11,9 +11,15 @@
 
 BeanBot is a NetBeans IDE plugin designed to provide integrated AI capabilities through the Agent Client Protocol (ACP). It offers a structured chat interface for technical assistance, including code generation, project analysis, and automated task execution.
 
-| | | |
-| :---: | :---: | :---: |
-| ![UI Screenshot 1](screenshots/Screenshot_20260705_235605.png) | ![UI Screenshot 2](screenshots/Screenshot_20260705_235904.png) | ![UI Screenshot 3](screenshots/Screenshot_20260706_000132.png) |
+| | | | |
+| :---: | :---: | :---: | :---: |
+| <img src="screenshots/img-2026-11-18%2022.26.06.png" alt="Chat with tool activity, execution steps and a code block" height="300"> | <img src="screenshots/img-2026-11-18%2022.41.21.png" alt="Test run and per-module coverage summary" height="300"> | <img src="screenshots/img-2026-11-18%2022.43.02.png" alt="Token statistics for the current project" height="300"> | <img src="screenshots/img-2026-11-18%2022.44.02.png" alt="Keyboard shortcuts reference" height="300"> |
+| Chat and tool activity | Test and coverage summary | Token statistics | Keyboard shortcuts |
+
+| | |
+| :---: | :---: |
+| <img src="screenshots/img-2026-11-18%2022.46.21.png" alt="Mini assistant window" height="170"> | <img src="screenshots/img-2026-11-18%2022.59.58.png" alt="Tool permission request" height="170"> |
+| Mini assistant | Tool permission request |
 
 ---
 
@@ -222,7 +228,7 @@ The plugin reads the following system properties and environment variables:
 | `beanbot.update.url` | System | Override the update metadata URL fetched by the update checker (`support/AppLinks`); defaults to `https://repo1.maven.org/maven2/io/github/anandb/beanbot/maven-metadata.xml` — lets a fork or self-hosted deployment serve its own `maven-metadata.xml` |
 | `beanbot.nbm.base` | System | Base for the "Download Now" link, default `https://repo1.maven.org/maven2/io/github/anandb/beanbot`; the checker appends `/<version>/beanbot-<version>.nbm`, so it does not guess release-asset URLs |
 | `beanbot.changelog.url` | System | Target of the "View Release Notes" link, default `https://github.com/anandb/nb-complete/blob/main/CHANGELOG.md` — points at the changelog so the link works before a release is tagged |
-| `beanbot.support.url` | System | Funding link behind the bmc icon on the composer toolbar (`support/AppLinks`); defaults to `https://buymeacoffee.com/anandb`, so a fork can point at its own page |
+| `beanbot.support.url` | System | Funding link behind the sprouts icon on the composer toolbar (`support/AppLinks`); defaults to `https://buymeacoffee.com/anandb`, so a fork can point at its own page |
 | `beanbot.issues.url` | System | Issue tracker behind Help ▸ Report an Issue (`support/AppLinks`); defaults to `https://github.com/anandb/nb-complete/issues/` |
 | `beanbot.user.guide.url` | System | Override the user-guide URL opened from the help menu when the bundled guide cannot be served (`support/AppLinks`); unset means no remote fallback |
 | `nb.dark.theme` | UIManager (Boolean) | Boolean dark-theme flag used for icon resolution (`IconResourceManager`); when absent, theme is inferred from `Panel.background` luminance |

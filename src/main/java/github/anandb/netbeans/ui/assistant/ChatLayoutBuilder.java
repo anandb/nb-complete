@@ -485,8 +485,8 @@ public final class ChatLayoutBuilder {
                 }));
             helpPopup.add(chooseAgentItem);
 
-            // The funding link lives on the composer toolbar (bmc icon), not here: a menu row is
-            // too easy to miss and a second entry would only split the same click.
+            // The funding link lives on the composer toolbar (sprout icon), not here: a menu row
+            // is too easy to miss and a second entry would only split the same click.
             helpPopup.addSeparator();
             JMenuItem reportIssueItem = new JMenuItem(NbBundle.getMessage(
                     UIBundle.class, "CTL_ReportIssue"));

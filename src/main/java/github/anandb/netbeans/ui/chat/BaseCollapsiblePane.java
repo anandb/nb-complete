@@ -127,10 +127,8 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
 
             @Override
             public void doLayout() {
-                // Fit before laying out: eliding afterwards leaves this pass's wrapped positions
-                // on screen when no further layout pass follows a resize.
-                applyTitleElision();
                 super.doLayout();
+                applyTitleElision();                
             }
         };
         titlePanel.setOpaque(false);

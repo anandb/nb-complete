@@ -26,6 +26,8 @@ class WelcomeAccentIconsTest {
             WelcomeAccentIcons.magnifier(Color.BLACK, 14),
             WelcomeAccentIcons.checkBox(Color.BLACK, 14),
             WelcomeAccentIcons.diff(Color.BLACK, 14),
+            WelcomeAccentIcons.arrowRight(Color.BLACK, 16),
+            WelcomeAccentIcons.info(Color.BLACK, 14),
         };
 
         for (Icon icon : icons) {

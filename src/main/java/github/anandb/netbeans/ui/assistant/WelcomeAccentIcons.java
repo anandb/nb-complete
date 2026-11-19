@@ -96,6 +96,32 @@ final class WelcomeAccentIcons {
         };
     }
 
+    /** Rightwards arrow, the trailing accent on the primary action. */
+    static Icon arrowRight(Color color, int size) {
+        return new Accent(color, size) {
+            @Override
+            void paint(Graphics2D g2, int s) {
+                g2.setStroke(stroke(s));
+                g2.draw(new Line2D.Double(s * 0.14, s * 0.50, s * 0.86, s * 0.50));
+                g2.draw(new Line2D.Double(s * 0.86, s * 0.50, s * 0.62, s * 0.28));
+                g2.draw(new Line2D.Double(s * 0.86, s * 0.50, s * 0.62, s * 0.72));
+            }
+        };
+    }
+
+    /** Circled "i", the note marker beside the harness hint. */
+    static Icon info(Color color, int size) {
+        return new Accent(color, size) {
+            @Override
+            void paint(Graphics2D g2, int s) {
+                g2.setStroke(stroke(s));
+                g2.draw(new Ellipse2D.Double(s * 0.10, s * 0.10, s * 0.80, s * 0.80));
+                g2.draw(new Line2D.Double(s * 0.50, s * 0.45, s * 0.50, s * 0.72));
+                g2.draw(new Line2D.Double(s * 0.50, s * 0.30, s * 0.50, s * 0.32));
+            }
+        };
+    }
+
     /** Two short strokes closing an arrow at {@code (x, y)}, pointing along {@code dir}. */
     private static void arrowHead(Graphics2D g2, double x, double y, int dir, int size) {
         double back = size * 0.18;

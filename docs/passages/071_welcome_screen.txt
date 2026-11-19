@@ -8,10 +8,11 @@
 
 When the assistant panel is opened with no session selected, you'll see the welcome screen instead of a chat thread. It is built from a few bands, top to bottom:
 
-* The BeanBot logo with a one-line greeting — **Welcome to BeanBot** on a fresh installation, **Welcome back** once you have sessions.
+* A sprout mark with a one-line greeting — **Welcome to BeanBot** on a fresh installation, **Welcome back** once you have sessions.
+* **What are we working on?** and a short promise, then **Start New Chat** — the primary action. It starts a session in the current project, or asks which project when several are open. This is the same as the toolbar's **New Session** (green plus) button.
+* **Or jump right in** — four example prompt cards: **Explain code**, **Find bugs**, **Write tests**, and **Review changes**, each with a one-line description. The first three adapt to your editor: with a file open they act on that file, otherwise they work on the whole project. Clicking one drafts the full prompt in the input area and starts a new chat; the text stays in the composer so you send it yourself once the session is configured.
 * **Recent** — on a returning workspace, your most recent sessions as a clickable list. Picking one loads it (its folder is shown under the title). Archived sessions stay hidden unless *show archived* is on.
-* **✨ Start New Chat** — the primary action. It starts a session in the current project, or asks which project when several are open. This is the same as the toolbar's **New Session** (green plus) button.
-* **Try one of these** — four example prompts that show what the assistant can do: **Explain code**, **Find bugs**, **Write & run tests**, and **Review changes**. The first three adapt to your editor: with a file open they act on that file, otherwise they work on the whole project. Clicking one drafts the full prompt in the input area and starts a new chat; the text stays in the composer so you send it yourself once the session is configured.
+* A note that the harness can be changed later from the **Help** menu, and a footer link — **Enjoying BeanBot? Help it grow** — that opens the same funding page as the toolbar's support button, without a confirmation dialog.
 
 The input area stays disabled while there is no session, so every conversation starts from this screen — either from **Start New Chat** or from one of the example prompts.
 
