@@ -533,6 +533,9 @@ public final class WelcomeScreen {
             setForeground(color);
             setOpaque(false);
             setAlignmentX(Component.LEFT_ALIGNMENT);
+            // Painted text is invisible to assistive technology unless the
+            // component exposes it; announce it as the accessible name.
+            getAccessibleContext().setAccessibleName(text);
         }
 
         /** Width the copy wraps at; the card sets it before and during layout. */
@@ -716,6 +719,9 @@ public final class WelcomeScreen {
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             setBorder(BorderFactory.createEmptyBorder());
             setRolloverEnabled(true);
+            // The description is painted, not a child component — expose it so
+            // screen readers announce the whole card, not just the title.
+            getAccessibleContext().setAccessibleDescription(description);
             FontMetrics fm = getFontMetrics(getFont());
             titleHeight = fm.getHeight();
             descriptionHeight = getFontMetrics(descriptionFont()).getHeight();
