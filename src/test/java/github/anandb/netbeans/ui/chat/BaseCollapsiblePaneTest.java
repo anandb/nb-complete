@@ -61,6 +61,37 @@ class BaseCollapsiblePaneTest {
         assertFalse(shown.startsWith("/home/anand"), "the directory head is what goes: " + shown);
     }
 
+    /**
+     * A long parameter must never wrap onto a second title row: the row keeps the height of one
+     * line, so a wrapped label is clipped to a sliver just above the card border.
+     */
+    @Test
+    void aNarrowHeaderKeepsTheParameterOnTheTitleRow() throws Exception {
+        BaseCollapsiblePane[] panes = new BaseCollapsiblePane[1];
+        String[] laidOut = new String[2];
+        SwingUtilities.invokeAndWait(() -> {
+            CollapsibleToolPane pane = new CollapsibleToolPane(LONG_PATH, false);
+            JPanel host = new JPanel(null);
+            host.add(pane);
+            host.setSize(700, 160);
+            pane.setBounds(0, 0, 700, 160);
+            pane.doLayout();
+            pane.header.doLayout();
+            pane.titlePanel.doLayout();
+            panes[0] = pane;
+            laidOut[0] = pane.paramLabel.getText();
+            laidOut[1] = pane.titlePanel.getSize().width + "x" + pane.titlePanel.getSize().height;
+        });
+        BaseCollapsiblePane pane = panes[0];
+
+        assertTrue(laidOut[0].contains("\u2026"), "the parameter is elided: " + laidOut[0]);
+        assertEquals(pane.headerLabel.getY(), pane.paramLabel.getY(),
+                "the parameter shares the title's row, not a second clipped one");
+        assertTrue(pane.paramLabel.getY() + pane.paramLabel.getHeight() <= pane.titlePanel.getHeight(),
+                "the parameter fits the title row (" + laidOut[1] + "): y=" + pane.paramLabel.getY()
+                        + " h=" + pane.paramLabel.getHeight());
+    }
+
     @Test
     void aWideHeaderShowsTheWholePath() throws Exception {
         String shown = laidOutParam(LONG_PATH, 4000);

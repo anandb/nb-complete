@@ -5,7 +5,6 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Toolkit;
@@ -117,7 +116,10 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         headerLabel.getAccessibleContext().setAccessibleName("Pane title");
         headerLabel.getAccessibleContext().setAccessibleDescription("Click to expand or collapse this pane");
 
-        titlePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0)) {
+        // BorderLayout, not FlowLayout: FlowLayout wraps the parameter onto a second row when it
+        // does not fit, and this panel keeps one row's height, so that row painted as a clipped
+        // sliver above the card border. CENTER just narrows the parameter instead.
+        titlePanel = new JPanel(new BorderLayout()) {
             @Override
             public boolean contains(int x, int y) {
                 return false;
@@ -125,9 +127,10 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
 
             @Override
             public void doLayout() {
-                super.doLayout();
-                // Only here is this panel's width real; eliding earlier guessed a smaller budget.
+                // Fit before laying out: eliding afterwards leaves this pass's wrapped positions
+                // on screen when no further layout pass follows a resize.
                 applyTitleElision();
+                super.doLayout();
             }
         };
         titlePanel.setOpaque(false);
@@ -366,7 +369,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         headerLabel.setIcon(icon);
         headerLabel.setIconTextGap(8);
         headerLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN, ThemeManager.getFont().getSize() - 1f));
-        titlePanel.add(headerLabel);
+        titlePanel.add(headerLabel, BorderLayout.WEST);
 
         if (isThinking) {
             headerLabel.setText(CollapsibleHeaderRenderer.thinkingLabel(expanded));
@@ -409,7 +412,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
                 fullParam = param;
                 paramLabel.setText(" " + param);
                 paramLabel.setToolTipText(null);
-                titlePanel.add(paramLabel);
+                titlePanel.add(paramLabel, BorderLayout.CENTER);
             }
         } else {
             fullHeaderText = stripped;
