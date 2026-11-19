@@ -870,6 +870,29 @@ class SessionManagerTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void aSlowLoadDoesNotConsumeTheDrainDeadline() throws Exception {
+        seedCachedSession("s1", "/p");
+        CompletableFuture<JsonNode> loadResponse = new CompletableFuture<>();
+        when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(loadResponse);
+        driveToStreaming("s1");
+        sessionManager.setTranscriptCaptureMaxDrainMsForTest(1000);
+        ArgumentCaptor<Consumer<SessionUpdate>> sse = ArgumentCaptor.forClass(Consumer.class);
+        verify(processManager).addSseListener(sse.capture());
+
+        CompletableFuture<List<ProcessedMessage>> future = sessionManager.captureTranscript("s1");
+        Thread.sleep(1100);
+        loadResponse.complete(mapper.createObjectNode());
+        sse.getValue().accept(update("s1", chunk(MessageType.agent_message_chunk, "after", "slow-a1")));
+
+        List<ProcessedMessage> transcript = future.get(5, TimeUnit.SECONDS);
+
+        assertEquals(1, transcript.size());
+        assertEquals("after", transcript.get(0).text());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void captureTranscriptFailsInsteadOfExportingPartialHistoryAtDeadline() throws Exception {
         seedCachedSession("s1", "/p");
         stubSessionLoad(mapper.createObjectNode());

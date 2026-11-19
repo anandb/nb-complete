@@ -28,7 +28,7 @@ final class TranscriptCapture {
     /** How often the drain loop re-checks the quiet window. */
     static final long DRAIN_POLL_MS = 100;
 
-    /** Hard cap on the drain wait; a harness that keeps trickling must not hang the export. */
+    /** Hard cap on the drain wait after the load response; a trickle must not hang the export. */
     static final long DRAIN_MAX_MS = 10_000;
 
     private final String sessionId;
@@ -36,6 +36,9 @@ final class TranscriptCapture {
     private final Predicate<String> descendantOfTarget;
     private final long drainMaxMs;
     private final long startNanos = System.nanoTime();
+    /** When the load response arrived; the drain cap bounds the wait from here, not
+     *  from admission, so a slow load cannot consume the replay window. */
+    private volatile long drainStartNanos = startNanos;
 
     private final List<SessionUpdate> updates = new ArrayList<>();
     private volatile long lastCollectNanos = startNanos;
@@ -110,9 +113,11 @@ final class TranscriptCapture {
         lastCollectNanos = System.nanoTime();
     }
 
-    /** Starts the post-response quiet window; replay may continue after the RPC result. */
+    /** Starts the post-response quiet window and the drain cap; replay may continue after the RPC result. */
     void markResponseReceived() {
-        lastCollectNanos = System.nanoTime();
+        long now = System.nanoTime();
+        lastCollectNanos = now;
+        drainStartNanos = now;
     }
 
     /** True when no update arrived within the last {@link #DRAIN_QUIET_MS}. */
@@ -120,9 +125,9 @@ final class TranscriptCapture {
         return System.nanoTime() - lastCollectNanos >= TimeUnit.MILLISECONDS.toNanos(DRAIN_QUIET_MS);
     }
 
-    /** True when the drain window's hard cap is exhausted. */
+    /** True when the drain window's hard cap since the load response is exhausted. */
     boolean isExhausted() {
-        return System.nanoTime() - startNanos >= TimeUnit.MILLISECONDS.toNanos(drainMaxMs);
+        return System.nanoTime() - drainStartNanos >= TimeUnit.MILLISECONDS.toNanos(drainMaxMs);
     }
 
     /** Snapshot of the collected updates; the collector is spent after this. */
