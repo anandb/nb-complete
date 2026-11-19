@@ -47,6 +47,54 @@ class AppLinksTest {
         }
     }
 
+    @Test
+    void supportAndIssuesLinksHaveDefaultsAndOverrides() {
+        String oldSupport = System.getProperty("beanbot.support.url");
+        String oldIssues = System.getProperty("beanbot.issues.url");
+        try {
+            System.clearProperty("beanbot.support.url");
+            System.clearProperty("beanbot.issues.url");
+            assertEquals("https://buymeacoffee.com/anandb", AppLinks.supportUrl());
+            assertEquals("https://github.com/anandb/nb-complete/issues/", AppLinks.issuesUrl());
+
+            System.setProperty("beanbot.support.url", "https://example.test/support");
+            System.setProperty("beanbot.issues.url", "https://example.test/issues");
+            assertEquals("https://example.test/support", AppLinks.supportUrl());
+            assertEquals("https://example.test/issues", AppLinks.issuesUrl());
+        } finally {
+            restore("beanbot.support.url", oldSupport);
+            restore("beanbot.issues.url", oldIssues);
+        }
+    }
+
+    @Test
+    void updateUrlUsesTheConfiguredDefaultAndProperty() {
+        String key = PreferenceKeys.UPDATE_URL_PROP;
+        String old = System.getProperty(key);
+        try {
+            System.clearProperty(key);
+            assertEquals(PreferenceKeys.DEFAULT_UPDATE_URL, AppLinks.updateUrl());
+            System.setProperty(key, "https://example.test/updates.xml");
+            assertEquals("https://example.test/updates.xml", AppLinks.updateUrl());
+        } finally {
+            restore(key, old);
+        }
+    }
+
+    @Test
+    void userGuideUrlIsNullUntilConfigured() {
+        String key = PreferenceKeys.USER_GUIDE_URL_PROP;
+        String old = System.getProperty(key);
+        try {
+            System.clearProperty(key);
+            org.junit.jupiter.api.Assertions.assertNull(AppLinks.userGuideUrl());
+            System.setProperty(key, "https://example.test/guide");
+            assertEquals("https://example.test/guide", AppLinks.userGuideUrl());
+        } finally {
+            restore(key, old);
+        }
+    }
+
     private static void restore(String key, String value) {
         if (value == null) {
             System.clearProperty(key);

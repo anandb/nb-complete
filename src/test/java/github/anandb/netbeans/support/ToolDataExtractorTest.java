@@ -233,8 +233,10 @@ class ToolDataExtractorTest {
 
     @Test
     void claudeEditWithContentIsNotDetailLess() throws Exception {
+        String content = "[{\"type\":\"content\",\"content\":"
+                + "{\"type\":\"text\",\"text\":\"+1 -1\"}}]";
         assertFalse(ToolDataExtractor.isDetailLessToolCall(
-                claudeToolCall("Edit", "edit", "{}", "[{\"type\":\"content\",\"content\":{\"type\":\"text\",\"text\":\"+1 -1\"}}]")));
+                claudeToolCall("Edit", "edit", "{}", content)));
     }
 
     @Test
@@ -258,6 +260,55 @@ class ToolDataExtractorTest {
     void descriptiveTitleIsNotDetailLess() throws Exception {
         assertFalse(ToolDataExtractor.isDetailLessToolCall(
                 claudeToolCall("Execute the migration", "other", "{}", null)));
+    }
+
+    @Test
+    void toolCallIdSupportsEveryWireShape() throws Exception {
+        assertEquals("a", ToolDataExtractor.extractToolCallId(MAPPER.readTree("{\"toolCallId\":\"a\"}")));
+        assertEquals("b", ToolDataExtractor.extractToolCallId(MAPPER.readTree("{\"tool_call_id\":\"b\"}")));
+        assertEquals("c", ToolDataExtractor.extractToolCallId(
+                MAPPER.readTree("{\"toolCall\":{\"toolCallId\":\"c\"}}")));
+        assertEquals("d", ToolDataExtractor.extractToolCallId(
+                MAPPER.readTree("{\"toolCall\":{\"id\":\"d\"}}")));
+        assertEquals("e", ToolDataExtractor.extractToolCallId(
+                MAPPER.readTree("{\"tool_call\":{\"id\":\"e\"}}")));
+        assertNull(ToolDataExtractor.extractToolCallId(MAPPER.readTree("{}")));
+    }
+
+    @Test
+    void classifyRecognizesCleanupMcpThinkAndTitleKinds() {
+        assertEquals("context cleanup", ToolDataExtractor.classify(
+                MessageType.tool_call, "DCP Statistics", "", "").kind());
+        assertEquals("mcp", ToolDataExtractor.classify(
+                MessageType.tool_call, "", "", "nb_read_file").kind());
+        assertEquals("edit", ToolDataExtractor.classify(
+                MessageType.tool_call, "", "", "edit \u00b7 src/Main.java").kind());
+        assertEquals("tool", ToolDataExtractor.classify(
+                MessageType.tool_call, "", "think", "").kind());
+        assertTrue(ToolDataExtractor.isDcpCleanup("DCP Statistics"));
+        assertFalse(ToolDataExtractor.isDcpCleanup(null));
+    }
+
+    @Test
+    void contentTextHandlesTextObjectAndArrays() throws Exception {
+        assertNull(ToolDataExtractor.contentText(null));
+        assertEquals("plain", ToolDataExtractor.contentText(text("plain")));
+        assertEquals("object", ToolDataExtractor.contentText(MAPPER.readTree("{\"text\":\"object\"}")));
+        assertEquals("nested-direct", ToolDataExtractor.contentText(MAPPER.readTree(
+                "[{\"content\":{\"text\":\"nested-\"}},{\"type\":\"text\",\"text\":\"direct\"}]")));
+    }
+
+    @Test
+    void compressedContextTitleIsLowercased() {
+        assertEquals("context compressed 5 messages", ToolDataExtractor.extractToolTitle(
+                "context", "Compressed 5 messages into a summary", null, null));
+    }
+
+    @Test
+    void toolNameIsTheLastIdentifierFallback() throws Exception {
+        SessionUpdate update = claudeToolCall("", "", "{\"tool\":\"search\"}", null);
+
+        assertEquals("x search", ToolDataExtractor.extractToolTitle("x:y", null, null, update));
     }
 
     private static SessionUpdate claudeToolCall(String title, String kind, String rawInput, String content)

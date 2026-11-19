@@ -79,6 +79,20 @@ public class GlobalOpencodeConfigTest {
     }
 
     @Test
+    void unparseableJsoncMeansUnparseable() throws IOException {
+        Files.createDirectories(configDir());
+        Files.writeString(configDir().resolve("opencode.jsonc"), "{ \"auth\": ");
+        assertEquals(GlobalOpencodeConfig.State.UNPARSEABLE, GlobalOpencodeConfig.evaluate().state);
+    }
+
+    @Test
+    void nonObjectRootMeansRealContent() throws IOException {
+        Files.createDirectories(configDir());
+        Files.writeString(configDir().resolve("opencode.json"), "[]");
+        assertEquals(GlobalOpencodeConfig.State.REAL_CONTENT, GlobalOpencodeConfig.evaluate().state);
+    }
+
+    @Test
     void realJsoncWinsOverUnparseableJson() throws IOException {
         Files.createDirectories(configDir());
         Files.writeString(configDir().resolve("opencode.json"), "{ \"auth\": ");
@@ -130,5 +144,17 @@ public class GlobalOpencodeConfigTest {
         assertTrue(content.contains("\"autoupdate\": false"));
         assertFalse(content.contains("\"permission\""));
         assertFalse(Files.exists(configDir().resolve("opencode.json")));
+    }
+
+    @Test
+    void writeDefaultConfigRemovesShadowingEmptyJsonc() throws IOException {
+        Files.createDirectories(configDir());
+        Files.writeString(configDir().resolve("opencode.json"), "{}");
+        Files.writeString(configDir().resolve("opencode.jsonc"), "{}");
+
+        GlobalOpencodeConfig.writeDefaultConfig();
+
+        assertFalse(Files.exists(configDir().resolve("opencode.jsonc")));
+        assertEquals(GlobalOpencodeConfig.State.REAL_CONTENT, GlobalOpencodeConfig.evaluate().state);
     }
 }

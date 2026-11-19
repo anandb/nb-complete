@@ -103,4 +103,37 @@ class MessageTest {
         assertEquals("one\n\ntwo\n\n[Tool Call: search]", assistant.extractText());
         assertEquals("", new Message("empty", "user", null, null, null).extractText());
     }
+
+    @Test
+    void hiddenTaggedContentIsNotDisplayed() {
+        Message.ContentPart part = new Message.ContentPart("text", "secret", null, null, null, null,
+                null, null, null, new Message.Annotations(null, List.of("hidden")));
+        assertEquals("", part.getDisplayText());
+    }
+
+    @Test
+    void imageUsesFilenameAndFallsBackToUrl() {
+        Message.ContentPart named = new Message.ContentPart("image", null, "https://x/y.png", "shot.png",
+                null, null, null, null, null, null);
+        Message.ContentPart unnamed = new Message.ContentPart("image", null, "https://x/y.png", null,
+                null, null, null, null, null, null);
+        assertEquals("[Image: shot.png]", named.getDisplayText());
+        assertEquals("[Image: https://x/y.png]", unnamed.getDisplayText());
+    }
+
+    @Test
+    void fileAndResourcePartsDisplayTheirTargets() {
+        Message.ContentPart file = new Message.ContentPart("file", null, null, "notes.txt",
+                null, null, null, null, null, null);
+        Message.ContentPart noResource = new Message.ContentPart("resource", null, null, null,
+                null, null, null, null, null, null);
+        Message.ContentPart emptyTail = new Message.ContentPart("resource_link", null, null, null,
+                null, null, null, "file:///tmp/", null, null);
+        Message.ContentPart unknown = new Message.ContentPart("audio", null, null, null,
+                null, null, null, null, null, null);
+        assertEquals("[File: notes.txt]", file.getDisplayText());
+        assertEquals("[File: attachment]", noResource.getDisplayText());
+        assertEquals("[File: file:///tmp/]", emptyTail.getDisplayText());
+        assertEquals("", unknown.getDisplayText());
+    }
 }

@@ -12,16 +12,12 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.nio.charset.StandardCharsets;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
 /**
- * Scripted ACP peer for headless protocol tests: a Mockito-mocked {@code Process} whose
- * pipes are wired to a real {@link AcpProtocolClient}, so tests can push agent-side
- * wire bytes at the client and read the client's outbound JSON-RPC messages.
+ * Scripted ACP peer for headless protocol tests: a pair of pipes wired to a real
+ * {@link AcpProtocolClient}, so tests can push agent-side wire bytes at the client and
+ * read the client's outbound JSON-RPC messages.
  *
- * <p>Reuses the pipe-emulation pattern proven in {@code AcpProtocolClientTest}.
- * Outbound reads use Jackson's streaming parser (never {@code BufferedReader.readLine()}),
+ * <p>Outbound reads use Jackson's streaming parser (never {@code BufferedReader.readLine()}),
  * mirroring the production {@code readLoop} framing: whitespace-separated JSON objects.</p>
  */
 final class MockAcpServer implements AutoCloseable {
@@ -40,12 +36,7 @@ final class MockAcpServer implements AutoCloseable {
     MockAcpServer() throws IOException {
         PipedInputStream processStdin = new PipedInputStream(toClient, PIPE_SIZE);
         PipedOutputStream processStdout = new PipedOutputStream(fromClient);
-        // The mock process hands the client its ends of the two pipes: stdin is fed
-        // by what the test writes to toClient, stdout drains into fromClient.
-        Process process = mock(Process.class);
-        when(process.getInputStream()).thenReturn(processStdin);
-        when(process.getOutputStream()).thenReturn(processStdout);
-        this.client = new AcpProtocolClient(process);
+        this.client = new AcpProtocolClient(processStdin, processStdout);
         this.client.start();
     }
 

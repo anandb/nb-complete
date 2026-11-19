@@ -10,6 +10,7 @@ import java.io.BufferedWriter;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 
@@ -106,8 +107,16 @@ public class AcpProtocolClient implements Closeable {
     private final AtomicInteger pendingPermissions = new AtomicInteger(0);
 
     public AcpProtocolClient(Process process) throws IOException {
-        this.writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8));
-        this.inputStream = process.getInputStream();
+        this(process.getInputStream(), process.getOutputStream());
+    }
+
+    /**
+     * Transport seam: tests and embedders can drive the JSON-RPC framing over
+     * arbitrary streams. The process constructor is only the production adapter.
+     */
+    AcpProtocolClient(InputStream inputStream, OutputStream outputStream) {
+        this.inputStream = inputStream;
+        this.writer = new BufferedWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8));
         this.wireLogger = new WireLogger(AcpSessionInfo.getInstance().getHarnessId());
     }
 
@@ -287,7 +296,7 @@ public class AcpProtocolClient implements Closeable {
         }
     }
 
-    private void checkIdleTimeout() {
+    void checkIdleTimeout() {
         if (!running) return;
 
         // Don't timeout while waiting for user to respond to a permission request

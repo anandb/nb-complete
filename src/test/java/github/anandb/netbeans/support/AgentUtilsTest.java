@@ -1,5 +1,8 @@
 package github.anandb.netbeans.support;
 
+import java.io.Closeable;
+import java.io.IOException;
+
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -16,4 +19,14 @@ class AgentUtilsTest {
         assertNull(AgentUtils.readResource("resource-that-does-not-exist.txt"));
     }
 
+    @Test
+    void closeQuietlyIgnoresNullAndCloseFailures() {
+        AgentUtils.closeQuietly(null);
+        AgentUtils.closeQuietly(new Closeable() {
+            @Override
+            public void close() throws IOException {
+                throw new IOException("expected");
+            }
+        });
+    }
 }
