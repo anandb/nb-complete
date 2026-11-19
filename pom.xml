@@ -512,7 +512,6 @@
                     <licenseFile>LICENSE</licenseFile>
                     <publicPackages>
                         <publicPackage>github.anandb.netbeans.model</publicPackage>
-                        <publicPackage>github.anandb.netbeans.contract</publicPackage>
                     </publicPackages>
                 </configuration>
             </plugin>
