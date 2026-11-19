@@ -815,6 +815,42 @@ class SessionManagerTest {
     }
 
     @Test
+    void failedLoadReportsTheHarnessReasonAndKeepsTheSession() throws Exception {
+        seedCachedSession("s1", "/p");
+        ObjectNode data = mapper.createObjectNode().put("details", "Could not restore model m1");
+        when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(CompletableFuture.failedFuture(
+                        new AcpRpcException(AcpRpcException.INTERNAL_ERROR, "Internal error", data)));
+        List<String> failureReasons = new java.util.ArrayList<>();
+        List<String> errors = new java.util.ArrayList<>();
+        sessionManager.addSessionListener(new SessionListener() {
+            @Override public void onSessionListUpdated(List<Session> s) {}
+            @Override public void onSessionStarted(String id) {}
+            @Override public void onSessionLoaded(String id, List<SessionConfigOption> o, boolean b) {}
+            @Override public void onSessionLoading(boolean l) {}
+            @Override public void onSessionError(String m) { errors.add(m); }
+            @Override public void onSessionUpdate(SessionUpdate u) {}
+            @Override public void onSessionLoadFailed(String id, String reason) {
+                failureReasons.add(id + "|" + reason);
+            }
+        });
+
+        assertTrue(sessionManager.loadSession("s1"));
+        long deadline = System.currentTimeMillis() + 5000;
+        while (failureReasons.isEmpty() && System.currentTimeMillis() < deadline) {
+            Thread.sleep(20);
+        }
+
+        assertEquals(1, failureReasons.size(), "the failed load must be announced to the UI");
+        assertTrue(failureReasons.get(0).startsWith("s1|"), failureReasons.get(0));
+        assertTrue(failureReasons.get(0).contains("Could not restore model m1"),
+                "the harness's error.data.details must survive, not just 'Internal error': "
+                        + failureReasons.get(0));
+        assertTrue(errors.isEmpty(), "a failed load is a notice, not a session teardown");
+        assertEquals("s1", sessionManager.getCurrentSessionId());
+    }
+
+    @Test
     void canLoadSessionsTracksTheCapability() {
         assertTrue(sessionManager.canLoadSessions());
         when(processManager.isSessionLoadUnsupported()).thenReturn(true);

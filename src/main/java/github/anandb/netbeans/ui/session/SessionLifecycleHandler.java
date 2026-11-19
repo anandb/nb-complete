@@ -821,6 +821,19 @@ public class SessionLifecycleHandler implements SessionListener {
     }
 
     @Override
+    public void onSessionLoadFailed(String sessionId, String reason) {
+        String text = NbBundle.getMessage(UIBundle.class, "MSG_SessionLoadFailed", reason);
+        runForSession(sessionId, () -> {
+            // The load future completes anyway (the session may still be live on the
+            // server), so this is a notice inside the thread, rendered in the calm info
+            // style: the error bubble's red fill would overstate a missing history.
+            statusController.setStatus("STATUS_Error", text);
+            chatPanel.setSessionLoading(false);
+            chatPanel.addMessage(ProcessedMessage.createInfo(text));
+        });
+    }
+
+    @Override
     public void onSessionError(String message) {
         SwingUtilities.invokeLater(() -> {
             statusController.setStatus("STATUS_Error", message);

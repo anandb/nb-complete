@@ -28,6 +28,7 @@ import java.util.function.Consumer;
 
 import org.openide.util.RequestProcessor;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import github.anandb.netbeans.support.Logger;
@@ -400,8 +401,15 @@ public class AcpProtocolClient implements Closeable {
                         JsonNode errNode = node.get("error");
                         String errMsg = errNode.has("message") ? errNode.get("message").asText() : errNode.toString();
                         int code = errNode.has("code") ? errNode.get("code").asInt() : 0;
-                        LOG.warn("[ACP] Error response for id={0}: {1}", id, errMsg);
                         JsonNode data = errNode.has("data") ? errNode.get("data") : null;
+                        // The harness's cause lives in error.data (Hermes' unknown_execution,
+                        // goose's bare-string reasons); logging only the message drops it.
+                        if (data == null || data.isNull()) {
+                            LOG.warn("[ACP] Error response for id={0}: {1}", id, errMsg);
+                        } else {
+                            LOG.warn("[ACP] Error response for id={0}: {1} (data: {2})", id, errMsg,
+                                    StringUtils.abbreviate(data.toString(), 400));
+                        }
                         future.completeExceptionally(new AcpRpcException(code, errMsg, data));
                     } else if (node.has("result")) {
                         LOG.fine("[ACP] Received response for id={0}", id);

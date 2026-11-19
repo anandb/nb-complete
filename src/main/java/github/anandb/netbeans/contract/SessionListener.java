@@ -29,6 +29,16 @@ public interface SessionListener {
     /** Fired when a session operation fails. */
     void onSessionError(String message);
 
+    /**
+     * Fired when {@code session/load} failed but the session was kept (it may still be live on
+     * the server), so the UI reports the reason in the thread instead of showing an empty,
+     * apparently loaded session.
+     * @param sessionId the session that failed to load
+     * @param reason the harness's own explanation ({@code error.data.details}), else the RPC
+     *               message
+     */
+    default void onSessionLoadFailed(String sessionId, String reason) {}
+
     /** Fired for every SSE session/update notification. */
     void onSessionUpdate(SessionUpdate update);
 

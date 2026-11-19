@@ -53,6 +53,12 @@ final class SessionEventBus {
         snapshot().forEach(l -> l.onSessionError(message));
     }
 
+    /** A {@code session/load} failure the caller keeps alive; the thread still needs the
+     *  reason, or it renders an empty session as if the load had succeeded. */
+    void sessionLoadFailed(String sessionId, String reason) {
+        snapshot().forEach(l -> l.onSessionLoadFailed(sessionId, reason));
+    }
+
     void sessionRenamed(String sessionId) {
         snapshot().forEach(l -> l.onSessionRenamed(sessionId));
     }

@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -274,6 +275,40 @@ class SessionLifecycleHandlerTest {
                 "Closed dropdown must render the new title");
         assertEquals("s1", ((SessionItem) sessionDropdown.getSelectedItem()).getSession().id(),
                 "Rename must keep the renamed session selected");
+    }
+
+    @Test
+    void failedLoadShowsTheHarnessReasonInTheThread() throws Exception {
+        setUpMocks(false);
+        stubCurrent("s1");
+        SessionLifecycleHandler handler = newHandler();
+
+        handler.onSessionLoadFailed("s1", "Internal error: Could not restore model m1");
+        flushEdt();
+
+        org.mockito.ArgumentCaptor<ProcessedMessage> bubble =
+                org.mockito.ArgumentCaptor.forClass(ProcessedMessage.class);
+        verify(chatPanel).addMessage(bubble.capture());
+        assertTrue(bubble.getValue().text().contains("Could not restore model m1"),
+                "the bubble must carry the harness's own cause: " + bubble.getValue().text());
+        assertEquals(MessageType.info, bubble.getValue().messageType(),
+                "a failed load is a calm notice, not the red error bubble");
+        verify(chatPanel).setSessionLoading(false);
+        verify(statusController).setStatus(eq("STATUS_Error"), anyString());
+        // The load is not torn down: only onSessionError does that.
+        verify(chatPanel, never()).stopStreaming();
+    }
+
+    @Test
+    void failedLoadForAnotherSessionDoesNotTouchThisThread() throws Exception {
+        setUpMocks(false);
+        stubCurrent("s2");
+        SessionLifecycleHandler handler = newHandler();
+
+        handler.onSessionLoadFailed("s1", "Internal error");
+        flushEdt();
+
+        verify(chatPanel, never()).addMessage(any());
     }
 
     @Test

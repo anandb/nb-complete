@@ -389,6 +389,19 @@ cancel/close only when the target is already loaded by this server generation; g
 capability and swallow close failures so load continues. A plain session switch must not cancel
 the target load. Do not make cancel/close unconditional.
 
+### Failed session/load Is Reported, Not Silently Completed
+
+`SessionManager.loadSessionFromServer` still completes with `null` when `session/load` (or
+`session/resume`) fails after the MCP and startup retries — the agent may keep the session open —
+but it MUST emit `SessionListener.onSessionLoadFailed(sessionId, reason)`. Without that event the
+UI rendered an empty thread as a successful load. `reason` is `rootMessage(ex)`, which appends the
+harness's `error.data.details` (Hermes `unknown_execution`, an unrestorable model, goose's
+textual `error.data`). `SessionLifecycleHandler.onSessionLoadFailed` only announces it — an
+`info` notice bubble (`createInfo`, grey italic on the sunken background, NOT `error_response`'s
+red fill), plus `STATUS_Error` in the status label and loading off. It must never tear down the
+thread, clear `currentSessionId` or set `turnEnded` the way `onSessionError` does.
+`AcpProtocolClient` logs `error.data` with the error response for the same reason.
+
 ### File Access Policy Is Shared By ACP And MCP Tools
 - `FileAccessGuard.check(...)` is the shared ACP/MCP enforcement point. `ALLOW` reads/writes within
   the project; `READ_ANY_WRITE_PROJECT` reads anywhere but writes only within; `READ_ONLY` allows

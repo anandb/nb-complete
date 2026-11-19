@@ -816,8 +816,13 @@ public class SessionManager implements SessionQuery, SessionControl,
                     }
                     // Agents may fail session/load while the session itself stays
                     // open; keep the existing behaviour of completing with no
-                    // options rather than tearing the session down.
-                    LOG.warn("{0}: error: {1}", operation, ExceptionUtils.getMessage(ex), ex);
+                    // options rather than tearing the session down. The thread
+                    // still reports why its history is missing.
+                    // The reason is in the message, so the stack stays at FINE: a
+                    // WARNING with a throwable also surfaces as an IDE notification.
+                    LOG.fine("{0}: failure stack", operation, ex);
+                    LOG.warn("{0}: error: {1}", operation, rootMessage(ex));
+                    events.sessionLoadFailed(sessionId, rootMessage(ex));
                     return null;
                 });
     }
