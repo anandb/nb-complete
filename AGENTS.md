@@ -709,7 +709,10 @@ Register `ToggleAssistantAction` in `layer.xml`; both `Menu/Window/Assistant.sha
 - Keep MCP tool names short. OpenHands must not receive the internal MCP server until its adapter
   accepts the expected headers shape.
 - `Harness.acceptsMcpAuthToken()` controls MCP URL authentication; resolve the harness before
-  `toolExecutor.start()`. Never hand authenticated MCP URLs to PI-family or Jcode sessions.
+  `toolExecutor.start()`. Never hand authenticated MCP URLs to Pi adapter or Jcode sessions.
+  `ServerProcessLifecycle.requiresMcpAuthToken()` reads only that catalog flag — do not add
+  binary-name exceptions or sets in `BinaryResolver`; the YAML `binaryNames` already drive harness
+  resolution.
 - Every filesystem/git/hg tool must use `ProjectPathGuard`/`FileAccessGuard`; never bypass
   `RunCommandPolicy.rejection`. `run_command` is confined by working directory and command policy.
 - Return tool errors as `{status:"error", message:...}`; set `fatal:true` only for service failures,

@@ -11,6 +11,7 @@ harnesses:
     docsUrl: "https://omp.sh/docs/acp"
     supportsMessageIds: true
     supportsSessionSetMode: true
+    acceptsMcpAuthToken: false
     install:
       windows: "powershell -c \"irm https://omp.sh/install.ps1 | iex\""
       mac: "curl -fsSL https://omp.sh/install | sh"
@@ -84,7 +85,7 @@ harnesses:
   - id: "pi"
     displayName: "Pi"
     iconBase: "pi-logo"
-    binaryNames: ["pi-acp"]
+    binaryNames: ["pi-acp", "jetbrains-pi-acp", "openma-pi-acp"]
     prerequisites: "Requires Node.js 22+, pi 0.80.4+ on your PATH, and @geohar/pi-acp 0.4.0+ for editor context. Install the ACP adapter separately: npm install -g @geohar/pi-acp. For MCP Tools, add pi-mcp-adapter to your Pi packages."
     docsUrl: "https://github.com/georgeharker/pi-acp"
     requiresMessageQueue: true

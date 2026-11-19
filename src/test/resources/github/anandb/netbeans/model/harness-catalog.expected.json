@@ -127,7 +127,7 @@
     "id" : "pi",
     "displayName" : "Pi",
     "iconBase" : "pi-logo",
-    "binaryNames" : [ "pi-acp" ],
+    "binaryNames" : [ "pi-acp", "jetbrains-pi-acp", "openma-pi-acp" ],
     "launchArgs" : "",
     "requiresMessageQueue" : true,
     "sendsMcpServerConfig" : true,
@@ -723,6 +723,8 @@
     "opencode" : "opencode",
     "openhands" : "openhands",
     "pi-acp" : "pi",
+    "jetbrains-pi-acp" : "pi",
+    "openma-pi-acp" : "pi",
     "qwen" : "qwen"
   },
   "sortedIds" : [ "claude", "cline", "codex", "copilot", "cursor", "devin", "gemini", "goose", "grok", "hermes", "jcode", "kilo", "kimi", "omp", "openclaw", "opencode", "openhands", "pi", "qwen" ]

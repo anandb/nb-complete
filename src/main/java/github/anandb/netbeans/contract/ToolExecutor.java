@@ -20,8 +20,8 @@ public interface ToolExecutor {
     /**
      * Configures whether the embedded MCP server requires a token from clients.
      * Must be called before {@link #start()}. Auth is skipped only for harness
-     * binaries that cannot carry tokens on MCP URLs (the PI family: pi,
-     * pi-acp, pi-agent).
+     * binaries that cannot carry tokens on MCP URLs (Pi's adapter binaries from
+     * the catalog's {@code binaryNames}, and Jcode).
      *
      * @param required true to hand out token-protected MCP URLs and enforce them
      */

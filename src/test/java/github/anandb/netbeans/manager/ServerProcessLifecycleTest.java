@@ -49,7 +49,6 @@ class ServerProcessLifecycleTest {
         binaryMock.when(BinaryResolver::resolveExecutablePath)
                 .thenThrow(new IllegalStateException("no agent binary in unit tests"));
         binaryMock.when(BinaryResolver::isWslAvailable).thenReturn(false);
-        binaryMock.when(BinaryResolver::isPiHarness).thenReturn(false);
         binaryMock.when(BinaryResolver::resolveBinaryName).thenReturn("test-agent");
         rpcClient = new AtomicReference<>();
         lifecycle = new ServerProcessLifecycle(

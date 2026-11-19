@@ -20,41 +20,23 @@ import github.anandb.netbeans.model.Harness;
 
 /**
  * Tests for {@link BinaryResolver} binary-name resolution used by the MCP
- * token-auth policy: PI-family harness binaries (pi, pi-acp, pi-agent) skip
- * token auth; everything else (opencode, goose, ...) gets token-protected
- * URLs. Windows executables carry a {@code .exe} suffix that must be stripped
- * before matching.
+ * token-auth policy: Pi's adapter binaries from the YAML {@code binaryNames}
+ * (pi-acp, jetbrains-pi-acp, openma-pi-acp) skip token auth; everything else
+ * (opencode, goose, ...) gets token-protected URLs. Windows executables carry
+ * a {@code .exe} suffix that must be stripped before matching.
  */
 class BinaryResolverTest {
-
-    @Test
-    void piHarnessBinariesMatchWithAndWithoutExe() {
-        assertTrue(BinaryResolver.PI_HARNESS.contains(BinaryResolver.binaryNameFromPath("/usr/bin/pi")));
-        assertTrue(BinaryResolver.PI_HARNESS.contains(BinaryResolver.binaryNameFromPath("C:\\tools\\pi-acp.exe")));
-        assertTrue(BinaryResolver.PI_HARNESS.contains(BinaryResolver.binaryNameFromPath("/usr/local/bin/pi-agent")));
-        assertTrue(BinaryResolver.PI_HARNESS.contains(BinaryResolver.binaryNameFromPath("C:\\bin\\PI-AGENT.EXE")));
-    }
-
-    @Test
-    void nonPiBinariesDoNotMatch() {
-        assertFalse(BinaryResolver.PI_HARNESS.contains(BinaryResolver.binaryNameFromPath("/usr/bin/opencode")));
-        assertFalse(BinaryResolver.PI_HARNESS.contains(BinaryResolver.binaryNameFromPath("C:\\tools\\opencode.exe")));
-        assertFalse(BinaryResolver.PI_HARNESS.contains(BinaryResolver.binaryNameFromPath("/usr/bin/goose")));
-        // Substring look-alikes must not match — exact-name policy only.
-        assertFalse(BinaryResolver.PI_HARNESS.contains(BinaryResolver.binaryNameFromPath("/usr/bin/piano")));
-        assertFalse(BinaryResolver.PI_HARNESS.contains(BinaryResolver.binaryNameFromPath("/usr/bin/opi")));
-    }
 
     @Test
     void knownHarnessesIncludeCursorAgentAndOthers() {
         assertTrue(BinaryResolver.KNOWN_HARNESSES.contains("opencode"));
         assertTrue(BinaryResolver.KNOWN_HARNESSES.contains("pi-acp"));
+        assertTrue(BinaryResolver.KNOWN_HARNESSES.contains("jetbrains-pi-acp"));
+        assertTrue(BinaryResolver.KNOWN_HARNESSES.contains("openma-pi-acp"));
         assertTrue(BinaryResolver.KNOWN_HARNESSES.contains("goose"));
         assertTrue(BinaryResolver.KNOWN_HARNESSES.contains("agent"));
-        // Detection is by ACP entry point only — bare pi / pi-agent are not probed.
-        assertFalse(BinaryResolver.KNOWN_HARNESSES.contains("pi"));
-        assertFalse(BinaryResolver.KNOWN_HARNESSES.contains("pi-agent"));
-        assertFalse(BinaryResolver.PI_HARNESS.contains("agent"));
+        // `agent` is Cursor's bare ACP binary.
+        assertEquals(HarnessCatalog.CURSOR, HarnessCatalog.byBinaryName("agent"));
     }
 
     @Test
@@ -138,7 +120,6 @@ class BinaryResolverTest {
     void cmdSuffixIsStrippedFromBinaryName() {
         assertEquals("cursor-agent",
                 BinaryResolver.binaryNameFromPath("C:\\Users\\me\\AppData\\Local\\cursor-agent.cmd"));
-        assertFalse(BinaryResolver.PI_HARNESS.contains("cursor-agent"));
     }
 
     @Test

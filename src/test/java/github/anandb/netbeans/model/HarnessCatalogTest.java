@@ -48,7 +48,8 @@ class HarnessCatalogTest {
 
     @Test
     void launchBinariesAreAcpEntryPoints() {
-        assertEquals(List.of("pi-acp"), HarnessCatalog.PI.binaryNames());
+        assertEquals(List.of("pi-acp", "jetbrains-pi-acp", "openma-pi-acp"),
+                HarnessCatalog.PI.binaryNames());
         assertTrue(HarnessCatalog.CLAUDE.binaryNames().contains("claude-agent-acp"));
         assertEquals(List.of("codex-acp"), HarnessCatalog.CODEX.binaryNames());
     }
@@ -98,6 +99,10 @@ class HarnessCatalogTest {
     void binaryLookupIgnoresWindowsExecutableExtension() {
         assertEquals(HarnessCatalog.OMP, HarnessCatalog.byBinaryName("omp.exe"));
         assertEquals(HarnessCatalog.PI, HarnessCatalog.byBinaryName("pi-acp.exe"));
+        assertEquals(HarnessCatalog.PI, HarnessCatalog.byBinaryName("jetbrains-pi-acp"));
+        assertEquals(HarnessCatalog.PI, HarnessCatalog.byBinaryName("jetbrains-pi-acp.exe"));
+        assertEquals(HarnessCatalog.PI, HarnessCatalog.byBinaryName("openma-pi-acp"));
+        assertEquals(HarnessCatalog.PI, HarnessCatalog.byBinaryName("openma-pi-acp.exe"));
         assertEquals(HarnessCatalog.HERMES, HarnessCatalog.byBinaryName("hermes.exe"));
         assertEquals(HarnessCatalog.GOOSE, HarnessCatalog.byBinaryName("GOOSE.EXE"));
         assertEquals(HarnessCatalog.CURSOR, HarnessCatalog.byBinaryName("cursor-agent.cmd"));

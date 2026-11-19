@@ -27,11 +27,6 @@ public final class BinaryResolver {
 
     private static final Logger LOG = Logger.from(BinaryResolver.class);
 
-    /** ACP harness binaries that cannot carry auth tokens on MCP server URLs.
-     *  The embedded MCP server skips token enforcement when one of these runs.
-     *  Package-visible for tests. */
-    static final Set<String> PI_HARNESS = Set.of("pi", "pi-acp", "pi-agent");
-
     /** Linux system package directories, owned by the distribution's package
      *  manager. No catalog harness ships in one: every installer writes to a
      *  harness-owned directory, a user bin directory, a brew/npm prefix or
@@ -154,19 +149,6 @@ public final class BinaryResolver {
             name = name.substring(0, name.lastIndexOf('.'));
         }
         return name.toLowerCase(Locale.ROOT);
-    }
-
-    /**
-     * Returns {@code true} when the configured ACP binary is a PI harness
-     * variant ({@code pi}, {@code pi-acp}, {@code pi-agent}). These harnesses
-     * do not support auth tokens on MCP server URLs. The token policy itself is
-     * the catalog's {@code acceptsMcpAuthToken} capability; this check only
-     * covers a bare {@code pi}/{@code pi-agent} binary that no catalog entry
-     * names, so the harness resolves to {@code UNKNOWN}.
-     */
-    public static boolean isPiHarness() {
-        String name = resolveBinaryName();
-        return name != null && PI_HARNESS.contains(name);
     }
 
     /**

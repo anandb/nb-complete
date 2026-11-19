@@ -18,7 +18,7 @@ Install the harness first (Node.js 22+):
 
 <pre><code>npm install -g @earendil-works/pi-coding-agent</code></pre>
 
-BeanBot drives Pi through the <code>@geohar/pi-acp</code> adapter — a fork of <code>svkozak/pi-acp</code> that adds the subagent bridge, MCP handling, and multi-root workspaces. It needs <code>pi</code> 0.80.4+ on your <code>PATH</code>:
+BeanBot's Pi integration is developed and tested against <code>@geohar/pi-acp</code>, a fork of <code>svkozak/pi-acp</code> that adds the subagent bridge, MCP handling and multi-root workspaces. It needs <code>pi</code> 0.80.4+ on your <code>PATH</code>:
 
 <pre><code>npm install -g @geohar/pi-acp</code></pre>
 
@@ -28,10 +28,17 @@ Loading it into Pi as an extension as well is optional — it surfaces the pi-su
 
 The executable you configure in BeanBot is <code>pi-acp</code> (the adapter, not <code>pi</code> itself). When the session starts, Pi posts a startup banner with its version, context files and extensions, which the plugin renders as a compact info card.
 
-The plugin's [[MCP Tools]] reach Pi over ACP: BeanBot passes its MCP server in the session create/load request, and <code>@geohar/pi-acp</code> forwards it to Pi. One setup step remains:
+#### Other adapters
 
-- **MCP adapter** — install <a href="https://github.com/nicobailon/pi-mcp-adapter" target="_blank" rel="noopener">pi-mcp-adapter</a> in your Pi packages. The adapter translates the ACP session's servers into a session-scoped config that it hands to Pi via <code>--mcp-config</code>; without it the servers are not loaded and Pi prints a startup notice. No manual <code>mcp.json</code> entry and no fixed port are needed — the server URL is delivered per session.
-- **Mid-turn messages** — <code>@geohar/pi-acp</code> queues them until the running turn ends. Install a steering-capable adapter instead (<code>@automatalabs/pi-acp</code>, <code>@openma/pi-acp</code> or <code>@gugu-acp/pi-acp</code>, configured as <code>pi-acp</code>) and BeanBot injects them into the running turn, because that adapter advertises the cross-adapter <code>&#95;session/steering</code> extension.
+Pi has several ACP adapters, and they do not all expose the same capabilities: mid-turn steering, MCP handling, session management and the Pi version they embed differ. BeanBot reads those capabilities from the ACP handshake, so an adapter that advertises steering or MCP works without extra plugin configuration.
+
+<code>@geohar/pi-acp</code> queues mid-turn messages. Steering-capable examples are <code>@automatalabs/pi-acp</code>, <code>@openma/pi-acp</code>, <code>@gugu-acp/pi-acp</code> and <code>jetbrains-pi-acp</code>; check each package's MCP and Pi-version notes before choosing one. For example, an adapter that bundles an older Pi cannot replay sessions written by a newer CLI, and <code>@gugu-acp/pi-acp</code> has no MCP support.
+
+The <code>pi-acp</code>, <code>jetbrains-pi-acp</code> and <code>openma-pi-acp</code> binaries auto-detect as the Pi harness. For any other binary name, set its executable path and pin **Harness** to Pi under **Options &gt; BeanBot**; an explicit harness choice survives later path edits.
+
+The plugin's [[MCP Tools]] reach Pi over ACP: BeanBot passes its MCP server in the session create/load request. With <code>@geohar/pi-acp</code> one setup step remains:
+
+- **MCP adapter** — install <a href="https://github.com/nicobailon/pi-mcp-adapter" target="_blank" rel="noopener">pi-mcp-adapter</a> in your Pi packages. The adapter translates the ACP session's servers into a session-scoped config that it hands to Pi via <code>--mcp-config</code>; without it the servers are not loaded and Pi prints a startup notice. No manual <code>mcp.json</code> entry and no fixed port are needed — the server URL is delivered per session. Adapters that handle MCP themselves do not need this step.
 
 > [[Post Install]]
 > [[Starting a Session]]

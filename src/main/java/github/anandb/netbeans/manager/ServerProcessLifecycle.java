@@ -284,9 +284,9 @@ class ServerProcessLifecycle {
         }
 
         // Token auth for the embedded MCP server is skipped for a harness that
-        // cannot carry a token on an MCP URL (the PI family and Jcode), read off
-        // its catalog capability. Must be set BEFORE the MCP server starts so
-        // there is no unauthenticated window.
+        // cannot carry a token on an MCP URL (Pi's adapter binaries and Jcode),
+        // read off its catalog capability. Must be set BEFORE the MCP server
+        // starts so there is no unauthenticated window.
         toolExecutor.setMcpAuthRequired(requiresMcpAuthToken());
         toolExecutor.start();
 
@@ -591,19 +591,12 @@ class ServerProcessLifecycle {
     }
 
     /**
-     * Whether the embedded MCP server must enforce its auth token. Resolved
-     * before the handshake spawns the server, so the configured harness comes
-     * from preferences; a custom binary the catalog cannot identify falls back
-     * to the PI binary-name check that covers bare {@code pi}/{@code pi-agent}
-     * installs.
+     * Whether the embedded MCP server must enforce its auth token. Purely the
+     * catalog's {@code acceptsMcpAuthToken} for the configured harness; an
+     * unknown binary keeps the default (token required).
      */
     private static boolean requiresMcpAuthToken() {
-        Harness harness = configuredHarness();
-        if (harness != HarnessCatalog.UNKNOWN) {
-            return harness.acceptsMcpAuthToken();
-        }
-        // A bare pi/pi-agent binary has no catalog entry, so its name decides.
-        return !BinaryResolver.isPiHarness();
+        return configuredHarness().acceptsMcpAuthToken();
     }
 
     /** Configured harness before the handshake: stored id, then binary name, then {@link HarnessCatalog#UNKNOWN}. */
