@@ -8,7 +8,7 @@
 
 After installing your harness, configure the plugin in NetBeans.
 
-![Assistant Options](../images/assistant_options.webp){style="max-width:100%;"}
+![Assistant settings](../images/assistant_settings.webp){style="max-width:100%;"}
 
 The plugin adds a tab to the NetBeans Options — open the Options Window and you'll see an additional BeanBot tab at the end. In most cases, you can go with the defaults, but if the [[Onboarding]] screen couldn't auto-detect your harness, you can specify the full path to its binary there.
 
