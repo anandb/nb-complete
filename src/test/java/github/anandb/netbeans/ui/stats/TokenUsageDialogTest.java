@@ -285,6 +285,13 @@ class TokenUsageDialogTest {
     }
 
     @Test
+    void defaultOpeningWidthIsDoubleTheMinimum() {
+        assertEquals(2 * TokenUsageDialog.MIN_WIDTH, TokenUsageDialog.DEFAULT_WIDTH);
+        assertEquals(TokenUsageDialog.DEFAULT_WIDTH,
+                TokenUsageDialog.fittedWidth(TokenUsageDialog.MIN_WIDTH, TokenUsageDialog.DEFAULT_WIDTH, 10000));
+    }
+
+    @Test
     void fittedWidthFloorsGrowsKeepsManualWidthAndClampsToScreen() {
         assertEquals(TokenUsageDialog.MIN_WIDTH, TokenUsageDialog.fittedWidth(0, 0, 1200));
         assertEquals(TokenUsageDialog.MIN_WIDTH, TokenUsageDialog.fittedWidth(0, 100, 1200));

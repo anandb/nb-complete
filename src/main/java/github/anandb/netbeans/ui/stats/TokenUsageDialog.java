@@ -104,7 +104,9 @@ public class TokenUsageDialog extends JDialog {
     /** Last summary HTML before a viewport width is applied, kept for resize re-renders. */
     private String rawSummaryHtml;
     private int renderedTableWidth = -1;
-    /** Smallest width the dialog takes, matching its constructed preferred width. */
+    /** Width the dialog opens at; the screen can still clamp it on narrow displays. */
+    static final int DEFAULT_WIDTH = 1080;
+    /** Smallest width a refresh can shrink the dialog to. */
     static final int MIN_WIDTH = 540;
     /** Vertical scrollbar plus borders, added to the measured content width. */
     static final int WIDTH_CHROME = 24;
@@ -122,7 +124,7 @@ public class TokenUsageDialog extends JDialog {
     public TokenUsageDialog(Frame owner) {
         super(owner, NbBundle.getMessage(UIBundle.class, "LBL_TokenStats"), false);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        setPreferredSize(new Dimension(540, 460));
+        setPreferredSize(new Dimension(DEFAULT_WIDTH, 460));
         setResizable(true);
 
         JPanel content = new JPanel(new BorderLayout(0, 8));
