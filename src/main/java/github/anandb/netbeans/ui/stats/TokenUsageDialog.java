@@ -14,9 +14,12 @@ import java.awt.GraphicsEnvironment;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.Point;
 import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.ItemEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
@@ -97,6 +100,10 @@ public class TokenUsageDialog extends JDialog {
     private final JScrollPane scrollPane;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private Timer autoRefreshTimer;
+    private final Timer tableWidthTimer;
+    /** Last summary HTML before a viewport width is applied, kept for resize re-renders. */
+    private String rawSummaryHtml;
+    private int renderedTableWidth = -1;
     /** Smallest width the dialog takes, matching its constructed preferred width. */
     static final int MIN_WIDTH = 540;
     /** Vertical scrollbar plus borders, added to the measured content width. */
@@ -197,6 +204,15 @@ public class TokenUsageDialog extends JDialog {
         scrollPane = new JScrollPane(statsPane);
         scrollPane.setPreferredSize(new Dimension(500, 260));
         scrollPane.getViewport().setBackground(theme.bubbleAssistant());
+        tableWidthTimer = new Timer(120, e -> applyViewportWidthToTables());
+        tableWidthTimer.setRepeats(false);
+        scrollPane.getViewport().addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                renderedTableWidth = -1;
+                tableWidthTimer.restart();
+            }
+        });
         content.add(scrollPane, BorderLayout.CENTER);
 
         // --- Close button (centered) ---
@@ -298,7 +314,7 @@ public class TokenUsageDialog extends JDialog {
                 .equals(projectCombo.getSelectedItem());
         refreshBtn.setEnabled(false);
         ColorTheme currentTheme = ThemeManager.getCurrentTheme();
-        statsPane.setText(buildPlaceholderHtml(currentTheme, NbBundle.getMessage(UIBundle.class, "LBL_FetchingStats")));
+        setSummaryHtml(buildPlaceholderHtml(currentTheme, NbBundle.getMessage(UIBundle.class, "LBL_FetchingStats")));
 
         STATS_RP.post(() -> {
             try {
@@ -334,7 +350,7 @@ public class TokenUsageDialog extends JDialog {
                 String styledHtml = renderSummaryHtml(summary, byModel, byAgent, byTool, context,
                         currentTheme);
                 SwingUtilities.invokeLater(() -> {
-                    statsPane.setText(styledHtml);
+                    setSummaryHtml(styledHtml);
                     autoSizeToContent();
                     // Scroll to top after layout settles
                     SwingUtilities.invokeLater(() -> scrollPane.getVerticalScrollBar().setValue(0));
@@ -342,7 +358,7 @@ public class TokenUsageDialog extends JDialog {
             } catch (Exception ex) {
                 LOG.log(Level.WARNING, "Failed to read local token usage stats", ex);
                 SwingUtilities.invokeLater(() -> {
-                    statsPane.setText(buildPlaceholderHtml(currentTheme,
+                    setSummaryHtml(buildPlaceholderHtml(currentTheme,
                             NbBundle.getMessage(UIBundle.class, "ERR_StatsError",
                                     ExceptionUtils.getMessage(ex))));
                     SwingUtilities.invokeLater(() -> scrollPane.getVerticalScrollBar().setValue(0));
@@ -378,7 +394,7 @@ public class TokenUsageDialog extends JDialog {
         UsageStatsStore store = PlatformBridge.serviceSafe(UsageStatsStore.class);
         if (store == null) {
             running.set(false);
-            statsPane.setText(buildPlaceholderHtml(ThemeManager.getCurrentTheme(),
+            setSummaryHtml(buildPlaceholderHtml(ThemeManager.getCurrentTheme(),
                     NbBundle.getMessage(UIBundle.class, "ERR_ResetStatsFailed")));
             return;
         }
@@ -397,13 +413,50 @@ public class TokenUsageDialog extends JDialog {
                 refreshBtn.setEnabled(true);
                 running.set(false);
                 if (!ok) {
-                    statsPane.setText(buildPlaceholderHtml(ThemeManager.getCurrentTheme(),
+                    setSummaryHtml(buildPlaceholderHtml(ThemeManager.getCurrentTheme(),
                             NbBundle.getMessage(UIBundle.class, "ERR_ResetStatsFailed")));
                     return;
                 }
                 onRefresh(null);
             });
         });
+    }
+
+    /** Stores the current summary and applies the viewport width on the EDT. */
+    private void setSummaryHtml(String html) {
+        rawSummaryHtml = html;
+        renderedTableWidth = -1;
+        tableWidthTimer.stop();
+        // Always install the new HTML: an unsized viewport must not leave the old text on screen.
+        statsPane.setText(html);
+        applyViewportWidthToTables();
+    }
+
+    /**
+     * Swing's HTML renderer ignores CSS percentage widths, so top-level tables need
+     * an absolute width. Re-render the cached HTML when the viewport width changes.
+     */
+    private void applyViewportWidthToTables() {
+        if (rawSummaryHtml == null || renderedTableWidth >= 0) {
+            return;
+        }
+        Insets insets = statsPane.getInsets();
+        int width = scrollPane.getViewport().getWidth() - insets.left - insets.right - 2;
+        if (width <= 0) {
+            return;
+        }
+        renderedTableWidth = width;
+        Point viewPosition = scrollPane.getViewport().getViewPosition();
+        statsPane.setText(withTableWidth(rawSummaryHtml, width));
+        scrollPane.getViewport().setViewPosition(viewPosition);
+    }
+
+    /** Applies an absolute width to top-level tables without touching nested bar tables. */
+    static String withTableWidth(String html, int width) {
+        if (html == null || width <= 0) {
+            return html;
+        }
+        return html.replace("<table>", "<table width='" + width + "'>");
     }
 
     /**
@@ -417,7 +470,8 @@ public class TokenUsageDialog extends JDialog {
     private void autoSizeToContent() {
         Window parent = SwingUtilities.getWindowAncestor(this);
         int h = parent != null ? (int) (parent.getHeight() * 0.9) : 520;
-        int w = fittedWidth(naturalWidth(statsPane), getWidth(), screenWidth());
+        int natural = rawSummaryHtml == null ? naturalWidth(statsPane) : naturalWidthOf(rawSummaryHtml);
+        int w = fittedWidth(natural, getWidth(), screenWidth());
         setSize(new Dimension(w, h));
         revalidate();
     }
@@ -439,6 +493,14 @@ public class TokenUsageDialog extends JDialog {
         root.setSize(Integer.MAX_VALUE, 0);
         Insets insets = pane.getInsets();
         return (int) Math.ceil(root.getPreferredSpan(View.X_AXIS)) + insets.left + insets.right;
+    }
+
+    /** Measures the unpinned HTML so dialog sizing still follows the content, not the viewport. */
+    static int naturalWidthOf(String html) {
+        JTextPane pane = new JTextPane();
+        pane.setContentType("text/html");
+        pane.setText(html);
+        return naturalWidth(pane);
     }
 
     /**
@@ -800,6 +862,7 @@ public class TokenUsageDialog extends JDialog {
             dlg.addWindowListener(new WindowAdapter() {
                 @Override public void windowClosed(WindowEvent e) {
                     if (dlg.autoRefreshTimer != null) dlg.autoRefreshTimer.stop();
+                    dlg.tableWidthTimer.stop();
                     if (openDialog == dlg) openDialog = null;
                 }
             });

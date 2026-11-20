@@ -154,6 +154,30 @@ class TokenUsageDialogTest {
     }
 
     @Test
+    void tablesUseAnAbsoluteWidthThatSwingHonors() {
+        List<ToolTotals> byTool = List.of(new ToolTotals("read_file", 3, 0));
+        String html = TokenUsageDialog.renderSummaryHtml(sample(), List.of(), List.of(), byTool,
+                ThemeManager.getCurrentTheme());
+        String widened = TokenUsageDialog.withTableWidth(html, 480);
+
+        assertTrue(widened.contains("<table width='480'>"), "top-level tables get the viewport width");
+        assertTrue(widened.contains("<table style='margin:0;border:0;width:100%;'>"),
+                "nested histogram tables keep their relative width");
+
+        JTextPane narrowPane = new JTextPane();
+        narrowPane.setContentType("text/html");
+        narrowPane.setText(html);
+        JTextPane widePane = new JTextPane();
+        widePane.setContentType("text/html");
+        widePane.setText(widened);
+
+        int narrow = TokenUsageDialog.naturalWidth(narrowPane);
+        int wide = TokenUsageDialog.naturalWidth(widePane);
+        assertTrue(wide >= 480, "the table fills the requested width: " + wide);
+        assertTrue(wide > narrow + 200, "Swing ignores the CSS percentage: " + narrow + " -> " + wide);
+    }
+
+    @Test
     void renderSummaryHtmlRendersToolHistogramAsShareBars() {
         List<ToolTotals> byTool = List.of(
                 new ToolTotals("read_file", 120, 3),
