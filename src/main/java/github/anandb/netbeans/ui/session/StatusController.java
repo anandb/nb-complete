@@ -2,6 +2,8 @@ package github.anandb.netbeans.ui.session;
 
 import github.anandb.netbeans.support.Logger;
 import java.awt.CardLayout;
+import java.awt.Dimension;
+import java.awt.FontMetrics;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
@@ -24,7 +26,7 @@ import github.anandb.netbeans.ui.stats.ContextUsageMeter;
 public class StatusController {
 
     private static final Logger LOG = Logger.from(StatusController.class);
-    private static final String[] DOT_STRINGS = {"", ".", "..", "..."};
+    private static final String[] SPINNER_FRAMES = {"-", "\\", "/"};
 
     /** Hard cap on the status label width in characters. The label sits left of
      *  the model dropdown and absorbs all spare width, so an unbounded message
@@ -50,7 +52,7 @@ public class StatusController {
     private volatile Consumer<Boolean> processingListener;
 
     private volatile boolean animatedStatus = false;
-    private int thinkingDots = 0;
+    private int thinkingPhase = 0;
     private volatile boolean sessionActive = true;
     /** Base composer availability (a session is open); the config gate can still override it. */
     private volatile boolean inputEnabled = true;
@@ -157,7 +159,11 @@ public class StatusController {
      *  from. Every write to {@code statusLabel} goes through here. */
     private void show(String text) {
         statusBase = cap(text);
+        statusLabel.setPreferredSize(null);
         statusLabel.setText(statusBase);
+        if (animatedStatus) {
+            normalizeStatusWidth();
+        }
     }
 
     /** Truncates an over-long status message to {@link #MAX_STATUS_LENGTH}
@@ -174,27 +180,22 @@ public class StatusController {
         return text.substring(0, max - ELLIPSIS.length()) + ELLIPSIS;
     }
 
-    /** Composes one thinking-animation frame: {@code base} followed by
-     *  {@code dotCount} dots, then right-padded with spaces to the width the phase
-     *  may reach ({@code base.length() + 3}). Every frame of the cycle therefore has
-     *  the same length — the label absorbs spare width left of the model dropdown,
-     *  so an unpadded cycle ("Sending", "Sending.", "Sending..", "Sending...") would
-     *  resize that row on every 500ms tick. The dot budget is reserved before the
-     *  cap, so an over-long base is truncated once and then stays put. */
-    static String thinkingFrame(String base, int dotCount) {
+    /** Composes one thinking-animation frame: {@code base}, a space and the
+     *  current spinner glyph. All three glyphs are one character, so the text
+     *  length never changes; {@link #normalizeStatusWidth()} reserves the widest
+     *  glyph in pixels for the duration of the cycle, because a proportional font
+     *  draws {@code -}, {@code \} and {@code /} at different widths.
+     *  The glyph budget is reserved before the cap, so an over-long base is
+     *  truncated once and then stays put. */
+    static String thinkingFrame(String base, int phase) {
         if (base == null) {
             return null;
         }
-        int dotBudget = DOT_STRINGS[DOT_STRINGS.length - 1].length();
-        String stem = base.length() <= MAX_STATUS_LENGTH - dotBudget
+        int glyphBudget = 1 + SPINNER_FRAMES[0].length();
+        String stem = base.length() <= MAX_STATUS_LENGTH - glyphBudget
                 ? base
-                : cap(base, MAX_STATUS_LENGTH - dotBudget);
-        String frame = stem + DOT_STRINGS[Math.floorMod(dotCount, DOT_STRINGS.length)];
-        int width = stem.length() + dotBudget;
-        if (frame.length() >= width) {
-            return frame;
-        }
-        return frame + " ".repeat(width - frame.length());
+                : cap(base, MAX_STATUS_LENGTH - glyphBudget);
+        return stem + " " + SPINNER_FRAMES[Math.floorMod(phase, SPINNER_FRAMES.length)];
     }
 
     public String getStatusText() {
@@ -206,23 +207,33 @@ public class StatusController {
 
     public void startThinking() {
         animatedStatus = true;
+        thinkingPhase = 0;
         normalizeStatusWidth();
         thinkingTimer.start();
     }
 
-    /** Pads the current status text to the width its animation cycle will reach, so
-     *  the first tick — and every later one — leaves the label width unchanged. */
+    /** Pins the label's preferred width to the widest spinner frame, so the
+     *  proportional glyphs and the timer ticks cannot resize the status row.
+     *  The width is released by {@link #show(String)} once the animation ends. */
     private void normalizeStatusWidth() {
         Runnable pad = () -> {
-            if (!animatedStatus) {
+            if (!animatedStatus || statusLabel == null) {
                 // A reset (resetToReady/stopThinking) landed between the off-EDT
                 // startThinking() and this hop; padding now would re-pad "Ready".
                 return;
             }
             String base = statusBase;
-            if (base != null) {
-                statusLabel.setText(thinkingFrame(base, 0));
+            if (base == null) {
+                return;
             }
+            FontMetrics fm = statusLabel.getFontMetrics(statusLabel.getFont());
+            int width = 0;
+            for (int i = 0; i < SPINNER_FRAMES.length; i++) {
+                width = Math.max(width, fm.stringWidth(thinkingFrame(base, i)));
+            }
+            int height = statusLabel.getPreferredSize().height;
+            statusLabel.setPreferredSize(new Dimension(width, height));
+            statusLabel.setText(thinkingFrame(base, 0));
         };
         if (SwingUtilities.isEventDispatchThread()) {
             pad.run();
@@ -232,8 +243,32 @@ public class StatusController {
     }
 
     public void stopThinking() {
+        boolean wasAnimated = animatedStatus;
         animatedStatus = false;
         thinkingTimer.stop();
+        if (!wasAnimated || statusLabel == null) {
+            return;
+        }
+        String base = statusBase;
+        if (base == null) {
+            return;
+        }
+        String finalText = base.isEmpty() || ".!?".indexOf(base.charAt(base.length() - 1)) < 0
+                ? base + "."
+                : base;
+        Runnable finish = () -> {
+            if (animatedStatus) {
+                // A new run started before this hop; its spinner owns the label.
+                return;
+            }
+            statusLabel.setPreferredSize(null);
+            statusLabel.setText(finalText);
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            finish.run();
+        } else {
+            SwingUtilities.invokeLater(finish);
+        }
     }
 
     public void scheduleReset() {
@@ -437,8 +472,8 @@ public class StatusController {
         if (animatedStatus && statusLabel != null) {
             String base = statusBase;
             if (base != null) {
-                thinkingDots = (thinkingDots + 1) % DOT_STRINGS.length;
-                statusLabel.setText(thinkingFrame(base, thinkingDots));
+                thinkingPhase = (thinkingPhase + 1) % SPINNER_FRAMES.length;
+                statusLabel.setText(thinkingFrame(base, thinkingPhase));
             }
         }
     }

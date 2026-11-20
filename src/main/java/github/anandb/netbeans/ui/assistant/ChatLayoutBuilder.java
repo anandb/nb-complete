@@ -552,11 +552,10 @@ public final class ChatLayoutBuilder {
     JPanel buildBottomPanel() {
         JPanel bottomPanel = new JPanel(new BorderLayout());
 
-                // GridBagLayout, not BorderLayout: the status text width varies constantly
-        // ("Sending" -> "Sending..."), and a BorderLayout.WEST label would resize
-        // on every animation tick, shifting the model dropdown (CENTER/EAST).
-        // weightx=1 on the label makes it absorb all width changes; the dropdown
-        // cluster on the right never moves.
+        // GridBagLayout, not BorderLayout: the model/options cluster is
+        // right-aligned and must not move. StatusController pins the status
+        // label's preferred width while the spinner runs, so animation ticks
+        // cannot resize this row.
         JPanel statusPanel = new JPanel(new GridBagLayout());
         statusPanel.setBorder(new EmptyBorder(4, 12, 4, 12));
         statusPanel.setOpaque(false);

@@ -86,39 +86,39 @@ class StatusControllerTest {
     }
 
     @Test
-    void sendingAnimationFramesAreAllTenCharacters() {
-        // "Sending" is 7 chars; the cycle appends up to 3 dots, so every frame is
-        // padded with spaces to 10 — the label width never changes while ticking.
-        int width = "Sending".length() + 3;
-        for (int dots = 0; dots <= 3; dots++) {
-            String frame = StatusController.thinkingFrame("Sending", dots);
-            assertEquals(width, frame.length(), "frame " + dots + " must stay " + width + " chars");
-            assertTrue(frame.startsWith("Sending"), "frame " + dots + " must keep the message text");
+    void sendingAnimationFramesKeepAConstantLength() {
+        // "Sending" plus a space and one spinner glyph: the text width never
+        // changes while ticking, so the row does not shift.
+        int width = "Sending".length() + 2;
+        for (int phase = 0; phase < 3; phase++) {
+            String frame = StatusController.thinkingFrame("Sending", phase);
+            assertEquals(width, frame.length(), "frame " + phase + " must stay " + width + " chars");
+            assertTrue(frame.startsWith("Sending "), "frame " + phase + " must keep the message text");
         }
     }
 
     @Test
-    void thinkingFramesKeepAConstantWidthForLongerDotsPhases() {
-        int expected = "Thinking".length() + 3;
-        for (int dots = 0; dots <= 3; dots++) {
-            assertEquals(expected, StatusController.thinkingFrame("Thinking", dots).length());
+    void thinkingFramesKeepAConstantLengthForEveryPhase() {
+        int expected = "Thinking".length() + 2;
+        for (int phase = 0; phase < 3; phase++) {
+            assertEquals(expected, StatusController.thinkingFrame("Thinking", phase).length());
         }
-        // Only the dot phase changes; the base text is unchanged.
-        assertTrue(StatusController.thinkingFrame("Thinking", 3).startsWith("Thinking"));
+        // Only the spinner glyph changes; the base text is unchanged.
+        assertTrue(StatusController.thinkingFrame("Thinking", 2).startsWith("Thinking "));
     }
 
     @Test
     void thinkingFrameNeverExceedsTheStatusCap() {
-        String frame = StatusController.thinkingFrame("a".repeat(MAX), 3);
+        String frame = StatusController.thinkingFrame("a".repeat(MAX), 2);
         assertEquals(MAX, frame.length());
     }
 
     @Test
-    void animationFramesRenderAtTheSameWidth() {
+    void animationFramesRenderAtTheSameLength() {
         int baseline = StatusController.thinkingFrame("Sending", 0).length();
-        for (int dots = 1; dots <= 3; dots++) {
-            assertEquals(baseline, StatusController.thinkingFrame("Sending", dots).length(),
-                    "frame " + dots + " must match frame 0's width");
+        for (int phase = 1; phase < 3; phase++) {
+            assertEquals(baseline, StatusController.thinkingFrame("Sending", phase).length(),
+                    "frame " + phase + " must match frame 0's width");
         }
     }
 
@@ -126,13 +126,13 @@ class StatusControllerTest {
     void overLongBaseIsNotShortenedFromFrameToFrame() {
         // The base is stored by the controller, not recovered from the label, so a
         // long message must not lose a character per tick to the ellipsis. The stem
-        // is capped once to (MAX - 3) — room for the dots — and keeps that length.
+        // is capped once to (MAX - 2) — room for the spinner — and keeps that length.
         String base = "a".repeat(MAX);
-        String stem = "a".repeat(MAX - 6) + "...";
-        for (int dots = 0; dots <= 3; dots++) {
-            String frame = StatusController.thinkingFrame(base, dots);
-            assertEquals(MAX, frame.length(), "frame " + dots + " must keep the full width");
-            assertTrue(frame.startsWith(stem), "frame " + dots + " must keep the same visible message");
+        String stem = "a".repeat(MAX - 5) + "...";
+        for (int phase = 0; phase < 3; phase++) {
+            String frame = StatusController.thinkingFrame(base, phase);
+            assertEquals(MAX, frame.length(), "frame " + phase + " must keep the full width");
+            assertTrue(frame.startsWith(stem), "frame " + phase + " must keep the same visible message");
         }
     }
 
@@ -148,13 +148,35 @@ class StatusControllerTest {
             c.stopThinking();
             c.stopAllTimers();
         });
-        String stem = "a".repeat(MAX - 6) + "...";
+        String stem = "a".repeat(MAX - 5) + "...";
         assertEquals(MAX, shown[0].length());
         assertTrue(shown[0].startsWith(stem));
     }
 
     @Test
-    void startThinkingPadsTheSendingStatusImmediately() throws Exception {
+    void startThinkingPinsTheWidestSpinnerFrameWidth() throws Exception {
+        JLabel label = label();
+        StatusController c = controller(label);
+        int[] pinned = new int[1];
+        int[] expected = new int[1];
+        SwingUtilities.invokeAndWait(() -> {
+            c.setStatusText("Sending");
+            c.startThinking();
+            pinned[0] = label.getPreferredSize().width;
+            java.awt.FontMetrics fm = label.getFontMetrics(label.getFont());
+            for (int phase = 0; phase < 3; phase++) {
+                expected[0] = Math.max(expected[0],
+                        fm.stringWidth(StatusController.thinkingFrame("Sending", phase)));
+            }
+            c.stopThinking();
+            c.stopAllTimers();
+        });
+        assertEquals(expected[0], pinned[0],
+                "the label reserves the widest spinner glyph, so no tick can resize the row");
+    }
+
+    @Test
+    void startThinkingShowsTheFirstSpinnerFrame() throws Exception {
         JLabel label = label();
         StatusController c = controller(label);
         String[] shown = new String[1];
@@ -165,9 +187,37 @@ class StatusControllerTest {
             c.stopThinking();
             c.stopAllTimers();
         });
-        assertEquals("Sending".length() + 3, shown[0].length(),
-                "the first frame must already be the padded width");
-        assertTrue(shown[0].startsWith("Sending"), "the first frame must keep the message text");
+        assertEquals("Sending -", shown[0], "the first frame carries the hyphen spinner");
+    }
+
+    @Test
+    void stopThinkingAppendsAPeriod() throws Exception {
+        JLabel label = label();
+        StatusController c = controller(label);
+        String[] shown = new String[1];
+        SwingUtilities.invokeAndWait(() -> {
+            c.setStatusText("Sending");
+            c.startThinking();
+            c.stopThinking();
+            shown[0] = label.getText();
+            c.stopAllTimers();
+        });
+        assertEquals("Sending.", shown[0], "the finished status ends with a period");
+    }
+
+    @Test
+    void stopThinkingDoesNotDoubleATerminalPeriod() throws Exception {
+        JLabel label = label();
+        StatusController c = controller(label);
+        String[] shown = new String[1];
+        SwingUtilities.invokeAndWait(() -> {
+            c.setStatusText("Done.");
+            c.startThinking();
+            c.stopThinking();
+            shown[0] = label.getText();
+            c.stopAllTimers();
+        });
+        assertEquals("Done.", shown[0]);
     }
 
     @Test
