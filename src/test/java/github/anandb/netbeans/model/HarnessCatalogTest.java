@@ -268,9 +268,9 @@ class HarnessCatalogTest {
     }
 
     @Test
-    void onlyPiAndJcodeRejectMcpAuthTokens() {
+    void onlyOmpPiAndJcodeRejectMcpAuthTokens() {
         for (Harness h : HarnessCatalog.ALL) {
-            boolean tokenless = "pi".equals(h.id()) || "jcode".equals(h.id());
+            boolean tokenless = "omp".equals(h.id()) || "pi".equals(h.id()) || "jcode".equals(h.id());
             assertEquals(!tokenless, h.acceptsMcpAuthToken(), h.id() + " MCP token capability");
         }
         // A custom binary the catalog cannot identify keeps the token requirement.

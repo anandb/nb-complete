@@ -109,6 +109,9 @@ public class TokenUsageDialog extends JDialog {
     /** Background worker for the local query and HTML rendering. */
     private static final RequestProcessor STATS_RP = new RequestProcessor("token-stats", 1);
 
+    /** The single open stats window, confined to the EDT; reused until it is closed. */
+    private static TokenUsageDialog openDialog;
+
     public TokenUsageDialog(Frame owner) {
         super(owner, NbBundle.getMessage(UIBundle.class, "LBL_TokenStats"), false);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -775,13 +778,19 @@ public class TokenUsageDialog extends JDialog {
 
     public static void show(Frame parent) {
         SwingUtilities.invokeLater(() -> {
+            // A second click while the window is open is a no-op until it is closed.
+            if (openDialog != null && openDialog.isDisplayable()) {
+                return;
+            }
             TokenUsageDialog dlg = new TokenUsageDialog(parent);
+            openDialog = dlg;
             // Auto-refresh 1s after show so UI paints first
             dlg.autoRefreshTimer = new Timer(1000, e -> dlg.onRefresh(null));
             dlg.autoRefreshTimer.setRepeats(false);
             dlg.addWindowListener(new WindowAdapter() {
                 @Override public void windowClosed(WindowEvent e) {
                     if (dlg.autoRefreshTimer != null) dlg.autoRefreshTimer.stop();
+                    if (openDialog == dlg) openDialog = null;
                 }
             });
             dlg.autoRefreshTimer.start();

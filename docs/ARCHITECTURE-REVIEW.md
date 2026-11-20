@@ -1,21 +1,22 @@
 # Architectural Design Review: NetBeans Coding Assistant Plugin
 
-This document describes the architecture of the **Coding Assistant** NetBeans IDE plugin (current stable line v1.30.x, artifactId `beanbot`). The plugin bridges the NetBeans Platform with an AI subprocess using the **Agent Client Protocol (ACP) v1** via JSON-RPC over stdin/stdout and Server-Sent Events (SSE) streaming. It also exposes an embedded **MCP (Model Context Protocol) server** so the AI can call back into the IDE.
+This document describes the architecture of the **Coding Assistant** NetBeans IDE plugin (current stable line v1.32.x, artifactId `beanbot`). The plugin bridges the NetBeans Platform with an AI subprocess using the **Agent Client Protocol (ACP) v1** via JSON-RPC over stdin/stdout and Server-Sent Events (SSE) streaming. It also exposes an embedded **MCP (Model Context Protocol) server** so the AI can call back into the IDE.
 
-Source layout (385 Java files under `src/main/java/github/anandb/netbeans/`):
+Source layout (426 Java files under `src/main/java/github/anandb/netbeans/`):
 
 | Package | Files | Role |
 | --- | --- | --- |
-| `contract/` | 29 | Ports: UI callbacks, session & process control, permission/request handlers, stores, tool executor |
+| `contract/` | 27 | Ports: UI callbacks, session & process control, permission/request handlers, stores, tool executor |
 | `db/` | 8 | H2 persistence adapter: usage stats, session store, pin/model-list caches, SQL loader, preference migration |
-| `manager/` | 26 | Core orchestration: protocol client, session/process lifecycle, strategy dispatch, caches, update checker |
-| `mcp/` | 44 | Embedded MCP server and tool providers (editor, filesystem, VCS, tasks, project, stash diff) |
-| `model/` | 31 | ACP data records (session, messages, updates, config options, usage rows, harness catalog) |
-| `pattern/` | 40 | Compiled regex constants with no dependencies; consumed by every layer |
-| `project/` | 12 | NetBeans lifecycle hooks, open-project manager, markdown project type |
-| `support/` | 41 | Pure utilities: logging, JSON, text scanning, preference keys, file-access policy, binary resolution |
+| `manager/` | 34 | Core orchestration: protocol client, session/process lifecycle, strategy dispatch, caches, update checker |
+| `mcp/` | 49 | Embedded MCP server and tool providers (editor, filesystem, VCS, tasks, project, stash diff) |
+| `model/` | 34 | ACP data records (session, messages, updates, config options, usage rows, harness catalog) |
+| `pattern/` | 43 | Compiled regex constants with no dependencies; consumed by every layer |
+| `project/` | 13 | NetBeans lifecycle hooks, open-project manager, markdown project type |
+| `stereotype/` | 4 | Dependency-free marker annotations (`@HexagonalPort`, `@Boundary`, `@McpToolInput`, `@McpToolProvider`) carried by ports and adapters |
+| `support/` | 49 | Pure utilities: logging, JSON, text scanning, preference keys, file-access policy, binary resolution |
 | `tasks/` | 17 | todo.txt task repository integration (bugtracking providers, issue cache, task editors) |
-| `ui/` | 137 | Swing presentation, grouped by feature (`assistant`, `chat`, `composer`, `session`, `permission`, `options`, `rendering`, `components`, `editor`, `export`, `stats`, `platform`, `mdproject`) |
+| `ui/` | 148 | Swing presentation, grouped by feature (`assistant`, `chat`, `composer`, `session`, `permission`, `options`, `rendering`, `components`, `editor`, `export`, `stats`, `platform`, `mdproject`) |
 
 ---
 
@@ -206,7 +207,7 @@ The plugin embeds a **Model Context Protocol (MCP) server** so the AI subprocess
 
 ---
 
-## 10. Newer Subsystems (v1.26 → v1.30)
+## 10. Newer Subsystems (v1.26 → v1.32)
 
 ### Task Repository (todo.txt task list in the IDE)
 - **`tasks/TasksStartup`** (`@OnStart`) restores todo.txt repositories; **`tasks/TasksConnector`** registers them with the NetBeans bugtracking framework. Both entry points are gated on the `taskRepository.enabled` preference (checked twice because the framework's `loadRepositories()` startup races with `@OnStart`).

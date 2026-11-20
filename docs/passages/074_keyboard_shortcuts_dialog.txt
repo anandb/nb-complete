@@ -8,6 +8,8 @@
 
 Click the keyboard icon in the assistant panel header to open the **Keyboard Shortcuts** dialog. It lists every shortcut the plugin supports, grouped by section — Navigation &amp; Assistant, Session Management, Chat Input, Editing and Stash Diff — with the keys rendered as keyboard badges.
 
+![Keyboard Shortcuts dialog with filter field and grouped shortcut tables](../images/keyboard_shortcuts_dialog.webp){style="max-width:100%;"}
+
 Type in the filter field at the top to search by key or action name. Shortcuts that are not currently assigned are collapsed into a single clickable *Unassigned* summary row per section; click it to expand the full list. Press <code>Escape</code> to close the dialog.
 
 

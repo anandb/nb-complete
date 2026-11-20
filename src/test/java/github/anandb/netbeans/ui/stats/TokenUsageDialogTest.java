@@ -147,7 +147,7 @@ class TokenUsageDialogTest {
                 ThemeManager.getCurrentTheme());
 
         assertNotNull(html);
-        assertTrue(html.contains("Internal MCP Calls"), "the tool table must be titled");
+        assertTrue(html.contains("<th colspan='3'>Tool Calls"), "the tool table must be titled");
         assertTrue(html.contains("read_file"));
         assertTrue(html.contains("120 (79%)"), "counts render with the share of all calls");
         assertTrue(html.contains("30 (20%)"), "the share follows each count");
@@ -174,13 +174,14 @@ class TokenUsageDialogTest {
         int summary = html.indexOf("COST &amp; TOKENS");
         int model = html.indexOf("BY MODEL");
         int agent = html.indexOf("BY AGENT");
-        int tools = html.indexOf("Internal MCP Calls");
+        int tools = html.indexOf("<th colspan='3'>Tool Calls");
         assertTrue(summary >= 0 && summary < model && model < agent && agent < tools,
-                "the sections must render in summary, model, agent, tools order");
+                "the sections must render in summary, model, agent, tools order; got summary=" + summary
+                        + " model=" + model + " agent=" + agent + " tools=" + tools);
 
         assertEquals(1, countSeparators(html.substring(0, model)), "a rule before BY MODEL");
         assertEquals(1, countSeparators(html.substring(model, agent)), "a rule before BY AGENT");
-        assertEquals(1, countSeparators(html.substring(agent, tools)), "a rule before Internal MCP Calls");
+        assertEquals(1, countSeparators(html.substring(agent, tools)), "a rule before Tool Calls");
         assertEquals(3, countSeparators(html), "no rule after the last section");
     }
 
@@ -239,7 +240,7 @@ class TokenUsageDialogTest {
         String html = TokenUsageDialog.renderSummaryHtml(sample(), List.of(), List.of(), List.of(),
                 ThemeManager.getCurrentTheme());
 
-        assertFalse(html.contains("Internal MCP Calls"));
+        assertFalse(html.contains("<th colspan='3'>Tool Calls"));
     }
 
     @Test

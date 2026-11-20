@@ -27,7 +27,7 @@
     "prerequisites" : "Authenticate a model provider in a terminal (omp, then /login) before ACP. The ACP entry point is omp acp.",
     "docsUrl" : "https://omp.sh/docs/acp",
     "windowsInstallSubDirs" : [ "%LOCALAPPDATA%\\omp" ],
-    "acceptsMcpAuthToken" : true,
+    "acceptsMcpAuthToken" : false,
     "stripsSystemReminders" : false,
     "sendsSystemPromptAsThought" : false
   }, {

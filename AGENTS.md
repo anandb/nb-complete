@@ -612,12 +612,12 @@ Capture the update's session id before `invokeLater`; on the EDT, drop it if it 
 from `ShowAnnotationsAction` (Toggle Annotations) after the git action runs: blame is asynchronous,
 so a bounded EDT poll waits for `AnnotationBar.elementAnnotations` and rewrites each line's private
 `authorShort`, then stops. Lines are processed in document order and the name alternates between
-title case and lower case per author block as a visual change hint. Toggle Annotations has the
-default **Alt+F10** binding (`Shortcuts/A-F10.shadow` in `ui/layer.xml`); a user shortcut belongs on
-that action, not on the IDE's own Show Annotations action, which has no listener seam. A bar's
-applied map is recorded so a repeat toggle does not redo the work. `ShowAnnotationsAction` also sets
-`NAME` in its constructor: the Keymap dialog drops actions whose `NAME` is empty, so without it the
-action is missing from Tools › Options › Keymap and cannot be bound.
+title case and lower case per author block as a visual change hint. Toggle Annotations has no default
+shortcut; it stays discoverable in Tools › Options › Keymap so users can bind it. A user shortcut
+belongs on that action, not on the IDE's own Show Annotations action, which has no listener seam. A
+bar's applied map is recorded so a repeat toggle does not redo the work. `ShowAnnotationsAction` also
+sets `NAME` in its constructor: the Keymap dialog drops actions whose `NAME` is empty, so without it
+the action is missing from Tools › Options › Keymap and cannot be bound.
 
 Known limits, do not "fix" them by adding machinery:
 - `AnnotationBar` is final and renders exactly `COMMIT_ID`, `DATE`, `AUTHOR`; there is no extra
