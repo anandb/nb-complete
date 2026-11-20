@@ -194,10 +194,28 @@ public class PlanPanel extends JPanel {
         if (!dismissed && sessionId != null) {
             dismissedPlans.remove(sessionId);
         }
-        // The slideout opens itself when a plan is created (first entries) or
-        // populated further (more steps than before); a same-size refresh
-        // preserves whatever the user last chose (toggle via the header).
-        if (previous.isEmpty() || this.entries.size() > previous.size()) {
+        int done = 0;
+        int activeIndex = -1;
+        for (int i = 0; i < this.entries.size(); i++) {
+            if (isCompleted(this.entries.get(i))) {
+                done++;
+            } else if (activeIndex < 0) {
+                activeIndex = i;
+            }
+        }
+        boolean previousAllCompleted = !previous.isEmpty()
+                && previous.stream().allMatch(PlanPanel::isCompleted);
+        // The slideout opens itself when a plan with unfinished work is created
+        // (first entries) or populated further (more steps than before). It
+        // collapses when the plan becomes fully completed — including when
+        // session/load replays an unfinished snapshot before the final one. A
+        // completed plan the user expanded stays expanded on later status-only
+        // updates, and a same-size refresh preserves the user's choice.
+        if (activeIndex < 0) {
+            if (previous.isEmpty() || !previousAllCompleted) {
+                expanded = false;
+            }
+        } else if (previous.isEmpty() || this.entries.size() > previous.size()) {
             expanded = true;
         }
         ColorTheme theme = ThemeManager.getCurrentTheme();
@@ -212,15 +230,6 @@ public class PlanPanel extends JPanel {
         chevron.setFont(font);
         headerLabel.setFont(font);
 
-        int done = 0;
-        int activeIndex = -1;
-        for (int i = 0; i < this.entries.size(); i++) {
-            if (isCompleted(this.entries.get(i))) {
-                done++;
-            } else if (activeIndex < 0) {
-                activeIndex = i;
-            }
-        }
         rowsPanel.removeAll();
         int rowCount = this.entries.size();
         for (int i = 0; i < rowCount; i++) {
@@ -287,6 +296,7 @@ public class PlanPanel extends JPanel {
     /** Hides the slideout entirely and forgets the entries. */
     public void clear() {
         entries = List.of();
+        expanded = false;
         setVisible(false);
         revalidate();
         repaint();

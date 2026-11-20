@@ -307,6 +307,37 @@ class PlanPanelTest {
         assertTrue(panel.isVisible(), "the dismissal is scoped to its session");
     }
 
+    @Test
+    void completedPlanReplayedAfterReloadStaysMinimized() {
+        PlanPanel panel = new PlanPanel();
+        panel.setEntries("s1", sample());
+        JScrollPane scroll = (JScrollPane) panel.getComponent(1);
+        assertTrue(scroll.isVisible(), "precondition: an unfinished plan opens the slideout");
+
+        // session/load clears the panel, then replays the plan with every step done.
+        panel.clear();
+        panel.setEntries("s1", List.of(
+                new PlanEntry("high", "completed", "Verify extension functionality"),
+                new PlanEntry("medium", "completed", "Move completed tasks")));
+
+        assertTrue(panel.isVisible(), "a completed plan is still shown");
+        assertFalse(scroll.isVisible(), "a completed replay must stay minimized");
+        assertTrue(headerLabel(panel).getText().contains("(2/2)"),
+                "the collapsed header still reports the completed count");
+
+        // Some harnesses replay intermediate plan snapshots: the first one is
+        // unfinished and opens the slideout, the last one is fully completed.
+        panel.clear();
+        panel.setEntries("s1", sample());
+        assertTrue(scroll.isVisible(), "an unfinished replay snapshot opens it");
+        panel.setEntries("s1", List.of(
+                new PlanEntry("high", "completed", "Verify extension functionality"),
+                new PlanEntry("medium", "completed", "Move completed tasks"),
+                new PlanEntry("low", "completed", "Analyze config")));
+        assertFalse(scroll.isVisible(),
+                "the final all-completed snapshot must collapse it again");
+    }
+
     private static JButton closeButton(PlanPanel panel) {
         JButton button = findButton((Container) panel.getComponent(0));
         assertNotNull(button, "the header must expose a close button");
