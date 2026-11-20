@@ -7,7 +7,8 @@ import org.openide.awt.ActionReference;
 import org.openide.awt.ActionRegistration;
 
 @ActionID(category = "Refactoring", id = "github.anandb.netbeans.ui.AskAssistantRefactorAction")
-@ActionRegistration(displayName = "#CTL_AskAssistantRefactorAction")
+@ActionRegistration(displayName = "#CTL_AskAssistantRefactorAction",
+        iconBase = "github/anandb/netbeans/ui/icons/send-to-assistant.svg")
 @ActionReference(path = "Menu/Refactoring", position = 1860)
 public class AskAssistantRefactorAction implements ActionListener {
 

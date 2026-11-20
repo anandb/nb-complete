@@ -11,6 +11,7 @@ import org.openide.util.NbBundle;
 import org.openide.util.actions.NodeAction;
 import org.openide.nodes.Node;
 import github.anandb.netbeans.ui.UIBundle;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
 
 /**
  * Projects / Files window action: sends the selected file's path to the
@@ -23,6 +24,10 @@ import github.anandb.netbeans.ui.UIBundle;
     @ActionReference(path = "UI/ToolActions/Files", position = 2057)
 })
 public final class SendToAssistantFileAction extends NodeAction {
+
+    public SendToAssistantFileAction() {
+        setIcon(ThemeManager.getIcon("send-to-assistant.svg", 16));
+    }
 
     @Override
     protected void performAction(Node[] activatedNodes) {

@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.WeakHashMap;
 import javax.swing.AbstractAction;
+import javax.swing.Action;
 import javax.swing.JEditorPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTree;
@@ -24,6 +25,7 @@ import org.openide.nodes.Node;
 import org.openide.windows.TopComponent;
 
 import github.anandb.netbeans.pattern.HtmlStripPatterns;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
 
 /**
  * Adds a right-click context menu to the Test Results window
@@ -208,7 +210,7 @@ public class TestResultsContextMenu implements Runnable, PropertyChangeListener,
             final JEditorPane outputPane = findEditorPane(tab);
             TreePopupSupport.showPopup(e, tree, TestResultsContextMenu::extractSubtreeText, menu -> {
                 if (outputPane != null) {
-                    menu.add(new AbstractAction("\uD83D\uDCAC Send Full Output") {
+                    AbstractAction sendOutput = new AbstractAction("Send Full Output") {
                         @Override public void actionPerformed(ActionEvent ev) {
                             // Read at action time so the output isn't a stale snapshot.
                             String fullOutput = stripHtml(outputPane.getText());
@@ -216,7 +218,10 @@ public class TestResultsContextMenu implements Runnable, PropertyChangeListener,
                                 SwingUtilities.invokeLater(() -> AssistantTarget.showWithText(fullOutput));
                             }
                         }
-                    });
+                    };
+                    sendOutput.putValue(Action.SMALL_ICON,
+                            ThemeManager.getIcon("send-to-assistant.svg", 16));
+                    menu.add(sendOutput);
                 }
             });
         }

@@ -26,7 +26,7 @@ public class AssistantCodeGenerator implements CodeGenerator {
 
     @Override
     public String getDisplayName() {
-        return "\uD83D\uDCAC Ask Assistant...";
+        return "Ask Assistant...";
     }
 
     @Override

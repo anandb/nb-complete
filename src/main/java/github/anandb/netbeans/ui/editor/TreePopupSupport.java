@@ -8,11 +8,13 @@ import java.awt.event.MouseEvent;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import javax.swing.AbstractAction;
+import javax.swing.Action;
 import javax.swing.JPopupMenu;
 import javax.swing.JTree;
 import javax.swing.SwingUtilities;
 import org.openide.explorer.ExplorerManager;
 import org.openide.nodes.Node;
+import github.anandb.netbeans.ui.rendering.ThemeManager;
 
 /**
  * Shared popup plumbing for explorer-tree context menus (Inspector, Test
@@ -56,12 +58,14 @@ final class TreePopupSupport {
                 clip.setContents(new StringSelection(textBuilder.apply(selected)), null);
             }
         });
-        menu.add(new AbstractAction("\uD83D\uDCAC Send to Assistant") {
+        AbstractAction send = new AbstractAction("Send to Assistant") {
             @Override public void actionPerformed(ActionEvent ev) {
                 String text = textBuilder.apply(selected);
                 SwingUtilities.invokeLater(() -> AssistantTarget.showWithText(text));
             }
-        });
+        };
+        send.putValue(Action.SMALL_ICON, ThemeManager.getIcon("send-to-assistant.svg", 16));
+        menu.add(send);
         if (extraItems != null) {
             extraItems.accept(menu);
         }
