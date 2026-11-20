@@ -18,6 +18,7 @@ The plugin runs a small built-in MCP (Model Context Protocol) server inside the 
 <tr><td><code>rename&#95;session</code></td><td>Gives the current (or a specific) session a custom title, just like the rename button.</td></tr>
 <tr><td><code>add&#95;task</code></td><td>Creates a task in a BeanBot Tasks repository. Accepts summary, status, priority (A–Z), tags, projects, due date, estimate, and consumed. See [[Adding Tasks via AI]].</td></tr>
 <tr><td><code>diff&#95;stash</code></td><td>Opens the side-by-side stash diff viewer for a given stash. Only available when Stash Diff is enabled in Options.</td></tr>
+<tr><td><code>diff&#95;range</code></td><td>Opens a multi-file diff for a revision range, or the last N commits, in a Git or Mercurial repository. Use <code>fromRevision</code>/<code>toRevision</code>, or <code>lastCommits</code>; omit <code>toRevision</code> to include uncommitted changes.</td></tr>
 <tr><td><code>read&#95;file</code> / <code>write&#95;to&#95;file</code></td><td>Reads or writes a file inside one of your open projects. <code>write&#95;to&#95;file</code> can create missing parent directories.</td></tr>
 <tr><td><code>replace&#95;lines</code> / <code>insert&#95;in&#95;file</code> / <code>delete&#95;lines</code></td><td>Line-range edits inside project files: replace a range, insert before a line, or delete a range (both 1-indexed, end inclusive).</td></tr>
 <tr><td><code>list&#95;directory</code></td><td>Lists files and subdirectories of a project directory, optionally recursively.</td></tr>

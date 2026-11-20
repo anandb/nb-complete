@@ -12,10 +12,13 @@ Right-click a session in the session dropdown to get a quick action menu:
 *   **Archive / Unarchive** — hide or show the session
 *   **Archive All** — hide every session in the dropdown
 *   **Archive Others** — hide every session except the selected one
+*   **Delete Session…** — permanently delete the session on the harness, after confirmation
 *   **Reload** — re-fetch the session from the server
 
 This mirrors the toolbar buttons for rename, archive, and reload. Archive All and
 Archive Others are available from the context menu when there are sessions to archive.
+
+**Delete Session…** is enabled only when the harness advertises `session/delete`; the row is disabled otherwise. Unlike archiving, deletion cannot be undone: the session is removed from the harness, the active session is closed, and the dropdown is rebuilt without it.
 
 > [[Renaming the session]]
 > [[Archiving Sessions]]

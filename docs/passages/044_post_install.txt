@@ -14,6 +14,10 @@ The plugin adds a tab to the NetBeans Options — open the Options Window and yo
 
 The preamble is an additional user prompt that's sent to the server when creating a new chat session. The default text contains some directives around code quality, planning and task management, you can customise this with your own instructions.
 
+#### Windows: launch through WSL
+
+If the harness is installed inside WSL, enable **Launch through WSL** under `Tools > Options > BeanBot > Assistant` before selecting the executable. The plugin runs harness commands through `wsl.exe`, translates a Windows executable path to its WSL mount path, and runs a native Linux binary directly from the WSL `PATH`. The same wrapper covers token-usage commands for supported agents. See [[Options Panel Reference]] for the setting.
+
 When you upgrade the NetBeans IDE to a new major version, the plugin automatically migrates your saved preferences and cached session data from the previous NetBeans user directory, so you do not need to reconfigure the assistant after an upgrade.
 
 > [[Starting a Session]]
