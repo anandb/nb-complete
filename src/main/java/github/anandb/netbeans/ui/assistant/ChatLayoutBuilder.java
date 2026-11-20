@@ -17,6 +17,7 @@ import java.awt.event.KeyEvent;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -479,8 +480,8 @@ public final class ChatLayoutBuilder {
             JMenuItem chooseAgentItem = new JMenuItem(NbBundle.getMessage(
                     UIBundle.class, "LBL_HelpChooseAgent"));
             chooseAgentItem.addActionListener(ev ->
-                java.util.concurrent.CompletableFuture.runAsync(() -> {
-                    java.util.List<BinaryResolver.FoundBinary> found = BinaryResolver.findAllKnownOnPath();
+                CompletableFuture.runAsync(() -> {
+                    List<BinaryResolver.FoundBinary> found = BinaryResolver.findAllKnownOnPath();
                     topComponent.showHarnessChooser(found);
                 }));
             helpPopup.add(chooseAgentItem);

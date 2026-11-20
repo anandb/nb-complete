@@ -2,6 +2,7 @@ package github.anandb.netbeans.model;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -256,7 +257,7 @@ class HarnessCatalogTest {
 
     @Test
     void onlyTheCuratedSetHasLimitedSupport() {
-        java.util.Set<String> limitedIds = java.util.Set.of("openclaw", "jcode", "gemini", "pi", "cline", "openhands");
+        Set<String> limitedIds = Set.of("openclaw", "jcode", "gemini", "pi", "cline", "openhands");
         for (Harness h : HarnessCatalog.ALL) {
             boolean limited = limitedIds.contains(h.id());
             assertEquals(limited, h.hasLimitedSupport(), h.id() + " support tier");
@@ -585,7 +586,7 @@ class HarnessCatalogTest {
 
         assertEquals(HarnessCatalog.ALL.size(), sorted.size());
         List<String> names = sorted.stream().map(Harness::displayName).toList();
-        List<String> expected = new java.util.ArrayList<>(names);
+        List<String> expected = new ArrayList<>(names);
         expected.sort(String.CASE_INSENSITIVE_ORDER);
         assertEquals(expected, names, "sortedByName must be alphabetical, case-insensitive");
     }

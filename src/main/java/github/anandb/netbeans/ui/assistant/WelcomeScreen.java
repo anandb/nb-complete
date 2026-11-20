@@ -12,15 +12,18 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
 import java.awt.Insets;
+import java.awt.LayoutManager;
 import java.awt.RenderingHints;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.font.TextAttribute;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import javax.accessibility.Accessible;
@@ -444,7 +447,7 @@ public final class WelcomeScreen {
     }
 
     /** Stacks children at their preferred height; one flagged glue child absorbs the slack. */
-    private static final class StackLayout implements java.awt.LayoutManager {
+    private static final class StackLayout implements LayoutManager {
         private static final String GLUE = "welcome.glue";
 
         @Override
@@ -874,8 +877,8 @@ public final class WelcomeScreen {
     }
 
     private static Font underlined(Font font) {
-        return font.deriveFont(java.util.Map.of(
-            java.awt.font.TextAttribute.UNDERLINE, java.awt.font.TextAttribute.UNDERLINE_ON));
+        return font.deriveFont(Map.of(
+            TextAttribute.UNDERLINE, TextAttribute.UNDERLINE_ON));
     }
 
     private static Color contrastingForeground(Color background) {

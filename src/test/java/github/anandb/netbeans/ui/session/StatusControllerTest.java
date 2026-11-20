@@ -1,5 +1,7 @@
 package github.anandb.netbeans.ui.session;
 
+import java.awt.FontMetrics;
+
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
@@ -163,7 +165,7 @@ class StatusControllerTest {
             c.setStatusText("Sending");
             c.startThinking();
             pinned[0] = label.getPreferredSize().width;
-            java.awt.FontMetrics fm = label.getFontMetrics(label.getFont());
+            FontMetrics fm = label.getFontMetrics(label.getFont());
             for (int phase = 0; phase < 3; phase++) {
                 expected[0] = Math.max(expected[0],
                         fm.stringWidth(StatusController.thinkingFrame("Sending", phase)));
