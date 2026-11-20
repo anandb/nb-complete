@@ -18,6 +18,4 @@ The project renders a clean directory tree in the Projects tab, filters OS junk 
 
 Turning **Enable Markdown Project Type** off under `Options > BeanBot > IDE Extensions > Features` removes the type entirely: the New Project entry, the File menu item and the toolbar button all disappear, and folders carrying a `.mdproject` marker stop being recognised.
 
-> [[Manage OpenCode Config in NetBeans]]
 > [[IDE Enhancements]]
-> [[Experiments]]

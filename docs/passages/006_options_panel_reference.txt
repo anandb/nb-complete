@@ -129,7 +129,6 @@ Each switch adds one item to the editor's right-click menu or toolbar; the chang
 > [[Auto-Backup on Turn Start]]
 > [[Message History]] / [[Pinned Messages]]
 > [[Jump to File]]
-> [[Git Stashes as "Code Drafts" (using Stash Diff)]]
 > [[Mini Assistant]] / [[Send to Assistant]]
 > [[Customising the Toolbar]]
 > [[Starting a Session]]

@@ -37,7 +37,6 @@ All filesystem, git, and Mercurial tools are confined to your currently open pro
 
 
 > [[Thinking and Tool Responses]]
-> [[Git Stashes as "Code Drafts" (using Stash Diff)]]
 > [[Renaming the session]]
 > [[Automatic Context Capture]]
 > [[Adding Tasks via AI]]

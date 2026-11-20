@@ -12,5 +12,4 @@ If you see too many stashes piling up, you can ask the plugin to cleanup by send
 
 
 > [[Options Panel Reference]]
-> [[Git Stashes as "Code Drafts" (using Stash Diff)]]
 > [[Thinking and Tool Responses]]

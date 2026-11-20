@@ -12,7 +12,6 @@ Advanced models use a "thinking" budget to reason before responding. This intern
 > [[Filtering Chat Messages]]
 > [[Time to first token]]
 > [[Auto-Backup on Turn Start]]
-> [[Local Data Analysis in Java]]
 > [[MCP Tools]]
 > [[Expand/Collapse All]]
 

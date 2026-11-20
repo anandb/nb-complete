@@ -16,7 +16,6 @@ Hitting `Tab` when in the input text-area or pressing the small gear icon, will 
 > [[Commands]] / [[Slash Command Autocomplete]]
 > [[Input Area Keys]]
 > [[New Session Confirm Bar]]
-> [[Offline/Private Coding (Local LLMs)]]
 > [[Gemini Agent]]
 > [[Options Panel Reference]]
 

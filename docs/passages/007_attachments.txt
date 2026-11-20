@@ -13,8 +13,6 @@ You can attach files and images to provide more context to the AI. Click the **P
 Text and code files (Markdown, JSON, Java, YAML, …) are sent with their full content. When the agent supports embedded context the file travels as an embedded resource, otherwise its content is inlined into the prompt as a text block; other binary files that cannot be embedded are sent as a file reference. Images are sent as image content blocks.
 
 
-> [[Swing Mockups via Matisse]]
-> [[Offline/Private Coding (Local LLMs)]]
 > [[Chat Features]]
 
 
