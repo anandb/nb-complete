@@ -4,7 +4,10 @@ import github.anandb.netbeans.model.ContextReport;
 import github.anandb.netbeans.model.UsageRecords.GroupTotals;
 import github.anandb.netbeans.model.UsageRecords.ToolTotals;
 import github.anandb.netbeans.model.UsageRecords.UsageSummary;
+import java.awt.Dimension;
+import java.awt.Font;
 import java.util.List;
+import javax.swing.JComboBox;
 import javax.swing.JTextPane;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -22,6 +25,20 @@ class TokenUsageDialogTest {
     static void setUp() {
         // Initialize UIManager defaults for the test environment to avoid potential NPEs
         TestUiUtils.setupTestUIManager();
+    }
+
+    @Test
+    void projectComboHeightFollowsTheFont() {
+        JComboBox<String> combo = TokenUsageDialog.createProjectCombo();
+        Dimension smallPreferred = combo.getPreferredSize();
+        Font large = combo.getFont().deriveFont(24f);
+        combo.setFont(large);
+
+        Dimension largePreferred = combo.getPreferredSize();
+
+        assertFalse(combo.isPreferredSizeSet(), "a fixed height clips glyphs with larger fonts");
+        assertTrue(largePreferred.height > smallPreferred.height,
+                "the combo row grows with the font: " + smallPreferred + " -> " + largePreferred);
     }
 
     private static UsageSummary sample() {

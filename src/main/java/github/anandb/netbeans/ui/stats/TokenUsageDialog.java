@@ -148,25 +148,7 @@ public class TokenUsageDialog extends JDialog {
         formPanel.add(daysSpinner, new GridBagConstraints(1, 0, 1, 1, 0, 0, GridBagConstraints.WEST, GridBagConstraints.NONE, ins, 0, 0));
 
         // Project (flexible — fills available space)
-        projectCombo = new JComboBox<>(new String[]{
-            NbBundle.getMessage(UIBundle.class, "LBL_CurrentProject"),
-            NbBundle.getMessage(UIBundle.class, "LBL_AllProjects")});
-        projectCombo.setPreferredSize(new Dimension(140, 28));
-        projectCombo.setRenderer(new DefaultListCellRenderer() {
-            private static final long serialVersionUID = 1L;
-            @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value,
-                    int index, boolean isSelected, boolean cellHasFocus) {
-                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (NbBundle.getMessage(UIBundle.class, "LBL_CurrentProject").equals(value) && !isCurrentProjectAvailable()) {
-                    setEnabled(false);
-                    if (!isSelected) {
-                        setForeground(Color.GRAY);
-                    }
-                }
-                return this;
-            }
-        });
+        projectCombo = createProjectCombo();
         // Revert to "All" if "Current Project" is somehow selected when unavailable
         projectCombo.addItemListener(e -> {
             if (e.getStateChange() == ItemEvent.SELECTED
@@ -249,6 +231,34 @@ public class TokenUsageDialog extends JDialog {
         if (projects == null || projects.length == 0) return false;
         SessionQuery sq = PlatformBridge.serviceSafe(SessionQuery.class);
         return sq != null && sq.getCurrentSessionId() != null;
+    }
+
+    /**
+     * Creates the project selector with a font-driven height; a prototype value
+     * keeps its natural width wide enough for either label without pinning the height.
+     */
+    static JComboBox<String> createProjectCombo() {
+        String currentProject = NbBundle.getMessage(UIBundle.class, "LBL_CurrentProject");
+        JComboBox<String> combo = new JComboBox<>(new String[]{
+            currentProject,
+            NbBundle.getMessage(UIBundle.class, "LBL_AllProjects")});
+        combo.setRenderer(new DefaultListCellRenderer() {
+            private static final long serialVersionUID = 1L;
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value,
+                    int index, boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (currentProject.equals(value) && !isCurrentProjectAvailable()) {
+                    setEnabled(false);
+                    if (!isSelected) {
+                        setForeground(Color.GRAY);
+                    }
+                }
+                return this;
+            }
+        });
+        combo.setPrototypeDisplayValue(currentProject);
+        return combo;
     }
 
     /** How long the panel waits for the live context report before showing the rest. */
