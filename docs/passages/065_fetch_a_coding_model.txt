@@ -21,11 +21,9 @@ The first run of `ollama run <model>` will download the model if it is not alrea
 ollama list
 </code></pre>
 
-Remember the exact model names shown by `ollama list` — you will need them when [[configuring OpenCode->Configure OpenCode for Ollama]].
+Remember the exact model names shown by `ollama list` — you will need them when adding the provider to your OpenCode configuration.
 
 
-> [[Install Ollama]]
-> [[Configure OpenCode for Ollama]]
 > [[Offline/Private Coding (Local LLMs)]]
 
 

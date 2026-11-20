@@ -13,8 +13,8 @@ If you have strict privacy requirements or want to avoid API costs, you can run 
 
 Other harnesses have similar support either via their CLI or TUI interfaces.
 
-> [[Configuration Template]]
-> [[Install Ollama]]
+> [[Fetch a Coding Model]]
+> [[Select the Model in the Plugin]]
 > [[Manage OpenCode Config in NetBeans]]
 > [[Picking an Agent, Model and Thinking Level]]
 

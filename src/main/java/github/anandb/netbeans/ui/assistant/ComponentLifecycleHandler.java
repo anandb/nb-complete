@@ -9,7 +9,6 @@ import java.awt.event.KeyEvent;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Consumer;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
@@ -28,7 +27,6 @@ import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.support.BinaryResolver;
-import github.anandb.netbeans.support.GlobalOpencodeConfig;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.ProjectPaths;
 import github.anandb.netbeans.support.TimingConstants;
@@ -75,10 +73,6 @@ public class ComponentLifecycleHandler {
     private KeyAdapter escKeyListener;
 
     private Set<String> closedProjectDirs = Set.of();
-
-    /** True once the user picks "Not now" on the global config prompt; suppresses
-     *  further prompts for the rest of this IDE process (until restart). */
-    private boolean configPromptDeferredThisProcess;
 
     public ComponentLifecycleHandler(
             ChatThreadPanel chatPanel,
@@ -424,19 +418,7 @@ public class ComponentLifecycleHandler {
         statusController.setStatus("STATUS_RestartingServer");
         restartServerBtn.setEnabled(false);
 
-        // Ask about the global OpenCode configuration before the server
-        // restarts, so a starter config is written before the process reads it.
-        maybeShowGlobalConfigPrompt(promptShown -> {
-            // When a config prompt was shown, ask the user to confirm the restart
-            // with an OK button (the server restarts only once OK is clicked). When
-            // no prompt was needed (config already present, prompt disabled), start
-            // directly without the confirmation hint.
-            if (promptShown) {
-                chatPanel.showStartSessionHint(() -> doRestart(currentSessionId));
-            } else {
-                doRestart(currentSessionId);
-            }
-        });
+        doRestart(currentSessionId);
     }
 
     /** Performs the actual server restart and re-enables the UI on completion. */
@@ -503,81 +485,19 @@ public class ComponentLifecycleHandler {
         });
     }
 
-    /**
-     * The startup path after the binary check passes: offer the global
-     * OpenCode configuration prompt, then start the server.
-     */
+    /** The startup path after the binary check passes: start the server. */
     private void beginStartupAfterBinaryCheck() {
-        // Offer the global OpenCode configuration prompt BEFORE launching the
-        // server: a starter config written here is picked up on the first
-        // start, so the user does not need to restart a second time.
-        maybeShowGlobalConfigPrompt(promptShown -> {
-            Runnable start = () -> {
-                LIFECYCLE_RP.post(() -> processService.get().ensureStarted());
-                // Register the not-found handler only once the start is actually
-                // proceeding (after any config prompt is answered), matching the
-                // restart path below.
-                processService.get().whenReady().exceptionally(ex -> {
-                    Throwable cause = ex;
-                    while (cause.getCause() != null) {
-                        cause = cause.getCause();
-                    }
-                    if (cause instanceof IllegalStateException && ExceptionUtils.getMessage(cause) != null
-                            && ExceptionUtils.getMessage(cause).contains("not found")) {
-                        topComponent.setBinaryNotFoundState(true);
-                    }
-                    return null;
-                });
-            };
-            // Mirror the restart flow: when a config prompt was shown, present
-            // the start-a-session hint (with OK) before starting the server.
-            if (promptShown) {
-                chatPanel.showStartSessionHint(start);
-            } else {
-                start.run();
+        LIFECYCLE_RP.post(() -> processService.get().ensureStarted());
+        processService.get().whenReady().exceptionally(ex -> {
+            Throwable cause = ex;
+            while (cause.getCause() != null) {
+                cause = cause.getCause();
             }
-        });
-    }
-
-    /**
-     * Offers to set up the global OpenCode configuration before the server
-     * starts. The file check runs on a background thread and the prompt bubble
-     * is shown in the chat panel. {@code afterAnswer} is invoked with {@code true}
-     * when a config prompt was shown to the user (and answered), or {@code false}
-     * when no prompt was needed (real configuration present, the prompt was
-     * disabled in Options / via "Don't ask again", or the user already chose
-     * "Not now" earlier this session).
-     */
-    private void maybeShowGlobalConfigPrompt(Consumer<Boolean> afterAnswer) {
-        // OpenCode-specific: only offer when the configured harness actually is
-        // opencode. Other harnesses (goose, claude, hermes, ...) have their own
-        // configuration surface — do not offer to create opencode.json or check it.
-        String binaryName = BinaryResolver.resolveBinaryName();
-        if (binaryName == null || !binaryName.startsWith("opencode")) {
-            afterAnswer.accept(false);
-            return;
-        }
-        if (configPromptDeferredThisProcess) {
-            afterAnswer.accept(false);
-            return;
-        }
-        LIFECYCLE_RP.post(() -> {
-            GlobalOpencodeConfig.CheckResult result = GlobalOpencodeConfig.evaluate();
-            if (result.state == GlobalOpencodeConfig.State.REAL_CONTENT) {
-                SwingUtilities.invokeLater(() -> afterAnswer.accept(false));
-                return;
+            if (cause instanceof IllegalStateException && ExceptionUtils.getMessage(cause) != null
+                    && ExceptionUtils.getMessage(cause).contains("not found")) {
+                topComponent.setBinaryNotFoundState(true);
             }
-            SwingUtilities.invokeLater(() -> chatPanel.addGlobalConfigBubble(
-                    result,
-                    () -> LIFECYCLE_RP.post(() -> {
-                        GlobalOpencodeConfig.writeDefaultConfig();
-                        SwingUtilities.invokeLater(() -> afterAnswer.accept(true));
-                    }),
-                    () -> {
-                        configPromptDeferredThisProcess = true;
-                        afterAnswer.accept(true);
-                    }
-            ));
+            return null;
         });
     }
 

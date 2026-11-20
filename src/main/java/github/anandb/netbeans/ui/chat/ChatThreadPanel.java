@@ -6,7 +6,6 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.KeyboardFocusManager;
 import java.awt.event.ComponentAdapter;
@@ -29,11 +28,9 @@ import org.openide.util.NbBundle;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
-import javax.swing.JTextPane;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JViewport;
@@ -42,8 +39,6 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
-import javax.swing.event.HyperlinkEvent;
-import java.util.logging.Level;
 
 import github.anandb.netbeans.contract.PinnedMessageControl;
 import github.anandb.netbeans.contract.SessionControl;
@@ -55,7 +50,6 @@ import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.contract.ProcessControl;
 import github.anandb.netbeans.pattern.SectionSplitPattern;
 import github.anandb.netbeans.support.BinaryResolver;
-import github.anandb.netbeans.support.GlobalOpencodeConfig;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MessageIdGenerator;
 import github.anandb.netbeans.support.PluginSettings;
@@ -65,7 +59,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import static org.apache.commons.lang3.StringUtils.defaultString;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import github.anandb.netbeans.ui.UIBundle;
-import github.anandb.netbeans.ui.session.GlobalConfigBubble;
 import github.anandb.netbeans.ui.permission.PermissionBubble;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
@@ -74,7 +67,6 @@ import github.anandb.netbeans.ui.assistant.OnboardingBubble;
 import github.anandb.netbeans.ui.assistant.WelcomeScreen;
 import github.anandb.netbeans.ui.export.ConversationExporter;
 import github.anandb.netbeans.ui.export.HtmlConversationExporter;
-import github.anandb.netbeans.ui.components.UIUtils;
 import github.anandb.netbeans.ui.components.ScrollablePanel;
 import github.anandb.netbeans.ui.components.RoundedPanel;
 import github.anandb.netbeans.ui.platform.PlatformBridge;
@@ -129,8 +121,6 @@ public class ChatThreadPanel extends JPanel {
      *  {@link #drainMessageQueue()} so arriving deltas can't interleave with
      *  half-drawn history (order correctness). */
     private volatile boolean loadRenderInProgress = false;
-    /** True while the "start a session" hint bubble is shown; reset by clearMessages(). */
-    private volatile boolean startSessionHintShown;
     private volatile boolean sessionLoading = false;
     /** Thread content the dismissable harness chooser replaced; Close puts it back. */
     private transient Component[] onboardingStash;
@@ -1048,7 +1038,6 @@ public class ChatThreadPanel extends JPanel {
             }
             // Clear the thread so this is the only bubble shown.
             messagesContainer.removeAll();
-            startSessionHintShown = false;
             OnboardingBubble bubble = new OnboardingBubble(found, selectionCallback, dismissCallback);
             messagesContainer.add(bubble);
             messagesContainer.add(Box.createVerticalStrut(4));
@@ -1091,85 +1080,6 @@ public class ChatThreadPanel extends JPanel {
         } else {
             SwingUtilities.invokeLater(restore);
         }
-    }
-
-    /** Shows the global opencode configuration prompt as a sidebar bubble. */
-    public void addGlobalConfigBubble(GlobalOpencodeConfig.CheckResult result,
-            Runnable onYes, Runnable onNo) {
-        SwingUtilities.invokeLater(() -> {
-            // Clear the thread so this is the only bubble shown.
-            messagesContainer.removeAll();
-            startSessionHintShown = false;
-            GlobalConfigBubble bubble = new GlobalConfigBubble(result, onYes, onNo);
-            messagesContainer.add(bubble);
-            messagesContainer.add(Box.createVerticalStrut(4));
-            messagesContainer.revalidate();
-            scrollController.scrollToBottom(true);
-        });
-    }
-
-    /** Shows a one-off bubble prompting the user to confirm the server restart.
-     *  The bubble stays until the user clicks OK, which dismisses it and runs
-     *  {@code onOk} (the caller then performs the actual restart). Also removed
-     *  immediately if a session starts (see {@link #clearMessages()}). */
-    public void showStartSessionHint(Runnable onOk) {
-        SwingUtilities.invokeLater(() -> {
-            if (startSessionHintShown) {
-                return;
-            }
-            startSessionHintShown = true;
-            // Clear previous messages (e.g. the missing-binary bubble) so the
-            // hint fills the full panel width.
-            messagesContainer.removeAll();
-            messagesContainer.revalidate();
-            ColorTheme theme = ThemeManager.getCurrentTheme();
-            JPanel bubble = UIUtils.createBubbleContentPanel();
-            String fontFamily = ThemeManager.getFont().getFamily();
-            int fontSize = ThemeManager.getFont().getSize() + 1;
-            String fg = Integer.toHexString(theme.foreground().getRGB() & 0xFFFFFF);
-            String html = NbBundle.getMessage(UIBundle.class,
-                    "StartSessionHint", fontFamily, fontSize, fg);
-            JTextPane text = new JTextPane();
-            text.setContentType("text/html");
-            text.setText(html);
-            text.setEditable(false);
-            text.setOpaque(false);
-            text.setFocusable(false);
-            text.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
-            text.addHyperlinkListener(e -> {
-                if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
-                    try {
-                        org.openide.awt.HtmlBrowser.URLDisplayer.getDefault().showURL(e.getURL());
-                    } catch (Exception ex) {
-                        LOG.log(Level.WARNING, "Failed to open link", ex);
-                    }
-                }
-            });
-            bubble.add(text, BorderLayout.CENTER);
-
-            JButton okBtn = new JButton(NbBundle.getMessage(UIBundle.class, "StartSessionHint.Ok"));
-            okBtn.setFocusPainted(false);
-            okBtn.addActionListener(e -> {
-                if (!startSessionHintShown) {
-                    return;
-                }
-                startSessionHintShown = false;
-                messagesContainer.removeAll();
-                messagesContainer.revalidate();
-                if (onOk != null) {
-                    onOk.run();
-                }
-            });
-            JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
-            buttonsPanel.setOpaque(false);
-            buttonsPanel.add(okBtn);
-            bubble.add(buttonsPanel, BorderLayout.SOUTH);
-
-            messagesContainer.add(bubble);
-            messagesContainer.add(Box.createVerticalStrut(4));
-            messagesContainer.revalidate();
-            scrollController.scrollToBottom(true);
-        });
     }
 
     /** Called by MessageSender when a user message is actually sent via RPC. */
@@ -1369,7 +1279,6 @@ public class ChatThreadPanel extends JPanel {
             messagesContainer.removeAll();
             // Chat content may be taller than the viewport; only the welcome screen tracks its height.
             messagesContainer.putClientProperty(ScrollablePanel.TRACK_HEIGHT_IF_SHORTER, null);
-            startSessionHintShown = false;
             scrollController.unfixAllMouseWheel();
             lastUserTimestamp = -1L;
             messagesContainer.revalidate();

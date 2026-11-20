@@ -19,7 +19,6 @@ Since the plugin supports the **Markdown Project** type (which lets you load any
 
 
 > [[Markdown Project Type]]
-> [[Configuration Template]]
 > [[Offline/Private Coding (Local LLMs)]]
 
 

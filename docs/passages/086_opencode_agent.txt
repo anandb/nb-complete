@@ -35,7 +35,7 @@ After installing, create the configuration file:
 #### macOS / Linux
 The config directory is at `$HOME/.config/opencode/`.
 <pre><code>mkdir -p &#36;HOME/.config/opencode</code></pre>
-Create `$HOME/.config/opencode/opencode.json` with the starter configuration:
+Create `$HOME/.config/opencode/opencode.json` with your configuration:
 
 #### Windows
 
@@ -44,9 +44,7 @@ mkdir "%USERPROFILE%\.config\opencode"
 cd "%USERPROFILE%\.config\opencode"
 </code></pre>
 
-Open Notepad and paste in the starter configuration:
-
-> [[Configuration Template]]
+Open Notepad and paste in your configuration.
 
 #### Verify
 Run this to confirm the configuration is valid:

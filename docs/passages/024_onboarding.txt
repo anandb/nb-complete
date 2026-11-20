@@ -46,4 +46,3 @@ After installing a harness — and optionally setting the binary path under `Opt
 > [[Post Install]]
 > [[Restarting the server]]
 > [[Options Panel Reference]]
-> [[Global Configuration Setup]]

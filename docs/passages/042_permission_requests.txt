@@ -31,7 +31,6 @@ The letter belongs to the option's scope, not to its label: the harness reports 
 
 The header button to the left of the mini-assistant latches break mode, shown as a padlock or a coffee cup. See [[Break Mode]].
 
-> [[Configuration Template]]
 > [[Mini Assistant]]
 > [[Keyboard Shortcuts]]
 
