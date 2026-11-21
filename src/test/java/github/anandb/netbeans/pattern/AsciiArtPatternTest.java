@@ -7,6 +7,12 @@ import org.junit.jupiter.api.Test;
 
 class AsciiArtPatternTest {
     @Test
+    void matcherFindsArt() {
+        assertTrue(AsciiArtPattern.matcher("-----").find());
+        assertFalse(AsciiArtPattern.matcher("plain text").find());
+    }
+
+    @Test
     void detectsBoxDrawing() {
         assertTrue(AsciiArtPattern.findIn("┌───┐\n│ hi │"));
     }
