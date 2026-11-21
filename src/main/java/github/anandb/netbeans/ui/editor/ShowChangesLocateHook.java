@@ -6,6 +6,7 @@ import org.openide.nodes.Node;
 import org.openide.util.NbBundle;
 import org.openide.windows.TopComponent;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.SystemLauncher;
 import github.anandb.netbeans.support.PluginSettings;
 
 import java.awt.Component;
@@ -295,7 +296,7 @@ public final class ShowChangesLocateHook implements Runnable {
             return;
         }
         // Desktop.open performs local I/O; never run it on the EDT
-        exIo(() -> {
+        SystemLauncher.launch("locate in the system", () -> {
             if (!Desktop.isDesktopSupported()) {
                 LOG.warn("Desktop API unsupported; cannot locate in system."); // NOI18N
                 return;
@@ -311,16 +312,6 @@ public final class ShowChangesLocateHook implements Runnable {
                 } catch (IOException ex) {
                     LOG.warn("Failed to open {0}: {1}", dir.getAbsolutePath(), ex); // NOI18N
                 }
-            }
-        });
-    }
-
-    private static void exIo(Runnable task) {
-        java.util.concurrent.CompletableFuture.runAsync(() -> {
-            try {
-                task.run();
-            } catch (Exception ex) {
-                LOG.warn("Failed to locate in system: {0}", ex); // NOI18N
             }
         });
     }

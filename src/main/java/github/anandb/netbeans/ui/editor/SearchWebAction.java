@@ -24,6 +24,7 @@ import javax.swing.AbstractAction;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.support.SystemLauncher;
 import github.anandb.netbeans.ui.UIBundle;
 
 /**
@@ -86,13 +87,31 @@ public final class SearchWebAction extends AbstractAction implements Presenter.P
             LOG.fine("Browser detection failed: {0}", ExceptionUtils.getMessage(ex));
         }
 
-        showUrl(urlStr);
+        // The URLDisplayer posts its own task, but a custom implementation may not:
+        // keep the Desktop browse off the EDT like every other OS launch.
+        SystemLauncher.launch("open the search URL", () -> showUrl(urlStr));
     }
+
+    /** Spawns a process; a seam so tests can observe the argv without a real browser. */
+    interface ProcessSpawner {
+        Process start(String... argv) throws IOException;
+    }
+
+    private static final ProcessSpawner SYSTEM_SPAWNER = argv -> new ProcessBuilder(argv).start();
 
     private static void launchFirefox(HtmlBrowser.Factory factory, String query, String fallbackUrl) {
         String exec = extractExecutable(factory);
+        // Forking the browser is local process I/O; never on the EDT.
+        SystemLauncher.launch("launch Firefox", () -> startFirefox(exec, query, fallbackUrl, SYSTEM_SPAWNER));
+    }
+
+    /**
+     * Starts the browser's search page. Package-private with an injectable spawner so a
+     * test can prove the launch still happens with the expected argv.
+     */
+    static void startFirefox(String exec, String query, String fallbackUrl, ProcessSpawner spawner) {
         try {
-            new ProcessBuilder(exec, "--search", query).start();
+            spawner.start(exec, "--search", query);
         } catch (IOException ex) {
             LOG.warn("Failed to launch Firefox ({0}): {1}", exec, ExceptionUtils.getMessage(ex));
             showUrl(fallbackUrl);
@@ -161,7 +180,7 @@ public final class SearchWebAction extends AbstractAction implements Presenter.P
         return "firefox";
     }
 
-    private static void showUrl(String urlStr) {
+    static void showUrl(String urlStr) {
         try {
             HtmlBrowser.URLDisplayer.getDefault().showURL(new URL(urlStr));
         } catch (MalformedURLException ex) {

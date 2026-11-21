@@ -52,6 +52,7 @@ import github.anandb.netbeans.model.Session;
 import github.anandb.netbeans.model.SessionItem;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.support.SystemLauncher;
 import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.ProjectPaths;
@@ -1197,16 +1198,19 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     }
 
     private void openCwdInSystemBrowser(String path) {
-        try {
-            File dir = new File(path);
+        File dir = new File(path);
+        // Desktop.open forks the file manager: local I/O that can stall, never on the EDT.
+        SystemLauncher.launch("open the working directory", () -> {
             if (dir.exists() && dir.isDirectory()
                     && Desktop.isDesktopSupported()
                     && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
-                Desktop.getDesktop().open(dir);
+                try {
+                    Desktop.getDesktop().open(dir);
+                } catch (Exception ex) {
+                    LOG.log(Level.WARNING, "Failed to open directory in system browser: {0}", ex);
+                }
             }
-        } catch (Exception ex) {
-            LOG.log(Level.WARNING, "Failed to open directory in system browser: {0}", ex);
-        }
+        });
     }
 
     private void applyInitialTheme() {
