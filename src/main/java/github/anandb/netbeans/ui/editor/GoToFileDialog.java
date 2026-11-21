@@ -79,8 +79,11 @@ public class GoToFileDialog extends JDialog {
     /** Timer for debounced search — 150ms idle before filtering. */
     private final Timer debounceTimer;
 
+    /** Runs the index scan off the EDT; publishes each surviving result here. */
+    private final FileIndexScanner scanner;
+
     /** All cached files (snapshot taken at dialog open, refreshed when indexing completes). */
-    private List<FileCacheQuery.CachedFile> allFiles;
+    private volatile List<FileCacheQuery.CachedFile> allFiles;
     private volatile boolean indexingComplete;
 
     public GoToFileDialog(Window owner) {
@@ -134,6 +137,8 @@ public class GoToFileDialog extends JDialog {
         // --- Debounce timer ---
         debounceTimer = new Timer(150, e -> performSearch());
         debounceTimer.setRepeats(false);
+
+        scanner = FileIndexScanner.withDefaultExecutor(this::publishResults);
 
         long currentVersion = cache.getCacheVersion();
         if (currentVersion == lastCacheVersion) {
@@ -203,68 +208,61 @@ public class GoToFileDialog extends JDialog {
     // --- Search logic ---
 
     private void updateStatusLabel(String query) {
+        List<FileCacheQuery.CachedFile> files = allFiles;
         if (!indexingComplete) {
-            statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_Indexing", allFiles.size()));
+            statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_Indexing", files.size()));
         } else if (query == null || query.trim().isEmpty()) {
-            statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_FilesFound", allFiles.size()));
+            statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_FilesFound", files.size()));
         }
     }
 
     private void performSearch() {
         String text = searchField.getText().trim();
-        long startedAt = System.nanoTime();
-        int indexed = allFiles.size();
-        int results = 0;
-        boolean scanned = false;
+        if (text.isEmpty()) {
+            listModel.clear();
+            updateStatusLabel(null);
+            return;
+        }
+        // The scan itself runs off the EDT; a newer query supersedes this one.
+        scanner.search(text, allFiles, MAX_RESULTS);
+    }
+
+    /**
+     * Publishes one finished scan on the EDT. Only the newest scan reaches here
+     * (the scanner drops superseded generations), so the list model is cleared
+     * and refilled in one step instead of mid-scan.
+     */
+    private void publishResults(FileIndexScanner.ScanResult result) {
         listModel.clear();
 
-        try {
-            if (text.isEmpty()) {
-                updateStatusLabel(null);
-                return;
-            }
-
-            // Same matcher the find_file tool uses, so both searches agree.
-            FileNameMatcher.Query query = FileNameMatcher.compile(text);
-            if (!query.usable()) {
-                // A plain query shorter than the minimum matches too much to be a search, and a
-                // glob short enough to get here was malformed. Say so: showing the index size here
-                // read as a result count and made it look as if the list had been searched.
-                statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_SearchTooShort",
-                        FileNameMatcher.MIN_PLAIN_LENGTH));
-                LOG.fine("Jump-to-file search skipped for ''{0}'': plain query shorter than {1} "
-                        + "characters and not a usable glob", text, FileNameMatcher.MIN_PLAIN_LENGTH);
-                return;
-            }
-            scanned = true;
-
-            int count = 0;
-            for (FileCacheQuery.CachedFile cf : allFiles) {
-                if (count >= MAX_RESULTS) break;
-                if (query.matches(cf.fileObject().getNameExt(), cf.relativePath())) {
-                    listModel.addElement(new FileItem(
-                        cf.fileObject(), cf.projectName(), cf.relativePath()));
-                    count++;
-                }
-            }
-            results = count;
-
-            if (count == 0) {
-                statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_NoMatch"));
-            } else if (!indexingComplete) {
-                statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_Indexing", indexed));
-            } else {
-                statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_FilesFound", count));
-            }
-        } finally {
-            // Only a query that actually scanned the index is a search worth timing; a skipped
-            // keystroke must not log a 0 ms "search".
-            if (scanned) {
-                LOG.fine("Jump-to-file search for ''{0}'': {1} result(s) from {2} indexed file(s) in {3} ms",
-                        text, results, indexed,
-                        String.format(Locale.ROOT, "%.2f", (System.nanoTime() - startedAt) / 1_000_000.0));
-            }
+        // A plain query shorter than the minimum matches too much to be a search, and a
+        // glob short enough to get here was malformed. Say so: showing the index size here
+        // read as a result count and made it look as if the list had been searched.
+        if (!result.usable()) {
+            statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_SearchTooShort",
+                    FileNameMatcher.MIN_PLAIN_LENGTH));
+            LOG.fine("Jump-to-file search skipped for ''{0}'': plain query shorter than {1} "
+                    + "characters and not a usable glob", result.query(),
+                    FileNameMatcher.MIN_PLAIN_LENGTH);
+            return;
         }
+
+        int count = 0;
+        for (FileCacheQuery.CachedFile cf : result.hits()) {
+            listModel.addElement(new FileItem(cf.fileObject(), cf.projectName(), cf.relativePath()));
+            count++;
+        }
+
+        if (count == 0) {
+            statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_NoMatch"));
+        } else if (!indexingComplete) {
+            statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_Indexing", result.indexedCount()));
+        } else {
+            statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_FilesFound", count));
+        }
+        LOG.fine("Jump-to-file search for ''{0}'': {1} result(s) from {2} indexed file(s) in {3} ms",
+                result.query(), count, result.indexedCount(),
+                String.format(Locale.ROOT, "%.2f", result.elapsedNanos() / 1_000_000.0));
     }
 
     /**

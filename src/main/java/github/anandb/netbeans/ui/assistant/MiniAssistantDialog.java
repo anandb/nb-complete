@@ -640,7 +640,11 @@ public class MiniAssistantDialog extends JDialog {
     private void displayBubble(MessageBubble realBubble) {
         responseHost.removeAll();
 
-        boolean streaming = isProcessing && realBubble.isStreaming();
+        // Mirror the source bubble's own streaming state. Gating this on the dialog's
+        // isProcessing flag re-rendered the full HTML per chunk whenever that flag
+        // lagged (it is only flipped on processing events), which paid FitEditorPane
+        // parsing for every chunk. The JTextArea streams; HTML renders once.
+        boolean streaming = realBubble.isStreaming();
         MessageBubble localBubble = new MessageBubble(MessageType.agent_message_chunk,
             realBubble.getRawText(), realBubble.getMessageId(), null,
             MessageBubble.AvatarPosition.NONE, streaming, null);
