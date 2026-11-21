@@ -54,6 +54,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 import org.apache.commons.lang3.StringUtils;
+import github.anandb.netbeans.support.TurnTokenCounter;
 
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
@@ -125,6 +126,7 @@ public class MiniAssistantDialog extends JDialog {
     private boolean isAutoTrackingLatest = true;
     private String lastSentText;
     private boolean isProcessing;
+    private final TurnTokenCounter tokenCounter = new TurnTokenCounter();
     private int maxTokenCountThisTurn;
     private String displayedMessageId;
     private String displayedText;
@@ -471,6 +473,8 @@ public class MiniAssistantDialog extends JDialog {
     private void showSpinner() {
         isAutoTrackingLatest = true;
         currentBubbleIndex = -1;
+        tokenCounter.reset();
+        maxTokenCountThisTurn = 0;
         // A turn is starting (Enter/send here, or a message sent from the main panel): the
         // answer on screen belongs to the previous turn, so grey it out until a new one
         // arrives. It is un-greyed by displayBubble once the sidebar produces the next bubble.
@@ -551,7 +555,7 @@ public class MiniAssistantDialog extends JDialog {
     }
 
     private void updateTokenOverlay() {
-        int count = calculateCurrentTokenCount();
+        int count = tokenCounter.count();
         if (count > maxTokenCountThisTurn) {
             maxTokenCountThisTurn = count;
         }
@@ -593,9 +597,6 @@ public class MiniAssistantDialog extends JDialog {
         displayBubble(bubbles.get(currentBubbleIndex));
     }
 
-    private List<MessageBubble> getAllResponseBubbles() {
-        return responseBubbles(mb -> !"user".equals(mb.getRole()));
-    }
 
     private List<MessageBubble> getAssistantBubbles() {
         return responseBubbles(mb -> "assistant".equals(mb.getRole()));
@@ -624,18 +625,6 @@ public class MiniAssistantDialog extends JDialog {
         return bubbles;
     }
 
-    private int calculateCurrentTokenCount() {
-        List<MessageBubble> bubbles = getAllResponseBubbles();
-        if (bubbles.isEmpty()) return 0;
-        int total = 0;
-        for (MessageBubble mb : bubbles) {
-            String text = mb.getRawText();
-            if (text != null && !text.isBlank()) {
-                total += countWords(text);
-            }
-        }
-        return total;
-    }
 
     private void displayBubble(MessageBubble realBubble) {
         responseHost.removeAll();
@@ -681,6 +670,7 @@ public class MiniAssistantDialog extends JDialog {
         SwingUtilities.invokeLater(() -> {
             this.isProcessing = processing;
             if (processing) {
+                tokenCounter.reset();
                 maxTokenCountThisTurn = 0;
                 displayedMessageId = null;
                 displayedText = null;
@@ -722,10 +712,6 @@ public class MiniAssistantDialog extends JDialog {
         displayBubble(latest);
     }
 
-    private static int countWords(String text) {
-        if (text == null || text.isBlank()) return 0;
-        return text.trim().split("\\s+").length;
-    }
 
     public void onStreamUpdate(ProcessedMessage msg) {
         if (msg != null && msg.messageType() == MessageType.error_response) {
@@ -740,6 +726,7 @@ public class MiniAssistantDialog extends JDialog {
             }
         }
         SwingUtilities.invokeLater(() -> {
+            tokenCounter.add(msg);
             updateTokenOverlay();
             if (isAutoTrackingLatest && isVisible()) {
                 syncLatestBubble();

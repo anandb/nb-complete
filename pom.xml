@@ -234,6 +234,12 @@
             <artifactId>commons-exec</artifactId>
             <version>1.6.0</version>
         </dependency>
+        <!-- lz4-java: Apache-2.0 XXHash64 with JNI bindings for message IDs -->
+        <dependency>
+            <groupId>org.lz4</groupId>
+            <artifactId>lz4-java</artifactId>
+            <version>1.8.0</version>
+        </dependency>
 
         <!-- Flexmark markdown - use only core instead of all -->
         <dependency>

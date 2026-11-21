@@ -1,42 +1,40 @@
 package github.anandb.netbeans.support;
 
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+
+import net.jpountz.xxhash.XXHash64;
+import net.jpountz.xxhash.XXHashFactory;
 
 /**
  * Generates deterministic message IDs for assistant messages that lack one.
- * The ID is an SHA-256 hash of (sessionId + messageBody),
+ * The ID is an XXHash64 hash of (sessionId + messageBody),
  * providing a stable identifier for pinning across reloads.
  */
 public final class MessageIdGenerator {
 
+    private static final XXHash64 HASHER = XXHashFactory.fastestInstance().hash64();
+
     private MessageIdGenerator() {}
 
     /**
-     * Generates a SHA-256 based message ID for an assistant message.
+     * Generates an XXHash64-based message ID for an assistant message.
      * The body is stripped so live streaming text and reloaded history hash the same.
      *
      * @param sessionId       the current session ID
      * @param messageBody     the full text content of the assistant message
-     * @return a hex-encoded SHA-256 hash string
+     * @return a hex-encoded XXHash64 hash string
      */
     public static String generate(String sessionId, String messageBody) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            digest.update((sessionId != null ? sessionId : "").getBytes(StandardCharsets.UTF_8));
-            digest.update((byte) 0);
-            String body = messageBody != null ? messageBody.strip() : "";
-            digest.update(body.getBytes(StandardCharsets.UTF_8));
-            byte[] hash = digest.digest();
-            StringBuilder hex = new StringBuilder(64);
-            for (byte b : hash) {
-                hex.append(String.format("%02x", b));
-            }
-            return hex.toString();
-        } catch (NoSuchAlgorithmException e) {
-            // SHA-256 is required by all Java implementations
-            throw new IllegalStateException("SHA-256 not available", e);
-        }
+        String session = sessionId == null ? "" : sessionId;
+        String body = messageBody == null ? "" : messageBody.strip();
+        byte[] bytes = (session + '\0' + body).getBytes(StandardCharsets.UTF_8);
+        long hash = HASHER.hash(bytes, 0, bytes.length, 0L);
+        return toHex(hash);
+    }
+
+    /** Fixed-width 16-character hex form of the 64-bit hash. */
+    private static String toHex(long value) {
+        String hex = Long.toHexString(value);
+        return "0".repeat(16 - hex.length()) + hex;
     }
 }

@@ -31,7 +31,7 @@ class MessageIdGeneratorTest {
     @Test
     void nullInputsHashLikeEmptyStrings() {
         assertEquals(
-                "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+                "e934a84adb052768",
                 MessageIdGenerator.generate(null, null));
         assertEquals(MessageIdGenerator.generate(null, null),
                 MessageIdGenerator.generate("", "   "));
@@ -40,7 +40,7 @@ class MessageIdGeneratorTest {
     @Test
     void knownVectorPinsTheHashConstruction() {
         assertEquals(
-                "a6e19d7bd282da3b0760cacf8939e9089b7b54fa99e1474a4a4247cb4a179a54",
+                "a50561bb7f1b00ec",
                 MessageIdGenerator.generate("sess", "hello"));
     }
 }

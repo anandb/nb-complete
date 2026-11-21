@@ -1561,7 +1561,7 @@ public class ChatThreadPanel extends JPanel {
     }
 
     /** Assigns messageId to assistant bubbles that lack one after streaming finalization.
-     *  The ID is a SHA-256 hash of (sessionId + fullText), providing
+     *  The ID is an XXHash64 hash of (sessionId + fullText), providing
      *  a stable identifier for pinning across reloads. Must run AFTER finalization so
      *  getRawText() returns the complete message text. */
     private void assignMissingMessageIds() {
