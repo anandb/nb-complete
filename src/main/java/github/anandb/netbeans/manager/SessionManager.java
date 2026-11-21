@@ -2027,8 +2027,9 @@ public class SessionManager implements SessionQuery, SessionControl,
                 return CompletableFuture.<T>failedFuture(ex);
             }
             LOG.fine("{0} failed because OMP''s model catalogue was still loading, "
-                    + "retrying in {1}ms (attempt {2}): {3}",
-                    operationName, delayMs, attempt + 2, ExceptionUtils.getMessage(ex));
+                    + "retrying in {1}ms (retry {2} of {3}): {4}",
+                    operationName, delayMs, attempt + 1, delaysMs.length,
+                    ExceptionUtils.getMessage(ex));
             return CompletableFuture.<T>completedFuture(null)
                     .thenComposeAsync(
                             v -> withModelRestoreRetry(operationName, requestFn, attempt + 1,

@@ -411,12 +411,14 @@ public final class GitAnnotationsFirstName {
                 + "no longer has the expected fields or methods ({0}). Feature off this session.",
                 ex.getMessage(), ex);
         // A log line alone is invisible; tell the user the option silently stopped working.
+        // Resolve the strings outside the try: a typo in a bundle key must fail loud
+        // (and BundleKeysConsistencyTest guards it), not hide inside the best-effort catch.
+        String title = NbBundle.getMessage(UIBundle.class, "MSG_GitFirstNameUnavailableTitle");
+        String text = NbBundle.getMessage(UIBundle.class, "MSG_GitFirstNameUnavailableText");
         SwingUtilities.invokeLater(() -> {
             try {
                 NotificationDisplayer.getDefault().notify(
-                        NbBundle.getMessage(UIBundle.class, "MSG_GitFirstNameUnavailableTitle"),
-                        NotificationDisplayer.Priority.LOW.getIcon(),
-                        NbBundle.getMessage(UIBundle.class, "MSG_GitFirstNameUnavailableText"),
+                        title, NotificationDisplayer.Priority.LOW.getIcon(), text,
                         null, NotificationDisplayer.Priority.LOW);
             } catch (RuntimeException ignored) {
                 // Notification is best-effort; the warning above records the cause.

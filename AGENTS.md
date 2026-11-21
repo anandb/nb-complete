@@ -407,11 +407,11 @@ thread, clear `currentSessionId` or set `turnEnded` the way `onSessionError` doe
 
 OMP's model catalogue is populated a few seconds after `initialize`, so a `session/load` issued
 before it settles answers `Could not restore model <id>`. `SessionManager.withModelRestoreRetry`
-retries that answer for OMP only, across ~10 s ({2,3,5} s delays), before the failure reaches
-`onSessionLoadFailed`. Do not re-add the blanket "unrestorable models are permanent" exclusion:
-it made a load that succeeds seconds later fail immediately. Do not extend the retry to other
-harnesses — a genuinely missing model stays permanent there; the lost-turn (`unknown_execution`)
-and `-32601` exclusions are unchanged.
+retries that answer for OMP only, across ~10 s ({2,3,5} s delays) inside a 60 s chain budget,
+before the failure reaches `onSessionLoadFailed`. Do not re-add the blanket "unrestorable models
+are permanent" exclusion: it made a load that succeeds seconds later fail immediately. Do not
+extend the retry to other harnesses without re-measuring — so far only OMP has shown this
+transient; the lost-turn (`unknown_execution`) and `-32601` exclusions are unchanged.
 
 ### File Access Policy Is Shared By ACP And MCP Tools
 - `FileAccessGuard.check(...)` is the shared ACP/MCP enforcement point. `ALLOW` reads/writes within
