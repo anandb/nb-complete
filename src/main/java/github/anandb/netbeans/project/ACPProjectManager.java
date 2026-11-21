@@ -9,7 +9,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import github.anandb.netbeans.support.Logger;
-import github.anandb.netbeans.support.ProjectPaths;
 import github.anandb.netbeans.support.SlidingTask;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ui.OpenProjects;
@@ -30,8 +29,18 @@ public class ACPProjectManager implements PropertyChangeListener {
     private final SlidingTask syncTask = new SlidingTask(RP, SYNC_DELAY_MS, this::syncActiveProject);
 
     private final AtomicReference<Project[]> currentProjects = new AtomicReference<>(new Project[0]);
+    private final OpenProjectsSource projectSource;
     private volatile Consumer<String> projectCloseListener;
     private volatile Consumer<String> projectOpenListener;
+
+    public ACPProjectManager() {
+        this(new NBOpenProjectsSource());
+    }
+
+    /** Test seam: inject a fake project source instead of the NetBeans singleton. */
+    ACPProjectManager(OpenProjectsSource projectSource) {
+        this.projectSource = projectSource;
+    }
 
     public static ACPProjectManager getInstance() {
         ACPProjectManager pm = Lookup.getDefault().lookup(ACPProjectManager.class);
@@ -53,14 +62,14 @@ public class ACPProjectManager implements PropertyChangeListener {
         if (listener != null && currentProjects.get() != null) {
             for (Project p : currentProjects.get()) {
                 if (p != null) {
-                    listener.accept(ProjectPaths.nativePath(p));
+                    listener.accept(projectSource.nativePath(p));
                 }
             }
         }
     }
 
     public void start() {
-        OpenProjects.getDefault().addPropertyChangeListener(this);
+        projectSource.addPropertyChangeListener(this);
         LOG.fine("ACPProjectManager started, tracking projects.");
         // Immediate first sync: startup readers must see the current list without
         // waiting for the coalescing window.
@@ -69,17 +78,21 @@ public class ACPProjectManager implements PropertyChangeListener {
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        String prop = evt.getPropertyName();
-        if (OpenProjects.PROPERTY_MAIN_PROJECT.equals(prop) ||
-            OpenProjects.PROPERTY_OPEN_PROJECTS.equals(prop)) {
+        if (isProjectEvent(evt.getPropertyName())) {
             // OpenProjects fires once per project during startup / group switches;
             // the last trigger recomputes the diff, so earlier ones are redundant.
             syncTask.schedule();
         }
     }
 
-    private void syncActiveProject() {
-        Project[] openProjects = OpenProjects.getDefault().getOpenProjects();
+    /** True for the two {@code OpenProjects} properties that change the project set. */
+    static boolean isProjectEvent(String prop) {
+        return OpenProjects.PROPERTY_MAIN_PROJECT.equals(prop)
+            || OpenProjects.PROPERTY_OPEN_PROJECTS.equals(prop);
+    }
+
+    void syncActiveProject() {
+        Project[] openProjects = projectSource.getOpenProjects();
 
         Set<String> oldDirs = dirsOf(currentProjects.get());
         Set<String> newDirs = dirsOf(openProjects);
@@ -118,7 +131,7 @@ public class ACPProjectManager implements PropertyChangeListener {
         if (projects != null) {
             for (Project p : projects) {
                 if (p != null) {
-                    dirs.add(ProjectPaths.nativePath(p));
+                    dirs.add(projectSource.nativePath(p));
                 }
             }
         }
