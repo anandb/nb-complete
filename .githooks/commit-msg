@@ -1,0 +1,29 @@
+#!/bin/sh
+# Enforce conventional-commit subjects so history stays reviewable.
+# Activate: git config core.hooksPath .githooks
+
+msg_file="$1"
+subject=$(head -n 1 "$msg_file")
+
+# Allow merge commits and reverts verbatim.
+case "$subject" in
+  Merge\ *|Revert\ *) exit 0 ;;
+esac
+
+# Strip a leading "!" (breaking) marker for validation.
+pattern='^(feat|fix|docs|refactor|perf|test|chore|style|build|ci|revert)(\([^)]+\))?!?: .+'
+
+if ! printf '%s' "$subject" | grep -qE "$pattern"; then
+  echo "commit-msg: subject does not follow conventional commits:" >&2
+  echo "  $subject" >&2
+  echo "Expected: type(scope): description  (e.g. fix(session): handle empty MCP pair)" >&2
+  echo "Allowed types: feat fix docs refactor perf test chore style build ci revert" >&2
+  exit 1
+fi
+
+# Subject length sanity.
+len=${#subject}
+if [ "$len" -gt 72 ]; then
+  echo "commit-msg: subject too long ($len chars, max 72)" >&2
+  exit 1
+fi
