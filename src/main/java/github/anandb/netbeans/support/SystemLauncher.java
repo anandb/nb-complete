@@ -41,7 +41,7 @@ public final class SystemLauncher {
         return CompletableFuture.runAsync(() -> {
             try {
                 task.run();
-            } catch (RuntimeException ex) {
+            } catch (Exception ex) {
                 // Runnable.run() declares nothing, so an interrupt only arrives wrapped:
                 // restore the flag instead of swallowing it on a shared pool thread.
                 if (ex instanceof InterruptedException) {

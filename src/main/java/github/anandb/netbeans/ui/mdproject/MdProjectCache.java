@@ -34,7 +34,7 @@ final class MdProjectCache {
         try {
             ProjectManager.getDefault().clearNonProjectCache();
         } catch (RuntimeException ex) {
-            LOG.log(Level.FINE, "Could not clear the non-project cache", ex);
+            LOG.log(Level.WARNING, "Could not clear the non-project cache", ex);
         }
     }
 }

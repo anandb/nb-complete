@@ -2,6 +2,7 @@ package github.anandb.netbeans.ui.editor;
 
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.ui.UIBundle;
 
 import java.awt.Component;
 import java.awt.Container;
@@ -17,9 +18,13 @@ import java.util.Set;
 import java.util.WeakHashMap;
 
 import javax.swing.JComponent;
+import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.text.Element;
 import javax.swing.text.JTextComponent;
+
+import org.openide.awt.NotificationDisplayer;
+import org.openide.util.NbBundle;
 
 /**
  * Shows the commit author's first name in git blame annotations.
@@ -402,6 +407,20 @@ public final class GitAnnotationsFirstName {
             return;
         }
         reflectionFailureReported = true;
-        LOG.warn("Cannot show first names in git annotations", ex); // NOI18N
+        LOG.warn("Cannot show first names in git annotations: the git module's blame bar "
+                + "no longer has the expected fields or methods ({0}). Feature off this session.",
+                ex.getMessage(), ex);
+        // A log line alone is invisible; tell the user the option silently stopped working.
+        SwingUtilities.invokeLater(() -> {
+            try {
+                NotificationDisplayer.getDefault().notify(
+                        NbBundle.getMessage(UIBundle.class, "MSG_GitFirstNameUnavailableTitle"),
+                        NotificationDisplayer.Priority.LOW.getIcon(),
+                        NbBundle.getMessage(UIBundle.class, "MSG_GitFirstNameUnavailableText"),
+                        null, NotificationDisplayer.Priority.LOW);
+            } catch (RuntimeException ignored) {
+                // Notification is best-effort; the warning above records the cause.
+            }
+        });
     }
 }
