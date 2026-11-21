@@ -1,7 +1,8 @@
 package github.anandb.netbeans.support;
 
 import java.util.concurrent.CompletableFuture;
-
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 /**
  * Runs blocking OS launches off the EDT: {@code Desktop.open/browse}, browser
  * process starts and similar fork/exec work. A launch can stall while the
@@ -16,9 +17,19 @@ public final class SystemLauncher {
 
     private static final Logger LOG = Logger.from(SystemLauncher.class);
 
+    /**
+     * Fork/exec and desktop-handler launches can block for the duration of the
+     * stall; they must not borrow threads from the common pool that the rest of
+     * the plugin shares. Daemon threads so a stuck launch never holds IDE exit.
+     */
+    private static final ExecutorService LAUNCHES = Executors.newSingleThreadExecutor(runnable -> {
+        Thread thread = new Thread(runnable, "SystemLauncher");
+        thread.setDaemon(true);
+        return thread;
+    });
+
     private SystemLauncher() {
     }
-
     /**
      * Runs {@code task} asynchronously.
      *
@@ -31,8 +42,13 @@ public final class SystemLauncher {
             try {
                 task.run();
             } catch (RuntimeException ex) {
+                // Runnable.run() declares nothing, so an interrupt only arrives wrapped:
+                // restore the flag instead of swallowing it on a shared pool thread.
+                if (ex instanceof InterruptedException) {
+                    Thread.currentThread().interrupt();
+                }
                 LOG.warn("Failed to {0}: {1}", what, ex);
             }
-        });
+        }, LAUNCHES);
     }
 }

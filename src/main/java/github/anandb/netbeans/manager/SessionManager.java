@@ -10,6 +10,7 @@ import github.anandb.netbeans.model.ConfigOptionConverter;
 import github.anandb.netbeans.contract.SessionStore;
 import github.anandb.netbeans.model.ModelsInfo;
 import github.anandb.netbeans.model.ModesInfo;
+import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.model.SessionMetadata;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.contract.ProjectQuery;
@@ -362,6 +363,19 @@ public class SessionManager implements SessionQuery, SessionControl,
      * than fired rapidly; nothing here runs on the EDT.
      */
     private volatile long[] startupRetryDelaysMs = {2_000, 4_000, 8_000};
+
+    /**
+     * Model-restore retries for OMP. Its model catalogue can arrive a few seconds after
+     * {@code initialize}; a session whose saved model is not there yet can be restored
+     * once the catalogue settles. The three waits cover ~10 s, then the real failure is
+     * reported. No other harness retries this answer — theirs is permanent.
+     */
+    private volatile long[] modelRestoreRetryDelaysMs = {2_000, 3_000, 5_000};
+
+    /** Test hook: shrinks the model-restore retry delays so tests need not wait. */
+    void setModelRestoreRetryDelaysForTest(long[] delaysMs) {
+        modelRestoreRetryDelaysMs = delaysMs;
+    }
 
     /** Test hook: marks the startup window without going through a handshake. */
     void setHarnessStartupPendingForTest(boolean pending) {
@@ -832,7 +846,9 @@ public class SessionManager implements SessionQuery, SessionControl,
         final String operation = resume ? "session/resume" : "session/load";
         CompletableFuture<List<SessionConfigOption>> attempt = withMcpFallback(operation,
                 () -> withStartupRetry(operation,
-                        () -> sendLoadSessionRequest(sessionId, targetCwd, start, forceLoad, false), 0), start);
+                        () -> withModelRestoreRetry(operation,
+                                () -> sendLoadSessionRequest(sessionId, targetCwd, start, forceLoad, false), 0),
+                        0), start);
         return attempt.handle((res, ex) -> {
                     if (ex != null && isLostTurn(ex)) {
                         // Hermes' gateway refuses the editor-MCP mutation of an attach while the
@@ -1956,6 +1972,36 @@ public class SessionManager implements SessionQuery, SessionControl,
                 return requestFn.get();
             }
             return CompletableFuture.<T>failedFuture(ex);
+        }).thenCompose(f -> f);
+    }
+
+    /**
+     * Retries {@code session/load} when OMP reports that its model catalogue has not
+     * caught up with a stored session yet ({@code Could not restore model <id>}). The
+     * catalogue is populated asynchronously after {@code initialize}, so the same load
+     * succeeds seconds later; other harnesses never get this retry. Bounded by
+     * {@link #modelRestoreRetryDelaysMs} (~10 s) so a genuinely deleted model still
+     * reaches {@code onSessionLoadFailed} promptly. Nothing here runs on the EDT.
+     */
+    private <T> CompletableFuture<T> withModelRestoreRetry(
+            String operationName, Supplier<CompletableFuture<T>> requestFn, int attempt) {
+        return requestFn.get().handle((res, ex) -> {
+            if (ex == null) {
+                return CompletableFuture.completedFuture(res);
+            }
+            RpcFailure failure = RpcFailure.find(ex);
+            if (!HarnessCatalog.OMP.id().equals(getHarnessId())
+                    || failure == null || !isUnrestorableModel(failure)
+                    || attempt >= modelRestoreRetryDelaysMs.length) {
+                return CompletableFuture.<T>failedFuture(ex);
+            }
+            long delayMs = modelRestoreRetryDelaysMs[attempt];
+            LOG.log(Level.INFO, "{0} failed because OMP''s model catalogue was still loading, "
+                    + "retrying in {1}ms (attempt {2}): {3}",
+                    operationName, delayMs, attempt + 2, ExceptionUtils.getMessage(ex));
+            return CompletableFuture.<T>completedFuture(null)
+                    .thenComposeAsync(v -> withModelRestoreRetry(operationName, requestFn, attempt + 1),
+                            CompletableFuture.delayedExecutor(delayMs, TimeUnit.MILLISECONDS));
         }).thenCompose(f -> f);
     }
 

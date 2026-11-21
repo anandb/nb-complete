@@ -2270,6 +2270,47 @@ class SessionManagerTest {
     }
 
     @Test
+    void sessionLoadRetriesUnrestorableModelForOmpUntilItSucceeds() throws Exception {
+        // OMP populates its model catalogue after initialize; a load issued before
+        // that finishes answers -32603/"Could not restore model ..." and succeeds
+        // seconds later. Retry inside the ~10 s model-restore window.
+        NbPreferences.forModule(PreferenceKeys.class)
+                .put(PreferenceKeys.ACP_HARNESS_ID, "omp");
+        sessionManager.setModelRestoreRetryDelaysForTest(new long[]{1, 1, 1});
+        JsonNode data = mapper.createObjectNode()
+                .put("details", "Could not restore model opencode-go/hy4-flash-free");
+        when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(CompletableFuture.failedFuture(
+                        new AcpRpcException(AcpRpcException.INTERNAL_ERROR, "Internal error", data)))
+                .thenReturn(CompletableFuture.failedFuture(
+                        new AcpRpcException(AcpRpcException.INTERNAL_ERROR, "Internal error", data)))
+                .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
+
+        sessionManager.loadSessionFromServer("sid", "/x").get(5, TimeUnit.SECONDS);
+
+        // Three attempts: two model-restore failures, then success. The exact options
+        // list depends on the harness response shape, so assert the retry count only.
+        verify(processManager, times(3)).sendRequest(eq("session/load"), any(),
+                eq(2L), eq(TimeUnit.MINUTES));
+    }
+
+    @Test
+    void sessionLoadGivesUpOnUnrestorableModelForOmpAfterTheWindow() throws Exception {
+        NbPreferences.forModule(PreferenceKeys.class)
+                .put(PreferenceKeys.ACP_HARNESS_ID, "omp");
+        sessionManager.setModelRestoreRetryDelaysForTest(new long[]{1, 1, 1});
+        JsonNode data = mapper.createObjectNode()
+                .put("details", "Could not restore model opencode-go/gone");
+        when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(CompletableFuture.failedFuture(
+                        new AcpRpcException(AcpRpcException.INTERNAL_ERROR, "Internal error", data)));
+
+        assertNull(sessionManager.loadSessionFromServer("sid", "/x").join());
+        verify(processManager, times(4)).sendRequest(eq("session/load"), any(),
+                eq(2L), eq(TimeUnit.MINUTES));
+    }
+
+    @Test
     void sessionLoadFallsBackToReadOnlyAttachWhenLostTurnBlocksEditorMcp() throws Exception {
         // Hermes 0.23's gateway refuses the editor-MCP mutation of a session/load while the
         // session holds a turn lost when the gateway restarted (-32603, details

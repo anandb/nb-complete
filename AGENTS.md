@@ -405,6 +405,14 @@ red fill), plus `STATUS_Error` in the status label and loading off. It must neve
 thread, clear `currentSessionId` or set `turnEnded` the way `onSessionError` does.
 `AcpProtocolClient` logs `error.data` with the error response for the same reason.
 
+OMP's model catalogue is populated a few seconds after `initialize`, so a `session/load` issued
+before it settles answers `Could not restore model <id>`. `SessionManager.withModelRestoreRetry`
+retries that answer for OMP only, across ~10 s ({2,3,5} s delays), before the failure reaches
+`onSessionLoadFailed`. Do not re-add the blanket "unrestorable models are permanent" exclusion:
+it made a load that succeeds seconds later fail immediately. Do not extend the retry to other
+harnesses — a genuinely missing model stays permanent there; the lost-turn (`unknown_execution`)
+and `-32601` exclusions are unchanged.
+
 ### File Access Policy Is Shared By ACP And MCP Tools
 - `FileAccessGuard.check(...)` is the shared ACP/MCP enforcement point. `ALLOW` reads/writes within
   the project; `READ_ANY_WRITE_PROJECT` reads anywhere but writes only within; `READ_ONLY` allows
