@@ -22,6 +22,7 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ItemEvent;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -45,8 +46,12 @@ import javax.swing.KeyStroke;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
+import javax.swing.ToolTipManager;
 import javax.swing.border.EmptyBorder;
+import javax.swing.text.Element;
 import javax.swing.text.View;
+import javax.swing.text.html.HTML;
+import javax.swing.text.html.HTMLDocument;
 
 import org.openide.util.NbBundle;
 import org.openide.util.RequestProcessor;
@@ -104,10 +109,12 @@ public class TokenUsageDialog extends JDialog {
     /** Last summary HTML before a viewport width is applied, kept for resize re-renders. */
     private String rawSummaryHtml;
     private int renderedTableWidth = -1;
-    /** Width the dialog opens at; the screen can still clamp it on narrow displays. */
-    static final int DEFAULT_WIDTH = 1080;
     /** Smallest width a refresh can shrink the dialog to. */
     static final int MIN_WIDTH = 540;
+    /** Opening width as a multiple of the minimum: room for the count column. */
+    static final double WIDTH_FACTOR = 1.3;
+    /** Width the dialog opens at; the screen can still clamp it on narrow displays. */
+    static final int DEFAULT_WIDTH = (int) Math.round(MIN_WIDTH * WIDTH_FACTOR);
     /** Vertical scrollbar plus borders, added to the measured content width. */
     static final int WIDTH_CHROME = 24;
     /** Fraction of the screen width a fitted dialog may occupy. */
@@ -190,7 +197,26 @@ public class TokenUsageDialog extends JDialog {
         content.add(formPanel, BorderLayout.BEFORE_FIRST_LINE);
 
         // --- Stats area ---
-        statsPane = new FitEditorPane();
+        statsPane = new FitEditorPane() {
+            @Override
+            public String getToolTipText(MouseEvent evt) {
+                // Swing's HTML kit does not surface title attributes; walk the
+                // element under the pointer and show its title, so a row whose
+                // label had to be split still offers the full figure on hover.
+                int pos = viewToModel2D(evt.getPoint());
+                if (pos >= 0 && getDocument() instanceof HTMLDocument doc) {
+                    for (Element el = doc.getCharacterElement(pos); el != null;
+                            el = el.getParentElement()) {
+                        Object title = el.getAttributes().getAttribute(HTML.Attribute.TITLE);
+                        if (title instanceof String s && !s.isBlank()) {
+                            return s;
+                        }
+                    }
+                }
+                return super.getToolTipText(evt);
+            }
+        };
+        ToolTipManager.sharedInstance().registerComponent(statsPane);
         statsPane.putClientProperty(JTextPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
         statsPane.setEditable(false);
         statsPane.setContentType("text/html");
@@ -712,11 +738,12 @@ public class TokenUsageDialog extends JDialog {
     }
 
     /**
-     * Renders the per-tool MCP call list as one table: tool name in the label
-     * column, a themed bar sized by the tool's share of the window's calls in
-     * the middle, and the count with that share on the right. Most-called
-     * first; a 1% floor keeps a rare tool's bar from rendering as empty. A tool
-     * whose executions did not all end OK also shows how many failed.
+     * Renders the per-tool MCP call list as one three-column table: tool name,
+     * a themed bar sized by the tool's share of the window's calls, and the
+     * count with that share on the right. Most-called first; a 1% floor keeps
+     * a rare tool's bar from rendering as empty. A tool whose executions did
+     * not all end OK also shows how many failed, and every row repeats the
+     * full figure as a tooltip.
      *
      * <p>The bar is a percentage-width {@code div}, not a run of {@code █}
      * characters: the monospace stack has no block-glyph coverage in Swing's
@@ -732,10 +759,14 @@ public class TokenUsageDialog extends JDialog {
         boolean alt = false;
         for (ToolTotals tool : byTool) {
             int pct = toolPercent(tool.calls(), total);
+            String label = toolCallsLabel(tool, pct);
             String style = alt ? " style='background-color: " + altBg + ";'" : "";
+            // The tooltip repeats the full figure under the pointer.
+            String title = " title='" + XmlUtils.escapeHtml(tool.toolName() + " — " + label) + "'";
             sb.append("<tr").append(style).append(">")
-              .append("<td style='white-space:nowrap;'>").append(XmlUtils.escapeHtml(tool.toolName())).append("</td>")
-              .append("<td style='width:100%;'>")
+              .append("<td").append(title).append(" style='white-space:nowrap;'>")
+              .append(XmlUtils.escapeHtml(tool.toolName())).append("</td>")
+              .append("<td").append(title).append(" style='width:100%;'>")
               .append("<table style='margin:0;border:0;width:100%;'><tr>")
               .append("<td style='border:0;padding:1px;width:").append(pct).append("%;'>")
               .append("<div style='height:10px;background:").append(barColor).append(";'></div>")
@@ -743,7 +774,7 @@ public class TokenUsageDialog extends JDialog {
               .append("</tr></table>")
               .append("</td>")
               .append("<td style='text-align:right;white-space:nowrap;'>")
-              .append(XmlUtils.escapeHtml(toolCallsLabel(tool, pct)))
+              .append(XmlUtils.escapeHtml(label))
               .append("</td></tr>");
             alt = !alt;
         }

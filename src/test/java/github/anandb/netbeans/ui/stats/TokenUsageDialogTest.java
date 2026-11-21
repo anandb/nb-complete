@@ -198,6 +198,10 @@ class TokenUsageDialogTest {
         assertTrue(html.contains("width:79%;"), "the most-called tool gets the widest bar");
         assertTrue(html.contains("width:1%;"), "a rare tool keeps the 1% floor");
         assertTrue(html.contains("height:10px;"), "bars are themed 10px divs");
+        assertTrue(html.contains("title='read_file — 120 (79%) · 3 failed'"),
+                "the row repeats its figure as a tooltip");
+        assertTrue(html.contains("<td style='text-align:right;white-space:nowrap;'>120 (79%) · 3 failed</td>"),
+                "the count keeps its own right-aligned third column");
         assertFalse(html.contains("\u2588"), "no block characters may reach the HTML");
     }
 
@@ -285,10 +289,13 @@ class TokenUsageDialogTest {
     }
 
     @Test
-    void defaultOpeningWidthIsDoubleTheMinimum() {
-        assertEquals(2 * TokenUsageDialog.MIN_WIDTH, TokenUsageDialog.DEFAULT_WIDTH);
+    void openingWidthIsThirtyPercentAboveTheMinimum() {
+        assertEquals((int) Math.round(TokenUsageDialog.MIN_WIDTH * TokenUsageDialog.WIDTH_FACTOR),
+                TokenUsageDialog.DEFAULT_WIDTH);
+        assertTrue(TokenUsageDialog.DEFAULT_WIDTH > TokenUsageDialog.MIN_WIDTH,
+                "the opening width leaves room for the count column");
         assertEquals(TokenUsageDialog.DEFAULT_WIDTH,
-                TokenUsageDialog.fittedWidth(TokenUsageDialog.MIN_WIDTH, TokenUsageDialog.DEFAULT_WIDTH, 10000));
+                TokenUsageDialog.fittedWidth(0, TokenUsageDialog.DEFAULT_WIDTH, 10000));
     }
 
     @Test
