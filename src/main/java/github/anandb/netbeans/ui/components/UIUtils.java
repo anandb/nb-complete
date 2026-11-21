@@ -220,6 +220,10 @@ public class UIUtils {
             released = new RaisedIcon(released, releasedRise);
         }
         PulsingToggleButton btn = new PulsingToggleButton(released, pressed);
+        // Mouse-driven by design: a focused toggle answers SPACE/ENTER, which
+        // toggled break mode behind the user's back while a permission panel
+        // was open. Non-focusable removes every keyboard path to it.
+        btn.setFocusable(false);
         if (rawReleased != null) {
             Icon disabled = ImageUtilities.createDisabledIcon(rawReleased);
             if (disabled != null && releasedRise > 0) {
