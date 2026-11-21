@@ -65,6 +65,22 @@ class ExtraMcpServersTest {
     }
 
     @Test
+    void acceptsEmptyPairValues() {
+        // A set-but-empty env value is legitimate; only the name must be non-empty.
+        List<Map<String, Object>> servers = ExtraMcpServers.parse(
+                "[{\"name\":\"x\",\"command\":\"/bin/x\",\"args\":[],"
+                        + "\"env\":[{\"name\":\"EMPTY\",\"value\":\"\"}]}]");
+
+        assertEquals(1, servers.size());
+        assertThrows(IllegalArgumentException.class, () -> ExtraMcpServers.parse(
+                "[{\"name\":\"x\",\"command\":\"/bin/x\",\"args\":[],"
+                        + "\"env\":[{\"name\":\"\",\"value\":\"v\"}]}]"));
+        assertThrows(IllegalArgumentException.class, () -> ExtraMcpServers.parse(
+                "[{\"name\":\"x\",\"command\":\"/bin/x\",\"args\":[],"
+                        + "\"env\":[{\"name\":\"N\",\"value\":1}]}]"));
+    }
+
+    @Test
     void acceptsExplicitStdioType() {
         List<Map<String, Object>> servers = ExtraMcpServers.parse(
                 "[{\"type\":\"stdio\",\"name\":\"x\",\"command\":\"/bin/x\",\"args\":[],\"env\":[]}]");

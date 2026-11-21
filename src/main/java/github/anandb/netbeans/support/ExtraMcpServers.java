@@ -198,7 +198,12 @@ public final class ExtraMcpServers {
                         where + ": \"" + field + "\" must be an array of {name, value} objects.");
             }
             requireText(item, "name", where + " \"" + field + "\"");
-            requireText(item, "value", where + " \"" + field + "\"");
+            // A value may be empty (set-but-empty env var); it must only be a string.
+            JsonNode pairValue = item.get("value");
+            if (pairValue == null || !pairValue.isTextual()) {
+                throw new IllegalArgumentException(
+                        where + " \"" + field + "\": \"value\" must be a string.");
+            }
         }
     }
 

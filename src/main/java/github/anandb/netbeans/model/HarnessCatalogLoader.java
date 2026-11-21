@@ -77,8 +77,9 @@ final class HarnessCatalogLoader {
                 listed.add(harness);
                 for (String name : harness.binaryNames()) {
                     String key = HarnessCatalog.stripBinaryExtension(name);
-                    if (key != null) {
-                        byBinaryName.putIfAbsent(key, harness);
+                    if (key != null && byBinaryName.putIfAbsent(key, harness) != null) {
+                        throw new IllegalStateException(
+                                RESOURCE + ": duplicate binary name '" + key + "'");
                     }
                 }
             } else if (unknown == null) {
