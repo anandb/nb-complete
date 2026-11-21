@@ -12,7 +12,9 @@
 ## Build Commands
 - Use `./mvnw` (pinned Maven 3.9.x), never system `mvn`. Build: `./mvnw package`; clean:
   `./mvnw clean`; quick package: `./mvnw package -DskipTests`.
-- Eventual Coverage Target is 96%; use JaCoCo when reporting it.
+- Eventual Coverage Target is 96% on core modules (`contract/`, `support/`, `manager/`); `ui/` is
+  excluded (Swing code is hard to unit-test headlessly). Current: core ~82%, excluding `ui/` ~81%,
+  overall ~58%. Use JaCoCo when reporting it.
 - If a workflow helper fails and the user explicitly requests direct Bash, continue with these
   project commands.
 - **Local test suites MUST use `-P random-test-order`**; CI intentionally uses default order.

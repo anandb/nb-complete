@@ -195,9 +195,10 @@ and `mcp/`, `db/`, `tasks/` and `project/` are satellites that depend downward o
 
 ## Contributing
 
-Contributions are welcome. Keep changes consistent with the existing NetBeans Platform patterns,
-styling and logging conventions, and validate new components against both light and dark themes.
-Read [DEVELOPMENT.md](docs/DEVELOPMENT.md) and [AGENTS.md](AGENTS.md) first.
+Contributions are welcome. Every change goes through a pull request with review and a green CI
+run; see [CONTRIBUTING.md](CONTRIBUTING.md). Keep changes consistent with the existing NetBeans
+Platform patterns, styling and logging conventions, and validate new components against both light
+and dark themes. Read [DEVELOPMENT.md](docs/DEVELOPMENT.md) and [AGENTS.md](AGENTS.md) first.
 
 ## License
 
