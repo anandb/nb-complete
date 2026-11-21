@@ -2,8 +2,7 @@ package github.anandb.netbeans.support;
 
 import java.nio.charset.StandardCharsets;
 
-import net.jpountz.xxhash.XXHash64;
-import net.jpountz.xxhash.XXHashFactory;
+import net.openhft.hashing.LongHashFunction;
 
 /**
  * Generates deterministic message IDs for assistant messages that lack one.
@@ -12,7 +11,11 @@ import net.jpountz.xxhash.XXHashFactory;
  */
 public final class MessageIdGenerator {
 
-    private static final XXHash64 HASHER = XXHashFactory.fastestInstance().hash64();
+    /**
+     * Pure-Java XXHash64 (no JNI, no native library extraction): the same specified
+     * algorithm as before, so every stored id stays valid.
+     */
+    private static final LongHashFunction HASHER = LongHashFunction.xx();
 
     private MessageIdGenerator() {}
 
@@ -28,7 +31,7 @@ public final class MessageIdGenerator {
         String session = sessionId == null ? "" : sessionId;
         String body = messageBody == null ? "" : messageBody.strip();
         byte[] bytes = (session + '\0' + body).getBytes(StandardCharsets.UTF_8);
-        long hash = HASHER.hash(bytes, 0, bytes.length, 0L);
+        long hash = HASHER.hashBytes(bytes);
         return toHex(hash);
     }
 

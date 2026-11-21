@@ -234,11 +234,13 @@
             <artifactId>commons-exec</artifactId>
             <version>1.6.0</version>
         </dependency>
-        <!-- lz4-java: Apache-2.0 XXHash64 with JNI bindings for message IDs -->
+        <!-- OpenHFT zero-allocation-hashing: Apache-2.0 pure-Java XXHash64 for message IDs.
+             No JNI, no native library extraction, no decompressors — none of lz4-java's
+             CVE surface applies. -->
         <dependency>
-            <groupId>org.lz4</groupId>
-            <artifactId>lz4-java</artifactId>
-            <version>1.8.0</version>
+            <groupId>net.openhft</groupId>
+            <artifactId>zero-allocation-hashing</artifactId>
+            <version>2026.0</version>
         </dependency>
 
         <!-- Flexmark markdown - use only core instead of all -->
