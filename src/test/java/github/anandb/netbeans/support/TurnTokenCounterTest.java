@@ -32,19 +32,55 @@ class TurnTokenCounterTest {
     }
 
     @Test
-    void ignoredToolStatusesAreNotCounted() {
+    void thoughtChunksCount() {
         TurnTokenCounter counter = new TurnTokenCounter();
-        counter.add(message(MessageType.tool_call, "running", "tool", null, "pending"));
-        assertEquals(0, counter.count(), "The chat thread ignores pending tool status text");
+        counter.add(message(MessageType.agent_thought_chunk, "thinking hard about it", "t1", null, null));
+        assertEquals(4, counter.count(), "Thinking text is part of the progress read");
+    }
+
+    @Test
+    void pendingToolBodyCountsTowardProgress() {
+        TurnTokenCounter counter = new TurnTokenCounter();
+        counter.add(message(MessageType.tool_call, "$ mvn verify", "tool1", "Bash", "pending"));
+        assertEquals(3, counter.count(),
+                "A running tool's command line must tick the progress read");
+    }
+
+    @Test
+    void repeatedPendingToolBodyCountsOnce() {
+        TurnTokenCounter counter = new TurnTokenCounter();
+        counter.add(message(MessageType.tool_call, "$ mvn verify", "tool1", "Bash", "pending"));
+        counter.add(message(MessageType.tool_call_update, "$ mvn verify", "tool1", "Bash", "pending"));
+        assertEquals(3, counter.count(),
+                "Status pings re-delivering an unchanged body must not inflate the count");
+    }
+
+    @Test
+    void toolGrowthCountsOnlyTheNewWords() {
+        TurnTokenCounter counter = new TurnTokenCounter();
+        counter.add(message(MessageType.tool_call, "$ mvn verify", "tool1", "Bash", "pending"));
+        counter.add(message(MessageType.tool_call_update, "$ mvn verify\nbuild output", "tool1", "Bash", "pending"));
+        assertEquals(5, counter.count(),
+                "Only the words the accumulated body gained are counted");
+    }
+
+    @Test
+    void bareToolStatusStillTicksTheRead() {
+        TurnTokenCounter counter = new TurnTokenCounter();
+        counter.add(message(MessageType.tool_call, "running", "tool1", null, "pending"));
+        assertEquals(1, counter.count(),
+                "A bare status word is the tool's only progress text and is counted");
     }
 
     @Test
     void resetClearsEveryMessageCounter() {
         TurnTokenCounter counter = new TurnTokenCounter();
         counter.add(message(MessageType.agent_message_chunk, "one two", "first", null, null));
+        counter.add(message(MessageType.tool_call, "$ mvn verify", "tool1", "Bash", "pending"));
         counter.reset();
         counter.add(message(MessageType.agent_message_chunk, "three", "first", null, null));
-        assertEquals(1, counter.count(), "Reset must start a fresh turn with no old counters");
+        counter.add(message(MessageType.tool_call_update, "$ mvn verify", "tool1", "Bash", "pending"));
+        assertEquals(4, counter.count(), "Reset must start a fresh turn with no old counters");
     }
 
     private static ProcessedMessage message(MessageType type, String text, String id,

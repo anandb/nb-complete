@@ -137,6 +137,8 @@ public class MiniAssistantDialog extends JDialog {
     /** Sidebar bubble the mini view was mirroring when the user sent; it stays dimmed. */
     private MessageBubble displayedSource;
     private MessageBubble dimmedSource;
+    /** Local streaming mirror of {@link #displayedSource}; null after finalization. */
+    private MessageBubble miniBubble;
 
     // Processing status components (elapsed time + spinner + stop button)
     private final JLabel elapsedLabel;
@@ -167,7 +169,16 @@ public class MiniAssistantDialog extends JDialog {
     }
 
     private MiniAssistantDialog() {
+        // Owner must be a SHOWING window (the main IDE frame). With a null owner
+        // Java assigns a private hidden frame; the AWT focus spec then marks the
+        // dialog non-focusable on X11 (WM_HINTS InputHint=False), so i3wm can
+        // never give it keyboard focus, and without a real transient_for i3
+        // tiles it instead of floating it — clicking any other window takes the
+        // container focus and the dialog drops out of view. With a showing owner
+        // the dialog is focusable AND transient, so i3 floats it above tiles.
         super(WindowManager.getDefault().getMainWindow(), false);
+        // Keep _NET_WM_STATE_ABOVE for WMs that honour it (i3 ignores it).
+        setAlwaysOnTop(true);
         restoreBounds();
 
         addComponentListener(new ComponentAdapter() {
@@ -362,7 +373,7 @@ public class MiniAssistantDialog extends JDialog {
         String miniToggleAction = ShortcutUtils.resolveShortcut("github.anandb.netbeans.ui.ToggleMiniAssistantAction");
         if (miniToggleAction == null || miniToggleAction.isEmpty()) miniToggleAction = isMac ? "Cmd+Alt+L" : "Ctrl+Alt+L";
 
-        String scrollAction = isMac ? "Cmd+Left/Right: Scroll" : "PgUp/PgDn: Scroll";
+        String scrollAction = isMac ? "Cmd+Left/Right: Prev/Next Message" : "PgUp/PgDn: Prev/Next Message";
         String copyAction = isMac ? "Cmd+C: Copy" : "Ctrl+C: Copy";
 
         String focusText = isFocused ? "Focus Editor" : "Focus Assistant";
@@ -629,17 +640,22 @@ public class MiniAssistantDialog extends JDialog {
     private void displayBubble(MessageBubble realBubble) {
         responseHost.removeAll();
 
+        boolean streaming = isProcessing && realBubble.isStreaming();
         MessageBubble localBubble = new MessageBubble(MessageType.agent_message_chunk,
             realBubble.getRawText(), realBubble.getMessageId(), null,
-            MessageBubble.AvatarPosition.NONE, false, null);
+            MessageBubble.AvatarPosition.NONE, streaming, null);
 
         styleAsMiniBubble(localBubble);
         reduceFontSize(localBubble);
         responseHost.add(localBubble, BorderLayout.CENTER);
 
         localBubble.setFontSizeOverride(Math.max(9, ThemeManager.getFont().getSize() - 2));
-        // Keep code blocks collapsed, matching the main sidebar's streaming behavior.
-        localBubble.finalizeStreaming(false);
+        if (!streaming) {
+            // Complete messages render immediately; only a live streaming turn
+            // keeps the JTextArea and finalizes in onProcessingChanged(false).
+            localBubble.finalizeStreaming(false);
+        }
+        miniBubble = streaming ? localBubble : null;
 
         displayedSource = realBubble;
         // A new answer un-dims itself; the one that was showing when the user sent stays grey
@@ -668,6 +684,13 @@ public class MiniAssistantDialog extends JDialog {
 
     public void onProcessingChanged(boolean processing) {
         SwingUtilities.invokeLater(() -> {
+            // updateButtonState(true) fires the processing listener once per
+            // streamed message; a repeated state is not a new turn. Resetting
+            // the token counter and the elapsed clock here again would wipe
+            // the running progress read after every chunk.
+            if (processing == this.isProcessing) {
+                return;
+            }
             this.isProcessing = processing;
             if (processing) {
                 tokenCounter.reset();
@@ -686,7 +709,11 @@ public class MiniAssistantDialog extends JDialog {
                 dimmedSource = null;
                 responseHost.setDimmed(false);
                 if (isVisible()) {
-                    syncLatestBubble();
+                    if (miniBubble != null && miniBubble.isStreaming()) {
+                        miniBubble.finalizeStreaming(false);
+                    } else {
+                        syncLatestBubble();
+                    }
                 }
             }
         });
@@ -705,6 +732,19 @@ public class MiniAssistantDialog extends JDialog {
 
         if (id.equals(displayedMessageId) && text.equals(displayedText)) {
             return;
+        }
+
+        if (miniBubble != null && displayedSource == latest && miniBubble.isStreaming()) {
+            String previous = miniBubble.getRawText();
+            if (text.startsWith(previous)) {
+                miniBubble.appendText(text.substring(previous.length()));
+                miniBubble.flushUpdate(true);
+                responseHost.revalidate();
+                responseHost.repaint();
+                displayedMessageId = id;
+                displayedText = text;
+                return;
+            }
         }
 
         displayedMessageId = id;

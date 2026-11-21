@@ -166,6 +166,11 @@ public class ChatThreadPanel extends JPanel {
         messagesContainer.setDoubleBuffered(true);
 
         scrollPane = new JScrollPane(messagesContainer);
+        // Wheel scrolling moves content without any mouse event, so a bubble
+        // can come to rest under a stationary pointer with no mouseEntered
+        // ever firing. Re-check the hover after each wheel step.
+        scrollPane.addMouseWheelListener(e ->
+                SwingUtilities.invokeLater(this::checkHoveredBubble));
 
         // Sunken feel border
         Color shadow = theme.isDark() ? Color.BLACK : (theme.bubbleBorder() != null ? theme.bubbleBorder() : Color.LIGHT_GRAY);
@@ -645,6 +650,21 @@ public class ChatThreadPanel extends JPanel {
      * would keep its streaming {@code JTextArea} until the next turn. Appends restart the
      * cooldown; a quiet stream converts to HTML.
      */
+    /**
+     * Shows the action icons of any assistant bubble currently under the
+     * pointer. Wheel scrolling (and programmatic scrolls) move content without
+     * mouse events, so a bubble can hover under a stationary pointer with no
+     * {@code mouseEntered}; each bubble's own check is a cheap bounds test and
+     * only the bubble actually under the pointer reacts.
+     */
+    private void checkHoveredBubble() {
+        for (Component c : messagesContainer.getComponents()) {
+            if (c instanceof MessageBubble bubble && bubble.isShowing()) {
+                bubble.checkHover();
+            }
+        }
+    }
+
     private void startStreamingWithCooldown(MessageBubble bubble) {
         streamingCoordinator.startStreaming(bubble);
         // The bubble's own cooldown finalize can render a whole burst into the pane after the

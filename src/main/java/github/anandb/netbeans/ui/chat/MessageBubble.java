@@ -298,6 +298,9 @@ public class MessageBubble extends JPanel implements Scrollable {
     @Override
     public void addNotify() {
         super.addNotify();
+        // A bubble can be added under a stationary pointer (history restore,
+        // a new turn) — no mouseEntered fires for it. Check once.
+        actionBar.checkHover();
         // Parent container's revalidate handles layout; no per-bubble
         // revalidate/repaint needed here.
     }
@@ -313,6 +316,12 @@ public class MessageBubble extends JPanel implements Scrollable {
             hierarchyListener = null;
         }
         super.removeNotify();
+    }
+
+    /** Asks the action bar to show its icons if the pointer already rests on
+     *  this bubble — used when a bubble appears or scrolls under the pointer. */
+    void checkHover() {
+        actionBar.checkHover();
     }
 
     public void appendText(String newText) {
@@ -402,6 +411,9 @@ public class MessageBubble extends JPanel implements Scrollable {
             updateContent(ThemeManager.getCurrentTheme(), expanded);
         }
         streamer.finalizeStreaming(expanded, immediate);
+        // The finalized bubble may have grown or replaced content under a
+        // stationary pointer; its icons should react like any other hover.
+        actionBar.checkHover();
     }
 
     /**

@@ -47,9 +47,13 @@ class BubbleActionBar {
 
     private static final String[] QUEUED_FRAMES = {"\u23F3", "\u23F4", "\u23F5", "\u23F6"};
     private static final int ACTION_ICON_SIZE = 24;
+    /** Auto-hide delay: icons vanish after this much hover inactivity (user: 2-3s). */
+    private static final int AUTO_HIDE_DELAY_MS = 2500;
     /** Overlay position: the icons float clear of the bubble's bottom edge. */
     private static final int OVERLAY_BOTTOM_INSET = 12;
     private static final int OVERLAY_RIGHT_INSET = 20;
+    /** Clear of the top edge when the overlay is stretched (mini assistant). */
+    private static final int OVERLAY_TOP_PAD = 10;
 
     private final JPanel bubble;
     private final String role;
@@ -71,6 +75,7 @@ class BubbleActionBar {
 
     // Hover timers
     private Timer showTimer;
+    private Timer autoHideTimer;
     private Timer copyRevertTimer;
 
     // Queued indicator
@@ -152,6 +157,11 @@ class BubbleActionBar {
         // Floating overlay: same GridBag cell as the bubble, anchored SOUTHEAST.
         // The cell sizes to the bubble, so showing the buttons never grows it.
         JPanel actionsOverlay = new JPanel(new FlowLayout(FlowLayout.RIGHT, 2, 0));
+        // 10px below the top edge in the mini assistant, where the overlay is
+        // stretched over the whole bubble (the sidebar anchors it bottom-right
+        // at preferred size, where this pad is a no-op).
+        actionsOverlay.setBorder(BorderFactory.createEmptyBorder(
+                OVERLAY_TOP_PAD, 0, 0, 0));
         actionsOverlay.setOpaque(false);
         actionsOverlay.add(copyBtn);
         actionsOverlay.add(pinBtn);
@@ -180,6 +190,8 @@ class BubbleActionBar {
         this.copyBtnIcon = copyBtn.getIcon();
 
         JPanel copyOverlay = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        copyOverlay.setBorder(BorderFactory.createEmptyBorder(
+                OVERLAY_TOP_PAD, 0, 0, 0));
         copyOverlay.setOpaque(false);
         copyOverlay.add(copyBtn);
         this.actionsPlaceholder = copyOverlay;
@@ -198,33 +210,15 @@ class BubbleActionBar {
     private void installHoverListeners() {
         // Hover: show buttons after 400ms delay. Overlay floats above the
         // bubble, so showing it never changes layout — repaint only.
-        bubble.addMouseListener(new MouseAdapter() {
+        // The same handler is registered for mouse AND motion events, and on
+        // the bubble, the icon overlay and the buttons: the overlay is not a
+        // descendant of the bubble panel, and the child text/editor panes and
+        // buttons swallow motion events, so hovering anywhere on the bubble
+        // must reach this handler to show or keep alive the icons.
+        MouseAdapter hover = new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-                if (showTimer == null) {
-                    showTimer = new Timer(400, evt -> {
-                        if (isMouseInsideComponent(bubble)) {
-                            copyBtn.setVisible(true);
-                            if (pinBtn != null && !pinned) {
-                                pinBtn.setVisible(true);
-                            }
-                            owner.repaint();
-                            // Reset icon — a stale check icon may remain from a
-                            // copy where the timer fired while the button was hidden.
-                            if (copyRevertTimer != null && copyRevertTimer.isRunning()) {
-                                copyRevertTimer.stop();
-                            }
-                            if (copyBtn != null) {
-                                copyBtn.setIcon(copyBtnIcon);
-                            }
-                            if (pinBtn != null && !pinned) {
-                                pinBtn.setVisible(true);
-                            }
-                        }
-                    });
-                    showTimer.setRepeats(false);
-                }
-                showTimer.start();
+                startShowTimer();
             }
 
             @Override
@@ -233,7 +227,26 @@ class BubbleActionBar {
                     hideButtons();
                 }
             }
-        });
+
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                onHoverMotion();
+            }
+        };
+        bubble.addMouseListener(hover);
+        bubble.addMouseMotionListener(hover);
+        if (actionsPlaceholder != null) {
+            actionsPlaceholder.addMouseListener(hover);
+            actionsPlaceholder.addMouseMotionListener(hover);
+        }
+        if (copyBtn != null) {
+            copyBtn.addMouseListener(hover);
+            copyBtn.addMouseMotionListener(hover);
+        }
+        if (pinBtn != null) {
+            pinBtn.addMouseListener(hover);
+            pinBtn.addMouseMotionListener(hover);
+        }
 
         // Also hide when mouse exits a child button — mouseExited on bubble
         // only fires once (when entering the child), so we re-check here.
@@ -255,9 +268,76 @@ class BubbleActionBar {
         }
     }
 
+    /** Pointer moved within the bubble: while the icons show this is activity
+     *  that keeps them alive; while hidden it starts the delayed show. */
+    private void onHoverMotion() {
+        if (copyBtn != null && copyBtn.isVisible()) {
+            if (autoHideTimer != null) {
+                autoHideTimer.restart();
+            }
+        } else {
+            startShowTimer();
+        }
+    }
+
+    /** Shows the buttons and arms the auto-hide timer. */
+    private void showButtons() {
+        copyBtn.setVisible(true);
+        if (pinBtn != null && !pinned) {
+            pinBtn.setVisible(true);
+        }
+        // Reset icon — a stale check icon may remain from a copy where the
+        // timer fired while the button was hidden.
+        if (copyRevertTimer != null && copyRevertTimer.isRunning()) {
+            copyRevertTimer.stop();
+        }
+        copyBtn.setIcon(copyBtnIcon);
+        if (autoHideTimer == null) {
+            autoHideTimer = new Timer(AUTO_HIDE_DELAY_MS, evt -> {
+                // While the pointer rests on the icons themselves, postpone —
+                // vanishing under a cursor aiming at a button loses the click.
+                if (actionsPlaceholder != null && isMouseInsideComponent(actionsPlaceholder)) {
+                    autoHideTimer.restart();
+                } else {
+                    hideButtons();
+                }
+            });
+            autoHideTimer.setRepeats(false);
+        }
+        autoHideTimer.restart();
+        owner.repaint();
+    }
+
+    /** Starts the delayed show timer unless it is already running, so a burst
+     *  of motion shows the icons once, 400ms after the first movement. */
+    private void startShowTimer() {
+        if (showTimer == null) {
+            showTimer = new Timer(400, evt -> {
+                if (isMouseInsideComponent(bubble)) {
+                    showButtons();
+                }
+            });
+            showTimer.setRepeats(false);
+        }
+        if (!showTimer.isRunning()) {
+            showTimer.start();
+        }
+    }
+
+    /** Hover check for a bubble that appeared, grew or scrolled under a
+     *  stationary pointer — no {@code mouseEntered} fires for those. */
+    void checkHover() {
+        if (copyBtn != null && !copyBtn.isVisible() && isMouseInsideComponent(bubble)) {
+            startShowTimer();
+        }
+    }
+
     private void hideButtons() {
         if (showTimer != null) {
             showTimer.stop();
+        }
+        if (autoHideTimer != null) {
+            autoHideTimer.stop();
         }
         if (copyBtn != null) {
             copyBtn.setVisible(false);
@@ -455,6 +535,9 @@ class BubbleActionBar {
         }
         if (showTimer != null) {
             showTimer.stop();
+        }
+        if (autoHideTimer != null) {
+            autoHideTimer.stop();
         }
     }
 

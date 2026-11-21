@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -39,6 +40,7 @@ import github.anandb.netbeans.model.SessionUpdate;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.ui.TestUiUtils;
+import github.anandb.netbeans.ui.assistant.MiniAssistantDialog;
 import github.anandb.netbeans.ui.chat.ChatThreadPanel;
 import github.anandb.netbeans.ui.chat.PlanPanel;
 import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
@@ -191,6 +193,29 @@ class SessionLifecycleHandlerTest {
 
     private void flushEdt() throws Exception {
         SwingUtilities.invokeAndWait(() -> { });
+    }
+
+    @Test
+    void closingAllProjectsMustNotDisposeTheMiniAssistant() throws Exception {
+        setUpMocks(false);
+        SessionLifecycleHandler handler = newHandler();
+        MiniAssistantDialog dialog;
+        try {
+            dialog = MiniAssistantDialog.getInstance();
+        } catch (java.awt.HeadlessException headless) {
+            // Headless JVMs cannot construct JDialog; the dispatch contract
+            // itself is covered by MiniAssistantDialogTest. Nothing to assert.
+            return;
+        }
+        try {
+            handler.onAllProjectsClosed();
+            flushEdt();
+            assertSame(dialog, MiniAssistantDialog.getInstance(),
+                    "Closing the last project closes the sidebar's session, not the mini dialog: "
+                    + "dispose() would null the singleton and remove its key dispatcher");
+        } finally {
+            dialog.dispose();
+        }
     }
 
     @Test

@@ -823,7 +823,10 @@ public class SessionLifecycleHandler implements SessionListener {
         SwingUtilities.invokeLater(() -> {
             inputArea.setText("");
             cwdLabelUpdater.accept("");
-            MiniAssistantDialog.getInstance().dispose();
+            // Closing the workspace's last project closes the sidebar's session, but
+            // must NOT tear the mini assistant down: the dialog is a live chat that
+            // survives the sidebar, and dispose() nulls its singleton and removes
+            // its key dispatcher, killing Alt+L and every later send from it.
         });
     }
 

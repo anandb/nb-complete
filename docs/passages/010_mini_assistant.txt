@@ -12,6 +12,8 @@ The **Mini Assistant** is a compact, floating chat dialog that gives you quick a
 
 The Mini-Assistant was developed with one very specific usecase in mind, the window stays on top, so you can position it at the top right of the screen, `Ctrl + Alt + L` will toggle focus to the active editor, another `Ctrl + Alt + L` will focus the Mini-Assistant again, so you can generate snippets of code or select specific lines of code and refactor or analyze it without needing the full sidebar. It shows only the last assistant response, to see previous messages use `Page Up` or `Page Down` keys.
 
+> **Note — tiling window managers (i3wm):** the dialog is a transient window of the main IDE window. When the IDE window is tiled or fullscreen, the dialog floats above it and stays visible while you work in the editor. If you make the IDE window itself floating, i3 raises it above the dialog whenever you click inside it, so the dialog appears to disappear — it is only covered, and clicking the dialog brings it back. i3 implements no keep-above hint an application can request, so **tiling the IDE (or keeping it fullscreen) is the supported layout**.
+
 > [[Opening the Mini Assistant]]
 > [[Using the Mini Assistant]]
 > [[Keyboard shortcuts inside the Mini Assistant]]
