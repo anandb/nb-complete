@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -2291,6 +2292,75 @@ class SessionManagerTest {
         // Three attempts: two model-restore failures, then success. The exact options
         // list depends on the harness response shape, so assert the retry count only.
         verify(processManager, times(3)).sendRequest(eq("session/load"), any(),
+                eq(2L), eq(TimeUnit.MINUTES));
+    }
+
+    @Test
+    void sessionLoadRetriesWrappedUnrestorableModelErrorForOmp() throws Exception {
+        // In production the failure arrives wrapped (CompletionException from the
+        // async chain), not as a bare AcpRpcException: the shared predicate must
+        // see through the wrapper or the retry silently never fires.
+        NbPreferences.forModule(PreferenceKeys.class)
+                .put(PreferenceKeys.ACP_HARNESS_ID, "omp");
+        sessionManager.setModelRestoreRetryDelaysForTest(new long[]{1, 1, 1});
+        JsonNode data = mapper.createObjectNode()
+                .put("details", "Could not restore model opencode-go/hy4-flash-free");
+        when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(CompletableFuture.failedFuture(new CompletionException(
+                        new AcpRpcException(AcpRpcException.INTERNAL_ERROR, "Internal error", data))))
+                .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
+
+        sessionManager.loadSessionFromServer("sid", "/x").get(5, TimeUnit.SECONDS);
+
+        verify(processManager, times(2)).sendRequest(eq("session/load"), any(),
+                eq(2L), eq(TimeUnit.MINUTES));
+    }
+
+    @Test
+    void sessionLoadSkipsCloseBeforeLoadOnModelRestoreRetries() throws Exception {
+        // The first attempt already closed the server-side session; retries must not
+        // re-close a session they are about to load.
+        NbPreferences.forModule(PreferenceKeys.class)
+                .put(PreferenceKeys.ACP_HARNESS_ID, "omp");
+        sessionManager.setModelRestoreRetryDelaysForTest(new long[]{1, 1, 1});
+        when(processManager.serverGeneration()).thenReturn(1L);
+        when(processManager.isSessionCloseSupported()).thenReturn(true);
+        when(processManager.sendRequest(eq("session/close"), any(), eq(30L), eq(TimeUnit.SECONDS)))
+                .thenReturn(CompletableFuture.completedFuture(null));
+        when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
+        sessionManager.loadSessionFromServer("sid", "/x").get(5, TimeUnit.SECONDS);
+
+        JsonNode data = mapper.createObjectNode()
+                .put("details", "Could not restore model opencode-go/hy4-flash-free");
+        when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(CompletableFuture.failedFuture(
+                        new AcpRpcException(AcpRpcException.INTERNAL_ERROR, "Internal error", data)))
+                .thenReturn(CompletableFuture.failedFuture(
+                        new AcpRpcException(AcpRpcException.INTERNAL_ERROR, "Internal error", data)))
+                .thenReturn(CompletableFuture.completedFuture(mapper.createObjectNode()));
+        sessionManager.loadSessionFromServer("sid", "/x").get(5, TimeUnit.SECONDS);
+
+        verify(processManager, times(1)).sendRequest(eq("session/close"), any(),
+                eq(30L), eq(TimeUnit.SECONDS));
+        verify(processManager, times(4)).sendRequest(eq("session/load"), any(),
+                eq(2L), eq(TimeUnit.MINUTES));
+    }
+
+    @Test
+    void sessionLoadGivesUpWhenModelRestoreBudgetIsExhausted() throws Exception {
+        NbPreferences.forModule(PreferenceKeys.class)
+                .put(PreferenceKeys.ACP_HARNESS_ID, "omp");
+        sessionManager.setModelRestoreRetryDelaysForTest(new long[]{1, 1, 1});
+        sessionManager.setModelRestoreRetryBudgetForTest(0);
+        JsonNode data = mapper.createObjectNode()
+                .put("details", "Could not restore model opencode-go/gone");
+        when(processManager.sendRequest(eq("session/load"), any(), eq(2L), eq(TimeUnit.MINUTES)))
+                .thenReturn(CompletableFuture.failedFuture(
+                        new AcpRpcException(AcpRpcException.INTERNAL_ERROR, "Internal error", data)));
+
+        assertNull(sessionManager.loadSessionFromServer("sid", "/x").join());
+        verify(processManager, times(1)).sendRequest(eq("session/load"), any(),
                 eq(2L), eq(TimeUnit.MINUTES));
     }
 

@@ -9,8 +9,8 @@ import github.anandb.netbeans.model.SessionConfigOption;
 import github.anandb.netbeans.model.ConfigOptionConverter;
 import github.anandb.netbeans.contract.SessionStore;
 import github.anandb.netbeans.model.ModelsInfo;
+
 import github.anandb.netbeans.model.ModesInfo;
-import github.anandb.netbeans.model.HarnessCatalog;
 import github.anandb.netbeans.model.SessionMetadata;
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.contract.ProjectQuery;
@@ -37,6 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.concurrent.TimeoutException;
 import java.util.function.BiFunction;
@@ -372,6 +373,15 @@ public class SessionManager implements SessionQuery, SessionControl,
      */
     private volatile long[] modelRestoreRetryDelaysMs = {2_000, 3_000, 5_000};
 
+    /**
+     * Wall-clock cap for one model-restore retry chain. The per-attempt {@code orTimeout}
+     * bounds a single RPC; this bounds their sum, so a hanging server cannot turn the
+     * ~10 s window into attempts × 2 min. Only binds when attempts themselves stall.
+     */
+    private volatile long modelRestoreRetryBudgetMs = 60_000;
+
+    /** OMP harness id, resolved once: the retry chain must not pay a catalog lookup per attempt. */
+    private static final String OMP_HARNESS_ID = "omp";
     /** Test hook: shrinks the model-restore retry delays so tests need not wait. */
     void setModelRestoreRetryDelaysForTest(long[] delaysMs) {
         modelRestoreRetryDelaysMs = delaysMs;
@@ -847,7 +857,9 @@ public class SessionManager implements SessionQuery, SessionControl,
         CompletableFuture<List<SessionConfigOption>> attempt = withMcpFallback(operation,
                 () -> withStartupRetry(operation,
                         () -> withModelRestoreRetry(operation,
-                                () -> sendLoadSessionRequest(sessionId, targetCwd, start, forceLoad, false), 0),
+                                retry -> sendLoadSessionRequest(sessionId, targetCwd, start,
+                                        forceLoad, false, retry == 0),
+                                0, start),
                         0), start);
         return attempt.handle((res, ex) -> {
                     if (ex != null && isLostTurn(ex)) {
@@ -858,7 +870,7 @@ public class SessionManager implements SessionQuery, SessionControl,
                         // the harness then streams its own `/discard <id>` recovery notice.
                         LOG.info("{0}: lost turn blocks the attach for {1}, retrying without editor MCP servers",
                                 operation, sessionId);
-                        return sendLoadSessionRequest(sessionId, targetCwd, start, forceLoad, true);
+                        return sendLoadSessionRequest(sessionId, targetCwd, start, forceLoad, true, true);
                     }
                     return ex == null ? CompletableFuture.completedFuture(res)
                             : CompletableFuture.<List<SessionConfigOption>>failedFuture(ex);
@@ -912,7 +924,8 @@ public class SessionManager implements SessionQuery, SessionControl,
     }
 
     private CompletableFuture<List<SessionConfigOption>> sendLoadSessionRequest(
-            String sessionId, String cwd, long start, boolean forceLoad, boolean readOnlyRetry) {
+            String sessionId, String cwd, long start, boolean forceLoad, boolean readOnlyRetry,
+            boolean allowClose) {
         boolean resumeExisting = !forceLoad && shouldResumeExisting(sessionId, cwd);
         // The wire-level request future, so a cancel of the returned chain can
         // reach the RPC instead of abandoning it as an orphan load.
@@ -927,7 +940,8 @@ public class SessionManager implements SessionQuery, SessionControl,
                 // A resume reattaches the live session in place, so it must not
                 // cancel/close the session it is resuming. The read-only retry
                 // re-attaches a session the first attempt already handled.
-                .thenCompose(v -> !resumeExisting && !readOnlyRetry && shouldCloseBeforeLoad(sessionId)
+                .thenCompose(v -> !resumeExisting && !readOnlyRetry && allowClose
+                                && shouldCloseBeforeLoad(sessionId)
                         ? rpcClient.closeBeforeLoad(sessionId)
                         : CompletableFuture.completedFuture(null))
                 .thenCompose(v -> {
@@ -1129,7 +1143,7 @@ public class SessionManager implements SessionQuery, SessionControl,
         }
         capture.resetForRetry();
         CompletableFuture<List<SessionConfigOption>> raw =
-                sendLoadSessionRequest(sessionId, cwd, start, true, readOnlyRetry);
+                sendLoadSessionRequest(sessionId, cwd, start, true, readOnlyRetry, true);
         capture.setLoadFuture(raw);
         return raw;
     }
@@ -1984,23 +1998,41 @@ public class SessionManager implements SessionQuery, SessionControl,
      * reaches {@code onSessionLoadFailed} promptly. Nothing here runs on the EDT.
      */
     private <T> CompletableFuture<T> withModelRestoreRetry(
-            String operationName, Supplier<CompletableFuture<T>> requestFn, int attempt) {
-        return requestFn.get().handle((res, ex) -> {
+            String operationName, IntFunction<CompletableFuture<T>> requestFn, int attempt,
+            long startNanos) {
+        return withModelRestoreRetry(operationName, requestFn, attempt, startNanos,
+                modelRestoreRetryDelaysMs, modelRestoreRetryBudgetMs);
+    }
+
+    /** Test hook: shrinks the model-restore retry budget so tests need not stall. */
+    void setModelRestoreRetryBudgetForTest(long budgetMs) {
+        modelRestoreRetryBudgetMs = budgetMs;
+    }
+
+    private <T> CompletableFuture<T> withModelRestoreRetry(
+            String operationName, IntFunction<CompletableFuture<T>> requestFn, int attempt,
+            long startNanos, long[] delaysMs, long budgetMs) {
+        return requestFn.apply(attempt).handle((res, ex) -> {
             if (ex == null) {
                 return CompletableFuture.completedFuture(res);
             }
-            RpcFailure failure = RpcFailure.find(ex);
-            if (!HarnessCatalog.OMP.id().equals(getHarnessId())
-                    || failure == null || !isUnrestorableModel(failure)
-                    || attempt >= modelRestoreRetryDelaysMs.length) {
+            if (modelRestoreFailure(ex) == null
+                    || !OMP_HARNESS_ID.equals(getHarnessId())
+                    || attempt >= delaysMs.length) {
                 return CompletableFuture.<T>failedFuture(ex);
             }
-            long delayMs = modelRestoreRetryDelaysMs[attempt];
-            LOG.log(Level.INFO, "{0} failed because OMP''s model catalogue was still loading, "
+            long delayMs = delaysMs[attempt];
+            long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000;
+            if (elapsedMs + delayMs > budgetMs) {
+                return CompletableFuture.<T>failedFuture(ex);
+            }
+            LOG.fine("{0} failed because OMP''s model catalogue was still loading, "
                     + "retrying in {1}ms (attempt {2}): {3}",
                     operationName, delayMs, attempt + 2, ExceptionUtils.getMessage(ex));
             return CompletableFuture.<T>completedFuture(null)
-                    .thenComposeAsync(v -> withModelRestoreRetry(operationName, requestFn, attempt + 1),
+                    .thenComposeAsync(
+                            v -> withModelRestoreRetry(operationName, requestFn, attempt + 1,
+                                    startNanos, delaysMs, budgetMs),
                             CompletableFuture.delayedExecutor(delayMs, TimeUnit.MILLISECONDS));
         }).thenCompose(f -> f);
     }
@@ -2046,19 +2078,20 @@ public class SessionManager implements SessionQuery, SessionControl,
      * permanent answers and are never retried.
      */
     private static boolean isStartupRetryable(Throwable ex) {
+        // A stored session whose saved model is gone fails identically on every
+        // attempt; the OMP-only model-restore retry above owns that case, and
+        // retrying it here too would only delay telling the user why.
+        if (modelRestoreFailure(ex) != null) {
+            return false;
+        }
+        // A lost turn is settled or discarded by the user, never by waiting:
+        // the read-only attach is the recovery this retry would otherwise delay.
+        if (isLostTurn(ex)) {
+            return false;
+        }
         Throwable cause = ex;
         while (cause != null) {
             if (cause instanceof AcpRpcException rpc) {
-                // A stored session whose saved model is gone fails identically on
-                // every attempt; retrying only delays telling the user why.
-                if (isUnrestorableModel(rpc)) {
-                    return false;
-                }
-                // A lost turn is settled or discarded by the user, never by waiting:
-                // the read-only attach is the recovery this retry would otherwise delay.
-                if (isLostTurn(rpc)) {
-                    return false;
-                }
                 return rpc.code() == AcpRpcException.INTERNAL_ERROR;
             }
             if (cause instanceof IOException) {
@@ -2073,6 +2106,16 @@ public class SessionManager implements SessionQuery, SessionControl,
     private static boolean isUnrestorableModel(RpcFailure failure) {
         String details = failure.dataField("details");
         return details != null && details.startsWith("Could not restore model");
+    }
+
+    /**
+     * The model-restore failure when {@code ex} wraps one, else {@code null}. Single
+     * predicate shared by both retry paths, so a wrapped answer cannot slip between
+     * the startup retry's manual cause-walk and this path's {@code RpcFailure.find}.
+     */
+    private static RpcFailure modelRestoreFailure(Throwable ex) {
+        RpcFailure failure = RpcFailure.find(ex);
+        return failure != null && isUnrestorableModel(failure) ? failure : null;
     }
 
     /**
