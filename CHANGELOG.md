@@ -1,6 +1,6 @@
 # Release Notes
 
-## Unreleased
+## v1.32.0 (Changes since v1.31.0)
 
 ### Features
 - **Shorter input history**: the `Up`/`Down` and `Ctrl+R` history keeps the newest **256** submitted inputs (down from 1024), in memory and in the database; a longer history stored by an earlier build is trimmed on the next load.
@@ -19,7 +19,43 @@
 - **Steer failures show the harness's own explanation** instead of only `Internal error`, matching prompt failures.
 - **The context-usage meter's tooltip anchors above the status row** so it can no longer fall off screen.
 - **The new-session button no longer wobbles** for attention.
-- **API**: `github.anandb.netbeans.contract` is no longer an exported NBM package — `contract/` is internal ports now. MCP token auth is purely catalog-driven: omp skips token-protected URLs, and a bare `pi`/`pi-agent` binary resolves to the unknown harness (token-protected).
+- **Git and Mercurial output fidelity**: git paths are read NUL-separated and never shell-quoted, hg status paths stay verbatim, and `fatal: ` prefixes are no longer stripped from revision content; diff-range failures are surfaced and classified instead of swallowed.
+- **Transcript export failures are guarded and localized** instead of surfacing raw errors.
+- **MCP example handling**: inserting an example is one undo step, a repeated example no longer wipes unrelated servers, the store-time size limit is shown while editing, and preamble buttons stay at the bottom on resize.
+- **Git annotation failure logs without a stray placeholder** and the welcome screen restores when the list is empty.
+- **API**: MCP token auth is purely catalog-driven: omp skips token-protected URLs, and a bare `pi`/`pi-agent` binary resolves to the unknown harness (token-protected).
+
+### Performance
+- **Go To File searches off the EDT**: the index scan runs on a background worker with a 150 ms debounce, so typing never blocks the UI; a newer query supersedes an older scan and only the newest filtered list reaches the list model.
+- **Mini assistant streams like the main thread**: streamed chunks stay a lightweight text area and HTML renders once at finalization instead of per chunk.
+- **Popup probe walks one window**: the Show Changes / Show History popup hook searches the clicked window's hierarchy (plus owned windows for heavyweight popups) instead of every open window, and gives up after 8 ticks instead of 25.
+- **OS launches leave the EDT**: opening the working directory in the system browser, launching Firefox and opening search URLs run on a background launcher instead of the UI thread.
+- **OMP model restores retry for ~10 s**: a `session/load` answered `Could not restore model` is retried while OMP's catalogue finishes loading, then fails with the harness's reason as before; other harnesses keep failing fast.
+- **Transcript export internals**: capture deadlines cancel the export load itself, an aborted capture never issues a retry load, the drain deadline is measured from the load response, a finished capture unregisters before draining, the in-flight turn is cleared on every teardown path, and prompt sends wait while a capture runs.
+- **Mini assistant tokens counted incrementally**: the token overlay accumulates per chunk instead of re-summing.
+
+### UI
+- **Token Stats tables**: the width default doubled, tables fill the viewport, the project combo sizes to its font, and the tool table keeps its count column.
+- **Mini assistant progress, lifetime and hover UX**: spinner, elapsed time and stop affordances while running, with hover behavior that no longer traps the pointer.
+- **Reloaded plans stay minimized**: a completed plan reloaded from history no longer expands itself.
+- **Welcome screen returns when no sessions are listed**, its text is exposed to assistive technology, and ghost artifacts on tool bubbles are gone.
+- **Icons**: a shared colored icon set for assistant actions, a readable assistant icon, and emoji fallbacks where the font lacks the glyph.
+- **Break mode is mouse-only** and the status spinner no longer shifts the toolbar row.
+
+### Refactoring
+- **Stereotype markers and a ports-only contract**: new `@HexagonalPort`, `@Boundary`, `@McpToolInput` and `@McpToolProvider` annotations mark the layer seams, and more classes carry them.
+- **Dead UI surfaces removed**: the `AttentionButton` animation surface is gone, and `OpenCode` global configuration setup is removed alongside the pruned OpenCode/Ollama experiment pages.
+- **Per-session transcript capture is abstract**: the capture check is a contract method rather than a concrete call.
+- **Test seams**: a stream seam on the protocol client and broader non-UI coverage.
+
+### Documentation
+- **Settings screenshot updated** for the current Options layout, and screenshots resized across the guide.
+- **Stop, session delete, context report, `diff_range` and WSL** are now covered in the guide; the README is restructured with refreshed release docs.
+- **Undocumented features recorded**: the stereotype layer and current counts are written down.
+- **OpenCode global config removed** from the docs with its setup code, these pages need to be re-written with more details to cover OpenCode V2.
+
+### Housekeeping
+- Version bumped to 1.32.0.
 
 ## v1.31.0 (Changes since v1.30.0)
 
