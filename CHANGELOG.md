@@ -1,5 +1,17 @@
 # Release Notes
 
+## v1.32.1 (Changes since v1.32.0)
+
+### Fixes
+- **CI-only stats test failure**: `tablesUseAnAbsoluteWidthThatSwingHonors` compared the widened table against the content width with a hard 200 px margin, which CI fonts exceed; it now asserts any growth, which is exactly what the width attribute guarantees.
+
+### Documentation
+- **README shows the real CI badge** instead of a static success badge.
+- **DEVELOPMENT records the suite size instead of a coverage percentage**: 2006 unit tests plus one integration test, all run headless by `./mvnw verify`.
+
+### Housekeeping
+- Version bumped to 1.32.1.
+
 ## v1.32.0 (Changes since v1.31.0)
 
 ### Features

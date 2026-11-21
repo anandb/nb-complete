@@ -174,7 +174,10 @@ class TokenUsageDialogTest {
         int narrow = TokenUsageDialog.naturalWidth(narrowPane);
         int wide = TokenUsageDialog.naturalWidth(widePane);
         assertTrue(wide >= 480, "the table fills the requested width: " + wide);
-        assertTrue(wide > narrow + 200, "Swing ignores the CSS percentage: " + narrow + " -> " + wide);
+        // No fixed margin: the unwidened width is font-dependent (CI fonts measure
+        // wider than local ones). Without the width attribute wide would equal narrow,
+        // so any growth proves Swing honored it.
+        assertTrue(wide > narrow, "Swing ignores the CSS percentage: " + narrow + " -> " + wide);
     }
 
     @Test

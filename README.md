@@ -1,13 +1,13 @@
 # BeanBot
 
-[![Version](https://img.shields.io/badge/version-1.32.0-blue.svg)](pom.xml)
-[![Build Status](https://img.shields.io/badge/build-success-brightgreen.svg)](https://github.com/anandb/nb-complete)
+[![Version](https://img.shields.io/badge/version-1.32.1-blue.svg)](pom.xml)
+![Build Status](https://github.com/anandb/nb-complete/actions/workflows/ci.yml/badge.svg)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.anandb/beanbot)](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions)
 [![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE220-blue.svg)](https://netbeans.apache.org/download/index.html)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/anandb)
 
-<p align="center">
+<p align="left">
   <strong>An agentic coding environment, integrated into NetBeans.</strong><br>
   Bring Claude, OpenCode, Codex, Gemini, Goose and other coding harnesses into your NetBeans workflow.
 </p>

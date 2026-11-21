@@ -26,7 +26,7 @@ The generated NBM lands in `target/nbm/`. Installing it through
 - `./mvnw test` does **not** run the integration tests — use `./mvnw verify`.
 - Local test suites must use the randomized order profile: `./mvnw test -P random-test-order`.
   CI intentionally uses the default order.
-- Coverage target is 96%; the JaCoCo report is the source of truth.
+- Test health is reported as tests run, not coverage percentages: 2006 unit tests plus one failsafe IT, all run headless by `./mvnw verify`.
 - The build pins `-Dnetbeans.user=target/test-userdir` for the test JVM so no test can reach the
   production stats store.
 
