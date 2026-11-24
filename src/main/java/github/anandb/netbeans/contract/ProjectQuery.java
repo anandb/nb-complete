@@ -11,7 +11,7 @@ import java.util.function.Consumer;
  * project open/close events. Lives in the {@code contract} layer so {@code manager/}
  * and {@code mcp/} can depend on it without importing {@code ui/} or {@code project/}.
  * <p>
- * <b>Cache contract (AGENTS.md):</b> implementations must return the cached
+ * <b>Cache contract (docs/agent/coding-rules.md):</b> implementations must return the cached
  * {@code currentProjects} field populated by the manager's {@code start()} and
  * updated via {@code propertyChange()} on project open/close — do NOT bypass
  * the cache by calling {@code OpenProjects.getDefault().getOpenProjects()}.

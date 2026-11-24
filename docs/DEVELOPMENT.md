@@ -143,4 +143,5 @@ The color properties are declared in [`colors.json`](../src/main/resources/githu
 
 Development follows standard NetBeans Platform patterns. Keep changes consistent with existing
 styling and logging conventions, and validate new components against both light and dark IDE themes.
-See [AGENTS.md](../AGENTS.md) for the project's coding rules and architectural constraints.
+See [AGENTS.md](../AGENTS.md) for the index of the project's coding rules and architectural
+constraints; the detail is split by area under [`docs/agent/`](agent/).

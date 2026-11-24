@@ -7,7 +7,7 @@ import java.util.prefs.PreferenceChangeListener;
  * anchor ({@link github.anandb.netbeans.support.PreferenceKeys#MODULE_ANCHOR}).
  * Hides the NetBeans preferences API from DSL-bound views.
  * <p>
- * <b>Hot-path contract (AGENTS.md):</b> preference values read in hot paths
+ * <b>Hot-path contract (docs/agent/coding-rules.md):</b> preference values read in hot paths
  * must be cached in a {@code static volatile} field with a
  * {@code PreferenceChangeListener}; callers must NOT call {@code getBoolean}
  * on every invocation. Implementations are responsible for honoring this; the

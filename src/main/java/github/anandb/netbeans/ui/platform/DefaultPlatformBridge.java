@@ -133,7 +133,7 @@ public final class DefaultPlatformBridge implements PlatformBridge, ProjectQuery
         }
 
         @Override public Project[] getAllOpenProjects() {
-            // AGENTS.md: getAllOpenProjects() returns the cached
+            // docs/agent/coding-rules.md: getAllOpenProjects() returns the cached
             // currentProjects field — do NOT bypass the cache.
             return ACPProjectManager.getInstance().getAllOpenProjects();
         }

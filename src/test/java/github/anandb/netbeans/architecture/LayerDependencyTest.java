@@ -17,7 +17,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 /**
- * Guards the hexagonal layer rules from AGENTS.md over the whole main tree:
+ * Guards the hexagonal layer rules from docs/agent/architecture.md over the whole main tree:
  * dependencies may point down to {@code contract/}/{@code model/}, never up or sideways.
  *
  * <p>Accepted debt must be listed in {@link #EXCEPTIONS} with the exact files that carry
@@ -110,7 +110,7 @@ class LayerDependencyTest {
                 }
             }
         }
-        assertTrue(stale.isEmpty(), "stale debt registry entries (update AGENTS.md):\n"
+        assertTrue(stale.isEmpty(), "stale debt registry entries (update docs/agent/architecture.md):\n"
                 + String.join("\n", stale));
     }
 

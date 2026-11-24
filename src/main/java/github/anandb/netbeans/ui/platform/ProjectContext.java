@@ -6,7 +6,7 @@ import org.netbeans.api.project.Project;
  * Access seam for {@code ACPProjectManager.getInstance().getAllOpenProjects()}.
  * Hides the project-cache singleton from DSL-bound views.
  * <p>
- * <b>Cache contract (AGENTS.md):</b> implementations must return the cached
+ * <b>Cache contract (docs/agent/coding-rules.md):</b> implementations must return the cached
  * {@code currentProjects} field populated by the manager's {@code start()} and
  * updated via {@code propertyChange()} on project open/close — do NOT bypass
  * the cache by calling {@code OpenProjects.getDefault().getOpenProjects()}.

@@ -187,7 +187,8 @@ chooser to install or pick it. Binaries on `PATH` are never auto-selected.
 - [architecture.dot](docs/architecture.dot) — generated component graph.
 - [DEVELOPMENT.md](docs/DEVELOPMENT.md) — build, tests, source organization, code reading path and
   system properties.
-- [AGENTS.md](AGENTS.md) — repository coding rules and architectural constraints.
+- [AGENTS.md](AGENTS.md) — index of the repository coding rules and architectural constraints;
+  the detail lives under [`docs/agent/`](docs/agent/).
 
 BeanBot is a NetBeans Platform plugin built with the pinned Maven wrapper. `model/` is a
 dependency-free leaf; `contract/` defines the ports; `ui/` and `manager/` are peers over those ports,

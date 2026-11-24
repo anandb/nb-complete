@@ -73,7 +73,7 @@ import github.anandb.netbeans.ui.components.PulsingToggleButton;
 import github.anandb.netbeans.ui.components.UIUtils;
 
 // DSL-CONTROLLER: not a view — newSessionDebounceTimer (300ms) lives here per
-// AGENTS.md. Construction body is the Phase 2 seam target (ChatLayoutSpec);
+// docs/agent/coding-rules.md. Construction body is the Phase 2 seam target (ChatLayoutSpec);
 // the debounce timer stays imperative.
 public final class ChatLayoutBuilder {
 

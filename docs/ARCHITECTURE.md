@@ -51,7 +51,7 @@ what invert the dependency, so `ui/` never imports `manager/` — and everything
 `model/`, `contract/` and `support/` import none of `project/`, `mcp/` or `tasks/`. `manager/` reaches
 `mcp/` only from `ProcessManager` (via `McpManager`/`McpToolAdapter`).
 
-Two accepted exceptions exist, both recorded in `AGENTS.md`:
+Two accepted exceptions exist, both recorded in [`docs/agent/architecture.md`](agent/architecture.md):
 
 - `tasks/TaskRepositoryController` and `tasks/TaskIssueController` read open projects through
   `ui/platform/PlatformBridge` and `ProjectContext` instead of a `contract/` port.
