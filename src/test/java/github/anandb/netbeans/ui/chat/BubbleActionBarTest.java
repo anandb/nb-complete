@@ -3,6 +3,7 @@ package github.anandb.netbeans.ui.chat;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.Rectangle;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JPanel;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -58,16 +60,129 @@ class BubbleActionBarTest {
         });
     }
 
+    @Test
+    void overlayStaysInsideTheContentRowWhenQueued() throws Exception {
+        String paragraph = ("assistant answer that wraps at the thread width ").repeat(8);
+        SwingUtilities.invokeAndWait(() -> {
+            MessageBubble bubble = new MessageBubble(MessageType.agent_message_chunk, paragraph,
+                    "m3", null, MessageBubble.AvatarPosition.NONE);
+            bubble.setQueued(true);
+            try {
+                layOut(bubble);
+                assertInsideRow(bubble);
+            } finally {
+                bubble.setQueued(false);
+            }
+        });
+    }
+
+    @Test
+    void overlayClearsATrailingCollapsedCodeCopy() throws Exception {
+        String markdown = "Some text above.\n\n```java\nint x = 1;\n```";
+        SwingUtilities.invokeAndWait(() -> {
+            MessageBubble bubble = new MessageBubble(MessageType.agent_message_chunk, markdown,
+                    "m4", null, MessageBubble.AvatarPosition.NONE);
+            CollapsibleCodePane pane = findCodePane(bubble);
+            assertNotNull(pane, "expected a code pane at the end of the message");
+            pane.setExpanded(false);
+            giveCodeCopyRealSize(pane);
+            layOut(bubble);
+
+            JPanel overlay = findOverlay(bubble);
+            assertNotNull(overlay);
+            Rectangle overlayBounds = boundsIn(overlay, bubble);
+            Rectangle copyBounds = boundsIn(pane.copyButton, bubble);
+            assertTrue(copyBounds.width > 0, "code copy must be laid out: " + copyBounds);
+            assertFalse(overlayBounds.intersects(copyBounds),
+                    "overlay must not cover the code copy button: overlay=" + overlayBounds
+                            + " copy=" + copyBounds);
+        });
+    }
+
+    @Test
+    void overlayClearsTheCopyInACodeOnlyBubble() throws Exception {
+        String markdown = "```java\nint x = 1;\n```";
+        SwingUtilities.invokeAndWait(() -> {
+            MessageBubble bubble = new MessageBubble(MessageType.agent_message_chunk, markdown,
+                    "m5", null, MessageBubble.AvatarPosition.NONE);
+            CollapsibleCodePane pane = findCodePane(bubble);
+            assertNotNull(pane, "expected a code pane");
+            pane.setExpanded(false);
+            giveCodeCopyRealSize(pane);
+            layOut(bubble);
+
+            JPanel overlay = findOverlay(bubble);
+            assertNotNull(overlay);
+            Rectangle overlayBounds = boundsIn(overlay, bubble);
+            Rectangle copyBounds = boundsIn(pane.copyButton, bubble);
+            assertTrue(copyBounds.width > 0, "code copy must be laid out: " + copyBounds);
+            assertFalse(overlayBounds.intersects(copyBounds),
+                    "overlay must not cover the code copy button: overlay=" + overlayBounds
+                            + " copy=" + copyBounds);
+            assertInsideRow(bubble);
+        });
+    }
+
+    private static void assertInsideRow(MessageBubble bubble) {
+        JPanel overlay = findOverlay(bubble);
+        assertNotNull(overlay, "action overlay must exist");
+        MessageBubble.AlignedRow row = findRow(bubble);
+        assertNotNull(row, "content row must exist");
+        Rectangle rowBounds = boundsIn(row, bubble);
+        Rectangle overlayBounds = boundsIn(overlay, bubble);
+        assertTrue(rowBounds.contains(overlayBounds),
+                "overlay must stay inside the bubble row: overlay=" + overlayBounds
+                        + " row=" + rowBounds);
+    }
+
+    /** Headless runs may load no icons; give the code copy button its production size. */
+    private static void giveCodeCopyRealSize(CollapsibleCodePane pane) {
+        Dimension size = new Dimension(28, 28);
+        pane.copyButton.setPreferredSize(size);
+        if (pane.copyButton.getParent() != null) {
+            pane.copyButton.getParent().setPreferredSize(size);
+        }
+    }
+
+    private static Rectangle boundsIn(Component component, Container target) {
+        return SwingUtilities.convertRectangle(
+                component.getParent(), component.getBounds(), target);
+    }
+
+    private static MessageBubble.AlignedRow findRow(MessageBubble bubble) {
+        for (Component c : bubble.getComponents()) {
+            if (c instanceof MessageBubble.AlignedRow row) {
+                return row;
+            }
+        }
+        return null;
+    }
+
+    private static CollapsibleCodePane findCodePane(Container root) {
+        for (Component c : root.getComponents()) {
+            if (c instanceof CollapsibleCodePane pane) {
+                return pane;
+            }
+            if (c instanceof Container child) {
+                CollapsibleCodePane found = findCodePane(child);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
     private static void layOut(MessageBubble bubble) {
         JPanel host = new JPanel();
         host.setLayout(new BoxLayout(host, BoxLayout.Y_AXIS));
         host.add(bubble);
         host.setSize(500, 10000);
         host.doLayout();
-        bubble.doLayout();
+        layoutTree(bubble);
         host.setSize(500, Math.max(1, bubble.getPreferredSize().height));
         host.doLayout();
-        bubble.doLayout();
+        layoutTree(bubble);
         JPanel overlay = findOverlay(bubble);
         if (overlay != null) {
             // Headless runs may load no icons; give the buttons their production size
@@ -79,7 +194,17 @@ class BubbleActionBarTest {
             }
             overlay.setPreferredSize(null);
             overlay.invalidate();
-            bubble.doLayout();
+        }
+        layoutTree(bubble);
+        bubble.doLayout();
+    }
+
+    private static void layoutTree(Container container) {
+        container.doLayout();
+        for (Component child : container.getComponents()) {
+            if (child instanceof Container nested) {
+                layoutTree(nested);
+            }
         }
     }
 
@@ -116,17 +241,12 @@ class BubbleActionBarTest {
         return -1;
     }
 
-    private static JPanel findOverlay(Container root) {
-        for (Component c : root.getComponents()) {
+    /** The overlay is a direct child of the bubble; panes also hold button-only placeholders. */
+    private static JPanel findOverlay(MessageBubble bubble) {
+        for (Component c : bubble.getComponents()) {
             if (c instanceof JPanel panel && panel.getComponentCount() > 0
                     && panel.getComponentCount() <= 2 && onlyButtons(panel)) {
                 return panel;
-            }
-            if (c instanceof Container child) {
-                JPanel found = findOverlay(child);
-                if (found != null) {
-                    return found;
-                }
             }
         }
         return null;

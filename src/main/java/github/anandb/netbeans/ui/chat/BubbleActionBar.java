@@ -221,18 +221,70 @@ class BubbleActionBar {
             return;
         }
         Dimension pref = overlay.getPreferredSize();
-        Insets ins = owner.getInsets();
-        // The assistant bubble spans the owner's inner width, so anchoring to the
-        // owner is the same as the bubble's right edge — but it cannot be computed
-        // from a stale bubble width during the first layout pass.
-        int right = owner.getWidth() - ins.right;
-        int bottom = owner.getHeight() - ins.bottom;
-        int x = Math.max(ins.left, right - OVERLAY_RIGHT_INSET - pref.width);
-        int y = Math.max(ins.top, bottom - OVERLAY_BOTTOM_INSET - pref.height);
+        Rectangle content = contentBounds();
+        int overlayRight = content.x + content.width - OVERLAY_RIGHT_INSET;
+        int overlayBottom = content.y + content.height - OVERLAY_BOTTOM_INSET;
+        BaseCollapsiblePane trailing = trailingCollapsedPane();
+        if (trailing != null) {
+            Rectangle pane = SwingUtilities.convertRectangle(
+                    trailing.getParent(), trailing.getBounds(), owner);
+            if (pane.y - 4 - pref.height >= content.y) {
+                // Float clear above a trailing collapsed block instead of covering its
+                // header copy button.
+                overlayBottom = pane.y - 4;
+            } else {
+                // No room above (a block-only bubble): keep the bottom row but stop
+                // left of the block's copy button.
+                int copyWidth = Math.max(0, trailing.copyButton.getPreferredSize().width);
+                overlayRight = Math.min(overlayRight, pane.x + pane.width - copyWidth - 12);
+            }
+        }
+        int x = Math.max(content.x, overlayRight - pref.width);
+        int y = Math.max(content.y, Math.min(overlayBottom - pref.height,
+                content.y + content.height - pref.height));
         overlay.setBounds(x, y, pref.width, pref.height);
         // Lay the buttons out even while the overlay is hidden: showing it must not
         // need a revalidate (the first layout pass happens before any hover).
         overlay.doLayout();
+    }
+
+    /**
+     * The bubble's content rectangle in owner coordinates. The owner's GridBag cell can
+     * be taller than the bubble — the overlay contributes a minimum height and extra
+     * rows such as the queued label add more — which used to leave the buttons floating
+     * above the bubble; the content row is the truth.
+     */
+    private Rectangle contentBounds() {
+        Insets ins = owner.getInsets();
+        int left = ins.left;
+        int top = ins.top;
+        int right = owner.getWidth() - ins.right;
+        int bottom = owner.getHeight() - ins.bottom;
+        Component parent = bubble.getParent();
+        if (parent != null && parent != owner && parent.getWidth() > 0 && parent.getHeight() > 0) {
+            Rectangle row = SwingUtilities.convertRectangle(
+                    parent, new Rectangle(0, 0, parent.getWidth(), parent.getHeight()), owner);
+            left = Math.max(left, row.x);
+            top = Math.max(top, row.y);
+            right = Math.min(right, row.x + row.width);
+            bottom = Math.min(bottom, row.y + row.height);
+        }
+        return new Rectangle(left, top, Math.max(0, right - left), Math.max(0, bottom - top));
+    }
+
+    /** The last visible content block, when it is a collapsed header we must not cover. */
+    private BaseCollapsiblePane trailingCollapsedPane() {
+        if (bubble.getComponentCount() != 1 || !(bubble.getComponent(0) instanceof Container segments)) {
+            return null;
+        }
+        for (int i = segments.getComponentCount() - 1; i >= 0; i--) {
+            Component child = segments.getComponent(i);
+            if (!child.isVisible()) {
+                continue;
+            }
+            return child instanceof BaseCollapsiblePane pane && !pane.isExpanded() ? pane : null;
+        }
+        return null;
     }
 
     private void installHoverListeners() {
