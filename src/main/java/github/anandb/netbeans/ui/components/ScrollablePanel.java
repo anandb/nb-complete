@@ -7,6 +7,8 @@ import javax.swing.JPanel;
 import javax.swing.Scrollable;
 import javax.swing.SwingConstants;
 
+import github.anandb.netbeans.support.PluginSettings;
+
 /**
  * A JPanel that implements {@link Scrollable} for use inside a JScrollPane.
  * Tracks viewport width to fill the container horizontally, but not height.
@@ -29,7 +31,9 @@ public class ScrollablePanel extends JPanel implements Scrollable {
 
     @Override
     public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
-        return 16;
+        // The wheel normally uses the scroll bar's unit increment; this keeps the
+        // Scrollable path in step when fast wheel scrolling is enabled.
+        return PluginSettings.getChatScrollSpeed();
     }
 
     @Override

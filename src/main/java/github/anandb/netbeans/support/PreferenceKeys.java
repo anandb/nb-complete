@@ -42,6 +42,9 @@ public final class PreferenceKeys {
     /** Chat font size in px. -1 = inherited from theme. */
     public static final String CHAT_FONT_SIZE = "chatFontSize";
 
+    /** Wheel scroll speed for the chat thread and mini assistant, in px per wheel unit. */
+    public static final String CHAT_SCROLL_SPEED = "chatScrollSpeed";
+
     // Toolbar button visibility keys
     public static final String TOOLBAR_ARCHIVE = "toolbar.archive";
     public static final String TOOLBAR_NEW_SESSION = "toolbar.newSession";

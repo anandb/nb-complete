@@ -182,6 +182,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private static final int PREVIEW_SIZE = 96;
     private JComboBox<String> toolbarIconCombo;
     private JComboBox<String> chatFontCombo;
+    private JComboBox<String> scrollSpeedCombo;
     private JButton editPreambleButton;
     private JCheckBox preambleEnabledCheckbox;
     private JComboBox<AcpFsPolicy> fsPolicyCombo;
@@ -599,6 +600,25 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         behaviorPanel.add(echoCheckbox, UIUtils.createGbc(0, row, 1.0, 0, GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST,
                 new Insets(0, 12, 5, 0)));
 
+        // Scroll speed shares the first row's right-hand columns with the preamble
+        // button below it, so it no longer splits the checkbox rhythm.
+        JLabel scrollSpeedLabel = new JLabel(NbBundle.getMessage(UIBundle.class, "LBL_ScrollSpeed"));
+        scrollSpeedLabel.setToolTipText(tooltip("TT_ScrollSpeed"));
+        behaviorPanel.add(scrollSpeedLabel, UIUtils.createGbc(2, row, 0.0, 0,
+                GridBagConstraints.HORIZONTAL, GridBagConstraints.EAST, new Insets(0, 0, 5, 5)));
+
+        scrollSpeedCombo = new JComboBox<>(new String[]{
+            NbBundle.getMessage(UIBundle.class, "LBL_ScrollSpeedSlow"),
+            NbBundle.getMessage(UIBundle.class, "LBL_ScrollSpeedNormal"),
+            NbBundle.getMessage(UIBundle.class, "LBL_ScrollSpeedFast"),
+            NbBundle.getMessage(UIBundle.class, "LBL_ScrollSpeedFastest")
+        });
+        scrollSpeedCombo.setToolTipText(tooltip("TT_ScrollSpeed"));
+        scrollSpeedCombo.addActionListener(evt -> controller.changed());
+        scrollSpeedLabel.setLabelFor(scrollSpeedCombo);
+        behaviorPanel.add(scrollSpeedCombo, UIUtils.createGbc(3, row, 0.0, 0,
+                GridBagConstraints.NONE, GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
+
         combineCheckbox.setText(scopedLabel("LBL_CombineToolThought", PluginSettings.Effect.SESSION_RELOAD));
         combineCheckbox.setToolTipText(tooltip("TT_CombineToolThought"));
         combineCheckbox.addActionListener(evt -> controller.changed());
@@ -610,6 +630,11 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         editPreambleButton.setText(NbBundle.getMessage(UIBundle.class, "LBL_EditPreamble"));
         editPreambleButton.setToolTipText(tooltip("TT_PreambleEditor"));
         editPreambleButton.addActionListener(evt -> openPreambleDialog());
+        // Match the dropdown to the preamble button so the right-hand column reads as
+        // one block: both controls then share the same left and right edges.
+        scrollSpeedCombo.setPreferredSize(new Dimension(
+                editPreambleButton.getPreferredSize().width,
+                scrollSpeedCombo.getPreferredSize().height));
 
         preambleEnabledCheckbox.setText(scopedLabel("LBL_PreambleEnabled", PluginSettings.Effect.NEW_SESSION));
         preambleEnabledCheckbox.setToolTipText(tooltip("TT_PreambleEnabled"));
@@ -1400,6 +1425,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         preambleText = PluginSettings.getPreamble();
         echoCheckbox.setSelected(PluginSettings.isEchoUserInput());
         combineCheckbox.setSelected(PluginSettings.isCombineToolThoughtEnabled());
+        scrollSpeedCombo.setSelectedIndex(scrollSpeedIndex(PluginSettings.getChatScrollSpeed()));
         autoBackupChangesCheckbox.setSelected(PluginSettings.isAutoBackupChanges());
         checkForUpdatesCheckbox.setSelected(PluginSettings.isCheckForUpdates());
         Preferences editorPrefs = MimeLookup.getLookup(MimePath.EMPTY).lookup(Preferences.class);
@@ -1556,6 +1582,17 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     }
 
     /** Short label for one file-access policy option. */
+    /** Maps a stored chat scroll speed to its combo index; Normal (1) when unknown. */
+    private static int scrollSpeedIndex(int speed) {
+        int[] options = PluginSettings.getChatScrollSpeedOptions();
+        for (int i = 0; i < options.length; i++) {
+            if (options[i] == speed) {
+                return i;
+            }
+        }
+        return 1;
+    }
+
     private static String fsPolicyLabel(AcpFsPolicy policy) {
         String key = switch (policy) {
             case ALLOW -> "LBL_FsAllowShort";
@@ -1872,6 +1909,12 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         PluginSettings.setPreambleEnabled(preambleEnabledCheckbox.isSelected());
         PluginSettings.setEchoUserInput(echoCheckbox.isSelected());
         PluginSettings.setCombineToolThoughtEnabled(combineCheckbox.isSelected());
+        int[] speedOptions = PluginSettings.getChatScrollSpeedOptions();
+        int speedIndex = Math.max(0, Math.min(scrollSpeedCombo.getSelectedIndex(),
+                speedOptions.length - 1));
+        if (speedOptions[speedIndex] != PluginSettings.getChatScrollSpeed()) {
+            PluginSettings.setChatScrollSpeed(speedOptions[speedIndex]);
+        }
         PluginSettings.setAutoBackupChanges(autoBackupChangesCheckbox.isSelected());
         PluginSettings.setCheckForUpdates(checkForUpdatesCheckbox.isSelected());
         Preferences editorPrefs = MimeLookup.getLookup(MimePath.EMPTY).lookup(Preferences.class);

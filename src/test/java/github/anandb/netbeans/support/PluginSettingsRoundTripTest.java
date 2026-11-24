@@ -238,6 +238,23 @@ class PluginSettingsRoundTripTest {
     }
 
     @Test
+    void chatScrollSpeedRoundTrips() {
+        assertIntRoundTrip(PreferenceKeys.CHAT_SCROLL_SPEED, PluginSettings.getChatScrollSpeed(), 32,
+                PluginSettings::setChatScrollSpeed, PluginSettings::getChatScrollSpeed);
+    }
+
+    @Test
+    void invalidChatScrollSpeedFallsBackToNormal() {
+        int original = PluginSettings.getChatScrollSpeed();
+        try {
+            PluginSettings.setChatScrollSpeed(999);
+            assertEquals(16, PluginSettings.getChatScrollSpeed());
+        } finally {
+            PluginSettings.setChatScrollSpeed(original);
+        }
+    }
+
+    @Test
     void chatFontSizeRoundTripsIncludingInherited() {
         assertIntRoundTrip(PreferenceKeys.CHAT_FONT_SIZE, PluginSettings.getChatFontSize(), 19,
                 PluginSettings::setChatFontSize, PluginSettings::getChatFontSize);

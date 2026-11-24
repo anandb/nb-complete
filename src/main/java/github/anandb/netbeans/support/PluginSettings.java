@@ -22,6 +22,10 @@ public final class PluginSettings {
     private static final int DEFAULT_SESSION_IDLE_TIMEOUT = 600;
     private static final int DEFAULT_MAX_MESSAGES = 100;
     private static final int DEFAULT_TOOLBAR_ICON_SIZE = 24;
+    /** Chat wheel speed in px per unit; the platform's units-per-notch multiplies this. */
+    private static final int DEFAULT_CHAT_SCROLL_SPEED = 16;
+    /** Slow, Normal, Fast, Fastest. */
+    private static final int[] CHAT_SCROLL_SPEED_OPTIONS = {8, 16, 32, 48};
     private static final String DEFAULT_PREAMBLE;
     /** One {@code Preferences} value is capped at 8192 chars, and the preamble is a single value. */
     public static final int MAX_PREAMBLE_LENGTH = Preferences.MAX_VALUE_LENGTH;
@@ -37,6 +41,8 @@ public final class PluginSettings {
     private static volatile int cachedToolbarIconSize = DEFAULT_TOOLBAR_ICON_SIZE;
     /** Cached chat font size — volatile for cross-thread visibility. -1 = inherited. */
     private static volatile int cachedChatFontSize = -1;
+    /** Cached chat wheel speed in px per unit — volatile for cross-thread visibility. */
+    private static volatile int cachedChatScrollSpeed = DEFAULT_CHAT_SCROLL_SPEED;
     /** Cached actions toggles — volatile for cross-thread visibility. All default to true. */
     private static volatile boolean cachedSortLinesEnabled = true;
     private static volatile boolean cachedCompactJsonEnabled = true;
@@ -118,6 +124,8 @@ public final class PluginSettings {
         cachedMaxMessages = prefs.getInt(KEY_MAX_MESSAGES, DEFAULT_MAX_MESSAGES);
         cachedToolbarIconSize = prefs.getInt(PreferenceKeys.TOOLBAR_ICON_SIZE, DEFAULT_TOOLBAR_ICON_SIZE);
         cachedChatFontSize = prefs.getInt(PreferenceKeys.CHAT_FONT_SIZE, -1);
+        cachedChatScrollSpeed = normalizeChatScrollSpeed(
+                prefs.getInt(PreferenceKeys.CHAT_SCROLL_SPEED, DEFAULT_CHAT_SCROLL_SPEED));
         cachedSortLinesEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_SORT_LINES, true);
         cachedCompactJsonEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_COMPACT_JSON, true);
         cachedSearchWebEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_SEARCH_WEB, true);
@@ -264,6 +272,16 @@ public final class PluginSettings {
         return value < 0 ? -1 : value;
     }
 
+    /** Only the offered speed presets are stored; anything else falls back to Normal. */
+    private static int normalizeChatScrollSpeed(int value) {
+        for (int option : CHAT_SCROLL_SPEED_OPTIONS) {
+            if (option == value) {
+                return value;
+            }
+        }
+        return DEFAULT_CHAT_SCROLL_SPEED;
+    }
+
     private static Preferences prefs() {
         return NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR);
     }
@@ -290,6 +308,9 @@ public final class PluginSettings {
                     intPref(PreferenceKeys.TOOLBAR_ICON_SIZE, DEFAULT_TOOLBAR_ICON_SIZE));
         } else if (PreferenceKeys.CHAT_FONT_SIZE.equals(evt.getKey())) {
             cachedChatFontSize = normalizeChatFontSize(intPref(PreferenceKeys.CHAT_FONT_SIZE, -1));
+        } else if (PreferenceKeys.CHAT_SCROLL_SPEED.equals(evt.getKey())) {
+            cachedChatScrollSpeed = normalizeChatScrollSpeed(
+                    intPref(PreferenceKeys.CHAT_SCROLL_SPEED, DEFAULT_CHAT_SCROLL_SPEED));
         } else if (PreferenceKeys.ACTIONS_SORT_LINES.equals(evt.getKey())) {
             cachedSortLinesEnabled = prefs().getBoolean(PreferenceKeys.ACTIONS_SORT_LINES, true);
         } else if (PreferenceKeys.ACTIONS_COMPACT_JSON.equals(evt.getKey())) {
@@ -401,6 +422,22 @@ public final class PluginSettings {
     public static void setChatFontSize(int size) {
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putInt(PreferenceKeys.CHAT_FONT_SIZE, size);
         cachedChatFontSize = normalizeChatFontSize(size);
+    }
+
+    /** Chat wheel speed in px per wheel unit; see {@link #getChatScrollSpeedOptions()}. */
+    public static int getChatScrollSpeed() {
+        return cachedChatScrollSpeed;
+    }
+
+    public static void setChatScrollSpeed(int speed) {
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .putInt(PreferenceKeys.CHAT_SCROLL_SPEED, speed);
+        cachedChatScrollSpeed = normalizeChatScrollSpeed(speed);
+    }
+
+    /** The selectable speeds, in px per wheel unit: Slow, Normal, Fast, Fastest. */
+    public static int[] getChatScrollSpeedOptions() {
+        return CHAT_SCROLL_SPEED_OPTIONS.clone();
     }
 
     public static void setToolbarIconSize(int size) {

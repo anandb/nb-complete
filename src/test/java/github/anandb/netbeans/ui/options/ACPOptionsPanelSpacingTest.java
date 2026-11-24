@@ -104,6 +104,26 @@ class ACPOptionsPanelSpacingTest {
                 "the Browse button must not share the path field's cell");
     }
 
+    @Test
+    void scrollSpeedMatchesThePreambleButtonColumn() throws Exception {
+        ACPOptionsPanel panel = new ACPOptionsPanel(new ACPOptionsPanelController());
+        panel.load();
+        Component combo = field(panel, "scrollSpeedCombo");
+        Component button = field(panel, "editPreambleButton");
+        layout(combo.getParent());
+
+        Rectangle comboBounds = SwingUtilities.convertRectangle(
+                combo.getParent(), combo.getBounds(), button.getParent());
+        Rectangle buttonBounds = button.getBounds();
+        assertEquals(buttonBounds.width, comboBounds.width, 1,
+                "the dropdown and the button must share a width");
+        assertEquals(buttonBounds.x, comboBounds.x, 1,
+                "the dropdown must align with the button's left edge");
+        assertEquals(buttonBounds.x + buttonBounds.width,
+                comboBounds.x + comboBounds.width, 1,
+                "the dropdown must align with the button's right edge");
+    }
+
     /** Sizes a section to its preferred height, lays it out, and lays out its nested containers. */
     private static void layout(Container section) {
         Dimension preferred = section.getPreferredSize();

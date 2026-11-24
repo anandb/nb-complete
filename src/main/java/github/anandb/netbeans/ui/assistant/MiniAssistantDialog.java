@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
+import java.util.prefs.PreferenceChangeListener;
 import java.util.stream.Collectors;
 
 import javax.swing.BorderFactory;
@@ -58,6 +59,7 @@ import github.anandb.netbeans.support.TurnTokenCounter;
 
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
+import org.openide.util.NbPreferences;
 import org.openide.util.Utilities;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.openide.windows.Mode;
@@ -65,6 +67,7 @@ import org.openide.windows.WindowManager;
 
 import github.anandb.netbeans.model.MessageType;
 import github.anandb.netbeans.model.ProcessedMessage;
+import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.ShortcutUtils;
 import github.anandb.netbeans.support.ToolCallDiffParser.FileChange;
@@ -90,7 +93,14 @@ public class MiniAssistantDialog extends JDialog {
     private static MiniAssistantDialog instance;
     private PlaceholderTextArea inputArea;
     private JPanel responsePane;
+    private JScrollPane responseScrollPane;
     private JSplitPane splitPane;
+    /** Applies chat scroll-speed changes to the open mini assistant without a reload. */
+    private final PreferenceChangeListener scrollSpeedListener = evt -> {
+        if (PreferenceKeys.CHAT_SCROLL_SPEED.equals(evt.getKey())) {
+            SwingUtilities.invokeLater(this::applyScrollSpeed);
+        }
+    };
     private final JLabel tokenOverlay;
     private final JProgressBar spinnerBar;
     private Timer tokenTimer;
@@ -239,12 +249,14 @@ public class MiniAssistantDialog extends JDialog {
         responsePane.setBorder(BorderFactory.createEmptyBorder(2, 2, 0, 2));
         responsePane.add(responseHost, BorderLayout.CENTER);
 
-        JScrollPane scrollPane = new JScrollPane(responsePane);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        scrollPane.setOpaque(false);
-        scrollPane.getViewport().setOpaque(false);
-        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        responseScrollPane = new JScrollPane(responsePane);
+        responseScrollPane.setBorder(BorderFactory.createEmptyBorder());
+        responseScrollPane.setOpaque(false);
+        responseScrollPane.getViewport().setOpaque(false);
+        applyScrollSpeed();
+        responseScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .addPreferenceChangeListener(scrollSpeedListener);
 
         // Progress bar right at the top of the dialog
         spinnerBar = new JProgressBar();
@@ -309,7 +321,7 @@ public class MiniAssistantDialog extends JDialog {
         // Wrapper so header floats above the scroll pane
         JPanel responseWrapper = new JPanel(new BorderLayout());
         responseWrapper.setOpaque(false);
-        responseWrapper.add(scrollPane, BorderLayout.CENTER);
+        responseWrapper.add(responseScrollPane, BorderLayout.CENTER);
         responseWrapper.add(topHeader, BorderLayout.NORTH);
 
         splitPane.setTopComponent(responseWrapper);
@@ -776,6 +788,14 @@ public class MiniAssistantDialog extends JDialog {
                 syncLatestBubble();
             }
         });
+    }
+
+    /** Wheel step for the response pane; kept in sync with the Chat Behavior preference. */
+    private void applyScrollSpeed() {
+        if (responseScrollPane != null) {
+            responseScrollPane.getVerticalScrollBar()
+                    .setUnitIncrement(PluginSettings.getChatScrollSpeed());
+        }
     }
 
     private void styleAsMiniBubble(MessageBubble mb) {
@@ -1245,7 +1265,9 @@ public class MiniAssistantDialog extends JDialog {
     private static class ScrollablePanel extends JPanel implements Scrollable {
         ScrollablePanel(LayoutManager layout) { super(layout); }
         @Override public Dimension getPreferredScrollableViewportSize() { return getPreferredSize(); }
-        @Override public int getScrollableUnitIncrement(Rectangle r, int o, int d) { return 16; }
+        @Override public int getScrollableUnitIncrement(Rectangle r, int o, int d) {
+            return PluginSettings.getChatScrollSpeed();
+        }
         @Override public int getScrollableBlockIncrement(Rectangle r, int o, int d) { return 16; }
         @Override public boolean getScrollableTracksViewportWidth() { return true; }
         @Override public boolean getScrollableTracksViewportHeight() {

@@ -19,11 +19,13 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.prefs.PreferenceChangeListener;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Consumer;
 
 import org.openide.util.NbBundle;
+import org.openide.util.NbPreferences;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -53,6 +55,7 @@ import github.anandb.netbeans.support.BinaryResolver;
 import github.anandb.netbeans.support.Logger;
 import github.anandb.netbeans.support.MessageIdGenerator;
 import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.support.PreferenceKeys;
 import github.anandb.netbeans.support.TimingConstants;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -103,6 +106,13 @@ public class ChatThreadPanel extends JPanel {
     /** Queued user bubbles, keyed by message ID, so the indicator can be
      *  removed when the message is actually posted or the queue is cancelled. */
     private final Map<String, MessageBubble> queuedBubbles = new ConcurrentHashMap<>();
+
+    /** Applies scroll-speed changes to the open thread without a reload. */
+    private final PreferenceChangeListener scrollSpeedListener = evt -> {
+        if (PreferenceKeys.CHAT_SCROLL_SPEED.equals(evt.getKey())) {
+            SwingUtilities.invokeLater(this::applyScrollSpeed);
+        }
+    };
 
     // --- State flags ---
     private volatile boolean allBlocksExpanded = false;
@@ -184,7 +194,7 @@ public class ChatThreadPanel extends JPanel {
         scrollPane.getViewport().setBackground(theme.sunkenBackground());
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scrollPane.getViewport().setScrollMode(JViewport.BLIT_SCROLL_MODE);
-        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        applyScrollSpeed();
 
         layeredPane = new JLayeredPane();
         add(layeredPane, BorderLayout.CENTER);
@@ -1132,6 +1142,8 @@ public class ChatThreadPanel extends JPanel {
     @Override
     public void addNotify() {
         super.addNotify();
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .addPreferenceChangeListener(scrollSpeedListener);
         KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(scrollController);
         // Re-register wheel-redirect listeners for bubbles that survived a
         // close/reopen cycle. removeNotify → cleanup() clears the wheel map
@@ -1152,6 +1164,8 @@ public class ChatThreadPanel extends JPanel {
 
     @Override
     public void removeNotify() {
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .removePreferenceChangeListener(scrollSpeedListener);
         // Finalize ALL in-flight streaming bubbles before tearing down —
         // otherwise non-active streaming bubbles (interrupted by tool/thought
         // chunks that reset activeStreamBubble, or late SSE deltas) stay as
@@ -1166,6 +1180,11 @@ public class ChatThreadPanel extends JPanel {
             scrollController.cleanup();
         }
         super.removeNotify();
+    }
+
+    /** Wheel step for the thread; kept in sync with the Chat Behavior preference. */
+    private void applyScrollSpeed() {
+        scrollPane.getVerticalScrollBar().setUnitIncrement(PluginSettings.getChatScrollSpeed());
     }
 
     public void scrollByBlock(boolean pageUp) {
