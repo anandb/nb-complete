@@ -3,6 +3,7 @@
 ## Unreleased (Changes since v1.32.1)
 
 ### Fixes
+- **An expanded tool, thought or activity card keeps its outline on all four sides**: the 1px theme border is drawn for the collapsed one-line header, where it reads clearly, but against the expanded card's header and body surfaces it washed out until the card looked open along two edges. The expanded outline is now shifted 30% away from the surface — darker on light themes, lighter on dark ones — and returns to the theme border on collapse; code blocks keep their own header-rule colour.
 - **Copy and pin appear when the pointer is over the message text**: the hover handler was registered on the bubble card alone, and mouse events go to the deepest component, so hovering the rendered answer (or a code/tool pane) never started the 400 ms reveal — only the card's own 6 px padding, a wheel scroll or a finalize ever showed the icons. The handler is now installed on every pane inside the bubble and re-armed whenever the content is rebuilt or finalized, with the existing rule applied to those panes: an exit hides the icons only when the pointer really left the bubble's bounds. Coming back inside shows them again, and they stay up for 3.5 s before hiding.
 
 ### Documentation

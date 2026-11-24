@@ -409,4 +409,10 @@ public class CollapsibleCodePane extends BaseCollapsiblePane {
     protected void updateAppearance() {
         super.updateBaseAppearance();
     }
+
+    /** Code blocks keep their own header-rule colour instead of the shifted card outline. */
+    @Override
+    protected Color resolvePaneBorder(ColorTheme theme) {
+        return theme.codeHeaderBorder();
+    }
 }

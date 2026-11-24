@@ -76,8 +76,12 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
     /** Cached appearance state to avoid re-setting colors on every hover. */
     private Color lastHeaderBg;
     private Color lastFg;
+    private Color lastBorderColor;
     private boolean lastExpanded;
     private boolean lastHadParamLabel;
+
+    /** Outline shift while expanded: the theme border washes out against the expanded surfaces. */
+    private static final double EXPANDED_BORDER_SHIFT = 0.30;
     private transient Timer copyFeedbackTimer;
     private transient AccordionGroup accordionGroup;
     protected final AtomicBoolean copyHovered = new AtomicBoolean(false);
@@ -481,6 +485,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
 
     protected final void updateBaseAppearance() {
         ColorTheme theme = ThemeManager.getCurrentTheme();
+        applyPaneBorder(theme);
         Color newBg = expanded ? theme.base2() : getDefaultHeaderBackground();
         Color newFg = getHeaderForeground(theme);
         boolean hasParamLabel = paramLabel != null;
@@ -502,6 +507,42 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
             paramLabel.setForeground(newFg);
         }
         copyButton.setForeground(newFg);
+    }
+
+    /**
+     * Applies the pane's own rounded outline. The theme border is tuned for the collapsed one-line
+     * header; once expanded the card spans the header and the body, where a 1px {@code bubbleBorder}
+     * all but disappears, so the expanded outline is shifted 30% toward black (light themes) or
+     * white (dark themes) to keep all four sides reading as a border.
+     */
+    private void applyPaneBorder(ColorTheme theme) {
+        Color border = resolvePaneBorder(theme);
+        if (Objects.equals(border, lastBorderColor)) {
+            return;
+        }
+        lastBorderColor = border;
+        setBorderColor(border);
+        repaint();
+    }
+
+    /**
+     * The pane outline for the current state; {@code null} keeps the theme's default border.
+     * Darker themes lighten the border, light themes darken it.
+     */
+    protected Color resolvePaneBorder(ColorTheme theme) {
+        Color base = theme.bubbleBorder();
+        if (!expanded || base == null) {
+            return base;
+        }
+        return blend(base, theme.isDark() ? Color.WHITE : Color.BLACK, EXPANDED_BORDER_SHIFT);
+    }
+
+    private static Color blend(Color from, Color to, double ratio) {
+        double r = Math.max(0, Math.min(1, ratio));
+        return new Color(
+                (int) Math.round(from.getRed() + (to.getRed() - from.getRed()) * r),
+                (int) Math.round(from.getGreen() + (to.getGreen() - from.getGreen()) * r),
+                (int) Math.round(from.getBlue() + (to.getBlue() - from.getBlue()) * r));
     }
 
     protected abstract void updateAppearance();
