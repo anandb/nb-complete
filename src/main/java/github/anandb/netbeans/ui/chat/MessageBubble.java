@@ -119,6 +119,17 @@ public class MessageBubble extends JPanel implements Scrollable {
         return MAX_SIZE;
     }
 
+    @Override
+    public void doLayout() {
+        super.doLayout();
+        // Place the copy/pin overlay from the bubble's real bounds. GridBagLayout
+        // anchors it to the cell, which can extend past the visible width when the
+        // content is long, clipping the right-hand button.
+        if (actionBar != null) {
+            actionBar.layoutOverlay();
+        }
+    }
+
     public MessageBubble(MessageType type, String text, String messageId, String toolTitle, AvatarPosition avatarPosition) {
         this(type, text, messageId, toolTitle, avatarPosition, false, null);
     }

@@ -2,6 +2,7 @@ package github.anandb.netbeans.ui.chat;
 
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.IllegalComponentStateException;
@@ -54,8 +55,6 @@ class BubbleActionBar {
     /** Overlay position: the icons float clear of the bubble's bottom edge. */
     private static final int OVERLAY_BOTTOM_INSET = 12;
     private static final int OVERLAY_RIGHT_INSET = 20;
-    /** Clear of the top edge when the overlay is stretched (mini assistant). */
-    private static final int OVERLAY_TOP_PAD = 10;
 
     private final JPanel bubble;
     private final String role;
@@ -146,7 +145,7 @@ class BubbleActionBar {
         pinBtn.setContentAreaFilled(false);
         pinBtn.setOpaque(false);
         pinBtn.setForeground(theme.foreground());
-        pinBtn.setVisible(pinned);
+        pinBtn.setVisible(true);
 
         if (pinned) {
             pinBtn.setIcon(ThemeManager.getIcon("pinned.svg", ACTION_ICON_SIZE));
@@ -160,20 +159,16 @@ class BubbleActionBar {
         copyBtn.setContentAreaFilled(false);
         copyBtn.setOpaque(false);
         copyBtn.setForeground(theme.foreground());
-        copyBtn.setVisible(false);
         this.copyBtnIcon = copyBtn.getIcon();
 
-        // Floating overlay: same GridBag cell as the bubble, anchored SOUTHEAST.
-        // The cell sizes to the bubble, so showing the buttons never grows it.
+        // Floating overlay in the bubble's GridBag cell. Added at index 0 so it
+        // paints above the content row; MessageBubble.doLayout() positions it at
+        // the bubble's visible bottom-right, where GridBagLayout cannot clip it.
         JPanel actionsOverlay = new JPanel(new FlowLayout(FlowLayout.RIGHT, 2, 0));
-        // 10px below the top edge in the mini assistant, where the overlay is
-        // stretched over the whole bubble (the sidebar anchors it bottom-right
-        // at preferred size, where this pad is a no-op).
-        actionsOverlay.setBorder(BorderFactory.createEmptyBorder(
-                OVERLAY_TOP_PAD, 0, 0, 0));
         actionsOverlay.setOpaque(false);
         actionsOverlay.add(copyBtn);
         actionsOverlay.add(pinBtn);
+        actionsOverlay.setVisible(false);
         this.actionsPlaceholder = actionsOverlay;
         GridBagConstraints ogbc = new GridBagConstraints();
         ogbc.gridx = 0;
@@ -182,7 +177,7 @@ class BubbleActionBar {
         ogbc.weighty = 0;
         ogbc.anchor = GridBagConstraints.SOUTHEAST;
         ogbc.insets = new Insets(0, 0, OVERLAY_BOTTOM_INSET, OVERLAY_RIGHT_INSET);
-        owner.add(actionsOverlay, ogbc);
+        owner.add(actionsOverlay, ogbc, 0);
 
         installHoverListeners();
     }
@@ -195,14 +190,12 @@ class BubbleActionBar {
         copyBtn.setContentAreaFilled(false);
         copyBtn.setOpaque(false);
         copyBtn.setForeground(theme.foreground());
-        copyBtn.setVisible(false);
         this.copyBtnIcon = copyBtn.getIcon();
 
         JPanel copyOverlay = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
-        copyOverlay.setBorder(BorderFactory.createEmptyBorder(
-                OVERLAY_TOP_PAD, 0, 0, 0));
         copyOverlay.setOpaque(false);
         copyOverlay.add(copyBtn);
+        copyOverlay.setVisible(false);
         this.actionsPlaceholder = copyOverlay;
         GridBagConstraints ogbc = new GridBagConstraints();
         ogbc.gridx = 0;
@@ -211,9 +204,35 @@ class BubbleActionBar {
         ogbc.weighty = 0;
         ogbc.anchor = GridBagConstraints.SOUTHEAST;
         ogbc.insets = new Insets(0, 0, OVERLAY_BOTTOM_INSET, OVERLAY_RIGHT_INSET);
-        owner.add(copyOverlay, ogbc);
+        owner.add(copyOverlay, ogbc, 0);
 
         installHoverListeners();
+    }
+
+    /**
+     * Pins the overlay to the bubble's bottom-right, clamped to the owner's visible
+     * area. GridBagLayout can place it outside that area when the bubble's content
+     * overflows the cell, which cut the pin button off; doing it from the bubble's
+     * real bounds also survives the overlay being re-added when an id is assigned.
+     */
+    void layoutOverlay() {
+        JPanel overlay = actionsPlaceholder;
+        if (overlay == null || owner.getWidth() <= 0) {
+            return;
+        }
+        Dimension pref = overlay.getPreferredSize();
+        Insets ins = owner.getInsets();
+        // The assistant bubble spans the owner's inner width, so anchoring to the
+        // owner is the same as the bubble's right edge — but it cannot be computed
+        // from a stale bubble width during the first layout pass.
+        int right = owner.getWidth() - ins.right;
+        int bottom = owner.getHeight() - ins.bottom;
+        int x = Math.max(ins.left, right - OVERLAY_RIGHT_INSET - pref.width);
+        int y = Math.max(ins.top, bottom - OVERLAY_BOTTOM_INSET - pref.height);
+        overlay.setBounds(x, y, pref.width, pref.height);
+        // Lay the buttons out even while the overlay is hidden: showing it must not
+        // need a revalidate (the first layout pass happens before any hover).
+        overlay.doLayout();
     }
 
     private void installHoverListeners() {
@@ -292,9 +311,15 @@ class BubbleActionBar {
     /** Pointer moved within the bubble: while hidden it starts the delayed show. Once the
      *  icons are up the auto-hide timer owns them — motion does not extend the window. */
     private void onHoverMotion() {
-        if (copyBtn != null && !copyBtn.isVisible()) {
+        if (copyBtn != null && !buttonsShowing()) {
             startShowTimer();
         }
+    }
+
+    /** True while the copy/pin overlay is on screen. The buttons stay visible inside it,
+     *  so hiding/showing the overlay never changes their layout size. */
+    private boolean buttonsShowing() {
+        return actionsPlaceholder != null && actionsPlaceholder.isVisible();
     }
 
     /** Shows the buttons and arms the auto-hide timer. */
@@ -304,9 +329,8 @@ class BubbleActionBar {
         if (copyBtn == null) {
             return;
         }
-        copyBtn.setVisible(true);
-        if (pinBtn != null && !pinned) {
-            pinBtn.setVisible(true);
+        if (actionsPlaceholder != null) {
+            actionsPlaceholder.setVisible(true);
         }
         // Reset icon — a stale check icon may remain from a copy where the
         // timer fired while the button was hidden.
@@ -334,7 +358,7 @@ class BubbleActionBar {
      *  the first movement; while they are already up this is a no-op, so moving around the
      *  bubble does not push the auto-hide deadline back. */
     private void startShowTimer() {
-        if (copyBtn == null || copyBtn.isVisible()) {
+        if (copyBtn == null || buttonsShowing()) {
             return;
         }
         if (showTimer == null) {
@@ -350,7 +374,7 @@ class BubbleActionBar {
     /** Hover check for a bubble that appeared, grew or scrolled under a
      *  stationary pointer — no {@code mouseEntered} fires for those. */
     void checkHover() {
-        if (copyBtn != null && !copyBtn.isVisible() && isMouseInsideComponent(bubble)) {
+        if (copyBtn != null && !buttonsShowing() && isMouseInsideComponent(bubble)) {
             // Panes built after the last content update (an expanded code block, a diff)
             // carry no handler yet: this is the point where we know the pointer is here.
             installHover(bubble);
@@ -365,11 +389,8 @@ class BubbleActionBar {
         if (autoHideTimer != null) {
             autoHideTimer.stop();
         }
-        if (copyBtn != null) {
-            copyBtn.setVisible(false);
-        }
-        if (pinBtn != null && !pinned) {
-            pinBtn.setVisible(false);
+        if (actionsPlaceholder != null) {
+            actionsPlaceholder.setVisible(false);
         }
         owner.repaint();
     }
