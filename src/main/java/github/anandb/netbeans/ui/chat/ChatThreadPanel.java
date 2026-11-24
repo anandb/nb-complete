@@ -25,7 +25,6 @@ import java.util.function.Function;
 import java.util.function.Consumer;
 
 import org.openide.util.NbBundle;
-import org.openide.util.NbPreferences;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -1142,8 +1141,7 @@ public class ChatThreadPanel extends JPanel {
     @Override
     public void addNotify() {
         super.addNotify();
-        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                .addPreferenceChangeListener(scrollSpeedListener);
+        PlatformBridge.prefStoreSafe().addChangeListener(scrollSpeedListener);
         KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(scrollController);
         // Re-register wheel-redirect listeners for bubbles that survived a
         // close/reopen cycle. removeNotify → cleanup() clears the wheel map
@@ -1164,8 +1162,7 @@ public class ChatThreadPanel extends JPanel {
 
     @Override
     public void removeNotify() {
-        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                .removePreferenceChangeListener(scrollSpeedListener);
+        PlatformBridge.prefStoreSafe().removeChangeListener(scrollSpeedListener);
         // Finalize ALL in-flight streaming bubbles before tearing down —
         // otherwise non-active streaming bubbles (interrupted by tool/thought
         // chunks that reset activeStreamBubble, or late SSE deltas) stay as

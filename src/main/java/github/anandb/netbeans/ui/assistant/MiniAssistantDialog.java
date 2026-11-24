@@ -59,7 +59,6 @@ import github.anandb.netbeans.support.TurnTokenCounter;
 
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
-import org.openide.util.NbPreferences;
 import org.openide.util.Utilities;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.openide.windows.Mode;
@@ -255,8 +254,7 @@ public class MiniAssistantDialog extends JDialog {
         responseScrollPane.getViewport().setOpaque(false);
         applyScrollSpeed();
         responseScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
-                .addPreferenceChangeListener(scrollSpeedListener);
+        PlatformBridge.prefStoreSafe().addChangeListener(scrollSpeedListener);
 
         // Progress bar right at the top of the dialog
         spinnerBar = new JProgressBar();
@@ -967,6 +965,7 @@ public class MiniAssistantDialog extends JDialog {
                     .removeKeyEventDispatcher(keyDispatcher);
             keyDispatcher = null;
         }
+        PlatformBridge.prefStoreSafe().removeChangeListener(scrollSpeedListener);
         super.dispose();
         instance = null;
     }
