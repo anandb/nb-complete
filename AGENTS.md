@@ -158,19 +158,23 @@ orchestration; `mcp/` IDE tools and path guards; `db/` persistence; `tasks/` tas
 
 ### Architectural Debt (Known Violations)
 
-Active debt — three entries, all verified against the current tree:
+Active debt — four entries, verified against the current tree by
+`src/test/.../architecture/LayerDependencyTest`, which fails on any edge not listed here:
 
 - **support/ → model/ (ACCEPTED)**: `support/` types itself against `model/` records in
-  three files: `ToolDataExtractor` (`MessageClassification`, `MessageType`,
-  `SessionUpdate`), `BinaryResolver` (`HarnessCatalog`), and `TaskTxtCodec`
-  (`TaskRecord`). All three are pure static utilities (string/pattern parsing,
-  binary discovery, todo.txt codec) — they are not data classes, so they do not belong
-  in `model/`.
-  **Exception — `HarnessCatalog`**: any `support/` file may import
-  `model/HarnessCatalog` (currently `BinaryResolver` and `PluginSettings`, which
-  validates the stored harness id against `HarnessCatalog.UNKNOWN`). It is a catalog
-  lookup, not record data, so it does not leak model shape into `support/`. Do NOT add
-  further `support/` → `model/` imports of any other type.
+  seven files. Five are pure static utilities (string/pattern parsing, binary discovery,
+  todo.txt codec, usage rows, token counting) rather than data classes, so they do not
+  belong in `model/`: `ToolDataExtractor` (`MessageClassification`, `MessageType`,
+  `SessionUpdate`), `BinaryResolver` (`HarnessCatalog`), `TaskTxtCodec` (`TaskRecord`),
+  `PromptUsageRows` (`UsageRecords.Attribution`, `UsageRecords.PromptUsageRow`) and
+  `TurnTokenCounter` (`MessageType`, `ProcessedMessage`). The other two resolve a harness
+  rather than carrying record data: `HarnessSelection` maps the configured executable to a
+  catalog `Harness`, and `PluginSettings` validates a stored id against
+  `HarnessCatalog.UNKNOWN` and resolves it to a `Harness`.
+  **Exception — `HarnessCatalog`/`Harness`**: any `support/` file may import those two
+  (currently `BinaryResolver`, `HarnessSelection`, `PluginSettings`). A catalog lookup is
+  not record data, so it does not leak model shape into `support/`. Do NOT add further
+  `support/` → `model/` imports of any other type.
 - **manager/ → mcp/ (ACCEPTED)**: `manager/ProcessManager` imports
   `mcp/McpManager` and `mcp/McpToolAdapter` to construct the `ToolExecutor` port
   implementation (`new McpToolAdapter(new McpManager())`). `manager/` and `mcp/` are
@@ -184,6 +188,13 @@ Active debt — three entries, all verified against the current tree:
   feature package into the presentation layer. The seams live in `ui/platform/`; moving
   them down to `contract/` would touch 14 `ui/` files plus the `DefaultPlatformBridge`
   adapter, so it is deferred. No separate MIGRATION.md exists.
+- **ui/ → project/ (ACCEPTED)**: `ui/mdproject/MdProjectWizardIterator` and
+  `ui/mdproject/UseAsMarkdownProjectAction` call `project/mdproject/MdProjectMarker` to
+  write and inspect the markdown-project marker file, which owns its `project.xml` I/O.
+  The third edge is `ui/platform/DefaultPlatformBridge` importing
+  `project/ACPProjectManager` to feed `ProjectContext` — the adapter's legitimate seam.
+  Moving the marker down would mean relocating project-metadata I/O into `model/`, so it
+  stays. Do not widen it into a general `ui/` → `project/` dependency.
 
 Resolved — kept as regression guards:
 
