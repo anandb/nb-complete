@@ -1,6 +1,7 @@
 package github.anandb.netbeans.ui.chat;
 
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.IllegalComponentStateException;
@@ -17,6 +18,7 @@ import java.awt.event.MouseEvent;
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
@@ -47,8 +49,8 @@ class BubbleActionBar {
 
     private static final String[] QUEUED_FRAMES = {"\u23F3", "\u23F4", "\u23F5", "\u23F6"};
     private static final int ACTION_ICON_SIZE = 24;
-    /** Auto-hide delay: icons vanish after this much hover inactivity (user: 2-3s). */
-    private static final int AUTO_HIDE_DELAY_MS = 2500;
+    /** Auto-hide: the icons stay up this long after they appear, then hide (user: 3-4s). */
+    private static final int AUTO_HIDE_DELAY_MS = 3500;
     /** Overlay position: the icons float clear of the bubble's bottom edge. */
     private static final int OVERLAY_BOTTOM_INSET = 12;
     private static final int OVERLAY_RIGHT_INSET = 20;
@@ -77,6 +79,13 @@ class BubbleActionBar {
     private Timer showTimer;
     private Timer autoHideTimer;
     private Timer copyRevertTimer;
+
+    /** Hover surface: the bubble, every pane inside it and the icon overlay.
+     *  The rendered answer lives in child panes that swallow motion events, so the
+     *  bubble alone never sees a hover over the text. */
+    private MouseAdapter hoverListener;
+    /** Client property marking a component already wired to {@link #hoverListener}. */
+    private static final String HOVER_INSTALLED = "beanbot.hoverInstalled";
 
     // Queued indicator
     private boolean queued;
@@ -210,72 +219,74 @@ class BubbleActionBar {
     private void installHoverListeners() {
         // Hover: show buttons after 400ms delay. Overlay floats above the
         // bubble, so showing it never changes layout — repaint only.
-        // The same handler is registered for mouse AND motion events, and on
-        // the bubble, the icon overlay and the buttons: the overlay is not a
-        // descendant of the bubble panel, and the child text/editor panes and
-        // buttons swallow motion events, so hovering anywhere on the bubble
-        // must reach this handler to show or keep alive the icons.
-        MouseAdapter hover = new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                startShowTimer();
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e) {
-                if (!isMouseInsideComponent(bubble)) {
-                    hideButtons();
+        // The handler is registered on the bubble, every pane nested in it and the
+        // icon overlay: the rendered text and the buttons are child components, and
+        // mouse events go to the deepest component, so a listener on the bubble alone
+        // never sees a hover over the message.
+        if (hoverListener == null) {
+            hoverListener = new MouseAdapter() {
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    startShowTimer();
                 }
-            }
 
-            @Override
-            public void mouseMoved(MouseEvent e) {
-                onHoverMotion();
-            }
-        };
-        bubble.addMouseListener(hover);
-        bubble.addMouseMotionListener(hover);
-        if (actionsPlaceholder != null) {
-            actionsPlaceholder.addMouseListener(hover);
-            actionsPlaceholder.addMouseMotionListener(hover);
-        }
-        if (copyBtn != null) {
-            copyBtn.addMouseListener(hover);
-            copyBtn.addMouseMotionListener(hover);
-        }
-        if (pinBtn != null) {
-            pinBtn.addMouseListener(hover);
-            pinBtn.addMouseMotionListener(hover);
-        }
-
-        // Also hide when mouse exits a child button — mouseExited on bubble
-        // only fires once (when entering the child), so we re-check here.
-        MouseAdapter childExit = new MouseAdapter() {
-            @Override
-            public void mouseExited(MouseEvent e) {
-                SwingUtilities.invokeLater(() -> {
-                    if (!isMouseInsideComponent(bubble)) {
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    // Exit also fires when the pointer moves onto a child pane of the
+                    // bubble: hide only when the pointer really left the bubble.
+                    if (!pointerInsideBubble(e)) {
                         hideButtons();
                     }
-                });
-            }
-        };
-        if (copyBtn != null) {
-            copyBtn.addMouseListener(childExit);
+                }
+
+                @Override
+                public void mouseMoved(MouseEvent e) {
+                    onHoverMotion();
+                }
+            };
         }
-        if (pinBtn != null) {
-            pinBtn.addMouseListener(childExit);
+        installHover(bubble);
+        installHover(actionsPlaceholder);
+    }
+
+    /** Whether an exit event left the pointer within the bubble's bounds. */
+    private boolean pointerInsideBubble(MouseEvent e) {
+        Point p = SwingUtilities.convertPoint(e.getComponent(), e.getPoint(), bubble);
+        return bubble.contains(p);
+    }
+
+    /**
+     * Registers the hover handler on a component and everything nested in it. Idempotent —
+     * a content rebuild replaces the panes, so this runs again after every update.
+     */
+    private void installHover(Component c) {
+        if (c == null || hoverListener == null) {
+            return;
+        }
+        if (c instanceof JComponent jc) {
+            if (Boolean.TRUE.equals(jc.getClientProperty(HOVER_INSTALLED))) {
+                return;
+            }
+            jc.putClientProperty(HOVER_INSTALLED, Boolean.TRUE);
+        }
+        c.addMouseListener(hoverListener);
+        c.addMouseMotionListener(hoverListener);
+        if (c instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                installHover(child);
+            }
         }
     }
 
-    /** Pointer moved within the bubble: while the icons show this is activity
-     *  that keeps them alive; while hidden it starts the delayed show. */
+    /** Re-arms hover detection after the bubble rebuilt its content panes. */
+    void refreshHoverTargets() {
+        installHoverListeners();
+    }
+
+    /** Pointer moved within the bubble: while hidden it starts the delayed show. Once the
+     *  icons are up the auto-hide timer owns them — motion does not extend the window. */
     private void onHoverMotion() {
-        if (copyBtn != null && copyBtn.isVisible()) {
-            if (autoHideTimer != null) {
-                autoHideTimer.restart();
-            }
-        } else {
+        if (copyBtn != null && !copyBtn.isVisible()) {
             startShowTimer();
         }
     }
@@ -308,15 +319,16 @@ class BubbleActionBar {
         owner.repaint();
     }
 
-    /** Starts the delayed show timer unless it is already running, so a burst
-     *  of motion shows the icons once, 400ms after the first movement. */
+    /** Starts the delayed show timer. A burst of motion shows the icons once, 400ms after
+     *  the first movement; while they are already up this is a no-op, so moving around the
+     *  bubble does not push the auto-hide deadline back. */
     private void startShowTimer() {
+        if (copyBtn != null && copyBtn.isVisible()) {
+            return;
+        }
         if (showTimer == null) {
-            showTimer = new Timer(400, evt -> {
-                if (isMouseInsideComponent(bubble)) {
-                    showButtons();
-                }
-            });
+            // No pointer re-check: an exit that really leaves the bubble stops this timer.
+            showTimer = new Timer(400, evt -> showButtons());
             showTimer.setRepeats(false);
         }
         if (!showTimer.isRunning()) {
@@ -328,6 +340,9 @@ class BubbleActionBar {
      *  stationary pointer — no {@code mouseEntered} fires for those. */
     void checkHover() {
         if (copyBtn != null && !copyBtn.isVisible() && isMouseInsideComponent(bubble)) {
+            // Panes built after the last content update (an expanded code block, a diff)
+            // carry no handler yet: this is the point where we know the pointer is here.
+            installHover(bubble);
             startShowTimer();
         }
     }

@@ -355,6 +355,10 @@ public class MessageBubble extends JPanel implements Scrollable {
 
     private void updateContent(ColorTheme theme, boolean expanded) {
         contentRenderer.updateContent(theme, expanded, toolTitle);
+        // The rebuild may have replaced the rendered panes; re-arm hover detection on them.
+        if (actionBar != null) {
+            actionBar.refreshHoverTargets();
+        }
     }
 
     /** Applies or removes a queued indicator on the bubble. */
@@ -411,6 +415,8 @@ public class MessageBubble extends JPanel implements Scrollable {
             updateContent(ThemeManager.getCurrentTheme(), expanded);
         }
         streamer.finalizeStreaming(expanded, immediate);
+        // Finalization swaps the streaming area for the rendered panes; re-arm hover on them.
+        actionBar.refreshHoverTargets();
         // The finalized bubble may have grown or replaced content under a
         // stationary pointer; its icons should react like any other hover.
         actionBar.checkHover();

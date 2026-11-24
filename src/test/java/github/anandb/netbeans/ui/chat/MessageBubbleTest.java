@@ -5,6 +5,7 @@ import java.awt.Component;
 import java.awt.Dimension;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -187,6 +188,70 @@ class MessageBubbleTest {
     void avatarIsPinnedLeftForEveryUserMessage() {
         assertEquals(MessageBubble.AvatarPosition.LEFT, BubbleFactory.resolveAvatarPosition("user"));
         assertEquals(MessageBubble.AvatarPosition.NONE, BubbleFactory.resolveAvatarPosition("assistant"));
+    }
+
+    // ---------------------------------------------------------------- hover wiring
+
+    /**
+     * Copy and pin only appear while the pointer hovers the bubble, and mouse events go to
+     * the deepest component — the rendered answer sits in child panes, so the handler must
+     * be installed on every pane, not just the bubble card. Without this the icons never
+     * appear when the pointer is over the text (the reported macOS symptom).
+     */
+    @Test
+    void hoverHandlerReachesEveryPaneInsideTheBubble() throws Exception {
+        MessageBubble[] bubble = new MessageBubble[1];
+        SwingUtilities.invokeAndWait(() -> bubble[0] = new MessageBubble(
+                MessageType.agent_message_chunk, "hello **there**", "m1", null,
+                MessageBubble.AvatarPosition.NONE));
+
+        Component card = firstCard(bubble[0]);
+        assertTrue(card != null, "the assistant bubble is a card");
+        assertHoverWired(card);
+    }
+
+    @Test
+    void finalizeReArmsHoverOnTheRenderedPanes() throws Exception {
+        MessageBubble[] bubble = new MessageBubble[1];
+        SwingUtilities.invokeAndWait(() -> bubble[0] = new MessageBubble(
+                MessageType.agent_message_chunk, "hello ", "m1", null,
+                MessageBubble.AvatarPosition.NONE, true));
+        SwingUtilities.invokeAndWait(() -> {
+            bubble[0].appendText("**there**");
+            bubble[0].flushUpdate(true);
+            bubble[0].finalizeStreaming(true, true);
+        });
+
+        Component card = firstCard(bubble[0]);
+        assertTrue(card != null, "the finalized assistant bubble is a card");
+        assertHoverWired(card);
+    }
+
+    /** The assistant card: the first rounded panel in the tree. */
+    private static Component firstCard(Component c) {
+        if (c instanceof github.anandb.netbeans.ui.components.RoundedPanel) {
+            return c;
+        }
+        if (c instanceof java.awt.Container container) {
+            for (Component child : container.getComponents()) {
+                Component found = firstCard(child);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static void assertHoverWired(Component c) {
+        String name = c.getClass().getSimpleName();
+        assertFalse(c.getMouseListeners().length == 0, "no hover listener on " + name);
+        assertFalse(c.getMouseMotionListeners().length == 0, "no hover motion listener on " + name);
+        if (c instanceof java.awt.Container container) {
+            for (Component child : container.getComponents()) {
+                assertHoverWired(child);
+            }
+        }
     }
 
     private static JLabel laidOutChild(MessageBubble.AlignedRow row, int width) {
