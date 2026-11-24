@@ -21,10 +21,12 @@
   The profile prints the random seed for reproducing failures.
 - Surefire runs `*Test`; Failsafe runs `*IT` during `verify`. Use `./mvnw verify` for integration
   tests; `test` alone does not run them. Tests use the pinned `netbeans.user` directory.
-- **User guide**: `docs/stitch.py` needs `python3` and Harlowe 3 `tweego`; output is gzipped at
-  `target/generated-guide/UserGuide.html.gz`. Stitch failures fail the build;
-  `-DskipUserGuide=true` skips stitching and copying. Release verification requires the output,
-  so keep CI's pinned tweego install step.
+- **User guide**: `docs/stitch.py` needs `python3` and `tweego`; it compiles against the Harlowe
+  story format vendored at `docs/storyformats/harlowe-3` (3.3.9) via `TWEEGO_PATH`, not the older
+  format bundled with tweego. Output is gzipped at `target/generated-guide/UserGuide.html.gz`.
+  Stitch failures fail the build; `-DskipUserGuide=true` skips stitching and copying. Release
+  verification requires the output, so keep CI's pinned tweego install step. Bump the vendored
+  files, `FORMAT_VERSION` in `stitch.py` and `StoryData.format-version` together.
 
 ## BMAD Working Artifacts (`_bmad-output/`)
 - `_bmad-output/` is gitignored local state: never commit or cite it as a repo artifact. Maintain

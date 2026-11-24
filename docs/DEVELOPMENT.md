@@ -4,7 +4,8 @@
 
 - JDK 17+
 - Apache NetBeans (built and tested against RELEASE220)
-- `python3` and Harlowe 3 `tweego` on `PATH` to build the bundled user guide
+- `python3` and `tweego` on `PATH` to build the bundled user guide (the Harlowe 3.3.9 story
+  format is vendored in `docs/storyformats`, so tweego's bundled format is not used)
 - One supported coding harness installed and authenticated for manual testing
 
 ## Build

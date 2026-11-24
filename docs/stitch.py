@@ -4,7 +4,8 @@ then compile to HTML with tweego.
 
 Reads docs/passages/NNN_<name>.txt in filename order, converts markdown
 image links back to base64 data URIs, and writes target/User Guide.twee.
-Then compiles to HTML using tweego with Harlowe format.
+Then compiles to HTML using tweego with the Harlowe format vendored in
+docs/storyformats (see HARLOWE.md there for the pinned version).
 
 Markdown image link syntax produced by split.py:
     ![alt](../images/<name>-N.ext){style="max-width:100%;"}
@@ -27,7 +28,14 @@ PASSAGES_DIR = HERE / "passages"
 IMAGES_DIR = HERE / "images"
 DEFAULT_OUTPUT = HERE.parent / "target" / "User Guide.twee"
 IFID = "3F375208-DB5B-4371-8FB8-9949032993D8"
-HARLOWE_VERSION = "3.3.9"
+# Compile against the story format vendored in docs/storyformats, not the one
+# bundled with the installed tweego release, so local, CI and release builds use
+# the same engine. FORMAT_VERSION must match format.js and StoryData.
+STORYFORMATS_DIR = HERE / "storyformats"
+FORMAT_ID = "harlowe-3"
+FORMAT_VERSION = "3.3.9"
+FORMAT_JS = STORYFORMATS_DIR / FORMAT_ID / "format.js"
+FORMAT_VERSION_RE = re.compile(r'"version"\s*:\s*"([^"]+)"')
 
 MD_IMG_RE = re.compile(
     r'!\[([^\]]*)\]\(([^)]+)\)(?:{([^}]*?)})?', re.IGNORECASE
@@ -153,8 +161,29 @@ def find_tweego() -> str | None:
     return None
 
 
+def format_version() -> str:
+    """Return the vendored format's version, refusing to build when it is unpinned."""
+    try:
+        text = FORMAT_JS.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise SystemExit(
+            f"Error: vendored story format missing at {FORMAT_JS} ({exc}). "
+            "See docs/storyformats/harlowe-3/HARLOWE.md."
+        )
+    match = FORMAT_VERSION_RE.search(text)
+    if not match:
+        raise SystemExit(f"Error: could not read the version from {FORMAT_JS}.")
+    version = match.group(1)
+    if version != FORMAT_VERSION:
+        raise SystemExit(
+            f"Error: the vendored {FORMAT_ID} is {version}, but stitch.py pins "
+            f"{FORMAT_VERSION}. Update FORMAT_VERSION and StoryData together."
+        )
+    return version
+
+
 def compile_html(twee_path: Path) -> Path | None:
-    """Compile .twee to HTML using tweego with Harlowe format."""
+    """Compile .twee to HTML using tweego with the vendored Harlowe format."""
     html_path = twee_path.with_suffix(".html")
     tweego_path = find_tweego()
     if not tweego_path:
@@ -163,14 +192,20 @@ def compile_html(twee_path: Path) -> Path | None:
             "~/apps/tweego/tweego). Install tweego, or skip the user guide with "
             "-DskipUserGuide=true (e.g. ./mvnw package -DskipUserGuide=true)."
         )
+    format_version()
     cmd = [
         tweego_path,
-        "-f", "harlowe-3",
+        "-f", FORMAT_ID,
         "-o", str(html_path),
         str(twee_path)
     ]
-    print(f"Compiling {twee_path.name} → {html_path.name}...")
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    print(f"Compiling {twee_path.name} → {html_path.name} ({FORMAT_ID} {FORMAT_VERSION})...")
+    # Prepend the vendored formats so they shadow the ones inside tweego.
+    env = os.environ.copy()
+    vendored = str(STORYFORMATS_DIR)
+    existing = env.get("TWEEGO_PATH")
+    env["TWEEGO_PATH"] = vendored if not existing else vendored + os.pathsep + existing
+    result = subprocess.run(cmd, capture_output=True, text=True, env=env)
     if result.returncode != 0:
         print(f"Error: tweego failed with exit code {result.returncode}")
         print(f"stderr: {result.stderr}")

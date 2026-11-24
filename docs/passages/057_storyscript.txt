@@ -43,6 +43,7 @@ window.toggleTheme = function() {
 // Back/Forward is replayed into the story by clicking the icons Harlowe made.
 (function browserBackForward() {
   var NAV_ICON = 'tw-sidebar tw-icon';
+  var DIR_ATTR = 'data-bb-dir';
   var live = false;       // false when the browser will not keep our entries
   var turn = 0;           // the turn the story is showing
   var renders = 0;        // passages rendered so far, to detect a replayed move
@@ -55,8 +56,30 @@ window.toggleTheme = function() {
     try { return fn(); } catch (e) { return undefined; }
   }
 
+  // Harlowe 3.3 renders these icons without the old .undo/.redo classes and
+  // labels them alt/title="Undo"/"Redo", so the direction is recorded once in a
+  // data attribute and the visible title is then relabelled.
+  function dirOf(icon) {
+    var dir = icon.getAttribute(DIR_ATTR);
+    if (dir) { return dir; }
+    var label = ((icon.getAttribute('alt') || '') + ' ' +
+      (icon.getAttribute('title') || '')).toLowerCase();
+    dir = '';
+    if (label.indexOf('redo') > -1) { dir = 'redo'; }
+    else if (label.indexOf('undo') > -1) { dir = 'undo'; }
+    if (dir) { icon.setAttribute(DIR_ATTR, dir); }
+    return dir;
+  }
+
+  // Scan instead of using a selector: the attribute is set lazily, so an
+  // attribute selector could run before the icon has been classified.
   function iconFor(dir) {
-    return document.querySelector(NAV_ICON + (dir < 0 ? '.undo' : '.redo'));
+    var want = dir < 0 ? 'undo' : 'redo';
+    var icons = document.querySelectorAll(NAV_ICON);
+    for (var i = 0; i < icons.length; i++) {
+      if (dirOf(icons[i]) === want) { return icons[i]; }
+    }
+    return null;
   }
 
   // Send an icon click to the browser instead of to Harlowe's turn history.
@@ -65,11 +88,13 @@ window.toggleTheme = function() {
     var target = event.target;
     var icon = target && target.closest ? target.closest(NAV_ICON) : null;
     if (!icon) { return; }
-    var back = icon.classList.contains('undo');
-    if (!back && !icon.classList.contains('redo')) { return; }
+    var dir = dirOf(icon);
+    if (!dir) { return; }
     event.preventDefault();
     event.stopPropagation();
-    call(function() { if (back) { history.back(); } else { history.forward(); } });
+    call(function() {
+      if (dir === 'undo') { history.back(); } else { history.forward(); }
+    });
   }
 
   // Wait for a replayed icon click to render its passage. A move with nothing
@@ -130,10 +155,9 @@ window.toggleTheme = function() {
 
   function relabel(icon) {
     if (!live) { return; }
-    if (icon.classList.contains('undo')) {
-      icon.setAttribute('title', 'Back');
-    } else if (icon.classList.contains('redo')) {
-      icon.setAttribute('title', 'Forward');
+    var dir = dirOf(icon);
+    if (dir) {
+      icon.setAttribute('title', dir === 'undo' ? 'Back' : 'Forward');
     }
   }
 
