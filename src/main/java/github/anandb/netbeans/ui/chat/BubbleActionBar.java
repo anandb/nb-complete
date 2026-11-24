@@ -217,6 +217,12 @@ class BubbleActionBar {
     }
 
     private void installHoverListeners() {
+        // Bubbles that get no action buttons (user, info, error) have nothing to
+        // reveal: wiring hover on them would arm a timer that dereferences a null
+        // copyBtn in showButtons().
+        if (copyBtn == null) {
+            return;
+        }
         // Hover: show buttons after 400ms delay. Overlay floats above the
         // bubble, so showing it never changes layout — repaint only.
         // The handler is registered on the bubble, every pane nested in it and the
@@ -292,7 +298,12 @@ class BubbleActionBar {
     }
 
     /** Shows the buttons and arms the auto-hide timer. */
-    private void showButtons() {
+    void showButtons() {
+        // A timer armed before the buttons existed (or a bubble that never gets
+        // them) must not crash on the still-null copy button.
+        if (copyBtn == null) {
+            return;
+        }
         copyBtn.setVisible(true);
         if (pinBtn != null && !pinned) {
             pinBtn.setVisible(true);
@@ -323,7 +334,7 @@ class BubbleActionBar {
      *  the first movement; while they are already up this is a no-op, so moving around the
      *  bubble does not push the auto-hide deadline back. */
     private void startShowTimer() {
-        if (copyBtn != null && copyBtn.isVisible()) {
+        if (copyBtn == null || copyBtn.isVisible()) {
             return;
         }
         if (showTimer == null) {
