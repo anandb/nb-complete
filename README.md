@@ -184,7 +184,7 @@ chooser to install or pick it. Binaries on `PATH` are never auto-selected.
 
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) — package layout, layer rules and connection flow.
 - [ARCHITECTURE-REVIEW.md](docs/ARCHITECTURE-REVIEW.md) — long-form design review and subsystem notes.
-- [architecture.dot](docs/architecture.dot) — generated component graph.
+- [DIAGRAM.dot](docs/DIAGRAM.dot) — generated component graph.
 - [DEVELOPMENT.md](docs/DEVELOPMENT.md) — build, tests, source organization, code reading path and
   system properties.
 - [AGENTS.md](AGENTS.md) — index of the repository coding rules and architectural constraints;

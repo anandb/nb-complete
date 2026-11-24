@@ -16,7 +16,7 @@ BeanBot follows a hexagonal (ports & adapters) architecture integrated into the 
 
 For the long-form architectural review — concurrency/EDT rules, protocol details and subsystem
 notes — see [ARCHITECTURE-REVIEW.md](ARCHITECTURE-REVIEW.md). The generated component graph is
-[architecture.dot](architecture.dot).
+[DIAGRAM.dot](DIAGRAM.dot).
 
 ## Layer Dependencies
 
