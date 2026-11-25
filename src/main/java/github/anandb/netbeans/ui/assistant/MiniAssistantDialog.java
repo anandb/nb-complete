@@ -29,6 +29,8 @@ import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.lang.reflect.InvocationTargetException;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -57,6 +59,7 @@ import javax.swing.Timer;
 import org.apache.commons.lang3.StringUtils;
 import github.anandb.netbeans.support.TurnTokenCounter;
 
+import org.openide.filesystems.FileObject;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 import org.openide.util.Utilities;
@@ -73,8 +76,12 @@ import github.anandb.netbeans.support.ToolCallDiffParser.FileChange;
 import github.anandb.netbeans.support.ToolContextExtractor;
 import github.anandb.netbeans.ui.chat.MessageBubble;
 import github.anandb.netbeans.ui.chat.BubbleThemeApplier;
+import github.anandb.netbeans.model.AttachedFile;
+import github.anandb.netbeans.ui.composer.AttachmentButton;
+import github.anandb.netbeans.ui.composer.AttachmentManager;
 import github.anandb.netbeans.ui.composer.AutocompleteManager;
 import github.anandb.netbeans.ui.composer.PlaceholderTextArea;
+import github.anandb.netbeans.ui.composer.PasteCallback;
 import github.anandb.netbeans.ui.permission.PermissionOption;
 import github.anandb.netbeans.ui.permission.PermissionRequestPanel;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
@@ -103,6 +110,10 @@ public class MiniAssistantDialog extends JDialog {
     private final JLabel tokenOverlay;
     private final JProgressBar spinnerBar;
     private Timer tokenTimer;
+    /** Transient attachment feedback ("attached", "too large", "max files") shown
+     *  in the token row's free center space; auto-hides after 1.5s. */
+    private JLabel miniStatusLabel;
+    private Timer statusResetTimer;
     private KeyEventDispatcher keyDispatcher;
 
     private static final Set<String> DISALLOWED_MINI_COMMANDS = Set.of(
@@ -110,6 +121,8 @@ public class MiniAssistantDialog extends JDialog {
     );
 
     private AutocompleteManager autocompleteManager;
+    private AttachmentManager attachmentManager;
+    private AttachmentButton attachmentButton;
 
     /** For {@link MiniAssistantKeyDispatcher}. */
     PlaceholderTextArea inputArea() {
@@ -226,12 +239,25 @@ public class MiniAssistantDialog extends JDialog {
         keyDispatcher = new MiniAssistantKeyDispatcher(this);
         KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(keyDispatcher);
 
+        attachmentManager = new AttachmentManager();
+        attachmentButton = new AttachmentButton(attachmentManager, miniAttachmentBridge(), this);
+        attachmentButton.setupPasteOn(inputArea);
+
         JScrollPane inputScrollPane = new JScrollPane(inputArea);
         inputScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         inputScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         inputScrollPane.setBorder(null);
-        splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, null, inputScrollPane);
-        splitPane.setResizeWeight(0.85); // give more space to response
+        // Paperclip sits on its own slim row under the input; the input pane keeps
+        // its scroll policies so the wrapper is layout-transparent.
+        JPanel clipRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 0));
+        clipRow.setOpaque(false);
+        clipRow.add(attachmentButton.getButton());
+        JPanel inputWrapper = new JPanel(new BorderLayout());
+        inputWrapper.setOpaque(false);
+        inputWrapper.add(inputScrollPane, BorderLayout.CENTER);
+        inputWrapper.add(clipRow, BorderLayout.SOUTH);
+        splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, null, inputWrapper);
+        splitPane.setResizeWeight(1.0); // resize changes only the response pane; the input keeps its height
         splitPane.addPropertyChangeListener(JSplitPane.DIVIDER_LOCATION_PROPERTY, e -> saveBounds());
         splitPane.addComponentListener(new ComponentAdapter() {
             private boolean dividerRestored = false;
@@ -306,9 +332,21 @@ public class MiniAssistantDialog extends JDialog {
         statusPanel.add(elapsedLabel);
         statusPanel.add(stopBtn);
 
+        // Attachment status label lives in the token row's free center space.
+        miniStatusLabel = new JLabel();
+        miniStatusLabel.setOpaque(false);
+        miniStatusLabel.setFont(ThemeManager.getMonospaceFont().deriveFont(10f));
+        miniStatusLabel.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 2));
+        miniStatusLabel.setForeground(ThemeManager.getCurrentTheme().mutedForeground());
+        miniStatusLabel.setHorizontalAlignment(SwingConstants.LEFT);
+        miniStatusLabel.setVisible(false);
+        statusResetTimer = new Timer(1500, e -> miniStatusLabel.setVisible(false));
+        statusResetTimer.setRepeats(false);
+
         JPanel tokenRow = new JPanel(new BorderLayout());
         tokenRow.setOpaque(false);
         tokenRow.add(tokenOverlay, BorderLayout.WEST);
+        tokenRow.add(miniStatusLabel, BorderLayout.CENTER);
         tokenRow.add(statusPanel, BorderLayout.EAST);
 
         JPanel topHeader = new JPanel(new BorderLayout());
@@ -420,6 +458,32 @@ public class MiniAssistantDialog extends JDialog {
         }
     }
 
+    /**
+     * Attaches an external (outside-project) file as an embedded attachment.
+     * The bytes are read on a background thread; on cap rejection or read
+     * failure the file's path is inserted into the input instead (the old
+     * send-as-path behavior) so the action never does nothing silently.
+     */
+    public void attachExternalFile(FileObject fo) {
+        updateResponsePane();
+        setVisible(true);
+        File f = new File(fo.getPath());
+        CompletableFuture.runAsync(() -> {
+            try {
+                AttachedFile attached = new AttachedFile(f);
+                SwingUtilities.invokeLater(() -> {
+                    if (attachmentButton.attachFile(attached)) {
+                        inputArea.requestFocusInWindow();
+                    } else {
+                        showWithText(f.getPath());
+                    }
+                });
+            } catch (IOException ex) {
+                SwingUtilities.invokeLater(() -> showWithText(f.getPath()));
+            }
+        });
+    }
+
     /** Shows the dialog and pre-fills the input area. Callable from any thread
      * (used by the IDE Inspector's "Send to Assistant" action via reflection). */
     public void showWithText(String text) {
@@ -485,10 +549,57 @@ public class MiniAssistantDialog extends JDialog {
             inputArea.setText("");
 
             tc.setInputText(text);
-            tc.sendMessage();
+            // Hand the mini attachments to the composer list (which the send pipeline
+            // reads); files that did not fit the composer caps stay here.
+            List<AttachedFile> leftover = tc.sendMessageWithAttachments(attachmentManager.getAttachments());
+            attachmentManager.getAttachments().stream()
+                    .filter(file -> !leftover.contains(file))
+                    .forEach(attachmentManager::remove);
+            attachmentButton.updateTooltip();
 
             showSpinner();
         }
+    }
+
+    /** Attachment outcome sink for the Mini: the button reflects state itself
+     *  (badge tooltip, popup list); the Mini has no status bar, so outcome
+     *  notifications are intentionally inert for now. */
+    private PasteCallback miniAttachmentBridge() {
+        return new PasteCallback() {
+            @Override
+            public boolean canAddAttachment() {
+                return true; // AttachmentButton owns the cap check before notifying
+            }
+
+            @Override
+            public void onAttachmentAdded(AttachedFile file) {
+                flashMiniStatus("STATUS_Attached", file.filename());
+            }
+
+            @Override
+            public void onError(String message) {
+                miniStatusLabel.setText(message);
+                miniStatusLabel.setVisible(true);
+                statusResetTimer.restart();
+            }
+
+            @Override
+            public void onAttachmentLimitReached() {
+                flashMiniStatus("STATUS_MaxFiles", AttachmentManager.MAX_ATTACHMENTS);
+            }
+
+            @Override
+            public void onAttachmentTooLarge() {
+                flashMiniStatus("STATUS_FileTooLarge");
+            }
+        };
+    }
+
+    /** Shows a transient attachment message in the token row; auto-hides. */
+    private void flashMiniStatus(String key, Object... args) {
+        miniStatusLabel.setText(NbBundle.getMessage(UIBundle.class, key, args));
+        miniStatusLabel.setVisible(true);
+        statusResetTimer.restart();
     }
 
     private void showSpinner() {
@@ -957,6 +1068,9 @@ public class MiniAssistantDialog extends JDialog {
         }
         stopElapsedTimer();
         stopTokenPolling();
+        if (statusResetTimer != null) {
+            statusResetTimer.stop();
+        }
         // Release the permission strip's animation timers explicitly; disposal removes the
         // component tree, but the timers hold this dialog's panel through their listeners.
         miniPermissionPanel.stopWobble();
@@ -1016,6 +1130,9 @@ public class MiniAssistantDialog extends JDialog {
         // Update elapsed label color for current theme
         if (elapsedLabel != null) {
             elapsedLabel.setForeground(theme.mutedForeground());
+        }
+        if (miniStatusLabel != null) {
+            miniStatusLabel.setForeground(theme.mutedForeground());
         }
         // Update stop button icon for dark/light theme
         if (stopBtn != null && stopBtn.isVisible()) {

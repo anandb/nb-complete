@@ -1,98 +1,58 @@
 package github.anandb.netbeans.ui.composer;
 
 import java.awt.Component;
-import java.awt.event.ActionEvent;
-import java.util.List;
-import javax.swing.Icon;
-import javax.swing.JButton;
-import javax.swing.JCheckBoxMenuItem;
-import javax.swing.JFileChooser;
-import javax.swing.JMenuItem;
-import javax.swing.JPopupMenu;
 import javax.swing.SwingUtilities;
-import org.openide.util.ImageUtilities;
-import org.openide.util.NbBundle;
+import java.util.List;
+import javax.swing.JButton;
 import github.anandb.netbeans.model.AttachedFile;
-import github.anandb.netbeans.support.PluginSettings;
-import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.session.StatusController;
-import github.anandb.netbeans.ui.rendering.ThemeManager;
-import github.anandb.netbeans.ui.components.UIUtils;
 
 /**
- * Handles all attachment-related UI: paperclip button, file selection popup,
- * attachment tooltip updates, and image paste handling.
+ * Main-composer adapter over {@link AttachmentButton}: forwards attachment
+ * outcomes into {@link StatusController} messages and keeps the paperclip's
+ * enabled state in sync with composer input availability.
  */
-// DSL-LEAF: not a controller — builds the paperclip toolbar button + popup menu
-// for file attachments. Migration target: AttachmentButtonSpec; the JFileChooser
-// + AttachmentManager state wiring stays imperative.
+// DSL-LEAF: thin bridge — all button/menu/chooser/paste mechanics live in
+// AttachmentButton; this class only maps outcomes to status bar keys.
 public class AttachmentUiHandler {
 
-    private final AttachmentManager attachmentManager;
+    private final AttachmentButton attachmentButton;
     private final StatusController statusController;
-    private final Component parentWindow;
-    private final JButton paperclipBtn;
 
     public AttachmentUiHandler(
             AttachmentManager attachmentManager,
             StatusController statusController,
             PlaceholderTextArea inputArea,
             Component parentWindow) {
-        this.attachmentManager = attachmentManager;
         this.statusController = statusController;
-        this.parentWindow = parentWindow;
-
-        this.paperclipBtn = UIUtils.createToolbarButton("paperclip.svg",
-                NbBundle.getMessage(UIBundle.class, "HINT_AttachFiles"), null);
-        this.paperclipBtn.addActionListener(e -> showPaperclipMenu(e));
+        this.attachmentButton = new AttachmentButton(attachmentManager, pasteBridge(), parentWindow);
         // The paperclip follows the input text area's enabled state (disabled
         // while no session is active or a message is in flight).
-        statusController.addInputEnabledListener(enabled -> paperclipBtn.setEnabled(enabled));
-
-        setupImagePasteHandler(inputArea);
+        statusController.addInputEnabledListener(enabled -> getButton().setEnabled(enabled));
+        attachmentButton.setupPasteOn(inputArea);
     }
 
-    public JButton getButton() {
-        return paperclipBtn;
-    }
-
-    /** Updates the paperclip button tooltip and icon based on attachment count. */
-    public void updateTooltip() {
-        if (attachmentManager.getAttachments().isEmpty()) {
-            paperclipBtn.setToolTipText(NbBundle.getMessage(UIBundle.class, "HINT_AttachFiles"));
-            Icon icon = ThemeManager.getIcon("paperclip.svg", PluginSettings.getToolbarIconSize());
-            paperclipBtn.setIcon(icon);
-            if (icon != null) {
-                paperclipBtn.setDisabledIcon(ImageUtilities.createDisabledIcon(icon));
-            }
-        } else {
-            paperclipBtn.setToolTipText(NbBundle.getMessage(UIBundle.class, "HINT_FilesAttached", attachmentManager.size()));
-            Icon base = ThemeManager.getIcon("paperclip.svg", PluginSettings.getToolbarIconSize());
-            Icon icon = new AttachmentBadgeIcon(base, attachmentManager.size());
-            paperclipBtn.setIcon(icon);
-            if (icon != null) {
-                paperclipBtn.setDisabledIcon(ImageUtilities.createDisabledIcon(icon));
-            }
-        }
-    }
-
-    private void setupImagePasteHandler(PlaceholderTextArea inputArea) {
-        PasteCallback callback = new PasteCallback() {
+    /** Maps AttachmentButton outcomes onto the composer's status bar + tooltip. */
+    private PasteCallback pasteBridge() {
+        return new PasteCallback() {
             @Override
             public boolean canAddAttachment() {
-                return attachmentManager.canAdd();
+                return true; // AttachmentButton owns the cap check before notifying
             }
 
             @Override
             public void onAttachmentAdded(AttachedFile file) {
                 SwingUtilities.invokeLater(() -> {
-                    if (!attachmentManager.add(file)) {
-                        statusController.setStatus("STATUS_FileTooLarge");
-                        statusController.scheduleReset();
-                        return;
-                    }
                     updateTooltip();
                     statusController.setStatus("STATUS_Attached", file.filename());
+                    statusController.scheduleReset();
+                });
+            }
+
+            @Override
+            public void onAttachmentTooLarge() {
+                SwingUtilities.invokeLater(() -> {
+                    statusController.setStatus("STATUS_FileTooLarge");
                     statusController.scheduleReset();
                 });
             }
@@ -112,58 +72,33 @@ public class AttachmentUiHandler {
                     statusController.scheduleReset();
                 });
             }
-        };
 
-        ImagePasteTransferHandler handler = new ImagePasteTransferHandler(callback);
-        inputArea.setTransferHandler(handler);
-    }
-
-    private void showPaperclipMenu(ActionEvent e) {
-        JPopupMenu menu = new JPopupMenu();
-        JMenuItem addItem = new JMenuItem(NbBundle.getMessage(UIBundle.class, "BTN_SelectFile"));
-        addItem.addActionListener(ev -> selectFiles());
-        menu.add(addItem);
-        List<AttachedFile> currentFiles = attachmentManager.getAttachments();
-        if (!currentFiles.isEmpty()) {
-            menu.addSeparator();
-            for (AttachedFile af : currentFiles) {
-                JCheckBoxMenuItem cb = new JCheckBoxMenuItem(af.filename(), true);
-                cb.addActionListener(ev -> {
-                    if (!cb.isSelected()) {
-                        attachmentManager.remove(af);
-                        updateTooltip();
+            @Override
+            public void onFilesAttached(List<AttachedFile> added) {
+                SwingUtilities.invokeLater(() -> {
+                    String lastName = added.get(added.size() - 1).filename();
+                    if (added.size() == 1) {
+                        statusController.setStatus("STATUS_Attached", lastName);
+                    } else {
+                        statusController.setStatus("STATUS_AttachedMore", lastName, added.size() - 1);
                     }
+                    statusController.scheduleReset();
                 });
-                menu.add(cb);
             }
-        }
-        menu.show(paperclipBtn, 0, paperclipBtn.getHeight());
+        };
     }
 
-    private void selectFiles() {
-        if (!attachmentManager.canAdd()) {
-            statusController.setStatus("STATUS_MaxFiles", AttachmentManager.MAX_ATTACHMENTS);
-            statusController.scheduleReset();
-            return;
-        }
+    public JButton getButton() {
+        return attachmentButton.getButton();
+    }
 
-        JFileChooser fc = new JFileChooser();
-        fc.setMultiSelectionEnabled(true);
-        if (fc.showOpenDialog(parentWindow) == JFileChooser.APPROVE_OPTION) {
-            int oldSize = attachmentManager.size();
-            attachmentManager.addFromFiles(fc.getSelectedFiles());
-            int added = attachmentManager.size() - oldSize;
-            if (added > 0) {
-                List<AttachedFile> files = attachmentManager.getAttachments();
-                String lastName = files.get(files.size() - 1).filename();
-                if (added == 1) {
-                    statusController.setStatus("STATUS_Attached", lastName);
-                } else {
-                    statusController.setStatus("STATUS_AttachedMore", lastName, added - 1);
-                }
-                statusController.scheduleReset();
-            }
-            updateTooltip();
-        }
+    /** Updates the paperclip button tooltip and icon based on attachment count. */
+    public void updateTooltip() {
+        attachmentButton.updateTooltip();
+    }
+
+    /** Programmatic single-file attach; outcome status flows through the bridge. */
+    public boolean attachFile(AttachedFile file) {
+        return attachmentButton.attachFile(file);
     }
 }

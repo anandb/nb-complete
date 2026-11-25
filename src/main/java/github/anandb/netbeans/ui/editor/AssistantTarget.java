@@ -2,10 +2,11 @@ package github.anandb.netbeans.ui.editor;
 
 import java.awt.EventQueue;
 
+import org.openide.filesystems.FileObject;
+
 import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.ui.assistant.AssistantTopComponent;
 import github.anandb.netbeans.ui.assistant.MiniAssistantDialog;
-
 /**
  * Routes "Send to Assistant" / "Ask Assistant" actions to either the Mini
  * Assistant dialog or the main assistant sidebar based on the
@@ -53,6 +54,22 @@ public final class AssistantTarget {
             AssistantTopComponent tc = openMainSidebar();
             if (tc != null) {
                 tc.appendInputText(text);
+            }
+        }
+    }
+
+    /**
+     * Opens the active target and attaches a project-external file as an
+     * embedded attachment (falls back to the path text when the caps reject
+     * it). Works for the Mini dialog too, which owns its own paperclip.
+     */
+    public static void showExternalFile(FileObject fo) {
+        if (isMini()) {
+            MiniAssistantDialog.getInstance().attachExternalFile(fo);
+        } else {
+            AssistantTopComponent tc = openMainSidebar();
+            if (tc != null) {
+                tc.attachExternalFile(fo);
             }
         }
     }

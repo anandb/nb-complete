@@ -13,9 +13,12 @@ import java.awt.Desktop;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import github.anandb.netbeans.model.AttachedFile;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
+import org.openide.filesystems.FileObject;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.Level;
@@ -685,6 +688,49 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         if (messageSender != null) {
             messageSender.sendMessage();
         }
+    }
+
+    /**
+     * Sends the composer text plus externally-held attachments (Mini Assistant).
+     * The given files are merged into the composer attachment list, honoring its
+     * caps; files that do not fit are returned so the caller can keep them.
+     */
+    public List<AttachedFile> sendMessageWithAttachments(
+            List<AttachedFile> extras) {
+        List<AttachedFile> leftover = new ArrayList<>();
+        if (extras != null) {
+            for (AttachedFile file : extras) {
+                if (!attachmentManager.add(file)) {
+                    leftover.add(file);
+                }
+            }
+        }
+        sendMessage();
+        return leftover;
+    }
+
+    /**
+     * Attaches an external (outside-project) file as an embedded attachment.
+     * The bytes are read on a background thread; on cap rejection or read
+     * failure the file's path is inserted into the input instead (the old
+     * send-as-path behavior) so the action never does nothing silently.
+     */
+    public void attachExternalFile(FileObject fo) {
+        File f = new File(fo.getPath());
+        CompletableFuture.runAsync(() -> {
+            try {
+                AttachedFile attached = new AttachedFile(f);
+                SwingUtilities.invokeLater(() -> {
+                    if (attachmentUiHandler.attachFile(attached)) {
+                        focusInput();
+                    } else {
+                        appendInputText(f.getPath());
+                    }
+                });
+            } catch (IOException ex) {
+                SwingUtilities.invokeLater(() -> appendInputText(f.getPath()));
+            }
+        });
     }
 
     public void stopMessage() {

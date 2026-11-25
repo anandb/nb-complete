@@ -1,6 +1,7 @@
 package github.anandb.netbeans.ui.editor;
 
 import javax.swing.SwingUtilities;
+import org.netbeans.api.project.FileOwnerQuery;
 import org.openide.awt.ActionID;
 import org.openide.awt.ActionReference;
 import org.openide.awt.ActionReferences;
@@ -14,8 +15,11 @@ import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 
 /**
- * Projects / Files window action: sends the selected file's path to the
- * Mini Assistant input.
+ * Projects / Files window action: sends the selected file to the Mini Assistant
+ * input. Files inside an open project travel as a path reference the agent can
+ * read via {@code fs/read_text_file}; project-external files travel as embedded
+ * attachments (the client reads the bytes), because the path guard rejects
+ * external reads.
  */
 @ActionID(category = "Edit", id = "github.anandb.netbeans.ui.SendToAssistantFileAction")
 @ActionRegistration(displayName = "#CTL_SendToAssistantAction", lazy = false)
@@ -38,7 +42,14 @@ public final class SendToAssistantFileAction extends NodeAction {
         if (fo == null || fo.isFolder()) {
             return;
         }
-        SwingUtilities.invokeLater(() -> AssistantTarget.showWithText(fo.getPath()));
+        boolean external = FileOwnerQuery.getOwner(fo) == null;
+        SwingUtilities.invokeLater(() -> {
+            if (external) {
+                AssistantTarget.showExternalFile(fo);
+            } else {
+                AssistantTarget.showWithText(fo.getPath());
+            }
+        });
     }
 
     @Override

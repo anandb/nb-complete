@@ -11,7 +11,7 @@ import java.util.Map;
 
 public class AttachmentManager {
 
-    static final int MAX_ATTACHMENTS = 2;
+    public static final int MAX_ATTACHMENTS = 2;
     static final long MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
     /**
      * Largest file body inlined into a prompt, in characters. A 10 MB log would
