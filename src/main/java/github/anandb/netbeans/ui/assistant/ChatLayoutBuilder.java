@@ -444,6 +444,7 @@ public final class ChatLayoutBuilder {
 
             JMenuItem openGuideItem = new JMenuItem(NbBundle.getMessage(
                     UIBundle.class, "LBL_HelpOpenGuide"));
+            openGuideItem.setIcon(ThemeManager.getIcon("open-guide.svg", 16));
             openGuideItem.addActionListener(ev -> UserGuideOpener.open(guideFallback(customGuideUrl)));
             helpPopup.add(openGuideItem);
 
@@ -479,6 +480,7 @@ public final class ChatLayoutBuilder {
 
             JMenuItem chooseAgentItem = new JMenuItem(NbBundle.getMessage(
                     UIBundle.class, "LBL_HelpChooseAgent"));
+            chooseAgentItem.setIcon(ThemeManager.getIcon("run-harness.svg", 16));
             chooseAgentItem.addActionListener(ev ->
                 CompletableFuture.runAsync(() -> {
                     List<BinaryResolver.FoundBinary> found = BinaryResolver.findAllKnownOnPath();
@@ -497,6 +499,7 @@ public final class ChatLayoutBuilder {
 
             JMenuItem starOnGitHubItem = new JMenuItem(NbBundle.getMessage(
                     UIBundle.class, "CTL_StarOnGitHub"));
+            starOnGitHubItem.setIcon(ThemeManager.getIcon("star.svg", 16));
             starOnGitHubItem.addActionListener(ev -> BrowserUtils.openOrCopyUrl(AppLinks.projectUrl(),
                     "STATUS_ProjectUrlCopied", (url, key) -> topComponent.setStatus(key, url)));
             helpPopup.add(starOnGitHubItem);

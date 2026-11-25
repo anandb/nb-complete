@@ -6,6 +6,9 @@
 - **An expanded tool, thought or activity card keeps its outline on all four sides**: the 1px theme border is drawn for the collapsed one-line header, where it reads clearly, but against the expanded card's header and body surfaces it washed out until the card looked open along two edges. The expanded outline is now shifted 30% away from the surface — darker on light themes, lighter on dark ones — and returns to the theme border on collapse; code blocks keep their own header-rule colour.
 - **Copy and pin appear when the pointer is over the message text**: the hover handler was registered on the bubble card alone, and mouse events go to the deepest component, so hovering the rendered answer (or a code/tool pane) never started the 400 ms reveal — only the card's own 6 px padding, a wheel scroll or a finalize ever showed the icons. The handler is now installed on every pane inside the bubble and re-armed whenever the content is rebuilt or finalized, with the existing rule applied to those panes: an exit hides the icons only when the pointer really left the bubble's bounds. Coming back inside shows them again, and they stay up for 3.5 s before hiding.
 
+### UI
+- **Help menu icons**: Open User Guide, Run Harness Selection Again and Star this project on GitHub now carry a book, robot and star icon. All three are outline icons with black and dark-theme white variants.
+
 ### Documentation
 - **Architecture decision records**: `docs/adr/` now records the decisions behind the code — 0001 mid-turn steering routing order, 0002 hexagonal layer model, 0003 ACP over direct model APIs, 0004 harness catalog and version capabilities, 0005 Swing layout-loop prevention — plus an index of planned records.
 - **Coverage target scoped**: the 96% target now applies to the core modules (`contract/`, `support/`, `manager/`); `ui/` is excluded as hard to unit-test headlessly. Current: core ~82%, excluding `ui/` ~81%, overall ~58%.
