@@ -341,7 +341,7 @@ public class GoToFileDialog extends JDialog {
         }
         resultList.clearSelection();
         selectionConsumer.accept(files);
-        statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_PickerAttached"));
+        statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_PickerAttached", files.size()));
         // Everything displayed has been picked (and there was something to pick):
         // start a fresh query. Zero results never clear the typed query.
         if (listModel.size() > 0 && items.size() == listModel.size()) {
@@ -390,7 +390,7 @@ public class GoToFileDialog extends JDialog {
                     if (clicked != null) {
                         resultList.clearSelection();
                         selectionConsumer.accept(List.of(clicked.fileObject()));
-                        statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_PickerAttached"));
+                        statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_PickerAttached", 1));
                         if (listModel.size() == 1) {
                             searchField.setText("");
                         }
