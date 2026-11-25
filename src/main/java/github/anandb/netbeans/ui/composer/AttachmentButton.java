@@ -82,8 +82,10 @@ public class AttachmentButton {
                 if (attachmentManager.add(file)) {
                     updateTooltip();
                     pasteCallback.onAttachmentAdded(file);
-                } else {
+                } else if (file.size() > AttachmentManager.maxAttachmentSize()) {
                     pasteCallback.onAttachmentTooLarge();
+                } else {
+                    pasteCallback.onAttachmentLimitReached();
                 }
             }
 
