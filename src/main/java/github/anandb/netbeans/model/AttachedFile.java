@@ -2,6 +2,7 @@ package github.anandb.netbeans.model;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CharsetDecoder;
@@ -33,8 +34,27 @@ public record AttachedFile(
     }
 
     public AttachedFile(File f) throws IOException {
-        this(f.getName(), guessMimeType(f.getName()), Files.readAllBytes(f.toPath()), f.length(),
-             Utilities.toURI(f).toString());
+        this(f, Files.readAllBytes(f.toPath()));
+    }
+
+    /** Reads an embedded attachment within the size limit, including a bounded read. */
+    public static AttachedFile readEmbedded(File f, long maxSize) throws IOException {
+        long size = Files.size(f.toPath());
+        if (size > maxSize) {
+            throw new IOException("File exceeds attachment limit");
+        }
+        byte[] data;
+        try (InputStream input = Files.newInputStream(f.toPath())) {
+            data = input.readNBytes(Math.toIntExact(maxSize + 1));
+        }
+        if (data.length > maxSize || Files.size(f.toPath()) > maxSize) {
+            throw new IOException("File exceeds attachment limit");
+        }
+        return new AttachedFile(f, data);
+    }
+
+    private AttachedFile(File f, byte[] data) {
+        this(f.getName(), guessMimeType(f.getName()), data, data.length, Utilities.toURI(f).toString());
     }
 
     /** A reference-only attachment: bytes are not read; the agent reads the file itself. */

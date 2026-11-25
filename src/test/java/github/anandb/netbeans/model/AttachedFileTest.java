@@ -10,6 +10,7 @@ import org.junit.jupiter.api.io.TempDir;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AttachedFileTest {
@@ -60,7 +61,6 @@ class AttachedFileTest {
         Files.writeString(unknown, "all: build");
         assertEquals("all: build", new AttachedFile(unknown.toFile()).textContent());
     }
-
     @Test
     void recognizesSupportedFileExtensions() throws Exception {
         String[][] extensions = {
@@ -84,6 +84,7 @@ class AttachedFileTest {
             Files.write(path, new byte[0]);
             assertEquals(entry[1], new AttachedFile(path.toFile()).mimeType(), entry[0]);
         }
+
     }
 
     @Test
@@ -95,6 +96,25 @@ class AttachedFileTest {
         AttachedFile split = new AttachedFile("large.unknown", "application/octet-stream", data, data.length,
                 "file:///large.unknown");
         assertTrue(split.textContent() != null);
+    }
+
+    @Test
+    void readEmbeddedRejectsOversizedFileBeforeReadingContents() throws Exception {
+        Path path = temp.resolve("oversized.bin");
+        try (java.io.RandomAccessFile file = new java.io.RandomAccessFile(path.toFile(), "rw")) {
+            file.setLength(11L * 1024 * 1024);
+        }
+        assertThrows(java.io.IOException.class,
+                () -> AttachedFile.readEmbedded(path.toFile(), 10L * 1024 * 1024));
+    }
+
+    @Test
+    void readEmbeddedAcceptsFileAtLimit() throws Exception {
+        Path path = temp.resolve("at-limit.txt");
+        Files.writeString(path, "hello");
+        AttachedFile attached = AttachedFile.readEmbedded(path.toFile(), 5);
+        assertEquals("hello", attached.textContent());
+        assertEquals(5, attached.size());
     }
 
     private static AttachedFile unknown(String text) {

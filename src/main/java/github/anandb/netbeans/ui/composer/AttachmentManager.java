@@ -15,11 +15,12 @@ public class AttachmentManager {
     /** References carry no file body, so they get their own, larger cap. */
     public static final int MAX_REFERENCES = 20;
     static final long MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
-    /**
-     * Largest file body inlined into a prompt, in characters. A 10 MB log would
-     * otherwise become a multi-million-token turn (and stay in session history),
-     * so the body is cut here with a marker the model can see.
-     */
+
+    public static long maxAttachmentSize() {
+        return MAX_ATTACHMENT_SIZE;
+    }
+
+    /** Largest file body inlined into a prompt, in characters. */
     static final int MAX_INLINE_TEXT_CHARS = 256 * 1024;
 
     private final List<AttachedFile> attachments = new ArrayList<>();

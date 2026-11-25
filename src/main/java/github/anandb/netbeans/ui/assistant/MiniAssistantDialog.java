@@ -470,7 +470,7 @@ public class MiniAssistantDialog extends JDialog {
         File f = new File(fo.getPath());
         CompletableFuture.runAsync(() -> {
             try {
-                AttachedFile attached = new AttachedFile(f);
+                AttachedFile attached = AttachedFile.readEmbedded(f, AttachmentManager.maxAttachmentSize());
                 SwingUtilities.invokeLater(() -> {
                     if (attachmentButton.attachFile(attached)) {
                         inputArea.requestFocusInWindow();

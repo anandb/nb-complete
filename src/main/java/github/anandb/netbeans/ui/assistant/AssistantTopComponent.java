@@ -719,7 +719,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
         File f = new File(fo.getPath());
         CompletableFuture.runAsync(() -> {
             try {
-                AttachedFile attached = new AttachedFile(f);
+                AttachedFile attached = AttachedFile.readEmbedded(f, AttachmentManager.maxAttachmentSize());
                 SwingUtilities.invokeLater(() -> {
                     if (attachmentUiHandler.attachFile(attached)) {
                         focusInput();
