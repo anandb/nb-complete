@@ -299,4 +299,23 @@ class AttachmentManagerTest {
     private AttachedFile attachment(String name) throws IOException {
         return new AttachedFile(Files.writeString(tempDir.resolve(name), "content").toFile());
     }
+
+    @Test
+    void addFromFilesHonorsEmbeddedCapIndependentlyOfReferences() throws IOException {
+        AttachmentManager am = new AttachmentManager();
+        for (int i = 0; i < AttachmentManager.MAX_REFERENCES; i++) {
+            assertTrue(am.add(new AttachedFile("ref" + i + ".txt", "text/plain", new byte[0],
+                    1, "file:///ref" + i, true)));
+        }
+        Path one = Files.writeString(tempDir.resolve("one.txt"), "one");
+        Path two = Files.writeString(tempDir.resolve("two.txt"), "two");
+        Path three = Files.writeString(tempDir.resolve("three.txt"), "three");
+
+        assertTrue(am.canAdd());
+        am.addFromFiles(new File[]{one.toFile(), two.toFile(), three.toFile()});
+
+        assertEquals(AttachmentManager.MAX_REFERENCES + AttachmentManager.MAX_ATTACHMENTS, am.size());
+        assertEquals(AttachmentManager.MAX_ATTACHMENTS,
+                am.getAttachments().stream().filter(file -> !file.reference()).count());
+    }
 }

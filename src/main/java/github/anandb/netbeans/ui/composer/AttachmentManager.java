@@ -25,7 +25,11 @@ public class AttachmentManager {
     private final List<AttachedFile> attachments = new ArrayList<>();
 
     public boolean canAdd() {
-        return attachments.size() < MAX_ATTACHMENTS;
+        return attachmentCount(false) < MAX_ATTACHMENTS;
+    }
+
+    private long attachmentCount(boolean references) {
+        return attachments.stream().filter(file -> file.reference() == references).count();
     }
 
     /** True when another reference-only attachment fits its own cap. */
@@ -34,7 +38,7 @@ public class AttachmentManager {
     }
 
     private long referenceCount() {
-        return attachments.stream().filter(AttachedFile::reference).count();
+        return attachmentCount(true);
     }
 
     public boolean add(AttachedFile file) {
@@ -189,10 +193,10 @@ public class AttachmentManager {
     public void addFromFiles(File[] files) {
         if (files == null) return;
         for (File f : files) {
-            if (attachments.size() >= MAX_ATTACHMENTS) break;
+            if (!canAdd()) break;
             if (f.length() > MAX_ATTACHMENT_SIZE) continue;
             try {
-                attachments.add(new AttachedFile(f));
+                add(new AttachedFile(f));
             } catch (IOException e) {
                 // skip files that can't be read
             }
