@@ -104,6 +104,7 @@ public class GoToFileDialog extends JDialog {
         if (selectionConsumer != null) {
             setTitle(NbBundle.getMessage(UIBundle.class, "LBL_SelectProjectFiles"));
         }
+        setTitle(getTitle() + " " + NbBundle.getMessage(UIBundle.class, "LBL_EscCloseHint"));
         FileCacheQuery cache = PlatformBridge.serviceSafe(FileCacheQuery.class);
         this.allFiles = new ArrayList<>(cache.getAllFiles());
         this.indexingComplete = cache.isReady();
@@ -341,6 +342,11 @@ public class GoToFileDialog extends JDialog {
         resultList.clearSelection();
         selectionConsumer.accept(files);
         statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_PickerAttached"));
+        // Everything displayed has been picked (and there was something to pick):
+        // start a fresh query. Zero results never clear the typed query.
+        if (listModel.size() > 0 && items.size() == listModel.size()) {
+            searchField.setText("");
+        }
     }
 
     private record FileItem(FileObject fileObject, String projectName, String relativePath) {}
@@ -385,6 +391,9 @@ public class GoToFileDialog extends JDialog {
                         resultList.clearSelection();
                         selectionConsumer.accept(List.of(clicked.fileObject()));
                         statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_PickerAttached"));
+                        if (listModel.size() == 1) {
+                            searchField.setText("");
+                        }
                     }
                 } else {
                     openSelected();
