@@ -12,6 +12,8 @@ import java.util.Map;
 public class AttachmentManager {
 
     public static final int MAX_ATTACHMENTS = 2;
+    /** References carry no file body, so they get their own, larger cap. */
+    public static final int MAX_REFERENCES = 20;
     static final long MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
     /**
      * Largest file body inlined into a prompt, in characters. A 10 MB log would
@@ -26,9 +28,20 @@ public class AttachmentManager {
         return attachments.size() < MAX_ATTACHMENTS;
     }
 
+    /** True when another reference-only attachment fits its own cap. */
+    public boolean canAddReference() {
+        return referenceCount() < MAX_REFERENCES;
+    }
+
+    private long referenceCount() {
+        return attachments.stream().filter(AttachedFile::reference).count();
+    }
+
     public boolean add(AttachedFile file) {
-        if (file.size() > MAX_ATTACHMENT_SIZE) return false;
-        if (attachments.size() >= MAX_ATTACHMENTS) return false;
+        // References carry no bytes, so the size cap does not apply to them and
+        // they are capped separately (MAX_REFERENCES).
+        if (!file.reference() && file.size() > MAX_ATTACHMENT_SIZE) return false;
+        if (file.reference() ? !canAddReference() : !canAdd()) return false;
         return attachments.add(file);
     }
 
@@ -81,6 +94,16 @@ public class AttachmentManager {
     }
 
     private static Map<String, Object> toContentBlock(AttachedFile af, boolean embeddedContextSupported) {
+        if (af.reference()) {
+            Map<String, Object> block = new HashMap<>();
+            block.put("type", "resource_link");
+            block.put("uri", af.uri());
+            block.put("name", af.filename());
+            block.put("mimeType", af.mimeType());
+            block.put("size", af.size());
+            return block;
+        }
+
         if (af.isImage()) {
             Map<String, Object> block = new HashMap<>();
             block.put("type", "image");

@@ -10,6 +10,7 @@ import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -109,5 +110,36 @@ class AttachmentButtonTest {
         assertEquals(2, added);
         assertEquals(2, manager.size());
         assertEquals(List.of("filesAttached:2"), callback.events);
+    }
+
+    @Test
+    void referenceAttachmentBypassesSizeCapAndLinksResource() {        RecordingCallback callback = new RecordingCallback();
+        AttachmentManager manager = new AttachmentManager();
+        AttachmentButton button = new AttachmentButton(manager, callback, null);
+
+        AttachedFile ref = new AttachedFile(
+                "huge.log", "text/plain", new byte[0],
+                AttachmentManager.MAX_ATTACHMENT_SIZE + 1, "file:///huge.log", true);
+        assertTrue(manager.add(ref));
+        assertEquals(1, manager.size());
+
+        List<Map<String, Object>> blocks = manager.buildFileBlocks(true);
+        assertEquals(1, blocks.size());
+        assertEquals("resource_link", blocks.get(0).get("type"));
+        assertEquals("file:///huge.log", blocks.get(0).get("uri"));
+    }
+    @Test
+    void referenceCapIsTwenty() {
+        AttachmentManager manager = new AttachmentManager();
+        for (int i = 0; i < AttachmentManager.MAX_REFERENCES; i++) {
+            assertTrue(manager.add(new AttachedFile(
+                    "f" + i + ".txt", "text/plain", new byte[0], 1,
+                    "file:///f" + i + ".txt", true)), "reference " + i + " should fit");
+        }
+        assertFalse(manager.add(new AttachedFile(
+                "over.txt", "text/plain", new byte[0], 1, "file:///over.txt", true)));
+        // Embedded files still cap at MAX_ATTACHMENTS even with reference slots free
+        assertFalse(manager.add(new AttachedFile("big.bin", "application/octet-stream",
+                new byte[0], AttachmentManager.MAX_ATTACHMENT_SIZE + 1, "file:///big.bin")));
     }
 }

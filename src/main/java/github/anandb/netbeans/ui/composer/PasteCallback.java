@@ -32,4 +32,10 @@ public interface PasteCallback {
     /** Called when a paste-provided file was rejected by the size cap. */
     default void onAttachmentTooLarge() {
     }
+
+    /** Called when the reference-only attachment cap is reached; the default
+     *  falls back to the generic limit notification. */
+    default void onReferenceLimitReached() {
+        onAttachmentLimitReached();
+    }
 }

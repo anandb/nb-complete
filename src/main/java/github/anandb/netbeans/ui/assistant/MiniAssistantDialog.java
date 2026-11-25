@@ -589,6 +589,11 @@ public class MiniAssistantDialog extends JDialog {
             }
 
             @Override
+            public void onReferenceLimitReached() {
+                flashMiniStatus("STATUS_MaxReferences", AttachmentManager.MAX_REFERENCES);
+            }
+
+            @Override
             public void onAttachmentTooLarge() {
                 flashMiniStatus("STATUS_FileTooLarge");
             }

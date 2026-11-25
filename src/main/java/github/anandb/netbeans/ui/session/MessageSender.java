@@ -900,10 +900,10 @@ public class MessageSender {
                 echoBuilder.append("\n");
             }
             for (AttachedFile af : attachedFiles) {
-                echoBuilder.append("\n[")
-                        .append(af.isImage()
-                                ? NbBundle.getMessage(UIBundle.class, "LBL_Image")
-                                : NbBundle.getMessage(UIBundle.class, "LBL_File")).append(": ")
+                String label = af.isImage() ? NbBundle.getMessage(UIBundle.class, "LBL_Image")
+                        : af.reference() ? NbBundle.getMessage(UIBundle.class, "LBL_Reference")
+                        : NbBundle.getMessage(UIBundle.class, "LBL_File");
+                echoBuilder.append("\n[").append(label).append(": ")
                         .append(af.filename()).append("]");
             }
         }

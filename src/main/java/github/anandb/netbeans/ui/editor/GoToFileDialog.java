@@ -17,6 +17,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.Locale;
 import java.util.logging.Level;
 import github.anandb.netbeans.support.Logger;
@@ -59,7 +60,10 @@ import github.anandb.netbeans.ui.platform.PlatformBridge;
  * and a query containing glob characters is matched with NIO's glob syntax — see
  * {@link FileNameMatcher}. Respects VCS ignore rules via the cache.
  *
- * <p>UI: JTextField + JList + status label. Double-click or Enter opens file.</p>
+ * <p>UI: JTextField + JList + status label. Double-click or Enter opens file.
+ * In picker mode (constructor with a selection consumer) Enter confirms every selected
+ * file and double-click confirms the clicked file; the dialog stays open for more
+ * picks and the selection clears after each attach.</p>
  */
 public class GoToFileDialog extends JDialog {
 
@@ -75,6 +79,9 @@ public class GoToFileDialog extends JDialog {
     private final JLabel statusLabel;
     private final JScrollPane scrollPane;
     private FileItem selectedItem;
+    /** Non-null = attach/pick mode: multi-select, selection handed to the
+     *  consumer, no editor opened. Null = legacy jump-to-file mode. */
+    private final Consumer<List<FileObject>> selectionConsumer;
 
     /** Timer for debounced search — 150ms idle before filtering. */
     private final Timer debounceTimer;
@@ -87,7 +94,16 @@ public class GoToFileDialog extends JDialog {
     private volatile boolean indexingComplete;
 
     public GoToFileDialog(Window owner) {
+        this(owner, null);
+    }
+
+    /** Picker mode: one or more files are handed to {@code selectionConsumer}. */
+    public GoToFileDialog(Window owner, Consumer<List<FileObject>> selectionConsumer) {
         super(owner, NbBundle.getMessage(UIBundle.class, "LBL_GoToFile"), ModalityType.MODELESS);
+        this.selectionConsumer = selectionConsumer;
+        if (selectionConsumer != null) {
+            setTitle(NbBundle.getMessage(UIBundle.class, "LBL_SelectProjectFiles"));
+        }
         FileCacheQuery cache = PlatformBridge.serviceSafe(FileCacheQuery.class);
         this.allFiles = new ArrayList<>(cache.getAllFiles());
         this.indexingComplete = cache.isReady();
@@ -107,7 +123,8 @@ public class GoToFileDialog extends JDialog {
         // --- Result list ---
         listModel = new DefaultListModel<>();
         resultList = new JList<>(listModel);
-        resultList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        resultList.setSelectionMode(selectionConsumer == null
+                ? ListSelectionModel.SINGLE_SELECTION : ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
         resultList.setCellRenderer(new FileItemRenderer());
         resultList.addMouseListener(new DoubleClickOpener());
         resultList.addKeyListener(new EnterKeyOpener());
@@ -312,9 +329,27 @@ public class GoToFileDialog extends JDialog {
 
     // --- Inner types ---
 
+    /** Picker mode: hand the selected files to the consumer and stay open, so
+     *  more files can be picked; the selection is cleared after each attach. */
+    private void confirmSelection() {
+        List<FileItem> items = resultList.getSelectedValuesList();
+        if (items.isEmpty()) return;
+        List<FileObject> files = new ArrayList<>(items.size());
+        for (FileItem item : items) {
+            files.add(item.fileObject());
+        }
+        resultList.clearSelection();
+        selectionConsumer.accept(files);
+        statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_PickerAttached"));
+    }
+
     private record FileItem(FileObject fileObject, String projectName, String relativePath) {}
 
     private void openSelected() {
+        if (selectionConsumer != null) {
+            confirmSelection();
+            return;
+        }
         FileItem item = resultList.getSelectedValue();
         if (item == null) return;
         selectedItem = item;
@@ -344,7 +379,16 @@ public class GoToFileDialog extends JDialog {
     private class DoubleClickOpener extends MouseAdapter {
         @Override public void mouseClicked(MouseEvent e) {
             if (e.getClickCount() == 2) {
-                openSelected();
+                if (selectionConsumer != null) {
+                    FileItem clicked = resultList.getSelectedValue();
+                    if (clicked != null) {
+                        resultList.clearSelection();
+                        selectionConsumer.accept(List.of(clicked.fileObject()));
+                        statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_PickerAttached"));
+                    }
+                } else {
+                    openSelected();
+                }
             }
         }
     }

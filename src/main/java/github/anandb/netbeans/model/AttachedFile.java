@@ -22,11 +22,25 @@ public record AttachedFile(
     String mimeType,
     byte[] data,
     long size,
-    String uri
+    String uri,
+    /** True when the agent receives only a {@code resource_link} and reads the
+     *  file itself via the fs tools (open-project files); no bytes are carried. */
+    boolean reference
 ) {
+    /** Embedded attachment: the bytes travel in the prompt. */
+    public AttachedFile(String filename, String mimeType, byte[] data, long size, String uri) {
+        this(filename, mimeType, data, size, uri, false);
+    }
+
     public AttachedFile(File f) throws IOException {
         this(f.getName(), guessMimeType(f.getName()), Files.readAllBytes(f.toPath()), f.length(),
              Utilities.toURI(f).toString());
+    }
+
+    /** A reference-only attachment: bytes are not read; the agent reads the file itself. */
+    public static AttachedFile reference(File f) {
+        return new AttachedFile(f.getName(), guessMimeType(f.getName()), new byte[0], f.length(),
+                Utilities.toURI(f).toString(), true);
     }
 
     /** True when the agent should receive this as an ACP image block. */

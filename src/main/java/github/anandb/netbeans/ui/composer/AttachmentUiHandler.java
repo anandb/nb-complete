@@ -74,6 +74,14 @@ public class AttachmentUiHandler {
             }
 
             @Override
+            public void onReferenceLimitReached() {
+                SwingUtilities.invokeLater(() -> {
+                    statusController.setStatus("STATUS_MaxReferences", AttachmentManager.MAX_REFERENCES);
+                    statusController.scheduleReset();
+                });
+            }
+
+            @Override
             public void onFilesAttached(List<AttachedFile> added) {
                 SwingUtilities.invokeLater(() -> {
                     String lastName = added.get(added.size() - 1).filename();

@@ -1,17 +1,24 @@
 package github.anandb.netbeans.ui.composer;
 
 import java.awt.Component;
+import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JFileChooser;
 import javax.swing.JPopupMenu;
 import javax.swing.JMenuItem;
+import javax.swing.SwingUtilities;
 import javax.swing.text.JTextComponent;
 
+import org.openide.filesystems.FileObject;
+import org.openide.filesystems.FileUtil;
 import org.openide.util.ImageUtilities;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.model.AttachedFile;
@@ -19,6 +26,7 @@ import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 import github.anandb.netbeans.ui.components.UIUtils;
+import github.anandb.netbeans.ui.editor.GoToFileDialog;
 
 /**
  * Self-contained paperclip attachment control: toolbar button, popup menu
@@ -166,20 +174,86 @@ public class AttachmentButton {
         JMenuItem addItem = new JMenuItem(NbBundle.getMessage(UIBundle.class, "BTN_SelectFile"));
         addItem.addActionListener(ev -> selectFiles());
         menu.add(addItem);
-        List<AttachedFile> currentFiles = attachmentManager.getAttachments();
-        if (!currentFiles.isEmpty()) {
+        JMenuItem referenceItem = new JMenuItem(
+                NbBundle.getMessage(UIBundle.class, "BTN_ReferenceProjectFile"));
+        referenceItem.addActionListener(ev -> selectProjectFiles());
+        menu.add(referenceItem);
+        List<AttachedFile> embedded = new ArrayList<>();
+        List<AttachedFile> references = new ArrayList<>();
+        for (AttachedFile af : attachmentManager.getAttachments()) {
+            (af.reference() ? references : embedded).add(af);
+        }
+        if (!embedded.isEmpty()) {
             menu.addSeparator();
-            for (AttachedFile af : currentFiles) {
-                JCheckBoxMenuItem cb = new JCheckBoxMenuItem(af.filename(), true);
-                cb.addActionListener(ev -> {
-                    if (!cb.isSelected()) {
-                        removeAttachment(af);
-                    }
-                });
-                menu.add(cb);
+            menu.add(menuHeader("LBL_MenuAttachments"));
+            for (AttachedFile af : embedded) {
+                menu.add(attachmentCheckbox(af));
+            }
+        }
+        if (!references.isEmpty()) {
+            menu.addSeparator();
+            menu.add(menuHeader("LBL_MenuReferences"));
+            for (AttachedFile af : references) {
+                menu.add(attachmentCheckbox(af));
             }
         }
         menu.show(paperclipBtn, 0, paperclipBtn.getHeight());
+    }
+
+    /** Muted, non-clickable group caption for the attachment menu. */
+    private JMenuItem menuHeader(String bundleKey) {
+        JMenuItem header = new JMenuItem(NbBundle.getMessage(UIBundle.class, bundleKey));
+        header.setEnabled(false);
+        return header;
+    }
+
+    private JCheckBoxMenuItem attachmentCheckbox(AttachedFile af) {
+        JCheckBoxMenuItem cb = new JCheckBoxMenuItem(af.filename(), true);
+        cb.addActionListener(ev -> {
+            if (!cb.isSelected()) {
+                removeAttachment(af);
+            }
+        });
+        return cb;
+    }
+
+    /** Opens the project file picker (Go To File reuse); the chosen files are
+     *  attached as reference-only attachments the agent reads via its fs tools. */
+    private void selectProjectFiles() {
+        if (!attachmentManager.canAddReference()) {
+            pasteCallback.onReferenceLimitReached();
+            return;
+        }
+        Window owner = parentWindow instanceof Window w ? w : SwingUtilities.getWindowAncestor(parentWindow);
+        new GoToFileDialog(owner, this::attachReferences).setVisible(true);
+    }
+
+    private void attachReferences(List<FileObject> files) {
+        if (files == null || files.isEmpty()) {
+            return;
+        }
+        Set<String> seen = new LinkedHashSet<>();
+        attachmentManager.getAttachments().forEach(a -> seen.add(a.uri()));
+        List<AttachedFile> added = new ArrayList<>();
+        for (FileObject fo : files) {
+            File f = FileUtil.toFile(fo);
+            if (f == null) {
+                continue; // non-local FileObject cannot be referenced
+            }
+            AttachedFile ref = AttachedFile.reference(f);
+            if (!seen.add(ref.uri())) {
+                continue; // already attached — ignore duplicates silently
+            }
+            if (!attachmentManager.add(ref)) {
+                pasteCallback.onReferenceLimitReached();
+                break;
+            }
+            added.add(ref);
+        }
+        if (!added.isEmpty()) {
+            updateTooltip();
+            pasteCallback.onFilesAttached(added);
+        }
     }
 
     private void selectFiles() {
