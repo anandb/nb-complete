@@ -84,6 +84,9 @@ one from Lookup.
 - Generated project docs are dated snapshots: regenerate with `bmad-document-project`, never
   hand-edit. Run `python3 _bmad/check_artifacts.py` after spec/quick-dev/research work and before
   release verification when `_bmad/` tooling is available.
+- Communication: Use plain, literal English in conversation —
+  no idioms, metaphors, or figurative phrases. Specs, code, and reviews keep normal precise
+  technical language.
 
 ## Memory (GrayMatter)
 
