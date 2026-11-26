@@ -386,8 +386,13 @@ public class GoToFileDialog extends JDialog {
         @Override public void mouseClicked(MouseEvent e) {
             if (e.getClickCount() == 2) {
                 if (selectionConsumer != null) {
-                    FileItem clicked = resultList.getSelectedValue();
-                    if (clicked != null) {
+                    // Resolve the clicked row from the event point: with an existing
+                    // multi-selection the selected value may be a different row.
+                    int index = resultList.locationToIndex(e.getPoint());
+                    // locationToIndex snaps to the nearest row, so ignore clicks on
+                    // empty space below the last row.
+                    if (index >= 0 && resultList.getCellBounds(index, index).contains(e.getPoint())) {
+                        FileItem clicked = resultList.getModel().getElementAt(index);
                         resultList.clearSelection();
                         selectionConsumer.accept(List.of(clicked.fileObject()));
                         statusLabel.setText(NbBundle.getMessage(UIBundle.class, "LBL_PickerAttached", 1));
