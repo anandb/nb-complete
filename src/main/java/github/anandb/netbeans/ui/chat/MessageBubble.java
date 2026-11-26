@@ -426,6 +426,9 @@ public class MessageBubble extends JPanel implements Scrollable {
             updateContent(ThemeManager.getCurrentTheme(), expanded);
         }
         streamer.finalizeStreaming(expanded, immediate);
+        if (actionBar == null) {
+            return;
+        }
         // Finalization swaps the streaming area for the rendered panes; re-arm hover on them.
         actionBar.refreshHoverTargets();
         // The finalized bubble may have grown or replaced content under a
