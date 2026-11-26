@@ -19,6 +19,7 @@ import github.anandb.netbeans.model.AttachedFile;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import org.openide.filesystems.FileObject;
+import org.openide.filesystems.FileUtil;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.Level;
@@ -716,19 +717,25 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
      * send-as-path behavior) so the action never does nothing silently.
      */
     public void attachExternalFile(FileObject fo) {
-        File f = new File(fo.getPath());
+        File f = FileUtil.toFile(fo);
+        if (f == null) {
+            // Non-local file (remote or virtual FS): no bytes to embed, keep the path text.
+            appendInputText(fo.getPath());
+            return;
+        }
+        final File file = f;
         CompletableFuture.runAsync(() -> {
             try {
-                AttachedFile attached = AttachedFile.readEmbedded(f, AttachmentManager.maxAttachmentSize());
+                AttachedFile attached = AttachedFile.readEmbedded(file, AttachmentManager.maxAttachmentSize());
                 SwingUtilities.invokeLater(() -> {
                     if (attachmentUiHandler.attachFile(attached)) {
                         focusInput();
                     } else {
-                        appendInputText(f.getPath());
+                        appendInputText(file.getPath());
                     }
                 });
             } catch (IOException ex) {
-                SwingUtilities.invokeLater(() -> appendInputText(f.getPath()));
+                SwingUtilities.invokeLater(() -> appendInputText(file.getPath()));
             }
         });
     }

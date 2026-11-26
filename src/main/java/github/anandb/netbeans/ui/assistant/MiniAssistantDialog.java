@@ -60,6 +60,7 @@ import org.apache.commons.lang3.StringUtils;
 import github.anandb.netbeans.support.TurnTokenCounter;
 
 import org.openide.filesystems.FileObject;
+import org.openide.filesystems.FileUtil;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 import org.openide.util.Utilities;
@@ -467,19 +468,25 @@ public class MiniAssistantDialog extends JDialog {
     public void attachExternalFile(FileObject fo) {
         updateResponsePane();
         setVisible(true);
-        File f = new File(fo.getPath());
+        File f = FileUtil.toFile(fo);
+        if (f == null) {
+            // Non-local file (remote or virtual FS): no bytes to embed, keep the path text.
+            showWithText(fo.getPath());
+            return;
+        }
+        final File file = f;
         CompletableFuture.runAsync(() -> {
             try {
-                AttachedFile attached = AttachedFile.readEmbedded(f, AttachmentManager.maxAttachmentSize());
+                AttachedFile attached = AttachedFile.readEmbedded(file, AttachmentManager.maxAttachmentSize());
                 SwingUtilities.invokeLater(() -> {
                     if (attachmentButton.attachFile(attached)) {
                         inputArea.requestFocusInWindow();
                     } else {
-                        showWithText(f.getPath());
+                        showWithText(file.getPath());
                     }
                 });
             } catch (IOException ex) {
-                SwingUtilities.invokeLater(() -> showWithText(f.getPath()));
+                SwingUtilities.invokeLater(() -> showWithText(file.getPath()));
             }
         });
     }
