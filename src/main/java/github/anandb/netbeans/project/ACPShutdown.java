@@ -27,6 +27,7 @@ public class ACPShutdown implements Runnable {
         if (cache != null) {
             cache.dispose();
         }
+        ACPProjectManager.getInstance().stop();
         ImagePasteIoProcessor.shutdown();
     }
 

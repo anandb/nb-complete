@@ -76,6 +76,13 @@ public class ACPProjectManager implements PropertyChangeListener {
         syncActiveProject();
     }
 
+    /** Reverses {@link #start()}: unregisters from the project source so the
+     *  module can shut down without leaving a listener on the IDE singleton. */
+    public void stop() {
+        projectSource.removePropertyChangeListener(this);
+        LOG.fine("ACPProjectManager stopped.");
+    }
+
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         if (isProjectEvent(evt.getPropertyName())) {

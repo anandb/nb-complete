@@ -92,6 +92,16 @@ class ACPProjectManagerTest {
     }
 
     @Test
+    void stopUnregistersListener() {
+        manager.start();
+        assertEquals(1, source.listeners.size());
+
+        manager.stop();
+
+        assertTrue(source.listeners.isEmpty());
+    }
+
+    @Test
     void openProjectFiresOpenListener() {
         manager.start();
         manager.setProjectOpenListener(opened::add);
