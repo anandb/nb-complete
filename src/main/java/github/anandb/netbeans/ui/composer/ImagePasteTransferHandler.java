@@ -253,7 +253,14 @@ public class ImagePasteTransferHandler extends TransferHandler {
             return null;
         }
 
-        return new AttachedFile(tempFile.toFile());
+        try {
+            // Bounded read: the PNG is written from an already size-gated image,
+            // but the file is still re-checked while reading.
+            return AttachedFile.readEmbedded(tempFile.toFile(), MAX_FILE_SIZE);
+        } catch (IOException e) {
+            Files.deleteIfExists(tempFile);
+            throw e;
+        }
     }
 
     private static boolean isWayland() {

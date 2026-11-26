@@ -195,11 +195,12 @@ public class AttachmentManager {
         if (files == null) return;
         for (File f : files) {
             if (!canAdd()) break;
-            if (f.length() > MAX_ATTACHMENT_SIZE) continue;
             try {
-                add(new AttachedFile(f));
+                // Bounded read: the size is re-checked while reading, so a file
+                // that grows between the check and the read cannot OOM the IDE.
+                add(AttachedFile.readEmbedded(f, MAX_ATTACHMENT_SIZE));
             } catch (IOException e) {
-                // skip files that can't be read
+                // skip files that can't be read or exceed the cap
             }
         }
     }
