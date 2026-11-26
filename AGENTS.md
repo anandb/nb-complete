@@ -35,8 +35,14 @@ accepted edge or file changes.
   a direct read in a hot path; UI code registers listeners through `PrefStore`.
 - **`ui/` reaches services through `contract/` ports via `Lookup`**, never
   `SessionManager.getInstance()` / `ProcessManager.getInstance()`, never `ui/` → `manager/`/`mcp/`.
-- **Structural edits use parser-aware tooling** (IDE refactor, `ast-grep`), not `sed`/`python`
-  one-offs; keep lines ≤120 characters and comments to 1–2 lines.
+- **Edit files with semantic tooling, never shell text hacks**: no `cat >`/heredoc rewrites,
+  `sed -i`, or `python -c` edits of tracked files — they bypass review and can mangle encoding
+  and line endings. Use `edit`/`write` for prose and single-site code edits, `ast_edit` (AST
+  pattern, staged for review) or `ast-grep` for repeated/structural code changes, and the
+  NetBeans MCP (`nb_write_to_file`, `nb_replace_lines`, `nb_insert_in_file`, `nb_delete_lines`,
+  `nb_find_java_type`, `nb_open_pos`, `nb_find_file`) when the IDE's parse model matters:
+  refactors, imports, symbol moves. Shell redirection is for throwaway files outside the repo only.
+  Keep lines ≤120 characters and comments to 1–2 lines.
 - **Log with index placeholders** (`{0}`), exception as the last argument, and no `warning()`.
 - **Tests run headless**: mock the UI instead of constructing windows or dialogs.
 - **Edit bundle strings only under `src/main/resources/`**; the `src/main/java/` copy is generated.
