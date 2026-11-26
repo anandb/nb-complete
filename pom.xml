@@ -404,7 +404,9 @@
                                         </includes>
                                     </resource>
                                 </resources>
-                                <overwrite>true</overwrite>
+                                <!-- Bundle copies are annotations-only source copies; always refresh so the
+                                     generated src/main/java copies never shadow a newer resource. -->
+                                <changeDetection>always</changeDetection>
                             </configuration>
                         </execution>
                     </executions>

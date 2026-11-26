@@ -32,6 +32,14 @@ class ShortcutUtilsTest {
     }
 
     @Test
+    void formatsLegacyModifierBitsLikeExtendedMasks() {
+        int extended = InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK;
+        int legacy = (InputEvent.CTRL_DOWN_MASK >> 6) | (InputEvent.SHIFT_DOWN_MASK >> 6);
+        assertEquals(ShortcutUtils.formatKeyStroke(KeyStroke.getKeyStroke(KeyEvent.VK_L, extended)),
+                ShortcutUtils.formatKeyStroke(KeyStroke.getKeyStroke(KeyEvent.VK_L, legacy)));
+    }
+
+    @Test
     void testResolveShortcut_nonexistent() {
         String res = ShortcutUtils.resolveShortcut("invalid.action.id.for.testing");
         assertEquals("", res);

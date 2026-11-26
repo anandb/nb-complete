@@ -1429,7 +1429,9 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         autoBackupChangesCheckbox.setSelected(PluginSettings.isAutoBackupChanges());
         checkForUpdatesCheckbox.setSelected(PluginSettings.isCheckForUpdates());
         Preferences editorPrefs = MimeLookup.getLookup(MimePath.EMPTY).lookup(Preferences.class);
-        lineHeightCorrectionSpinner.setValue(editorPrefs.getFloat(SimpleValueNames.LINE_HEIGHT_CORRECTION, 1.0f));
+        // The model is Double-based; a Float here fails SpinnerNumberModel's Double.compareTo.
+        lineHeightCorrectionSpinner.setValue(
+                (double) editorPrefs.getFloat(SimpleValueNames.LINE_HEIGHT_CORRECTION, 1.0f));
         preambleEnabledCheckbox.setSelected(PluginSettings.isPreambleEnabled());
         editPreambleButton.setEnabled(preambleEnabledCheckbox.isSelected());
         idleTimeoutSpinner.setValue(PluginSettings.getSessionIdleTimeout());

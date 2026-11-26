@@ -162,22 +162,35 @@ public final class ShortcutUtils {
         }
     }
 
+    /**
+     * Map AWT's pre-1.4 modifier bits onto the extended masks. The old bits are the low
+     * bits of the extended ones ({@code CTRL_MASK == CTRL_DOWN_MASK >> 6}), so keystrokes
+     * built with either convention format the same.
+     */
+    private static int normalizeModifiers(int mods) {
+        if ((mods & (InputEvent.CTRL_DOWN_MASK >> 6)) != 0) mods |= InputEvent.CTRL_DOWN_MASK;
+        if ((mods & (InputEvent.META_DOWN_MASK >> 6)) != 0) mods |= InputEvent.META_DOWN_MASK;
+        if ((mods & (InputEvent.ALT_DOWN_MASK >> 6)) != 0) mods |= InputEvent.ALT_DOWN_MASK;
+        if ((mods & (InputEvent.SHIFT_DOWN_MASK >> 6)) != 0) mods |= InputEvent.SHIFT_DOWN_MASK;
+        return mods;
+    }
+
     public static String formatKeyStroke(KeyStroke ks) {
         if (ks == null) return "";
         StringBuilder sb = new StringBuilder();
-        int mod = ks.getModifiers();
+        int mod = normalizeModifiers(ks.getModifiers());
         boolean mac = Utilities.isMac();
 
-        if ((mod & InputEvent.CTRL_DOWN_MASK) != 0 || (mod & InputEvent.CTRL_MASK) != 0) {
+        if ((mod & InputEvent.CTRL_DOWN_MASK) != 0) {
             sb.append("Ctrl + ");
         }
-        if ((mod & InputEvent.META_DOWN_MASK) != 0 || (mod & InputEvent.META_MASK) != 0) {
+        if ((mod & InputEvent.META_DOWN_MASK) != 0) {
             sb.append(mac ? "Cmd + " : "Meta + ");
         }
-        if ((mod & InputEvent.ALT_DOWN_MASK) != 0 || (mod & InputEvent.ALT_MASK) != 0) {
+        if ((mod & InputEvent.ALT_DOWN_MASK) != 0) {
             sb.append(mac ? "Option + " : "Alt + ");
         }
-        if ((mod & InputEvent.SHIFT_DOWN_MASK) != 0 || (mod & InputEvent.SHIFT_MASK) != 0) {
+        if ((mod & InputEvent.SHIFT_DOWN_MASK) != 0) {
             sb.append("Shift + ");
         }
 

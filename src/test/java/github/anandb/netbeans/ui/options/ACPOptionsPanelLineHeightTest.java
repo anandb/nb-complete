@@ -1,5 +1,6 @@
 package github.anandb.netbeans.ui.options;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -103,6 +104,22 @@ class ACPOptionsPanelLineHeightTest {
         assertTrue(gapAfter - gapBefore <= 1,
                 "last row must not absorb extra vertical space, gap grew from "
                         + gapBefore + "px to " + gapAfter + "px");
+    }
+
+    @Test
+    void loadKeepsModelValueTypeConsistent() throws Exception {
+        editorPrefs.putFloat(SimpleValueNames.LINE_HEIGHT_CORRECTION, 1.7f);
+
+        ACPOptionsPanelController controller = new ACPOptionsPanelController();
+        ACPOptionsPanel panel = new ACPOptionsPanel(controller);
+        panel.load();
+
+        SpinnerNumberModel model = (SpinnerNumberModel) getLineHeightSpinner(panel).getModel();
+        assertEquals(1.7d, model.getNumber().doubleValue(), 0.01d);
+        // BasicSpinnerUI calls both on every value change; a Float in a Double model
+        // surfaces as ClassCastException inside SpinnerNumberModel.incrValue.
+        assertDoesNotThrow(model::getPreviousValue);
+        assertDoesNotThrow(model::getNextValue);
     }
 
     @Test
