@@ -128,6 +128,21 @@ class AttachmentButtonTest {
         assertEquals("resource_link", blocks.get(0).get("type"));
         assertEquals("file:///huge.log", blocks.get(0).get("uri"));
     }
+
+    @Test
+    void attachFileAcceptsOversizeReference() {
+        RecordingCallback callback = new RecordingCallback();
+        AttachmentManager manager = new AttachmentManager();
+        AttachmentButton button = new AttachmentButton(manager, callback, null);
+
+        AttachedFile ref = new AttachedFile(
+                "huge.log", "text/plain", new byte[0],
+                AttachmentManager.MAX_ATTACHMENT_SIZE + 1, "file:///huge.log", true);
+        assertTrue(button.attachFile(ref));
+        assertEquals(1, manager.size());
+        assertEquals(List.of("filesAttached:1"), callback.events);
+    }
+
     @Test
     void referenceCapIsTwenty() {
         AttachmentManager manager = new AttachmentManager();

@@ -146,16 +146,25 @@ public class AttachmentButton {
     }
 
     /** Programmatic attach of a single pre-read file (external "send to assistant").
+     *  Reference-only files carry no bytes, so the size cap and the embedded count
+     *  cap do not apply to them (mirrors {@link AttachmentManager#add}).
      *  Notifies too-large vs limit distinctly, mirroring the chooser path.
      *  @return true when the file was attached. */
     public boolean attachFile(AttachedFile file) {
-        if (file.size() > AttachmentManager.MAX_ATTACHMENT_SIZE) {
-            pasteCallback.onAttachmentTooLarge();
-            return false;
-        }
-        if (!attachmentManager.canAdd()) {
-            pasteCallback.onAttachmentLimitReached();
-            return false;
+        if (file.reference()) {
+            if (!attachmentManager.canAddReference()) {
+                pasteCallback.onReferenceLimitReached();
+                return false;
+            }
+        } else {
+            if (file.size() > AttachmentManager.MAX_ATTACHMENT_SIZE) {
+                pasteCallback.onAttachmentTooLarge();
+                return false;
+            }
+            if (!attachmentManager.canAdd()) {
+                pasteCallback.onAttachmentLimitReached();
+                return false;
+            }
         }
         if (!attachmentManager.add(file)) {
             return false;
