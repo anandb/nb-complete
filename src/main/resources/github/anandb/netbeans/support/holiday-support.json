@@ -1,0 +1,244 @@
+{
+  "celebrationsPerDay": 2,
+  "celebrationMinutes": 60,
+  "holidays": [
+    {
+      "greeting": "Happy New Year",
+      "start": "01-01",
+      "end": "01-01",
+      "icons": [
+        "holidays/newyear-fireworks.svg",
+        "holidays/newyear-popper.svg",
+        "holidays/newyear-clock.svg",
+        "holidays/newyear-calendar.svg"
+      ]
+    },
+    {
+      "greeting": "Happy Pongal",
+      "start": "01-14",
+      "end": "01-14",
+      "icons": [
+        "holidays/pongal-sun.svg",
+        "holidays/pongal-pot.svg",
+        "holidays/pongal-sheaf.svg",
+        "holidays/pongal-rice.svg"
+      ]
+    },
+    {
+      "greeting": "Happy Valentine's Day",
+      "start": "02-14",
+      "end": "02-14",
+      "icons": [
+        "holidays/valentine-heart.svg",
+        "holidays/valentine-letter.svg",
+        "holidays/valentine-chocolate.svg",
+        "holidays/valentine-rose.svg"
+      ]
+    },
+    {
+      "greeting": "Happy Pi Day",
+      "start": "03-14",
+      "end": "03-14",
+      "icons": [
+        "holidays/pi-symbol.svg",
+        "holidays/pi-compass.svg",
+        "holidays/pi-pizza.svg",
+        "holidays/pi-ruler.svg"
+      ]
+    },
+    {
+      "greeting": "Happy Tolkien Reading Day",
+      "start": "03-25",
+      "end": "03-25",
+      "icons": [
+        "holidays/tolkien-door.svg",
+        "holidays/tolkien-books.svg",
+        "holidays/tolkien-pipe.svg",
+        "holidays/tolkien-lantern.svg"
+      ]
+    },
+    {
+      "greeting": "Happy Earth Day",
+      "start": "04-22",
+      "end": "04-22",
+      "icons": [
+        "holidays/earth-globe-americas.svg",
+        "holidays/earth-globe-europe-africa.svg",
+        "holidays/earth-globe-asia.svg",
+        "holidays/earth-seedling.svg"
+      ]
+    },
+    {
+      "greeting": "Happy Labor Day",
+      "start": "05-01",
+      "end": "05-01",
+      "icons": [
+        "holidays/labor-tools.svg",
+        "holidays/labor-toolbox.svg",
+        "holidays/labor-factory.svg",
+        "holidays/labor-worker.svg"
+      ]
+    },
+    {
+      "greeting": "May the Fourth Be With You",
+      "start": "05-04",
+      "end": "05-04",
+      "icons": [
+        "holidays/starwars-comet.svg",
+        "holidays/starwars-robot.svg",
+        "holidays/starwars-saucer.svg",
+        "holidays/starwars-galaxy.svg"
+      ]
+    },
+    {
+      "greeting": "Happy Summer Solstice",
+      "start": "06-21",
+      "end": "06-21",
+      "icons": [
+        "holidays/summer-sun.svg",
+        "holidays/summer-sunflower.svg",
+        "holidays/summer-wreath.svg",
+        "holidays/summer-sunrise.svg",
+        "holidays/summer-stonehenge.svg"
+      ]
+    },
+    {
+      "greeting": "Happy Moon Landing Day",
+      "start": "07-20",
+      "end": "07-20",
+      "icons": [
+        "holidays/moon-full.svg",
+        "holidays/moon-rocket.svg",
+        "holidays/moon-astronaut.svg",
+        "holidays/moon-star.svg"
+      ]
+    },
+    {
+      "greeting": "Happy World Elephant Day",
+      "start": "08-12",
+      "end": "08-12",
+      "icons": [
+        "holidays/elephant.svg",
+        "holidays/elephant-blue.svg",
+        "holidays/elephant-pastel.svg",
+        "holidays/elephant-pixel.svg"
+      ]
+    },
+    {
+      "greeting": "Happy Programmer's Day",
+      "start": "09-12",
+      "end": "09-13",
+      "icons": [
+        "holidays/programmer-keyboard.svg",
+        "holidays/programmer-laptop.svg",
+        "holidays/programmer-mug.svg",
+        "holidays/programmer-mouse.svg"
+      ]
+    },
+    {
+      "greeting": "Happy Diwali",
+      "start": "10-15",
+      "end": "11-15",
+      "icons": [
+        "holidays/diwali-diya.svg",
+        "holidays/diwali-candle.svg",
+        "holidays/diwali-firecracker.svg",
+        "holidays/diwali-sparkler.svg"
+      ]
+    },
+    {
+      "greeting": "Happy Halloween",
+      "start": "10-31",
+      "end": "10-31",
+      "icons": [
+        "holidays/halloween-pumpkin.svg",
+        "holidays/halloween-ghost.svg",
+        "holidays/halloween-bat.svg",
+        "holidays/halloween-cat.svg"
+      ]
+    },
+    {
+      "greeting": "Happy Godzilla Day",
+      "start": "11-03",
+      "end": "11-03",
+      "icons": [
+        "holidays/godzilla.svg",
+        "holidays/godzilla-ghidorah.svg",
+        "holidays/godzilla-dragon.svg",
+        "holidays/godzilla-fire.svg"
+      ]
+    },
+    {
+      "greeting": "Happy Fibonacci Day",
+      "start": "11-23",
+      "end": "11-23",
+      "icons": [
+        "holidays/fibonacci-shell.svg",
+        "holidays/fibonacci-doughnut.svg",
+        "holidays/fibonacci-snail.svg",
+        "holidays/fibonacci-maple-leaf.svg"
+      ]
+    },
+    {
+      "greeting": "Happy Thanksgiving",
+      "start": "11-26",
+      "end": "11-29",
+      "icons": [
+        "holidays/thanksgiving-pumpkin.svg",
+        "holidays/thanksgiving-turkey.svg",
+        "holidays/thanksgiving-leaf.svg",
+        "holidays/thanksgiving-pie.svg",
+        "holidays/thanksgiving-corn.svg",
+        "holidays/thanksgiving-turkey-leg.svg"
+      ]
+    },
+    {
+      "greeting": "Merry Christmas",
+      "start": "12-05",
+      "end": "12-25",
+      "icons": [
+        "holidays/christmas-tree.svg",
+        "holidays/christmas-gift.svg",
+        "holidays/christmas-snowflake.svg",
+        "holidays/christmas-bell.svg",
+        "holidays/christmas-santa.svg",
+        "holidays/christmas-snowman.svg",
+        "holidays/christmas-star.svg",
+        "holidays/christmas-candy.svg"
+      ]
+    },
+    {
+      "greeting": "Happy Ada Lovelace Day",
+      "start": "12-10",
+      "end": "12-10",
+      "icons": [
+        "holidays/ada-notepad.svg",
+        "holidays/ada-quill.svg",
+        "holidays/ada-computer.svg",
+        "holidays/ada-abacus.svg"
+      ]
+    },
+    {
+      "greeting": "Happy Winter Solstice",
+      "start": "12-21",
+      "end": "12-21",
+      "icons": [
+        "holidays/winter-snowglobe.svg",
+        "holidays/winter-snowman.svg",
+        "holidays/winter-snowflake.svg",
+        "holidays/winter-evergreen.svg"
+      ]
+    },
+    {
+      "greeting": "Happy Festivus",
+      "start": "12-23",
+      "end": "12-23",
+      "icons": [
+        "holidays/festivus-pole.svg",
+        "holidays/festivus-dinner.svg",
+        "holidays/festivus-wrestling.svg",
+        "holidays/festivus-grievances.svg"
+      ]
+    }
+  ]
+}

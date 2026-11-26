@@ -488,6 +488,15 @@ public final class ChatLayoutBuilder {
                 }));
             helpPopup.add(chooseAgentItem);
 
+            if (Boolean.getBoolean(PreferenceKeys.HOLIDAY_TEST_PROP)) {
+                JMenuItem forceHolidayItem = new JMenuItem(NbBundle.getMessage(
+                        UIBundle.class, "LBL_HelpForceHoliday"));
+                forceHolidayItem.setIcon(ThemeManager.getIcon(
+                        "holidays/thanksgiving-pumpkin.svg", 16));
+                forceHolidayItem.addActionListener(ev -> topComponent.forceHolidaySupport());
+                helpPopup.add(forceHolidayItem);
+            }
+
             // The funding link lives on the composer toolbar (sprout icon), not here: a menu row
             // is too easy to miss and a second entry would only split the same click.
             helpPopup.addSeparator();

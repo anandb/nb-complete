@@ -96,6 +96,7 @@ import github.anandb.netbeans.ui.export.HtmlConversationExporter;
 import github.anandb.netbeans.ui.export.ConversationExporter;
 import github.anandb.netbeans.ui.stats.TokenUsageDialog;
 import github.anandb.netbeans.ui.components.UIUtils;
+import github.anandb.netbeans.ui.components.HolidaySupportButton;
 import github.anandb.netbeans.ui.platform.PrefStore;
 import github.anandb.netbeans.model.Harness;
 
@@ -146,6 +147,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
     private final JButton tokenUsageBtn;
     private final JButton refreshBtn;
     private final JButton exportBtn;
+    private HolidaySupportButton supportBtn;
     private final MessageQueueManager queueManager;
     private final JLabel statusLabel;
     private final JLabel versionLabel;
@@ -299,7 +301,7 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
         // Funding link: the toolbar is where users actually look, so the support mark takes the
         // slot left of the attachment button rather than hiding behind Help.
-        JButton supportBtn = UIUtils.createToolbarButton("sprout.svg", iconSize,
+        supportBtn = new HolidaySupportButton("sprout.svg", iconSize,
                 NbBundle.getMessage(UIBundle.class, "TT_SupportProject"),
                 e -> SupportLink.confirmAndOpen((url, key) -> setStatus(key, url)));
         JPanel rightPanel = layoutBuilder.getRightStatusPanel();
@@ -666,6 +668,13 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     public void createNewSession() {
         startNewSession(newSessionBtn);
+    }
+
+    /** Testing hook for the {@code beanbot.holiday.test} Help menu entry. */
+    void forceHolidaySupport() {
+        if (supportBtn != null) {
+            supportBtn.forceCelebration();
+        }
     }
 
     /**
@@ -1067,6 +1076,9 @@ public final class AssistantTopComponent extends TopComponent implements Permiss
 
     @Override
     public void componentActivated() {
+        if (supportBtn != null) {
+            supportBtn.refreshNow();
+        }
         componentLifecycleHandler.componentActivated();
     }
 

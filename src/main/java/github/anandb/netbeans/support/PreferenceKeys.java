@@ -77,6 +77,9 @@ public final class PreferenceKeys {
      */
     public static final String USER_GUIDE_URL_PROP = "beanbot.user.guide.url";
 
+    /** System property ({@code -D}) adding Help ▸ Force Holiday Button for testing. */
+    public static final String HOLIDAY_TEST_PROP = "beanbot.holiday.test";
+
     /** Set to "true" on install/upgrade, consumed once by ChatLayoutBuilder to flash the help button. */
     public static final String HELP_FLASH_PENDING = "helpFlashPending";
 

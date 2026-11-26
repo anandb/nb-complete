@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+	 viewBox="0 0 460 460" xml:space="preserve">
+<g>
+	<circle style="fill:#FF7066;" cx="230" cy="230" r="230"/>
+	<circle style="fill:#FF7066;" cx="230" cy="230" r="230"/>
+	<path style="fill:#096C80;" d="M452.511,288.397C457.392,269.748,460,250.179,460,230C460,102.975,357.026,0,230,0S0,102.975,0,230
+		c0,20.179,2.608,39.748,7.489,58.397l222.511,30L452.511,288.397z"/>
+	<path style="fill:#064855;" d="M459.04,209.04L400,150v90L280,120l-80,11l-25.109,103.891L90,150v171.338l362.505-32.942
+		C457.391,269.748,460,250.18,460,230C460,222.933,459.663,215.945,459.04,209.04z"/>
+	<path style="fill:#FFFFFF;" d="M190,60c0,22.091,17.909,40,40,40l10-40l-10-40C207.909,20,190,37.909,190,60z"/>
+	<path style="fill:#FFF0CF;" d="M230,20v80c22.091,0,40-17.909,40-40S252.091,20,230,20z"/>
+	<path style="fill:#89EBFF;" d="M60,150l-10,30H40L30,288.397l70,10V170c0,0-10-18.043-10-20H60z"/>
+	<path style="fill:#4DE1FF;" d="M400,150l10,30h10l10,108.397l-70,10V170c0,0,10-18.043,10-20H400z"/>
+	<polygon style="fill:#89EBFF;" points="160,150 150,180 140,180 130,288.397 200,298.397 200,150 	"/>
+	<polygon style="fill:#4DE1FF;" points="300,150 310,180 320,180 330,288.397 260,298.397 260,150 	"/>
+	<path style="fill:#405A0F;" d="M230,288.397H7.489C33.333,387.14,123.154,460,230,460l10-85.802L230,288.397z"/>
+	<path style="fill:#2A3C0A;" d="M230,460c106.846,0,196.667-72.86,222.511-171.603H230V460z"/>
+	<polygon style="fill:#4DE1FF;" points="180,120 180,150 230,150 240,135 230,120 	"/>
+	<rect x="230" y="120" style="fill:#2DB8D4;" width="50" height="30"/>
+</g>
+</svg>
