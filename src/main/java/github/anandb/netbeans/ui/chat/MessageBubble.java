@@ -3,7 +3,9 @@ package github.anandb.netbeans.ui.chat;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.Insets;
 import java.awt.Rectangle;
 import java.util.ArrayList;
@@ -18,6 +20,8 @@ import javax.swing.JTextArea;
 
 import java.awt.event.HierarchyEvent;
 import java.awt.event.HierarchyListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 
@@ -69,6 +73,12 @@ public class MessageBubble extends JPanel implements Scrollable {
     private transient HierarchyListener hierarchyListener;
     /** Owner hook run after the streamed content is rendered (flush tick or cooldown finalize). */
     private transient Runnable postFinalizeListener;
+    /** Clickable caption above adopted panes; null unless this is a composite activity bubble. */
+    private JPanel compositeHeader;
+    /** Count label inside the composite header. */
+    private JLabel compositeHeaderLabel;
+    /** Group visibility for adopted panes; panes stay in the tree when hidden. */
+    private boolean compositeExpanded = true;
 
     @Override
     public float getAlignmentX() {
@@ -455,21 +465,20 @@ public class MessageBubble extends JPanel implements Scrollable {
         streamer.finalizeStreaming(expanded, false, TimingConstants.STREAM_BUBBLE_FINALIZE_MS);
     }
 
-    /**
-     * Updates both the title and segmented content of the combined activity pane.
-     * Used by applyTypeFilters() when re-filtering changes the visible count.
-     */
-    public void updateCombinedContent(List<CollapsibleToolPane.ToolSegment> blocks, String title) {
-        this.toolTitle = title;
-        contentRenderer.updateCombinedContent(blocks, title);
-    }
-
     //<editor-fold defaultstate="collapsed" desc="Properties">
     public void setExpanded(boolean expanded) {
+        if (compositeHeader != null) {
+            setCompositeExpanded(expanded);
+            return;
+        }
         accordionManager.setExpanded(expanded);
     }
 
     public void toggleAllBlocks(boolean expanded) {
+        if (compositeHeader != null) {
+            setCompositeExpanded(expanded);
+            return;
+        }
         accordionManager.toggleAllBlocks(expanded);
     }
 
@@ -561,12 +570,105 @@ public class MessageBubble extends JPanel implements Scrollable {
         }
     }
 
-    /**
-     * Replaces the tool/thought content with segmented (markdown-rendered) blocks.
-     * Each block is a consecutive run of same-type chunks with a distinct background.
-     */
-    public void setSegmentedToolContent(List<CollapsibleToolPane.ToolSegment> blocks) {
-        contentRenderer.setSegmentedToolContent(blocks);
+    /** Removes and returns this bubble's single tool/thought pane for adoption. */
+    public BaseCollapsiblePane detachPane() {
+        if (segments.getComponentCount() == 0) {
+            return null;
+        }
+        Component first = segments.getComponent(0);
+        if (first instanceof BaseCollapsiblePane pane) {
+            segments.remove(first);
+            return pane;
+        }
+        return null;
+    }
+
+    /** Adopts live panes behind a clickable count header; freezes single-pane rendering. */
+    public void adoptPanes(List<BaseCollapsiblePane> panes) {
+        contentRenderer.setComposite();
+        segments.removeAll();
+        compositeHeaderLabel = new JLabel();
+        compositeHeaderLabel.setFont(compositeHeaderLabel.getFont().deriveFont(Font.BOLD));
+        compositeHeaderLabel.setForeground(ThemeManager.getCurrentTheme().secondary2());
+        compositeHeader = new JPanel(new BorderLayout());
+        compositeHeader.setOpaque(false);
+        compositeHeader.setAlignmentX(Component.LEFT_ALIGNMENT);
+        compositeHeader.setBorder(new EmptyBorder(0, 2, 2, 2));
+        compositeHeader.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        compositeHeader.setToolTipText(
+                NbBundle.getMessage(UIBundle.class, "HINT_ShowHideExecutionSteps"));
+        compositeHeader.add(compositeHeaderLabel, BorderLayout.WEST);
+        compositeHeader.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                setCompositeExpanded(!compositeExpanded);
+            }
+        });
+        segments.add(compositeHeader);
+        for (BaseCollapsiblePane pane : panes) {
+            segments.add(pane);
+        }
+        refreshCompositeHeader(panes.size());
+        layoutCompositeChildren();
+    }
+
+    /** Returns the adopted child panes of a composite activity bubble. */
+    public List<BaseCollapsiblePane> childPanes() {
+        List<BaseCollapsiblePane> panes = new ArrayList<>();
+        for (Component c : segments.getComponents()) {
+            if (c instanceof BaseCollapsiblePane pane) {
+                panes.add(pane);
+            }
+        }
+        return panes;
+    }
+
+    /** Shows or hides adopted panes; panes stay in the tree either way. */
+    public void setCompositeExpanded(boolean expanded) {
+        compositeExpanded = expanded;
+        applyCompositeFilter();
+    }
+
+    /** Hides or shows adopted panes by group state and type filter. */
+    private void layoutCompositeChildren() {
+        for (BaseCollapsiblePane pane : childPanes()) {
+            pane.setVisible(compositeExpanded && !isCompositeHidden(pane));
+        }
+    }
+
+    /** True when the type filter hides this adopted pane. */
+    private static boolean isCompositeHidden(BaseCollapsiblePane pane) {
+        Object seg = pane.getClientProperty("nb-complete.segment");
+        if (seg instanceof CollapsibleToolPane.ToolSegment s) {
+            return MessageFilterManager.isTypeHidden(s.isThought() ? "thought" : "tool");
+        }
+        return false;
+    }
+
+    /** The combined activity title, e.g. "Execution Steps (3)". */
+    static String executionStepsTitle(int shown) {
+        return NbBundle.getMessage(UIBundle.class, "LBL_ExecutionSteps", shown);
+    }
+
+    /** Refreshes the count caption; count follows the type filter, not the group toggle. */
+    private void refreshCompositeHeader(int shown) {
+        if (compositeHeaderLabel != null) {
+            String arrow = compositeExpanded ? "\u25BE " : "\u25B8 ";
+            compositeHeaderLabel.setText(arrow + executionStepsTitle(shown));
+        }
+    }
+
+    /** Toggles adopted panes by type filter and refreshes the count; returns visible. */
+    public int applyCompositeFilter() {
+        int shown = 0;
+        for (BaseCollapsiblePane pane : childPanes()) {
+            if (!isCompositeHidden(pane)) {
+                shown++;
+            }
+        }
+        layoutCompositeChildren();
+        refreshCompositeHeader(shown);
+        return shown;
     }
 
     @Override

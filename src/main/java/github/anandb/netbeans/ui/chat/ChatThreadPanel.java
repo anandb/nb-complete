@@ -222,7 +222,9 @@ public class ChatThreadPanel extends JPanel {
             scrollController.redirectMouseWheel(messagesContainer, e);
         });
 
-        // Automatically fix mouse wheel for message bubbles (skip strut spacers)
+        // Automatically fix mouse wheel for message bubbles (skip strut spacers).
+        // Removal unfixes too, so every path (trim, blank sweep, echo drop,
+        // self-removal, onboarding stash) releases the strong map entry.
         messagesContainer.addContainerListener(new ContainerAdapter() {
             @Override
             public void componentAdded(ContainerEvent e) {
@@ -231,8 +233,15 @@ public class ChatThreadPanel extends JPanel {
                     scrollController.fixMouseWheel(c);
                 }
             }
-        });
 
+            @Override
+            public void componentRemoved(ContainerEvent e) {
+                Component c = e.getChild();
+                if (c instanceof MessageBubble || c instanceof PermissionBubble || c instanceof StartupInfoBubble) {
+                    scrollController.unfixMouseWheel(c);
+                }
+            }
+        });
         // Listen on layeredPane so children get correct bounds at first layout.
         // Also forces a full re-layout+repaint of the scroll pane on resize,
         // which prevents the viewport backing store from going stale during

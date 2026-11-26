@@ -14,7 +14,10 @@ import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.border.EmptyBorder;
 
+import org.openide.util.NbBundle;
 import org.openide.util.RequestProcessor;
+
+import github.anandb.netbeans.ui.UIBundle;
 
 import github.anandb.netbeans.pattern.CodeFencePattern;
 import github.anandb.netbeans.pattern.EmbeddedImageLinkPattern;
@@ -45,11 +48,8 @@ class BubbleContentRenderer {
      *  is unchanged (e.g. toggleAllBlocks calls updateContent without text delta). */
     private int lastRenderedTextLength = -1;
     private int lastRenderedTextHash = 0;
-    /** Segments set via {@link #setSegmentedToolContent} before the initial
-     *  render (which is deferred to addNotify() to avoid redundant work).
-     *  Held here so the activity pane can be created with the segmented
-     *  content on the first render. */
-    private List<CollapsibleToolPane.ToolSegment> pendingSegmentedContent;
+    /** Composite bubbles adopt live panes, so single-pane render paths stop. */
+    private boolean composite;
     private int fontSizeOverride = -1;
     public record CollapsibleState(boolean expanded) {}
 
@@ -74,9 +74,19 @@ class BubbleContentRenderer {
         }
     }
 
+    /** Marks this bubble as a composite of adopted live panes. */
+    void setComposite() {
+        composite = true;
+    }
+
     private void handleToolThoughtContent(ColorTheme theme, boolean expanded, String toolTitle) {
+        // Composite bubbles own live panes; never touch the first pane here.
+        if (composite) {
+            return;
+        }
         String displayContent = text.toString();
-        String title = toolTitle != null ? toolTitle : "Execution Steps";
+        String title = toolTitle != null ? toolTitle
+                : NbBundle.getMessage(UIBundle.class, "LBL_ExecutionStepsPlain");
         if (segments.getComponentCount() > 0) {
             Component first = segments.getComponent(0);
             if (first instanceof BaseCollapsiblePane pane) {
@@ -92,25 +102,8 @@ class BubbleContentRenderer {
             // Clear it before adding the correct pane.
             segments.removeAll();
         }
-        // If setSegmentedToolContent was called before the initial render
-        // (e.g. ToolThoughtCombiner constructs the bubble, calls
-        // setSegmentedToolContent, then adds it to the tree — only at
-        // addNotify() does the initial render run), the segments panel is
-        // empty and the segmented content was captured in the pending
-        // field. Create the activity pane with segmented content; if no
-        // segments are pending, fall back to the raw text.
-        CollapsibleActivityPane pane;
-        if (pendingSegmentedContent != null) {
-            pane = new CollapsibleActivityPane(title, expanded);
-            pane.setSegmentedContent(pendingSegmentedContent);
-            pendingSegmentedContent = null;
-            // The pane now owns its own content; track length 0 since
-            // the text StringBuilder is empty for the combined bubble.
-            streamer.setLastDisplayedLength(0);
-        } else {
-            pane = new CollapsibleActivityPane(title, displayContent, expanded);
-            streamer.setLastDisplayedLength(displayContent.length());
-        }
+        CollapsibleActivityPane pane = new CollapsibleActivityPane(title, displayContent, expanded);
+        streamer.setLastDisplayedLength(displayContent.length());
         segments.add(pane);
         // No segments.revalidate() here — JTextArea.append() inside
         // CollapsibleActivityPane constructor already invalidates the
@@ -236,39 +229,6 @@ class BubbleContentRenderer {
         } while (matcher.find());
         matcher.appendTail(display);
         return display.toString();
-    }
-
-    void setSegmentedToolContent(List<CollapsibleToolPane.ToolSegment> blocks) {
-        for (Component c : segments.getComponents()) {
-            if (c instanceof CollapsibleActivityPane pane) {
-                pane.setSegmentedContent(blocks);
-                return;
-            } else if (c instanceof CollapsibleToolPane pane) {
-                pane.setSegmentedContent(blocks);
-                return;
-            }
-        }
-        // No activity pane yet (initial render is deferred to addNotify()).
-        // Stash the segments so they can be applied when the pane is created.
-        pendingSegmentedContent = blocks;
-    }
-
-    void updateCombinedContent(List<CollapsibleToolPane.ToolSegment> blocks, String title) {
-        for (Component c : segments.getComponents()) {
-            if (c instanceof CollapsibleActivityPane pane) {
-                pane.setTitle(title);
-                pane.setSegmentedContent(blocks);
-                return;
-            } else if (c instanceof CollapsibleToolPane pane) {
-                pane.setTitle(title);
-                pane.setSegmentedContent(blocks);
-                return;
-            }
-        }
-        // No pane yet — stash both.
-        pendingSegmentedContent = blocks;
-        // Title is taken from the constructor's toolTitle arg; if needed,
-        // callers should set it explicitly via setTitle after the pane is created.
     }
 
     private void updateOrAddCodeSegment(String lang, String code, boolean expanded, int codeIdx, int compIdx) {

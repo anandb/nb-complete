@@ -3,13 +3,11 @@ package github.anandb.netbeans.ui.chat;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.util.List;
 
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
 import javax.swing.JTextArea;
 
-import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 
@@ -19,14 +17,10 @@ import github.anandb.netbeans.ui.rendering.ThemeManager;
  * renderer. Provides reliable text wrapping for streamed tool/thought
  * content in the activity pane.
  * <p>
- * Usage:
- * <ul>
- *   <li>For a single text block: use
- *       {@link #CollapsibleActivityPane(String, String, boolean)} or
- *       {@link #setContent(String)}.</li>
- *   <li>For segmented (combined thought + tool) content: use
- *       {@link #setSegmentedContent(List)}.</li>
- * </ul>
+ * Usage: a single text block via
+ * {@link #CollapsibleActivityPane(String, String, boolean)} or
+ * {@link #setContent(String)}; combined activity bubbles adopt this pane
+ * directly instead of re-rendering it.
  */
 // DSL-LEAF: keep imperative, wrap via UI.of(...) — extends BaseCollapsiblePane;
 // activity/thought sub-pane (multi-content card layout). Migration target: ActivityPaneSpec.
@@ -55,14 +49,6 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
 
     public CollapsibleActivityPane(String title, boolean expandedAtStart) {
         this(title, "", expandedAtStart);
-    }
-
-    @Override
-    protected void onToggle(boolean expanded) {
-        super.onToggle(expanded);
-        if (isSegmented) {
-            header.setVisible(!expanded);
-        }
     }
 
     @Override
@@ -101,14 +87,6 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
         contentPanel.add(textArea, BorderLayout.CENTER);
         contentPanel.revalidate();
         contentPanel.repaint();
-    }
-
-    public void setSegmentedContent(List<CollapsibleToolPane.ToolSegment> blocks) {
-        String plainText = buildSegmentedContent(blocks,
-                block -> isNotBlank(block.text()) ? createActivityTextArea(block.text()) : null,
-                true, true);
-        combinedPlainTextBuilder.setLength(0);
-        combinedPlainTextBuilder.append(plainText);
     }
 
     @Override

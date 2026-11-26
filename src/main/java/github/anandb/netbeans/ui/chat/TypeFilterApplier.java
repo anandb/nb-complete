@@ -33,23 +33,13 @@ public final class TypeFilterApplier {
             for (int i = 0; i < comps.length; i++) {
                 if (comps[i] instanceof MessageBubble bubble) {
                     if (Boolean.TRUE.equals(bubble.getClientProperty("nb-complete.combined"))) {
-                        @SuppressWarnings("unchecked")
-                        List<CollapsibleToolPane.ToolSegment> allSegments =
-                                (List<CollapsibleToolPane.ToolSegment>) bubble.getClientProperty("nb-complete.segments");
-                        if (allSegments != null) {
-                            List<CollapsibleToolPane.ToolSegment> visibleSegments =
-                                    MessageFilterManager.visibleSegments(allSegments);
-                            if (visibleSegments.isEmpty()) {
-                                bubble.setVisible(false);
-                                if (i + 1 < comps.length) comps[i + 1].setVisible(false);
-                            } else {
-                                bubble.setVisible(true);
-                                if (i + 1 < comps.length) comps[i + 1].setVisible(true);
-                                bubble.updateCombinedContent(visibleSegments, "Execution Steps (" + visibleSegments.size() + ")");
-                                bubble.revalidate();
-                            }
-                            continue;
+                        int shown = bubble.applyCompositeFilter();
+                        bubble.setVisible(shown > 0);
+                        if (i + 1 < comps.length) comps[i + 1].setVisible(shown > 0);
+                        if (shown > 0) {
+                            bubble.revalidate();
                         }
+                        continue;
                     }
                     boolean visible = !MessageFilterManager.isTypeHidden(bubble.getRole());
                     boolean wasHidden = !comps[i].isVisible();

@@ -11,13 +11,10 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Function;
 
 import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
 import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -71,8 +68,6 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
     /** The whole header text for a pane whose title carries no tag. */
     private String fullHeaderText;
     protected boolean isThinking;
-    protected boolean isSegmented;
-    protected String combinedPlainText = "";
     /** Cached appearance state to avoid re-setting colors on every hover. */
     private Color lastHeaderBg;
     private Color lastFg;
@@ -132,7 +127,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
             @Override
             public void doLayout() {
                 super.doLayout();
-                applyTitleElision();                
+                applyTitleElision();
             }
         };
         titlePanel.setOpaque(false);
@@ -400,9 +395,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
                             return false;
                         }
                     };
-                    paramLabel.setFont(isSegmented
-                            ? ThemeManager.getMonospaceFont().deriveFont(Font.PLAIN)
-                            : ThemeManager.getFont().deriveFont(Font.PLAIN));
+                    paramLabel.setFont(ThemeManager.getFont().deriveFont(Font.PLAIN));
                     paramLabelToggleListener = new MouseAdapter() {
                         @Override
                         public void mousePressed(MouseEvent e) {
@@ -567,9 +560,7 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         return CollapsibleHeaderRenderer.translateTag(tag);
     }
 
-    protected static String formatInnerTitle(String rawTitle) {
-        return CollapsibleHeaderRenderer.formatTitle(rawTitle);
-    }
+
 
     /**
      * Header label that keeps its full text and fits it to the width it is given. The elision runs
@@ -633,154 +624,19 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
      * @param toggleSegments          make each segment header toggle this pane
      * @param hideHeaderWhenExpanded  hide the pane header while it is expanded
      */
-    protected final String buildSegmentedContent(List<CollapsibleToolPane.ToolSegment> blocks,
-            Function<CollapsibleToolPane.ToolSegment, Component> bodyFactory,
-            boolean toggleSegments, boolean hideHeaderWhenExpanded) {
-        isSegmented = true;
-        contentPanel.removeAll();
 
-        JPanel multiPanel = new JPanel();
-        multiPanel.setLayout(new BoxLayout(multiPanel, BoxLayout.Y_AXIS));
-        multiPanel.setOpaque(false);
-        multiPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        ColorTheme theme = ThemeManager.getCurrentTheme();
-        StringBuilder plainText = new StringBuilder();
-        for (int i = 0; i < blocks.size(); i++) {
-            CollapsibleToolPane.ToolSegment block = blocks.get(i);
-            if (i > 0) {
-                plainText.append("\n\n");
-            }
-            multiPanel.add(createSegmentPane(block.text(), block.isThought(), block.title(), theme,
-                    bodyFactory.apply(block), toggleSegments ? this::toggle : null));
-            plainText.append(block.text() != null ? block.text() : "");
+
+
+    @Override
+    public void addNotify() {
+        super.addNotify();
+        // removeNotify drops the listener when a pane is reparented into a
+        // composite bubble; re-arm it or the parameter stops toggling.
+        if (paramLabelToggleListener != null && paramLabel != null) {
+            paramLabel.removeMouseListener(paramLabelToggleListener);
+            paramLabel.addMouseListener(paramLabelToggleListener);
         }
-        contentPanel.add(multiPanel, BorderLayout.CENTER);
-        if (hideHeaderWhenExpanded) {
-            header.setVisible(!(expanded && isSegmented));
-        }
-        return plainText.toString();
-    }
-
-    protected static JPanel createSegmentPane(String text, boolean isThought, String title,
-            ColorTheme theme, Component bodyComponent, Runnable toggleCallback) {
-        JPanel wrapper = new JPanel(new BorderLayout());
-        wrapper.setOpaque(false);
-        wrapper.setBackground(null);
-        wrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
-        wrapper.setAlignmentY(Component.CENTER_ALIGNMENT);
-
-        if (title != null && !title.isEmpty()) {
-            // Title bar sits directly on wrapper so it spans full width (no left border indent)
-            final ElidingHeaderLabel[] titleRef = new ElidingHeaderLabel[1];
-            JPanel headerPanel = new JPanel(new BorderLayout()) {
-                @Override
-                public void doLayout() {
-                    super.doLayout();
-                    if (titleRef[0] != null) {
-                        // The label's width is only real now; eliding earlier guessed.
-                        titleRef[0].fitText();
-                    }
-                }
-            };
-            headerPanel.setOpaque(true);
-            headerPanel.setBackground(theme.base2());
-            int leftPad = isThought ? 0 : 4;
-            headerPanel.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createMatteBorder(0, 0, 1, 0, theme.isDark() ? theme.base1() : theme.bubbleBorder()),
-                    BorderFactory.createEmptyBorder(5, leftPad, 5, 0)));
-
-            Icon icon = isThought
-                    ? ThemeManager.getIcon("brain.svg", 16)
-                    : ThemeManager.getIcon("tool.svg", 16);
-
-            String displayTitle = formatInnerTitle(title);
-            ElidingHeaderLabel titleLabel = new ElidingHeaderLabel(displayTitle, icon);
-            titleRef[0] = titleLabel;
-            titleLabel.setIconTextGap(8);
-            titleLabel.setFont(ThemeManager.getFont().deriveFont(Font.BOLD));
-            titleLabel.setForeground(theme.foreground());
-            if (toggleCallback != null) {
-                // Make segment header clickable to toggle the entire activity pane
-                titleLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-                titleLabel.addMouseListener(new MouseAdapter() {
-                    @Override
-                    public void mousePressed(MouseEvent e) {
-                        toggleCallback.run();
-                    }
-                });
-            }
-            headerPanel.add(titleLabel, BorderLayout.CENTER);
-
-            // Copy button for this segment — visible on header hover.
-            final String segmentText = text != null ? text : "";
-            final JButton[] segCopyBtnRef = new JButton[1];
-            Timer[] segRevertTimer = new Timer[1];
-            segCopyBtnRef[0] = UIUtils.createToolbarButton("copy.svg", 20,
-                    NbBundle.getMessage(UIBundle.class, "HINT_CopyContent"),
-                    e -> {
-                        StringSelection sel =
-                                new StringSelection(segmentText);
-                        Toolkit.getDefaultToolkit().getSystemClipboard()
-                                .setContents(sel, sel);
-                        JButton btn = segCopyBtnRef[0];
-                        Icon orig = btn.getIcon();
-                        btn.setIcon(ThemeManager.getIcon("check.svg", 14));
-                        if (segRevertTimer[0] != null) {
-                            segRevertTimer[0].stop();
-                        }
-                        segRevertTimer[0] = new Timer(2000, ev -> btn.setIcon(orig));
-                        segRevertTimer[0].setRepeats(false);
-                        segRevertTimer[0].start();
-                        wrapper.putClientProperty("segRevertTimer", segRevertTimer[0]);
-                    });
-            JButton segCopyBtn = segCopyBtnRef[0];
-            segCopyBtn.setBorder(BorderFactory.createEmptyBorder());
-            segCopyBtn.setContentAreaFilled(false);
-            segCopyBtn.setOpaque(false);
-            segCopyBtn.setForeground(theme.foreground());
-            segCopyBtn.setVisible(false);
-
-            // Reserve space so layout doesn't shift.
-            JPanel segCopyPlaceholder = new JPanel(new BorderLayout());
-            segCopyPlaceholder.setOpaque(false);
-            Dimension btnSz = segCopyBtn.getPreferredSize();
-            segCopyPlaceholder.setPreferredSize(btnSz);
-            segCopyPlaceholder.setMinimumSize(btnSz);
-            segCopyPlaceholder.setMaximumSize(btnSz);
-            segCopyPlaceholder.add(segCopyBtn, BorderLayout.CENTER);
-
-            headerPanel.add(segCopyPlaceholder, BorderLayout.EAST);
-            headerPanel.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseEntered(MouseEvent e) {
-                    segCopyBtn.setVisible(true);
-                }
-
-                @Override
-                public void mouseExited(MouseEvent e) {
-                    // Only hide if the mouse actually left the header bounds,
-                    // not when moving between header children (e.g. title → button).
-                    if (!headerPanel.contains(e.getPoint())) {
-                        segCopyBtn.setVisible(false);
-                    }
-                }
-            });
-
-            wrapper.add(headerPanel, BorderLayout.NORTH);
-        }
-
-        if (bodyComponent != null) {
-            // Body panel wraps the rendered content with a left accent border.
-            // Skip entirely for empty text (e.g. "read" segments with content suppressed).
-            JPanel bodyPanel = new JPanel(new BorderLayout());
-            bodyPanel.setOpaque(false);
-            bodyPanel.setBorder(BorderFactory.createMatteBorder(0, 4, 0, 0,
-                    isThought ? theme.yellow() : theme.accent()));
-            bodyPanel.add(bodyComponent, BorderLayout.CENTER);
-            wrapper.add(bodyPanel, BorderLayout.CENTER);
-        }
-        return wrapper;
     }
 
     @Override
@@ -789,15 +645,6 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         // from firing on a partially-dismantled component tree.
         if (copyFeedbackTimer != null && copyFeedbackTimer.isRunning()) {
             copyFeedbackTimer.stop();
-        }
-        // Stop any segRevertTimers stored as client properties on children
-        for (Component c : getComponents()) {
-            if (c instanceof JPanel) {
-                Timer t = (Timer) ((JPanel) c).getClientProperty("segRevertTimer");
-                if (t != null && t.isRunning()) {
-                    t.stop();
-                }
-            }
         }
         if (paramLabelToggleListener != null && paramLabel != null) {
             paramLabel.removeMouseListener(paramLabelToggleListener);

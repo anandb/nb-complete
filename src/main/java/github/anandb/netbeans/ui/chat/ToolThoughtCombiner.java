@@ -17,9 +17,9 @@ import github.anandb.netbeans.pattern.ToolPrefixPattern;
 import github.anandb.netbeans.ui.UIBundle;
 
 /**
- * Combines individual tool/thought bubbles into a single "Execution Steps"
- * activity panel. Called before a user/assistant message is added or when
- * streaming ends. Individual bubbles are removed to free memory.
+ * Combines individual tool/thought bubbles into a single composite
+ * "Execution Steps" activity bubble. The combined bubble adopts the live
+ * panes, so bodies are never rebuilt from strings. Shells are removed.
  */
 // DSL-LEAF: not a controller — combines adjacent tool-call + thought activity
 // panes into one collapsible (group header). Migration target:
@@ -86,6 +86,7 @@ public final class ToolThoughtCombiner {
         // to avoid O(N) per-call on the full container.
         List<Component> toRemove = new ArrayList<>();
         List<CollapsibleToolPane.ToolSegment> allSegments = new ArrayList<>();
+        List<MessageBubble> owners = new ArrayList<>();
         int insertIndex = -1;
 
         Component[] comps = messagesContainer.getComponents();
@@ -140,6 +141,7 @@ public final class ToolThoughtCombiner {
                         }
                         allSegments.add(new CollapsibleToolPane.ToolSegment(
                                 text, "thought".equals(role), segTitle));
+                        owners.add(mb);
                     }
                     toRemove.add(c);
                     // Remove trailing strut as well
@@ -181,20 +183,56 @@ public final class ToolThoughtCombiner {
             }
         }
 
-        // Create combined bubble with only the visible segments
-        String title = "Execution Steps (" + visibleSegments.size() + ")";
+        // Adopt the live panes instead of rebuilding bodies from strings.
+        // Each pane keeps its header, collapse state and copy button.
+        List<BaseCollapsiblePane> adopted = new ArrayList<>();
+        for (int i = 0; i < owners.size(); i++) {
+            MessageBubble owner = owners.get(i);
+            CollapsibleToolPane.ToolSegment seg = allSegments.get(i);
+            BaseCollapsiblePane pane = owner.detachPane();
+            if (pane == null) {
+                owner.finalizeStreaming(allBlocksExpanded, true);
+                pane = owner.detachPane();
+            }
+            if (pane == null) {
+                continue;
+            }
+            if (!seg.isThought() && seg.text().isEmpty()) {
+                pane.setContent("");
+            }
+            pane.putClientProperty("nb-complete.segment", seg);
+            adopted.add(pane);
+        }
+
+        // Adoption failed for every owner: removing the shells would delete the
+        // whole activity run behind an empty header. Keep the individual bubbles.
+        if (adopted.isEmpty()) {
+            return;
+        }
+
+        // Remove from back to front to keep indices valid
+        for (int ri = toRemove.size() - 1; ri >= 0; ri--) {
+            Component removed = toRemove.get(ri);
+            messagesContainer.remove(removed);
+            if (scrollController != null) {
+                scrollController.unfixMouseWheel(removed);
+            }
+        }
+
+        // Create combined bubble holding the adopted panes behind a count caption
+        String title = MessageBubble.executionStepsTitle(adopted.size());
         MessageBubble combined = new MessageBubble(
                 MessageType.tool_call, "", null, title, MessageBubble.AvatarPosition.NONE);
-        combined.setSegmentedToolContent(visibleSegments);
+        combined.adoptPanes(adopted);
         combined.setExpanded(allBlocksExpanded);
         combined.putClientProperty("nb-complete.combined", Boolean.TRUE);
         // Store ALL segments (unfiltered) for later re-filtering by applyTypeFilters()
         combined.putClientProperty("nb-complete.segments", allSegments);
 
-        boolean combinedVisible = !visibleSegments.isEmpty();
-        combined.setVisible(combinedVisible);
+        // Visible segments are non-empty here, so at least one pane stays shown.
+        combined.applyCompositeFilter();
+        combined.setVisible(true);
         Component strut = Box.createVerticalStrut(4);
-        strut.setVisible(combinedVisible);
 
         int safeIdx = Math.max(0, Math.min(insertIndex, messagesContainer.getComponentCount()));
         messagesContainer.add(combined, safeIdx);

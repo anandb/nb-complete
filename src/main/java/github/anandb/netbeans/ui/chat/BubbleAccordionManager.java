@@ -16,22 +16,20 @@ class BubbleAccordionManager {
     }
 
     public void registerWithAccordionGroup(AccordionGroup group) {
-        if (segments.getComponentCount() > 0) {
-            Component first = segments.getComponent(0);
-            if (first instanceof CollapsibleToolPane toolPane) {
+        for (Component c : segments.getComponents()) {
+            if (c instanceof CollapsibleToolPane toolPane) {
                 toolPane.setAccordionGroup(group);
-            } else if (first instanceof CollapsibleActivityPane activityPane) {
+            } else if (c instanceof CollapsibleActivityPane activityPane) {
                 activityPane.setAccordionGroup(group);
             }
         }
     }
 
     public void setExpanded(boolean expanded) {
-        if (segments.getComponentCount() > 0) {
-            Component first = segments.getComponent(0);
-            if (first instanceof CollapsibleToolPane pane) {
+        for (Component c : segments.getComponents()) {
+            if (c instanceof CollapsibleToolPane pane) {
                 pane.setExpanded(expanded);
-            } else if (first instanceof CollapsibleActivityPane pane) {
+            } else if (c instanceof CollapsibleActivityPane pane) {
                 pane.setExpanded(expanded);
             }
         }

@@ -161,6 +161,10 @@ public class ScrollController implements KeyEventDispatcher {
     }
 
     public void fixMouseWheel(Component c) {
+        // Idempotent: re-added bubbles (onboarding restore) must not stack listeners.
+        if (wheelListeners.containsKey(c)) {
+            return;
+        }
         MouseWheelListener listener = e -> {
             scrollPane.dispatchEvent(SwingUtilities.convertMouseEvent(c, e, scrollPane));
             e.consume();

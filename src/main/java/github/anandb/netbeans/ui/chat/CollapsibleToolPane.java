@@ -4,7 +4,6 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Font;
-import java.util.List;
 
 import javax.swing.Icon;
 import javax.swing.JTextArea;
@@ -31,9 +30,8 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
     }
 
     /**
-     * Creates a tool pane without a text area. Use this for the combined
-     * activity bubble where content will be supplied later via
-     * {@link #setSegmentedContent(List)}.
+     * Creates a tool pane without a text area. Kept for panes whose content
+     * arrives through {@link #setContent(String)} after construction.
      */
     public CollapsibleToolPane(String title, boolean expandedAtStart) {
         super(12, title, ThemeManager.getCurrentTheme().yellow(), expandedAtStart);
@@ -69,9 +67,7 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
 
     @Override
     protected String getContentToCopy() {
-        return combinedPlainText.isEmpty()
-                ? (textArea != null ? textArea.getText() : "")
-                : combinedPlainText;
+        return textArea != null ? textArea.getText() : "";
     }
 
     @Override
@@ -99,16 +95,4 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
 
     /** A segment of tool/thought content with an optional title and background indicator. */
     public record ToolSegment(String text, boolean isThought, String title) {}
-
-    /**
-     * Replaces the content area with a panel of colored segments, one per
-     * consecutive same-type block. Each segment renders its text as markdown
-     * via {@link JTextArea}.
-     */
-    public void setSegmentedContent(List<ToolSegment> blocks) {
-        // The caller revalidates (e.g. messagesContainer); the pane may not be
-        // in a validated container yet.
-        combinedPlainText = buildSegmentedContent(blocks,
-                block -> createActivityTextArea(block.text()), false, false);
-    }
 }
