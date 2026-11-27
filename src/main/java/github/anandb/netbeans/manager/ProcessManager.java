@@ -174,6 +174,7 @@ public class ProcessManager implements ProcessControl {
         String key = evt.getKey();
         if (!PreferenceKeys.ACP_EXECUTABLE_PATH.equals(key)
                 && !PreferenceKeys.PROCESS_ARGUMENTS.equals(key)
+                && !PreferenceKeys.ACP_HARNESS_ID.equals(key)
                 && !PreferenceKeys.MCP_SERVER_ENABLED.equals(key)) {
             return;
         }
