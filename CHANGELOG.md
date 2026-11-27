@@ -1,28 +1,45 @@
 # Release Notes
 
-## Unreleased (Changes since v1.32.1)
+## v1.33.0 (Changes since v1.32.1)
 
 ### Features
 - **Save assistant messages to a folder**: every assistant bubble now carries a Save icon left of copy; one click writes the message text as a timestamped `.md` file to the folder configured under **Core Service ▸ Assistant ▸ Message Saving**. Thought and tool panes offer the same Save icon beside the copy icon in their header. The write runs off the EDT and flashes a check or x. With no folder configured the icon is disabled and its tooltip points at that setting. This is if you want to save a response to an Obsidian Vault or any local directory where you can run `grep` at a later point.
 - **Holiday doodles on the support button**: on each holiday's date the sprout mark left of the paperclip bounces once and shows that holiday's icon for an hour, once per holiday per year while the IDE window is active; the tooltip shows the holiday greeting for four seconds when the icon appears, and the click still opens the support page. Thirty-one holidays across every continent except Antarctica ship with their own icon sets. **Core Service ▸ Chat Behavior ▸ Enable Holiday Doodles** turns it off (on by default).
+- **Project files as references, external files as attachments**: the paperclip menu gains **Reference Project File...**, which reuses the Go To File picker for multi-select and keeps it open for more picks. A reference sends a `resource_link` block instead of file content, so the agent reads the file itself through `fs/read_text_file` under the same `ProjectPathGuard`; references are exempt from the 10 MB size cap and capped at 20 on their own, while embedded attachments keep the 2-file / 10 MB caps. Duplicates (same URI, including within one batch) are skipped silently, the popup groups **Attachments** and **References** under muted captions, and each attach reports the file count in the picker status. Sending a file from the editor that sits outside every open project now embeds content instead of handing the agent a path it cannot read. The Mini Assistant gets its own paperclip, paste wiring and attachment status label, and cap or read failures fall back to inserting the path text.
+- **Adjustable chat scroll speed**: **Core Service ▸ Chat Behavior ▸ Scroll Speed** offers Slow, Normal, Fast and Fastest (8/16/32/48 px per wheel unit) and applies immediately to the chat thread and the Mini Assistant.
+- **Live tool and thought panes stay in the activity bubble**: combining a turn adopts the existing collapsible panes instead of re-rendering their bodies, and a clickable count header shows or hides them without removing them; type filters still toggle each pane's visibility. The wheel-redirect handle is released on every removal, closing a listener-map leak on trim, blank sweeps and echo drops.
 
 ### Fixes
+- **Harness changes restart the process**: choosing a different harness now joins the executable path, arguments and MCP toggle as a restart trigger, so the new harness launches immediately instead of the previous one staying; the notice now reads "Harness settings changed. Restart IDE to apply."
+- **Attachment limits and reads**: chooser and paste reads are bounded before a file is attached; project-external files resolve through `FileUtil` so they attach on any filesystem; attachments and references enforce their caps independently (2 embedded files / 10 MB, 20 references); the paste-limit notice reports the real cap; a double-click in the picker confirms the clicked row instead of a stale selection.
+- **Copy/pin overlay and action bar on every bubble**: the overlay is sized and layered correctly on long and short bubbles and positioned from the content row, so it no longer floats above short bubbles or overlaps a collapsible header's own copy button. Hover wiring is skipped for bubbles without copy/pin buttons and the delayed show timer is guarded, so user, info and error bubbles no longer throw on the EDT; `finalizeStreaming` handles a bubble without an action bar, and `ToolThoughtCombiner` drops a redundant bubble removal.
+- **Scroll-speed listeners**: registered and removed through the `PrefStore` seam, and the Mini Assistant removes its listener on dispose instead of leaking one more per reopen.
+- **Project listener on shutdown**: `ACPProjectManager` unregisters its open-projects listener when the plugin stops.
+- **Shortcut and spinner alignment**: `ShortcutUtils.formatKeyStroke` maps AWT's legacy modifier bits onto the extended masks; the line-height spinner loads a `double`, so increment no longer fails on a `Float`; the generated `Bundle.properties` copy can no longer shadow a newer resource.
 - **An expanded tool, thought or activity card keeps its outline on all four sides**: the 1px theme border is drawn for the collapsed one-line header, where it reads clearly, but against the expanded card's header and body surfaces it washed out until the card looked open along two edges. The expanded outline is now shifted 30% away from the surface — darker on light themes, lighter on dark ones — and returns to the theme border on collapse; code blocks keep their own header-rule colour.
 - **Copy and pin appear when the pointer is over the message text**: the hover handler was registered on the bubble card alone, and mouse events go to the deepest component, so hovering the rendered answer (or a code/tool pane) never started the 400 ms reveal — only the card's own 6 px padding, a wheel scroll or a finalize ever showed the icons. The handler is now installed on every pane inside the bubble and re-armed whenever the content is rebuilt or finalized, with the existing rule applied to those panes: an exit hides the icons only when the pointer really left the bubble's bounds. Coming back inside shows them again, and they stay up for 3.5 s before hiding.
 
 ### UI
 - **Help menu icons**: Open User Guide, Run Harness Selection Again and Star this project on GitHub now carry a book, robot and star icon. All three are outline icons with black and dark-theme white variants.
+- **File picker and break-mode dialog polish**: Go To File and picker titles append "(Press ESC to close)"; the picker clears its search field once every displayed file has been picked, so the next query starts fresh while the dialog stays open; the break-mode confirmation states that the setting does not persist across IDE restarts.
+
+### Dependencies
+- **Harlowe 3.3.9**: the story format is vendored under `docs/storyformats` and pinned through `TWEEGO_PATH`, so local, CI and release builds use the same engine instead of tweego's bundled Harlowe 3.1.0. `StoryData` records 3.3.9, and the user guide sidebar back/forward mapping follows the new DOM.
 
 ### Documentation
 - **Architecture decision records**: `docs/adr/` now records the decisions behind the code — 0001 mid-turn steering routing order, 0002 hexagonal layer model, 0003 ACP over direct model APIs, 0004 harness catalog and version capabilities, 0005 Swing layout-loop prevention — plus an index of planned records.
 - **Coverage target scoped**: the 96% target now applies to the core modules (`contract/`, `support/`, `manager/`); `ui/` is excluded as hard to unit-test headlessly. Current: core ~82%, excluding `ui/` ~81%, overall ~58%.
+- **`AGENTS.md` split into per-area files**: the 863-line index is now 183 lines — overview, build commands, always-apply rules and a routing table — with the detail moved verbatim into `docs/agent/`, one file per area. Rule citations across comments and docs point at the new files, the GrayMatter protocol moved to `docs/agent/memory.md` behind a pointer, and the architectural debt registry was corrected (seven `support → model` files, plus the `ui → project` edge).
+- **`CONTRIBUTING.md` trimmed** to the commit message format and the activation hook; the component graph keeps its `docs/DIAGRAM.dot` name.
 
 ### Tests
 - **`ACPProjectManager` is testable headlessly**: an `OpenProjectsSource` seam wraps the `OpenProjects` singleton and project-path lookup, with `NBOpenProjectsSource` as the production adapter; a fake source drives ten tests for open/close diffing, listener replay, coalesced scheduling and defensive copies. Line coverage 30% → 88.5%, branch 14% → 77.8%.
+- **Layer edges are enforced**: `LayerDependencyTest` walks `src/main` once and fails on any upward or sideways edge (`manager → ui`, `ui → manager/mcp`, `model|contract|support → adapters`, `project → ui/manager`). Accepted debt is pinned per file, so a new coupling fails the build and an exception whose file or import disappeared fails too.
+- **Regex wrappers reach 100% coverage**.
 
 ### Housekeeping
 - **Conventional commits are enforced**: `.githooks/commit-msg` rejects subjects that are not `type(scope): description` and caps the subject at 72 characters; activate with `git config core.hooksPath .githooks`.
-- Version bumped to 1.32.2-SNAPSHOT.
+- Version bumped to 1.33.0.
 
 ## v1.32.1 (Changes since v1.32.0)
 

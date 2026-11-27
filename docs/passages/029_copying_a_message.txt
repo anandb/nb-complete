@@ -8,6 +8,10 @@
 
 You can copy individual user messages back into the input text-area. Hover over the user icon, it'll change into a copy button — clicking it copies the message to the clipboard and adds it to the input text-area so you can resend or edit it. Assistant responses can be copied by hovering over the bubble, you'll see a copy and a pin button, copy will copy to the clipboard.
 
+#### Saving a message
+
+An assistant bubble also carries a **Save** icon left of copy, and every thought and tool pane shows Save beside Copy in its header. One click writes that content as a Markdown file to the folder configured under **Core Service › Assistant › Message Saving**, creating the folder if it does not exist; the file is named `beanbot-<name>-<timestamp>.md`, where the name comes from the message, the session or the pane and the timestamp makes each save unique. The write happens in the background, so the panel stays responsive, and the icon flashes a check on success or an x on failure. With no folder configured the icon is disabled and its tooltip points at the setting. This is if you want to save a response to an Obsidian Vault or any local directory where you can run `grep` at a later point.
+
 
 > [[Pinned Messages]]
 > [[Message History]]

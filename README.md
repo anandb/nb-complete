@@ -1,6 +1,6 @@
 # BeanBot
 
-[![Version](https://img.shields.io/badge/version-1.32.1-blue.svg)](pom.xml)
+[![Version](https://img.shields.io/badge/version-1.33.0-blue.svg)](pom.xml)
 ![Build Status](https://github.com/anandb/nb-complete/actions/workflows/ci.yml/badge.svg)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.anandb/beanbot)](https://central.sonatype.com/artifact/io.github.anandb/beanbot/versions)
 [![NetBeans](https://img.shields.io/badge/NetBeans-RELEASE220-blue.svg)](https://netbeans.apache.org/download/index.html)
@@ -49,6 +49,8 @@ between applications.
 
 - Work with any supported harness over ACP and switch when you need to.
 - Stream responses, thoughts and tool calls; expand or collapse activity per turn.
+- Attach project files as references the agent reads itself, or embed external files from the paperclip, a paste or an editor action.
+- Save any response, thought or tool pane to a folder as Markdown.
 - Manage sessions, rename, archive, reload and export conversations.
 - Rich rendering for Markdown, tables and code blocks.
 

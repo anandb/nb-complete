@@ -10,7 +10,17 @@
 
 You can attach files and images to provide more context to the AI. Click the **Paperclip icon** in the input area to open the attachment menu. The paperclip icon displays a numeric badge showing how many files are currently attached, so attachments are visible at a glance. The plugin also supports dragging and dropping files directly into the chat, as well as pasting screenshots straight from your clipboard (you need a vision-capable model).
 
-Text and code files (Markdown, JSON, Java, YAML, …) are sent with their full content. When the agent supports embedded context the file travels as an embedded resource, otherwise its content is inlined into the prompt as a text block; other binary files that cannot be embedded are sent as a file reference. Images are sent as image content blocks.
+Text and code files (Markdown, JSON, Java, YAML, …) are sent with their full content. When the agent supports embedded context the file travels as an embedded resource, otherwise its content is inlined into the prompt as a text block; images are sent as image content blocks. Embedded attachments are capped at **2 files of 10 MB each**.
+
+#### Referencing project files
+
+Choose **Reference Project File...** from the paperclip menu to send a file without its content: the agent receives a `resource_link` and reads the file itself through its own file tools, under the `ACP file access` policy described in the [[Options Panel Reference]]. This suits large or changing files, because the agent always reads the current version and the message stays small.
+
+The picker reuses the Go To File search under the title **Select project files**. Pick one or more rows — Enter confirms the whole selection, double-click confirms the clicked row — and the dialog stays open for more picks, clearing its selection after each one. Its status line confirms each pick; duplicates are skipped silently, and only files from an open project can be referenced. References are not subject to the 10 MB size cap and are capped separately at **20**.
+
+The paperclip badge counts attachments and references together. Opening the paperclip menu groups the current files under **Attachments** and **References**; unchecking an entry removes it. A referenced file appears in the chat as `[Reference: name]`. The [[Mini Assistant]] has its own paperclip with the same rules.
+
+Sending a file from the editor that lies outside every open project embeds its content instead of handing the agent a path it cannot read, so the project file-access policy never blocks that send.
 
 
 > [[Chat Features]]
