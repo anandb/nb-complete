@@ -16,6 +16,7 @@ import javax.swing.Icon;
 import org.junit.jupiter.api.Test;
 
 import github.anandb.netbeans.support.HolidaySupport;
+import github.anandb.netbeans.support.PluginSettings;
 
 class HolidaySupportButtonTest {
 
@@ -116,6 +117,28 @@ class HolidaySupportButtonTest {
         assertEquals(TOOLTIP, button.getToolTipText());
 
         button.removeNotify();
+    }
+
+    @Test
+    void disabledOptionSuppressesAutomaticAndForcedCelebrations() {
+        PluginSettings.setHolidaySupportEnabled(false);
+        AtomicReference<LocalDateTime> now = new AtomicReference<>(THANKSGIVING);
+        HolidaySupportButton button = button(thanksgivingCalendar(), now,
+                alwaysZero(), new AtomicBoolean(true));
+        try {
+            Icon sprout = button.getIcon();
+
+            button.refreshState();
+            assertSame(sprout, button.getIcon(), "no automatic celebration when disabled");
+            assertEquals(TOOLTIP, button.getToolTipText());
+
+            button.forceCelebration();
+            assertSame(sprout, button.getIcon(), "the test hook respects the option");
+            assertEquals(TOOLTIP, button.getToolTipText());
+        } finally {
+            PluginSettings.setHolidaySupportEnabled(true);
+            button.removeNotify();
+        }
     }
 
     private static HolidaySupportButton button(HolidaySupport calendar,

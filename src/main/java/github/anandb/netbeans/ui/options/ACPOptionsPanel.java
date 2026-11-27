@@ -137,6 +137,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private JCheckBox quickJumpCheckbox;
     private JCheckBox copyAllItemsCheckbox;
     private JCheckBox autoBackupChangesCheckbox;
+    private JCheckBox holidaySupportCheckbox;
     private JCheckBox miniAssistantCheckbox;
     private JCheckBox taskRepositoryCheckbox;
     private JCheckBox markdownProjectCheckbox;
@@ -276,6 +277,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         quickJumpCheckbox = new JCheckBox();
         copyAllItemsCheckbox = new JCheckBox();
         autoBackupChangesCheckbox = new JCheckBox();
+        holidaySupportCheckbox = new JCheckBox();
         miniAssistantCheckbox = new JCheckBox();
         taskRepositoryCheckbox = new JCheckBox();
         markdownProjectCheckbox = new JCheckBox();
@@ -646,6 +648,13 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
                 new Insets(0, 12, 5, 0)));
         behaviorPanel.add(editPreambleButton, UIUtils.createGbc(3, row, 0.0, 0, GridBagConstraints.NONE,
                 GridBagConstraints.EAST, new Insets(0, 0, 5, 12)));
+
+        holidaySupportCheckbox.setText(
+                NbBundle.getMessage(UIBundle.class, "LBL_HolidaySupport"));
+        holidaySupportCheckbox.setToolTipText(tooltip("TT_HolidaySupport"));
+        holidaySupportCheckbox.addActionListener(evt -> controller.changed());
+        behaviorPanel.add(holidaySupportCheckbox, UIUtils.createGbc(0, ++row, 1.0, 0,
+                GridBagConstraints.HORIZONTAL, GridBagConstraints.WEST, new Insets(0, 12, 5, 0)));
 
         // --- Session Limits ---
         JPanel limitsPanel = createSectionPanel("LBL_LimitsHeader");
@@ -1427,6 +1436,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         combineCheckbox.setSelected(PluginSettings.isCombineToolThoughtEnabled());
         scrollSpeedCombo.setSelectedIndex(scrollSpeedIndex(PluginSettings.getChatScrollSpeed()));
         autoBackupChangesCheckbox.setSelected(PluginSettings.isAutoBackupChanges());
+        holidaySupportCheckbox.setSelected(PluginSettings.isHolidaySupportEnabled());
         checkForUpdatesCheckbox.setSelected(PluginSettings.isCheckForUpdates());
         Preferences editorPrefs = MimeLookup.getLookup(MimePath.EMPTY).lookup(Preferences.class);
         // The model is Double-based; a Float here fails SpinnerNumberModel's Double.compareTo.
@@ -1918,6 +1928,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
             PluginSettings.setChatScrollSpeed(speedOptions[speedIndex]);
         }
         PluginSettings.setAutoBackupChanges(autoBackupChangesCheckbox.isSelected());
+        PluginSettings.setHolidaySupportEnabled(holidaySupportCheckbox.isSelected());
         PluginSettings.setCheckForUpdates(checkForUpdatesCheckbox.isSelected());
         Preferences editorPrefs = MimeLookup.getLookup(MimePath.EMPTY).lookup(Preferences.class);
         editorPrefs.putFloat(SimpleValueNames.LINE_HEIGHT_CORRECTION, ((Number) lineHeightCorrectionSpinner.getValue()).floatValue());

@@ -12,6 +12,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
+import java.util.prefs.PreferenceChangeEvent;
+import java.util.prefs.PreferenceChangeListener;
 
 import javax.swing.Icon;
 import javax.swing.JButton;
@@ -22,6 +24,9 @@ import org.openide.util.ImageUtilities;
 import org.openide.windows.WindowManager;
 
 import github.anandb.netbeans.support.HolidaySupport;
+import github.anandb.netbeans.support.PreferenceKeys;
+import github.anandb.netbeans.support.PluginSettings;
+import github.anandb.netbeans.ui.platform.PlatformBridge;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 
 /**
@@ -57,6 +62,7 @@ public final class HolidaySupportButton extends JButton {
     private final BooleanSupplier ideActive;
     private final Random random;
     private final long sessionSeed = ThreadLocalRandom.current().nextLong();
+    private final PreferenceChangeListener settingsListener = this::onPreferenceChanged;
 
     private HolidaySupport support;
     private String holidayIconName;
@@ -67,6 +73,7 @@ public final class HolidaySupportButton extends JButton {
     private int celebrationsStarted;
     private LocalDateTime celebrationEnd;
     private LocalDateTime cooldownUntil;
+    private boolean settingsListenerRegistered;
 
     /**
      * @param baseIconName icon shown outside celebrations, e.g. {@code sprout.svg}
@@ -125,6 +132,10 @@ public final class HolidaySupportButton extends JButton {
 
     void refreshState() {
         if (support == null) {
+            return;
+        }
+        if (!PluginSettings.isHolidaySupportEnabled()) {
+            disableCelebration();
             return;
         }
         LocalDateTime now = clock.get();
@@ -196,6 +207,10 @@ public final class HolidaySupportButton extends JButton {
      * calendar has loaded.
      */
     public void forceCelebration() {
+        if (!PluginSettings.isHolidaySupportEnabled()) {
+            disableCelebration();
+            return;
+        }
         if (support == null) {
             forcePending = true;
             return;
@@ -246,6 +261,23 @@ public final class HolidaySupportButton extends JButton {
         setHolidayToolTip(null);
     }
 
+    /** Cancels any celebration and restores the sprout when the option is turned off. */
+    private void disableCelebration() {
+        forcedUntil = null;
+        forcePending = false;
+        celebrationEnd = null;
+        celebrationDay = null;
+        celebrationsStarted = 0;
+        cooldownUntil = null;
+        showBase();
+    }
+
+    private void onPreferenceChanged(PreferenceChangeEvent evt) {
+        if (PreferenceKeys.HOLIDAY_SUPPORT_ENABLED.equals(evt.getKey())) {
+            SwingUtilities.invokeLater(this::refreshState);
+        }
+    }
+
     /** Shows the holiday greeting while decorating, or the original support tooltip otherwise. */
     private void setHolidayToolTip(String greeting) {
         String text = greeting == null ? baseToolTip : greeting;
@@ -276,11 +308,19 @@ public final class HolidaySupportButton extends JButton {
     @Override
     public void addNotify() {
         super.addNotify();
+        if (!settingsListenerRegistered) {
+            PlatformBridge.prefStoreSafe().addChangeListener(settingsListener);
+            settingsListenerRegistered = true;
+        }
         refreshState();
     }
 
     @Override
     public void removeNotify() {
+        if (settingsListenerRegistered) {
+            PlatformBridge.prefStoreSafe().removeChangeListener(settingsListener);
+            settingsListenerRegistered = false;
+        }
         eventTimer.stop();
         stopBounce();
         if (holidayIconName != null) {

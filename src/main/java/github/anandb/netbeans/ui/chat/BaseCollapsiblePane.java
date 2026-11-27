@@ -617,17 +617,6 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         return textArea;
     }
 
-    /**
-     * Replaces the content area with one segment pane per block and returns the plain text
-     * joined by blank lines. The caller supplies the body component for a segment.
-     *
-     * @param toggleSegments          make each segment header toggle this pane
-     * @param hideHeaderWhenExpanded  hide the pane header while it is expanded
-     */
-
-
-
-
     @Override
     public void addNotify() {
         super.addNotify();

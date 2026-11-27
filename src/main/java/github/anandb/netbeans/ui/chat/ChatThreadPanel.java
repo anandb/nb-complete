@@ -1268,13 +1268,21 @@ public class ChatThreadPanel extends JPanel {
         return PluginSettings.getMaxMessages();
     }
 
-    /** Truncates to the tail that fits {@link #currentMaxMessages()}, preserving pinned items before the cutoff. */
-    private <T> List<T> tailWithPinned(List<T> items, Function<T, String> idExtractor) {
+    /**
+     * Truncates to the tail holding the last {@link #currentMaxMessages()} user/assistant
+     * rows, preserving pinned items before the cutoff. Activity rows travel with the
+     * suffix but never consume the cap.
+     */
+    private <T> List<T> tailWithPinned(List<T> items, Function<T, String> idExtractor,
+                                       Function<T, String> roleExtractor) {
         int max = currentMaxMessages();
-        if (max <= 0 || keepOlderMessages || items.size() <= max) {
+        if (max <= 0 || keepOlderMessages) {
             return items;
         }
-        int tailStart = items.size() - max;
+        int tailStart = tailStartForMax(items, roleExtractor, max);
+        if (tailStart <= 0) {
+            return items;
+        }
         PinnedMessageControl pinStore = (currentSessionId != null)
                 ? PlatformBridge.serviceSafe(PinnedMessageControl.class) : null;
         List<T> pinnedBefore = new ArrayList<>();
@@ -1285,10 +1293,31 @@ public class ChatThreadPanel extends JPanel {
                 pinnedBefore.add(item);
             }
         }
-        List<T> result = new ArrayList<>(pinnedBefore.size() + max);
+        List<T> result = new ArrayList<>(pinnedBefore.size() + (items.size() - tailStart));
         result.addAll(pinnedBefore);
         result.addAll(items.subList(tailStart, items.size()));
         return result;
+    }
+
+    /**
+     * Index of the first row to keep: the row holding the {@code max}-th user/assistant
+     * message counted from the end. Every row after it (activity included) stays.
+     * Returns 0 when the list holds fewer than {@code max} such messages.
+     */
+    static <T> int tailStartForMax(List<T> items, Function<T, String> roleExtractor, int max) {
+        if (max <= 0) {
+            return 0;
+        }
+        int counted = 0;
+        for (int i = items.size() - 1; i >= 0; i--) {
+            String role = roleExtractor.apply(items.get(i));
+            if ("user".equals(role) || "assistant".equals(role)) {
+                if (++counted == max) {
+                    return i;
+                }
+            }
+        }
+        return 0;
     }
 
     public String getConversationAsMarkdown() {
@@ -1352,7 +1381,8 @@ public class ChatThreadPanel extends JPanel {
             // User/history messages often carry an id; assistants often do not
             // until addSingleBubble/assignMissingMessageIds. Cleaning immediately
             // would retain only those user ids and drop stored assistant pins.
-            renderLoadedInChunks(tailWithPinned(buffer, ProcessedMessage::messageId),
+            renderLoadedInChunks(tailWithPinned(buffer, ProcessedMessage::messageId,
+                            pm -> pm.messageType().roleName()),
                     () -> retainActivePins(sid));
         } else if (!loadRenderInProgress) {
             retainActivePins(sid);
@@ -1536,7 +1566,7 @@ public class ChatThreadPanel extends JPanel {
             if (messages != null) {
                 // Convert to ProcessedMessage first, then render in chunks so a
                 // large history doesn't freeze the EDT in one layout pass.
-                List<Message> toRender = tailWithPinned(messages, Message::id);
+                List<Message> toRender = tailWithPinned(messages, Message::id, Message::type);
                 List<ProcessedMessage> converted = new ArrayList<>(toRender.size());
                 for (Message m : toRender) {
                     ProcessedMessage pm = messageTransformer.convert(m);

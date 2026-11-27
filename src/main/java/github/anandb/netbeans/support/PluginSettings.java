@@ -55,6 +55,8 @@ public final class PluginSettings {
     private static volatile boolean cachedQuickJumpEnabled = true;
     private static volatile boolean cachedCopyAllItemsEnabled = true;
     private static volatile boolean cachedAutoBackupChanges = true;
+    /** Holiday doodles on the support button; Experimental, default on. */
+    private static volatile boolean cachedHolidaySupportEnabled = true;
     /** Cached mini-assistant toggle — volatile for cross-thread visibility. Defaults to true. */
     private static volatile boolean cachedMiniAssistantEnabled = true;
     /** Cached task-repository toggle — volatile for cross-thread visibility. Defaults to true. */
@@ -137,6 +139,7 @@ public final class PluginSettings {
         cachedQuickJumpEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_QUICK_JUMP, true);
         cachedCopyAllItemsEnabled = prefs.getBoolean(PreferenceKeys.ACTIONS_COPY_ALL_ITEMS, true);
         cachedAutoBackupChanges = prefs.getBoolean(PreferenceKeys.AUTO_BACKUP_CHANGES, true);
+        cachedHolidaySupportEnabled = prefs.getBoolean(PreferenceKeys.HOLIDAY_SUPPORT_ENABLED, true);
         cachedMiniAssistantEnabled = prefs.getBoolean(PreferenceKeys.MINI_ASSISTANT_ENABLED, true);
         cachedTaskRepositoryEnabled = prefs.getBoolean(PreferenceKeys.TASK_REPOSITORY_ENABLED, true);
         cachedPreambleEnabled = prefs.getBoolean(PreferenceKeys.PREAMBLE_ENABLED, true);
@@ -332,6 +335,9 @@ public final class PluginSettings {
             cachedCopyAllItemsEnabled = prefs().getBoolean(PreferenceKeys.ACTIONS_COPY_ALL_ITEMS, true);
         } else if (PreferenceKeys.AUTO_BACKUP_CHANGES.equals(evt.getKey())) {
             cachedAutoBackupChanges = prefs().getBoolean(PreferenceKeys.AUTO_BACKUP_CHANGES, true);
+        } else if (PreferenceKeys.HOLIDAY_SUPPORT_ENABLED.equals(evt.getKey())) {
+            cachedHolidaySupportEnabled =
+                    prefs().getBoolean(PreferenceKeys.HOLIDAY_SUPPORT_ENABLED, true);
         } else if (PreferenceKeys.MINI_ASSISTANT_ENABLED.equals(evt.getKey())) {
             cachedMiniAssistantEnabled = prefs().getBoolean(PreferenceKeys.MINI_ASSISTANT_ENABLED, true);
         } else if (PreferenceKeys.TASK_REPOSITORY_ENABLED.equals(evt.getKey())) {
@@ -394,6 +400,17 @@ public final class PluginSettings {
     public static void setAutoBackupChanges(boolean enabled) {
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR).putBoolean(PreferenceKeys.AUTO_BACKUP_CHANGES, enabled);
         cachedAutoBackupChanges = enabled;
+    }
+
+    /** Whether holiday doodles may decorate the support button. */
+    public static boolean isHolidaySupportEnabled() {
+        return cachedHolidaySupportEnabled;
+    }
+
+    public static void setHolidaySupportEnabled(boolean enabled) {
+        NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                .putBoolean(PreferenceKeys.HOLIDAY_SUPPORT_ENABLED, enabled);
+        cachedHolidaySupportEnabled = enabled;
     }
 
     /** Max visible message bubbles before older ones are trimmed. 0 = unlimited. */

@@ -36,6 +36,9 @@ public final class PreferenceKeys {
 
     public static final String AUTO_BACKUP_CHANGES = "behavior.autoBackupChanges";
 
+    /** Holiday doodles on the support button (Experimental). */
+    public static final String HOLIDAY_SUPPORT_ENABLED = "behavior.holidaySupportEnabled";
+
     /** Toolbar icon size: 24 (small), 28 (medium), 32 (large). */
     public static final String TOOLBAR_ICON_SIZE = "toolbarIconSize";
 
