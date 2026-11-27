@@ -174,15 +174,6 @@ public final class ToolThoughtCombiner {
             return;
         }
 
-        // Remove from back to front to keep indices valid
-        for (int ri = toRemove.size() - 1; ri >= 0; ri--) {
-            Component removed = toRemove.get(ri);
-            messagesContainer.remove(removed);
-            if (scrollController != null) {
-                scrollController.unfixMouseWheel(removed);
-            }
-        }
-
         // Adopt the live panes instead of rebuilding bodies from strings.
         // Each pane keeps its header, collapse state and copy button.
         List<BaseCollapsiblePane> adopted = new ArrayList<>();
