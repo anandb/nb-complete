@@ -155,6 +155,8 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
     private JLabel argsLabel;
     private JTextField argsField;
     private JLabel argsHintLabel;
+    private JTextField saveDirectoryField;
+    private JButton saveDirectoryBrowseButton;
     private JComboBox<HarnessSelection.Selection> harnessCombo;
     private JLabel harnessHintLabel;
     private JButton harnessUseDetectedButton;
@@ -290,6 +292,8 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         iconPathField = new JTextField(18);
         iconBrowseButton = new JButton();
         iconPreviewLabel = new JLabel();
+        saveDirectoryField = new JTextField(18);
+        saveDirectoryBrowseButton = new JButton();
 
         iconPreviewManager = new IconPreviewManager(iconPreviewLabel, iconPathField, PREVIEW_SIZE,
                 controller::changed);
@@ -420,6 +424,37 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
             gbcWsl.gridwidth = 3;
             servicePanel.add(useWslCheckbox, gbcWsl);
         }
+
+        // --- Message Saving (its own group on the Assistant page) ---
+        JPanel savePanel = createSectionPanel("LBL_SaveHeader");
+        savePanel.setLayout(new GridBagLayout());
+        JLabel saveDirLabel = new JLabel(scopedLabel("LBL_SaveDirectory", PluginSettings.Effect.IMMEDIATE));
+        saveDirLabel.setToolTipText(tooltip("TT_SaveDirectory"));
+        saveDirLabel.setLabelFor(saveDirectoryField);
+        savePanel.add(saveDirLabel, UIUtils.createGbc(0, 0, 0.0, 0, GridBagConstraints.NONE,
+                GridBagConstraints.WEST, new Insets(0, 12, 5, 5)));
+
+        saveDirectoryField.setToolTipText(tooltip("TT_SaveDirectory"));
+        saveDirectoryField.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyReleased(KeyEvent evt) {
+                controller.changed();
+            }
+        });
+        savePanel.add(saveDirectoryField, UIUtils.createGbc(1, 0, 1.0, 0, GridBagConstraints.HORIZONTAL,
+                GridBagConstraints.WEST, new Insets(0, 0, 5, 5)));
+
+        saveDirectoryBrowseButton.setText(NbBundle.getMessage(UIBundle.class, "BTN_Browse"));
+        saveDirectoryBrowseButton.setToolTipText(tooltip("TT_SaveDirectory"));
+        saveDirectoryBrowseButton.addActionListener(evt -> saveDirectoryBrowseButtonActionPerformed());
+        savePanel.add(saveDirectoryBrowseButton, UIUtils.createGbc(2, 0, 0.0, 0,
+                GridBagConstraints.NONE, GridBagConstraints.WEST, new Insets(0, 0, 5, 0)));
+
+        JPanel servicePage = new JPanel();
+        servicePage.setOpaque(false);
+        servicePage.setLayout(new BoxLayout(servicePage, BoxLayout.Y_AXIS));
+        servicePage.add(servicePanel);
+        servicePage.add(savePanel);
 
         // --- System ---
         JPanel systemPanel = createSectionPanel("LBL_GeneralHeader");
@@ -833,7 +868,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         familyGbc.gridwidth = 2;
         appearanceForm.add(chatFontFamilyCombo, familyGbc);
 
-        add(createNavigation(servicePanel, behaviorPanel, appearancePanel,
+        add(createNavigation(servicePage, behaviorPanel, appearancePanel,
                 systemPanel, experimentalPanel, limitsPanel, actionsPanel, contextActionsPanel));
     }
 
@@ -1244,6 +1279,23 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         }
     }
 
+    private void saveDirectoryBrowseButtonActionPerformed() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        chooser.setDialogTitle(NbBundle.getMessage(UIBundle.class, "TITLE_SelectSaveDirectory"));
+        String currentPath = saveDirectoryField.getText().trim();
+        if (!currentPath.isEmpty()) {
+            File currentDir = new File(currentPath);
+            if (currentDir.isDirectory()) {
+                chooser.setCurrentDirectory(currentDir);
+            }
+        }
+        if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            saveDirectoryField.setText(chooser.getSelectedFile().getAbsolutePath());
+            controller.changed();
+        }
+    }
+
     private void iconBrowseButtonActionPerformed() {
         JFileChooser chooser = new JFileChooser();
         chooser.setFileFilter(new FileNameExtensionFilter("PNG Images (*.png)", "png"));
@@ -1437,6 +1489,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         scrollSpeedCombo.setSelectedIndex(scrollSpeedIndex(PluginSettings.getChatScrollSpeed()));
         autoBackupChangesCheckbox.setSelected(PluginSettings.isAutoBackupChanges());
         holidaySupportCheckbox.setSelected(PluginSettings.isHolidaySupportEnabled());
+        saveDirectoryField.setText(PluginSettings.getMessageSaveDirectory());
         checkForUpdatesCheckbox.setSelected(PluginSettings.isCheckForUpdates());
         Preferences editorPrefs = MimeLookup.getLookup(MimePath.EMPTY).lookup(Preferences.class);
         // The model is Double-based; a Float here fails SpinnerNumberModel's Double.compareTo.
@@ -1929,6 +1982,7 @@ public class ACPOptionsPanel extends JPanel implements OptionsPanel {
         }
         PluginSettings.setAutoBackupChanges(autoBackupChangesCheckbox.isSelected());
         PluginSettings.setHolidaySupportEnabled(holidaySupportCheckbox.isSelected());
+        PluginSettings.setMessageSaveDirectory(saveDirectoryField.getText());
         PluginSettings.setCheckForUpdates(checkForUpdatesCheckbox.isSelected());
         Preferences editorPrefs = MimeLookup.getLookup(MimePath.EMPTY).lookup(Preferences.class);
         editorPrefs.putFloat(SimpleValueNames.LINE_HEIGHT_CORRECTION, ((Number) lineHeightCorrectionSpinner.getValue()).floatValue());

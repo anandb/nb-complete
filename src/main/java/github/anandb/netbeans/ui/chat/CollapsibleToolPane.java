@@ -17,7 +17,7 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
     private JTextArea textArea;
 
     public CollapsibleToolPane(String title, String content, boolean expandedAtStart) {
-        super(12, title, ThemeManager.getCurrentTheme().yellow(), expandedAtStart);
+        super(12, title, ThemeManager.getCurrentTheme().yellow(), expandedAtStart, true);
 
         textArea = createActivityTextArea(content);
         textArea.setFont(isThinking
@@ -34,7 +34,7 @@ public class CollapsibleToolPane extends BaseCollapsiblePane {
      * arrives through {@link #setContent(String)} after construction.
      */
     public CollapsibleToolPane(String title, boolean expandedAtStart) {
-        super(12, title, ThemeManager.getCurrentTheme().yellow(), expandedAtStart);
+        super(12, title, ThemeManager.getCurrentTheme().yellow(), expandedAtStart, true);
         setAlignmentX(Component.LEFT_ALIGNMENT);
     }
 

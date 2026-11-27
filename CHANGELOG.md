@@ -3,6 +3,7 @@
 ## Unreleased (Changes since v1.32.1)
 
 ### Features
+- **Save assistant messages to a folder**: every assistant bubble now carries a Save icon left of copy; one click writes the message text as a timestamped `.md` file to the folder configured under **Core Service ▸ Assistant ▸ Message Saving**. Thought and tool panes offer the same Save icon beside the copy icon in their header. The write runs off the EDT and flashes a check or x. With no folder configured the icon is disabled and its tooltip points at that setting. This is if you want to save a response to an Obsidian Vault or any local directory where you can run `grep` at a later point.
 - **Holiday doodles on the support button**: on selected holiday dates the sprout mark left of the paperclip bounces once and shows that holiday's icon for an hour, twice a day while the IDE window is active. Twenty-one holidays ship with their own icon sets; the tooltip shows the holiday greeting and the click still opens the support page. **Core Service ▸ Chat Behavior ▸ Enable Holiday Doodles** turns it off (on by default).
 
 ### Fixes

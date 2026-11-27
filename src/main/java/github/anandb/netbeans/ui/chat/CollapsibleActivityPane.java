@@ -36,7 +36,7 @@ public class CollapsibleActivityPane extends BaseCollapsiblePane {
     public CollapsibleActivityPane(String title, String content, boolean expandedAtStart) {
         super(12, title,
               ThemeManager.getCurrentTheme().activityAccent(),
-              expandedAtStart);
+              expandedAtStart, true);
 
         String initial = content != null ? content : "";
         combinedPlainTextBuilder.append(initial);

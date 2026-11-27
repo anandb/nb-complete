@@ -39,6 +39,9 @@ public final class PreferenceKeys {
     /** Holiday doodles on the support button (Experimental). */
     public static final String HOLIDAY_SUPPORT_ENABLED = "behavior.holidaySupportEnabled";
 
+    /** Folder the assistant-bubble Save button writes to; empty disables the button. */
+    public static final String MESSAGE_SAVE_DIRECTORY = "behavior.messageSaveDirectory";
+
     /** Toolbar icon size: 24 (small), 28 (medium), 32 (large). */
     public static final String TOOLBAR_ICON_SIZE = "toolbarIconSize";
 

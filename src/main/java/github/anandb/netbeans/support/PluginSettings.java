@@ -84,6 +84,8 @@ public final class PluginSettings {
     private static volatile String cachedChatBackgroundLight = "";
     private static volatile String cachedChatBackgroundDark = "";
     private static volatile String cachedChatFontFamily = "";
+    /** Folder for the assistant-bubble Save button; empty disables it. */
+    private static volatile String cachedMessageSaveDirectory = "";
     /** Cached show hidden sessions toggle — volatile for cross-thread visibility. Defaults to false. */
     private static volatile boolean cachedShowHiddenSessions = false;
     /** Cached keep older messages toggle — volatile for cross-thread visibility. Defaults to false. */
@@ -155,6 +157,7 @@ public final class PluginSettings {
         cachedChatBackgroundLight = prefs.get(PreferenceKeys.CHAT_BACKGROUND_LIGHT, "");
         cachedChatBackgroundDark = prefs.get(PreferenceKeys.CHAT_BACKGROUND_DARK, "");
         cachedChatFontFamily = prefs.get(PreferenceKeys.CHAT_FONT_FAMILY, "");
+        cachedMessageSaveDirectory = prefs.get(PreferenceKeys.MESSAGE_SAVE_DIRECTORY, "");
         cachedShowHiddenSessions = prefs.getBoolean(PreferenceKeys.SHOW_HIDDEN_SESSIONS, false);
         cachedKeepOlderMessages = prefs.getBoolean(PreferenceKeys.KEEP_OLDER_MESSAGES, false);
         cachedEchoUserInput = prefs.getBoolean(PreferenceKeys.ECHO_USER_INPUT, true);
@@ -349,6 +352,8 @@ public final class PluginSettings {
             cachedRunCommandAllowlist = prefs().get(PreferenceKeys.RUN_COMMAND_ALLOWLIST, "");
         } else if (PreferenceKeys.RUN_COMMAND_DENYLIST.equals(evt.getKey())) {
             cachedRunCommandDenylist = prefs().get(PreferenceKeys.RUN_COMMAND_DENYLIST, "");
+        } else if (PreferenceKeys.MESSAGE_SAVE_DIRECTORY.equals(evt.getKey())) {
+            cachedMessageSaveDirectory = prefs().get(PreferenceKeys.MESSAGE_SAVE_DIRECTORY, "");
         } else if (PreferenceKeys.PREAMBLE_ENABLED.equals(evt.getKey())) {
             cachedPreambleEnabled = prefs().getBoolean(PreferenceKeys.PREAMBLE_ENABLED, true);
         } else if (PreferenceKeys.MCP_SERVER_ENABLED.equals(evt.getKey())) {
@@ -411,6 +416,20 @@ public final class PluginSettings {
         NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
                 .putBoolean(PreferenceKeys.HOLIDAY_SUPPORT_ENABLED, enabled);
         cachedHolidaySupportEnabled = enabled;
+    }
+
+    /** Folder the assistant-bubble Save button writes to; empty disables the button. */
+    public static String getMessageSaveDirectory() {
+        return cachedMessageSaveDirectory;
+    }
+
+    public static void setMessageSaveDirectory(String directory) {
+        String value = directory == null ? "" : directory.trim();
+        if (!value.equals(cachedMessageSaveDirectory)) {
+            NbPreferences.forModule(PreferenceKeys.MODULE_ANCHOR)
+                    .put(PreferenceKeys.MESSAGE_SAVE_DIRECTORY, value);
+        }
+        cachedMessageSaveDirectory = value;
     }
 
     /** Max visible message bubbles before older ones are trimmed. 0 = unlimited. */

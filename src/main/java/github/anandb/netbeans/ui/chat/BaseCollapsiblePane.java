@@ -5,13 +5,18 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.BorderFactory;
@@ -29,6 +34,8 @@ import javax.swing.JPopupMenu;
 import org.openide.util.NbBundle;
 import org.apache.commons.lang3.StringUtils;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.AssistantMessageSaver;
+import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.pattern.ToolPrefixPattern;
 import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.rendering.ColorTheme;
@@ -56,6 +63,8 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
 
     protected final JPanel titlePanel;
     protected final JButton copyButton;
+    /** Header save button; {@code null} for panes that do not offer save-to-disk. */
+    protected final JButton saveButton;
     protected final JButton groupToggleBtn;
     protected final Color defaultAccent;
     protected JLabel paramLabel;
@@ -78,6 +87,9 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
     /** Outline shift while expanded: the theme border washes out against the expanded surfaces. */
     private static final double EXPANDED_BORDER_SHIFT = 0.30;
     private transient Timer copyFeedbackTimer;
+    private transient Timer saveFeedbackTimer;
+    private transient Icon saveButtonIcon;
+    private transient Icon saveOkIcon;
     private transient AccordionGroup accordionGroup;
     protected final AtomicBoolean copyHovered = new AtomicBoolean(false);
     /** Listener references for clean removal in removeNotify(). */
@@ -86,6 +98,11 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
     private transient MouseAdapter paramLabelToggleListener;
 
     public BaseCollapsiblePane(int radius, String title, Color defaultAccent, boolean expandedByDefault) {
+        this(radius, title, defaultAccent, expandedByDefault, false);
+    }
+
+    protected BaseCollapsiblePane(int radius, String title, Color defaultAccent,
+                                  boolean expandedByDefault, boolean saveToDisk) {
         super(radius);
         this.expanded = expandedByDefault;
         this.defaultAccent = defaultAccent;
@@ -177,29 +194,56 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         copyButton.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
         copyButton.setForeground(theme.foreground());
         copyButton.setVisible(false);
+
+        if (saveToDisk) {
+            saveButton = UIUtils.createToolbarButton("save.svg", 20,
+                    NbBundle.getMessage(UIBundle.class, "HINT_SaveAssistantMessage"),
+                    e -> saveContentToDisk());
+            saveButton.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
+            saveButton.setForeground(theme.foreground());
+            saveButton.setVisible(false);
+            saveButtonIcon = saveButton.getIcon();
+            saveOkIcon = ThemeManager.getIcon("check.svg", 12);
+            updateSaveState();
+        } else {
+            saveButton = null;
+        }
+
         copyButtonHoverListener = new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
                 copyHovered.set(true);
-                copyButton.setVisible(true);
+                setHeaderButtonsVisible(true);
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
                 copyHovered.set(false);
-                copyButton.setVisible(false);
+                setHeaderButtonsVisible(false);
             }
         };
         copyButton.addMouseListener(copyButtonHoverListener);
+        if (saveButton != null) {
+            saveButton.addMouseListener(copyButtonHoverListener);
+        }
 
-        // Wrap in fixed-size panel so header height never changes when button visibility toggles
+        // Wrap in fixed-size panel so header height never changes when button visibility toggles.
+        // The width reserves every button even while hidden, so showing them never reflows.
+        JButton[] headerButtons = saveButton != null
+                ? new JButton[]{saveButton, copyButton}
+                : new JButton[]{copyButton};
         JPanel eastPlaceholder = new JPanel(new BorderLayout());
         eastPlaceholder.setOpaque(false);
-        Dimension btnSize = copyButton.getPreferredSize();
+        Dimension btnSize = headerButtonsSize(headerButtons);
         eastPlaceholder.setPreferredSize(btnSize);
         eastPlaceholder.setMinimumSize(btnSize);
         eastPlaceholder.setMaximumSize(btnSize);
-        eastPlaceholder.add(copyButton, BorderLayout.CENTER);
+        JPanel headerButtonsRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        headerButtonsRow.setOpaque(false);
+        for (JButton button : headerButtons) {
+            headerButtonsRow.add(button);
+        }
+        eastPlaceholder.add(headerButtonsRow, BorderLayout.CENTER);
         header.add(eastPlaceholder, BorderLayout.EAST);
 
         // Collapse/expand button for the accordion group
@@ -350,7 +394,27 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
 
     protected void onHeaderHover(boolean hover) {
         updateAppearance();
-        copyButton.setVisible(hover || copyHovered.get());
+        setHeaderButtonsVisible(hover || copyHovered.get());
+    }
+
+    /** Shows or hides the header action buttons as one group. */
+    private void setHeaderButtonsVisible(boolean visible) {
+        copyButton.setVisible(visible);
+        if (saveButton != null) {
+            saveButton.setVisible(visible);
+        }
+    }
+
+    /** Preferred size of the east placeholder: every header button side by side. */
+    private static Dimension headerButtonsSize(JButton[] buttons) {
+        int width = 0;
+        int height = 0;
+        for (JButton button : buttons) {
+            Dimension size = button.getPreferredSize();
+            width += size.width;
+            height = Math.max(height, size.height);
+        }
+        return new Dimension(width, height);
     }
 
     protected Color getDefaultHeaderBackground() {
@@ -474,6 +538,76 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         });
         copyFeedbackTimer.setRepeats(false);
         copyFeedbackTimer.start();
+    }
+
+    /** Enables the header save button only when a save directory is configured. */
+    private void updateSaveState() {
+        if (saveButton == null) {
+            return;
+        }
+        boolean configured = !PluginSettings.getMessageSaveDirectory().isBlank();
+        saveButton.setEnabled(configured);
+        String hint = NbBundle.getMessage(UIBundle.class,
+                configured ? "HINT_SaveAssistantMessage" : "HINT_SaveDirectoryNotConfigured");
+        saveButton.setToolTipText(hint);
+        saveButton.getAccessibleContext().setAccessibleName(hint);
+        saveButton.getAccessibleContext().setAccessibleDescription(hint);
+    }
+
+    /** Writes the pane body off the EDT, then flashes a check (success) or x (failure). */
+    protected void saveContentToDisk() {
+        String directory = PluginSettings.getMessageSaveDirectory();
+        if (directory.isBlank() || saveButton == null) {
+            return;
+        }
+        String content = getContentToCopy();
+        if (content == null || content.isEmpty()) {
+            return;
+        }
+        Path dir;
+        try {
+            dir = Path.of(directory);
+        } catch (RuntimeException ex) {
+            LOG.warn("Invalid save directory: {0}", directory, ex);
+            flashSaveIcon(false);
+            return;
+        }
+        CompletableFuture<Path> write = CompletableFuture.supplyAsync(() -> {
+            try {
+                return AssistantMessageSaver.save(content, dir, "activity");
+            } catch (IOException ex) {
+                throw new CompletionException(ex);
+            }
+        });
+        write.thenAccept(file -> SwingUtilities.invokeLater(() -> {
+            saveButton.setToolTipText(NbBundle.getMessage(UIBundle.class,
+                    "HINT_SavedAssistantMessage", file.getFileName().toString()));
+            flashSaveIcon(true);
+        })).exceptionally(ex -> {
+            LOG.warn("Failed to save pane content to {0}", dir, ex);
+            SwingUtilities.invokeLater(() -> flashSaveIcon(false));
+            return null;
+        });
+    }
+
+    /** Flashes the save outcome icon, then restores the save icon and tooltip. */
+    private void flashSaveIcon(boolean success) {
+        if (saveButton == null) {
+            return;
+        }
+        Icon flashIcon = success ? saveOkIcon : ThemeManager.getIcon("x.svg", 12);
+        if (flashIcon != null) {
+            saveButton.setIcon(flashIcon);
+        }
+        if (saveFeedbackTimer != null) {
+            saveFeedbackTimer.stop();
+        }
+        saveFeedbackTimer = new Timer(1500, e -> {
+            saveButton.setIcon(saveButtonIcon);
+            updateSaveState();
+        });
+        saveFeedbackTimer.setRepeats(false);
+        saveFeedbackTimer.start();
     }
 
     protected final void updateBaseAppearance() {
@@ -634,6 +768,9 @@ public abstract class BaseCollapsiblePane extends RoundedPanel {
         // from firing on a partially-dismantled component tree.
         if (copyFeedbackTimer != null && copyFeedbackTimer.isRunning()) {
             copyFeedbackTimer.stop();
+        }
+        if (saveFeedbackTimer != null && saveFeedbackTimer.isRunning()) {
+            saveFeedbackTimer.stop();
         }
         if (paramLabelToggleListener != null && paramLabel != null) {
             paramLabel.removeMouseListener(paramLabelToggleListener);

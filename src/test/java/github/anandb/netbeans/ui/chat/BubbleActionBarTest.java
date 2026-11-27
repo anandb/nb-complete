@@ -4,14 +4,17 @@ import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Rectangle;
+import java.nio.file.Path;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
 import github.anandb.netbeans.model.MessageType;
+import github.anandb.netbeans.support.PluginSettings;
 import github.anandb.netbeans.ui.rendering.ThemeManager;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -121,6 +124,51 @@ class BubbleActionBarTest {
                             + " copy=" + copyBounds);
             assertInsideRow(bubble);
         });
+    }
+
+    @TempDir
+    Path tempDir;
+
+    @Test
+    void saveButtonIsFirstAndDisabledWithoutDirectory() throws Exception {
+        String previous = PluginSettings.getMessageSaveDirectory();
+        try {
+            SwingUtilities.invokeAndWait(() -> {
+                PluginSettings.setMessageSaveDirectory("");
+                MessageBubble bubble = new MessageBubble(MessageType.agent_message_chunk, "answer",
+                        "m6", null, MessageBubble.AvatarPosition.NONE);
+                JPanel overlay = findOverlay(bubble);
+                assertNotNull(overlay, "action overlay must exist");
+                assertEquals(3, overlay.getComponentCount(), "save, copy and pin must all be present");
+                Component first = overlay.getComponent(0);
+                assertTrue(first instanceof JButton, "save is the first button");
+                JButton save = (JButton) first;
+                assertFalse(save.isEnabled(), "save is disabled until a directory is configured");
+                assertTrue(save.getToolTipText().contains("Settings -> Core Service -> Assistant"),
+                        "disabled tooltip explains where to configure it: " + save.getToolTipText());
+            });
+        } finally {
+            PluginSettings.setMessageSaveDirectory(previous);
+        }
+    }
+
+    @Test
+    void saveButtonEnablesWhenDirectoryIsConfigured() throws Exception {
+        String previous = PluginSettings.getMessageSaveDirectory();
+        try {
+            SwingUtilities.invokeAndWait(() -> {
+                PluginSettings.setMessageSaveDirectory(tempDir.toString());
+                MessageBubble bubble = new MessageBubble(MessageType.agent_message_chunk, "answer",
+                        "m7", null, MessageBubble.AvatarPosition.NONE);
+                JPanel overlay = findOverlay(bubble);
+                assertNotNull(overlay, "action overlay must exist");
+                JButton save = (JButton) overlay.getComponent(0);
+                assertTrue(save.isEnabled(), "save enables once a directory is configured");
+                assertEquals("Save Content", save.getToolTipText());
+            });
+        } finally {
+            PluginSettings.setMessageSaveDirectory(previous);
+        }
     }
 
     private static void assertInsideRow(MessageBubble bubble) {
@@ -245,7 +293,7 @@ class BubbleActionBarTest {
     private static JPanel findOverlay(MessageBubble bubble) {
         for (Component c : bubble.getComponents()) {
             if (c instanceof JPanel panel && panel.getComponentCount() > 0
-                    && panel.getComponentCount() <= 2 && onlyButtons(panel)) {
+                    && panel.getComponentCount() <= 3 && onlyButtons(panel)) {
                 return panel;
             }
         }

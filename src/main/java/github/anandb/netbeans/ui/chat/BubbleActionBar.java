@@ -15,6 +15,10 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
@@ -27,7 +31,9 @@ import javax.swing.Timer;
 
 import github.anandb.netbeans.contract.PinnedMessageControl;
 import github.anandb.netbeans.contract.SessionControl;
+import github.anandb.netbeans.support.AssistantMessageSaver;
 import github.anandb.netbeans.support.Logger;
+import github.anandb.netbeans.support.PluginSettings;
 import org.openide.util.NbBundle;
 import github.anandb.netbeans.ui.UIBundle;
 import github.anandb.netbeans.ui.session.MessageQueueManager;
@@ -73,6 +79,12 @@ class BubbleActionBar {
     private JButton copyBtn;
     private Icon copyBtnIcon;
     private JPanel actionsPlaceholder;
+
+    // Save button
+    private JButton saveBtn;
+    private Icon saveBtnIcon;
+    private Icon saveOkIcon;
+    private Timer saveRevertTimer;
 
     // Hover timers
     private Timer showTimer;
@@ -161,11 +173,14 @@ class BubbleActionBar {
         copyBtn.setForeground(theme.foreground());
         this.copyBtnIcon = copyBtn.getIcon();
 
+        saveBtn = createSaveButton(theme);
+
         // Floating overlay in the bubble's GridBag cell. Added at index 0 so it
         // paints above the content row; MessageBubble.doLayout() positions it at
         // the bubble's visible bottom-right, where GridBagLayout cannot clip it.
         JPanel actionsOverlay = new JPanel(new FlowLayout(FlowLayout.RIGHT, 2, 0));
         actionsOverlay.setOpaque(false);
+        actionsOverlay.add(saveBtn);
         actionsOverlay.add(copyBtn);
         actionsOverlay.add(pinBtn);
         actionsOverlay.setVisible(false);
@@ -192,8 +207,11 @@ class BubbleActionBar {
         copyBtn.setForeground(theme.foreground());
         this.copyBtnIcon = copyBtn.getIcon();
 
-        JPanel copyOverlay = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        saveBtn = createSaveButton(theme);
+
+        JPanel copyOverlay = new JPanel(new FlowLayout(FlowLayout.RIGHT, 2, 0));
         copyOverlay.setOpaque(false);
+        copyOverlay.add(saveBtn);
         copyOverlay.add(copyBtn);
         copyOverlay.setVisible(false);
         this.actionsPlaceholder = copyOverlay;
@@ -207,6 +225,35 @@ class BubbleActionBar {
         owner.add(copyOverlay, ogbc, 0);
 
         installHoverListeners();
+    }
+
+    /**
+     * Builds the save button. Disabled with a configure hint while no directory is set;
+     * the state is refreshed on every hover so an Options change needs no restart.
+     */
+    private JButton createSaveButton(ColorTheme theme) {
+        JButton btn = UIUtils.createToolbarButton("save.svg", ACTION_ICON_SIZE,
+                NbBundle.getMessage(UIBundle.class, "HINT_SaveAssistantMessage"),
+                e -> saveMessageToDisk());
+        btn.setBorder(BorderFactory.createEmptyBorder());
+        btn.setContentAreaFilled(false);
+        btn.setOpaque(false);
+        btn.setForeground(theme.foreground());
+        this.saveBtnIcon = btn.getIcon();
+        this.saveOkIcon = ThemeManager.getIcon("check.svg", 12);
+        applySaveState(btn);
+        return btn;
+    }
+
+    /** Enables the save button only when a directory is configured; always sets the hint. */
+    private void applySaveState(JButton btn) {
+        boolean configured = !PluginSettings.getMessageSaveDirectory().isBlank();
+        btn.setEnabled(configured);
+        String hintKey = configured ? "HINT_SaveAssistantMessage" : "HINT_SaveDirectoryNotConfigured";
+        String hint = NbBundle.getMessage(UIBundle.class, hintKey);
+        btn.setToolTipText(hint);
+        btn.getAccessibleContext().setAccessibleName(hint);
+        btn.getAccessibleContext().setAccessibleDescription(hint);
     }
 
     /**
@@ -389,6 +436,13 @@ class BubbleActionBar {
         if (copyRevertTimer != null && copyRevertTimer.isRunning()) {
             copyRevertTimer.stop();
         }
+        if (saveRevertTimer != null && saveRevertTimer.isRunning()) {
+            saveRevertTimer.stop();
+        }
+        if (saveBtn != null) {
+            saveBtn.setIcon(saveBtnIcon);
+            applySaveState(saveBtn);
+        }
         copyBtn.setIcon(copyBtnIcon);
         if (autoHideTimer == null) {
             autoHideTimer = new Timer(AUTO_HIDE_DELAY_MS, evt -> {
@@ -471,6 +525,68 @@ class BubbleActionBar {
         copyRevertTimer = new Timer(1500, e -> copyBtn.setIcon(originalIcon));
         copyRevertTimer.setRepeats(false);
         copyRevertTimer.start();
+    }
+
+    // -------------------------------------------------------------------------
+    // Save to disk
+    // -------------------------------------------------------------------------
+
+    /** Writes the bubble text off the EDT, then flashes a check (success) or x (failure). */
+    private void saveMessageToDisk() {
+        String directory = PluginSettings.getMessageSaveDirectory();
+        if (directory.isBlank()) {
+            return;
+        }
+        String payload = text.toString();
+        if (payload.isEmpty() || saveBtn == null) {
+            return;
+        }
+        Path dir;
+        try {
+            dir = Path.of(directory);
+        } catch (RuntimeException ex) {
+            LOG.warn("Invalid save directory: {0}", directory, ex);
+            flashSaveIcon(false, null);
+            return;
+        }
+        String base = messageId != null ? messageId : resolveSessionId();
+        CompletableFuture<Path> write = CompletableFuture.supplyAsync(() -> {
+            try {
+                return AssistantMessageSaver.save(payload, dir, base);
+            } catch (IOException ex) {
+                throw new CompletionException(ex);
+            }
+        });
+        write.thenAccept(file -> SwingUtilities.invokeLater(() -> flashSaveIcon(true, file)))
+                .exceptionally(ex -> {
+                    LOG.warn("Failed to save assistant message to {0}", dir, ex);
+                    SwingUtilities.invokeLater(() -> flashSaveIcon(false, null));
+                    return null;
+                });
+    }
+
+    /** Flashes the save outcome icon, then restores the save icon and the state tooltip. */
+    private void flashSaveIcon(boolean success, Path file) {
+        if (saveBtn == null) {
+            return;
+        }
+        Icon flashIcon = success ? saveOkIcon : ThemeManager.getIcon("x.svg", 12);
+        if (flashIcon != null) {
+            saveBtn.setIcon(flashIcon);
+        }
+        if (success && file != null) {
+            saveBtn.setToolTipText(NbBundle.getMessage(UIBundle.class,
+                    "HINT_SavedAssistantMessage", file.getFileName().toString()));
+        }
+        if (saveRevertTimer != null) {
+            saveRevertTimer.stop();
+        }
+        saveRevertTimer = new Timer(1500, e -> {
+            saveBtn.setIcon(saveBtnIcon);
+            applySaveState(saveBtn);
+        });
+        saveRevertTimer.setRepeats(false);
+        saveRevertTimer.start();
     }
 
     // -------------------------------------------------------------------------
@@ -631,6 +747,10 @@ class BubbleActionBar {
         if (copyRevertTimer != null) {
             copyRevertTimer.stop();
             copyRevertTimer = null;
+        }
+        if (saveRevertTimer != null) {
+            saveRevertTimer.stop();
+            saveRevertTimer = null;
         }
         if (showTimer != null) {
             showTimer.stop();

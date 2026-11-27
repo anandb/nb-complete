@@ -7,8 +7,11 @@ import javax.swing.UIManager;
 import java.awt.Color;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import github.anandb.netbeans.support.PluginSettings;
 
 class CollapsibleToolPaneTest {
 
@@ -57,5 +60,43 @@ class CollapsibleToolPaneTest {
                         java.awt.event.MouseEvent.MOUSE_PRESSED, System.currentTimeMillis(),
                         0, 1, 1, 1, false)));
         assertEquals(!expanded, pane.isExpanded(), "clicking the parameter still toggles");
+    }
+
+    @Test
+    void headerShowsSaveBeforeCopyAndDisabledWithoutDirectory() {
+        String previous = PluginSettings.getMessageSaveDirectory();
+        try {
+            PluginSettings.setMessageSaveDirectory("");
+            CollapsibleToolPane pane = new CollapsibleToolPane("TOOL: run_command", "ls", true);
+            assertNotNull(pane.saveButton, "tool pane header offers save");
+            assertFalse(pane.saveButton.isEnabled(), "save is disabled until a directory is set");
+            assertTrue(pane.saveButton.getToolTipText().contains("Settings -> Core Service -> Assistant"),
+                    "tooltip names the setting: " + pane.saveButton.getToolTipText());
+            java.awt.Container row = pane.saveButton.getParent();
+            org.junit.jupiter.api.Assertions.assertSame(pane.saveButton, row.getComponent(0),
+                    "save comes first");
+            org.junit.jupiter.api.Assertions.assertSame(pane.copyButton, row.getComponent(1),
+                    "copy follows save");
+        } finally {
+            PluginSettings.setMessageSaveDirectory(previous);
+        }
+    }
+
+    @Test
+    void activityPaneHeaderOffersSave() {
+        String previous = PluginSettings.getMessageSaveDirectory();
+        try {
+            PluginSettings.setMessageSaveDirectory("");
+            CollapsibleActivityPane pane = new CollapsibleActivityPane("THINKING", "step", true);
+            assertNotNull(pane.saveButton, "thought/activity pane header offers save");
+        } finally {
+            PluginSettings.setMessageSaveDirectory(previous);
+        }
+    }
+
+    @Test
+    void codePaneHeaderKeepsCopyOnly() {
+        CollapsibleCodePane pane = new CollapsibleCodePane("java", "int x = 1;", true);
+        org.junit.jupiter.api.Assertions.assertNull(pane.saveButton, "code panes keep copy only");
     }
 }
