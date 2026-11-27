@@ -22,7 +22,7 @@ class HolidaySupportButtonTest {
 
     private static final String TOOLTIP = "Support this Project";
     private static final LocalDateTime THANKSGIVING =
-            LocalDateTime.of(2026, 11, 27, 10, 30);
+            LocalDateTime.of(2026, 11, 26, 10, 30);
 
     @Test
     void celebrationStartsAtRandomTimeAndLastsItsConfiguredMinutes() {
@@ -50,28 +50,31 @@ class HolidaySupportButtonTest {
     }
 
     @Test
-    void twoCelebrationsPerDayThenNoMore() {
+    void oneCelebrationPerHolidayThenNoMore() {
         AtomicReference<LocalDateTime> now = new AtomicReference<>(THANKSGIVING);
         HolidaySupportButton button = button(thanksgivingCalendar(), now,
                 alwaysZero(), new AtomicBoolean(true));
 
         Icon sprout = button.getIcon();
         button.refreshState();
+        assertNotSame(sprout, button.getIcon(), "the holiday's celebration starts");
+
         now.set(THANKSGIVING.plusMinutes(61));
         button.refreshState();
-        assertSame(sprout, button.getIcon(), "first celebration ended");
+        assertSame(sprout, button.getIcon(), "the celebration ended");
 
         now.set(THANKSGIVING.plusMinutes(150));
         button.refreshState();
-        assertEquals("Happy Thanksgiving", button.getToolTipText(), "second celebration starts");
+        assertSame(sprout, button.getIcon(), "the holiday is not celebrated twice");
+        assertEquals(TOOLTIP, button.getToolTipText());
 
-        now.set(THANKSGIVING.plusMinutes(211));
+        now.set(LocalDateTime.of(2026, 11, 27, 12, 0));
         button.refreshState();
-        assertEquals(TOOLTIP, button.getToolTipText(), "second celebration ends");
+        assertSame(sprout, button.getIcon(), "the next day is not a holiday");
 
-        now.set(THANKSGIVING.plusMinutes(400));
+        now.set(LocalDateTime.of(2027, 11, 26, 10, 30));
         button.refreshState();
-        assertEquals(TOOLTIP, button.getToolTipText(), "only two celebrations per day");
+        assertNotSame(sprout, button.getIcon(), "the holiday can celebrate again next year");
 
         button.removeNotify();
     }
@@ -148,8 +151,8 @@ class HolidaySupportButtonTest {
     }
 
     private static HolidaySupport thanksgivingCalendar() {
-        return new HolidaySupport(2, 60, List.of(
-                new HolidaySupport.Theme(MonthDay.of(11, 26), MonthDay.of(11, 29),
+        return new HolidaySupport(60, List.of(
+                new HolidaySupport.Theme(MonthDay.of(11, 26),
                         "Happy Thanksgiving", List.of("holidays/thanksgiving-pumpkin.svg"))));
     }
 

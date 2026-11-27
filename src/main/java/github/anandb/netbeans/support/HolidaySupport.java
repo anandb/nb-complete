@@ -6,7 +6,9 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.MonthDay;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -15,11 +17,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 /**
  * Holiday decoration data for the assistant's support button.
  *
- * <p>{@value #RESOURCE} holds the date ranges, how many celebrations happen per day, how long
- * each lasts and the icons. While the IDE is active on a holiday day the button starts a
- * celebration at a random moment, holds it for {@code celebrationMinutes} from then, and does
- * so {@code celebrationsPerDay} times. Overlapping holidays are all candidates for each
- * celebration.</p>
+ * <p>{@value #RESOURCE} holds each holiday's date, how long a celebration lasts and its
+ * icons. While the IDE is active on a holiday the button starts one celebration at a random
+ * moment, holds it for {@code celebrationMinutes} from then, and shows that holiday only once
+ * per year. Each date belongs to exactly one holiday.</p>
  */
 public final class HolidaySupport {
 
@@ -30,11 +31,10 @@ public final class HolidaySupport {
     private static final Logger LOG = Logger.from(HolidaySupport.class);
 
     /**
-     * One holiday: the greeting shown in the tooltip, an inclusive month-day range and the
-     * icons used during a celebration. Ranges may wrap across New Year when {@code start} is
-     * after {@code end}.
+     * One holiday: the greeting shown in the tooltip, its month-day date and the icons used
+     * during a celebration.
      */
-    public record Theme(MonthDay start, MonthDay end, String greeting, List<String> icons) {
+    public record Theme(MonthDay date, String greeting, List<String> icons) {
 
         public Theme {
             if (greeting == null || greeting.isBlank()) {
@@ -43,32 +43,23 @@ public final class HolidaySupport {
             icons = List.copyOf(icons);
         }
 
-        /** @return whether the given day falls inside this holiday's inclusive range. */
+        /** @return whether this holiday falls on {@code day} */
         public boolean contains(MonthDay day) {
-            if (start.isBefore(end)) {
-                return !day.isBefore(start) && !day.isAfter(end);
-            }
-            if (start.equals(end)) {
-                return day.equals(start);
-            }
-            return !day.isBefore(start) || !day.isAfter(end);
+            return date.equals(day);
         }
     }
 
     /** The greeting and icon of one celebration. */
     public record Celebration(String greeting, String iconName) { }
 
-    private final int celebrationsPerDay;
     private final int celebrationMinutes;
     private final List<Theme> themes;
 
     /**
-     * @param celebrationsPerDay how many celebrations a holiday day may have
      * @param celebrationMinutes how long each celebration lasts, measured from its start
-     * @param themes holidays; when several match the same day, all are candidates
+     * @param themes holidays; dates are unique, one holiday per day
      */
-    public HolidaySupport(int celebrationsPerDay, int celebrationMinutes, List<Theme> themes) {
-        this.celebrationsPerDay = Math.max(0, celebrationsPerDay);
+    public HolidaySupport(int celebrationMinutes, List<Theme> themes) {
         this.celebrationMinutes = Math.max(1, celebrationMinutes);
         this.themes = List.copyOf(themes);
     }
@@ -91,20 +82,19 @@ public final class HolidaySupport {
     }
 
     /**
-     * Picks the celebration for {@code date}: one of the covering holidays, then one of that
-     * holiday's icons. {@code index} distinguishes the day's celebrations and {@code seed}
-     * makes the choice vary between IDE sessions while staying stable for a celebration.
+     * Picks the celebration for {@code date}: the day's holiday, then one of its icons.
+     * {@code seed} makes the choice vary between IDE sessions while staying stable for a
+     * celebration.
      *
      * @return the chosen celebration, or {@code null} when the date is not a holiday
      */
-    public Celebration celebrationFor(LocalDate date, int index, long seed) {
+    public Celebration celebrationFor(LocalDate date, long seed) {
         List<Theme> matching = themesOn(date);
         if (matching.isEmpty()) {
             return null;
         }
-        long mixed = seed ^ (date.toEpochDay() * 0x9E3779B97F4A7C15L)
-                ^ (index * 0xC2B2AE3D27D4EB4FL);
-        Theme theme = matching.get(pick(mixed, matching.size()));
+        long mixed = seed ^ (date.toEpochDay() * 0x9E3779B97F4A7C15L);
+        Theme theme = matching.get(0);
         String icon = theme.icons().get(pick(mixed * 131 + theme.greeting().hashCode(),
                 theme.icons().size()));
         return new Celebration(theme.greeting(), icon);
@@ -149,7 +139,6 @@ public final class HolidaySupport {
             throw new IllegalArgumentException("The holiday calendar must be a JSON object.");
         }
 
-        int perDay = requireCount(root, "celebrationsPerDay", 1, 24);
         int minutes = requireCount(root, "celebrationMinutes", 1, 24 * 60);
 
         JsonNode holidaysNode = root.path("holidays");
@@ -157,10 +146,16 @@ public final class HolidaySupport {
             throw new IllegalArgumentException("\"holidays\" must be a non-empty array.");
         }
         List<Theme> themes = new ArrayList<>();
+        Set<MonthDay> dates = new HashSet<>();
         for (int i = 0; i < holidaysNode.size(); i++) {
-            themes.add(parseTheme(holidaysNode.get(i), i));
+            Theme theme = parseTheme(holidaysNode.get(i), i);
+            if (!dates.add(theme.date())) {
+                throw new IllegalArgumentException(
+                        "Holiday date " + theme.date() + " is used by more than one holiday.");
+            }
+            themes.add(theme);
         }
-        return new HolidaySupport(perDay, minutes, themes);
+        return new HolidaySupport(minutes, themes);
     }
 
     private static int requireCount(JsonNode root, String field, int min, int max) {
@@ -182,8 +177,7 @@ public final class HolidaySupport {
             throw new IllegalArgumentException(where + " needs a non-blank \"greeting\".");
         }
         where = where + " (" + greeting + ")";
-        MonthDay start = parseMonthDay(node.get("start"), where + ", \"start\"");
-        MonthDay end = parseMonthDay(node.get("end"), where + ", \"end\"");
+        MonthDay date = parseMonthDay(node.get("date"), where + ", \"date\"");
         JsonNode iconsNode = node.path("icons");
         if (!iconsNode.isArray() || iconsNode.isEmpty()) {
             throw new IllegalArgumentException(where + " needs a non-empty \"icons\" array.");
@@ -196,7 +190,7 @@ public final class HolidaySupport {
             }
             icons.add(iconName);
         }
-        return new Theme(start, end, greeting, icons);
+        return new Theme(date, greeting, icons);
     }
 
     private static MonthDay parseMonthDay(JsonNode node, String where) {
@@ -232,12 +226,7 @@ public final class HolidaySupport {
 
     /** @return a calendar with no holidays, used when the bundled data cannot be read. */
     public static HolidaySupport empty() {
-        return new HolidaySupport(0, 60, List.of());
-    }
-
-    /** @return how many celebrations a holiday day may have */
-    public int celebrationsPerDay() {
-        return celebrationsPerDay;
+        return new HolidaySupport(60, List.of());
     }
 
     /** @return how long each celebration lasts, in minutes */

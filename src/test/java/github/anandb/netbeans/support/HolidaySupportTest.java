@@ -11,7 +11,6 @@ import java.net.URL;
 import java.time.LocalDate;
 import java.time.MonthDay;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,16 +29,21 @@ class HolidaySupportTest {
             "holidays/thanksgiving-turkey-leg.svg");
 
     @Test
-    void bundledCalendarDefinesAllHolidaysAndTwoDailyCelebrations() {
+    void bundledCalendarDefinesEachHolidayOnItsDate() {
         HolidaySupport calendar = HolidaySupport.loadDefault();
 
-        assertEquals(2, calendar.celebrationsPerDay());
         assertEquals(60, calendar.celebrationMinutes());
-        assertEquals(21, calendar.themes().size());
+        assertEquals(31, calendar.themes().size());
         HolidaySupport.Theme thanksgiving = calendar.themes().stream()
                 .filter(theme -> theme.greeting().equals("Happy Thanksgiving"))
                 .findFirst().orElseThrow();
         assertEquals(THANKSGIVING_ICONS, thanksgiving.icons());
+        assertEquals(MonthDay.of(11, 26), thanksgiving.date());
+
+        HolidaySupport.Theme christmas = calendar.themes().stream()
+                .filter(theme -> theme.greeting().equals("Merry Christmas"))
+                .findFirst().orElseThrow();
+        assertEquals(MonthDay.of(12, 25), christmas.date());
     }
 
     @Test
@@ -51,23 +55,20 @@ class HolidaySupportTest {
     }
 
     @Test
-    void holidayRangesAreInclusiveAndYearAgnostic() {
+    void holidayDatesAreExactAndYearAgnostic() {
         HolidaySupport calendar = HolidaySupport.loadDefault();
 
         assertTrue(calendar.isHoliday(LocalDate.of(2026, 11, 26)));
-        assertTrue(calendar.isHoliday(LocalDate.of(2026, 11, 29)));
         assertFalse(calendar.isHoliday(LocalDate.of(2026, 11, 25)));
-        assertFalse(calendar.isHoliday(LocalDate.of(2026, 11, 30)));
+        assertFalse(calendar.isHoliday(LocalDate.of(2026, 11, 27)));
 
-        assertTrue(calendar.isHoliday(LocalDate.of(2026, 12, 5)));
         assertTrue(calendar.isHoliday(LocalDate.of(2026, 12, 25)));
-        assertFalse(calendar.isHoliday(LocalDate.of(2026, 12, 4)));
+        assertFalse(calendar.isHoliday(LocalDate.of(2026, 12, 24)));
         assertFalse(calendar.isHoliday(LocalDate.of(2026, 12, 26)));
 
-        assertTrue(calendar.isHoliday(LocalDate.of(2026, 10, 15)));
-        assertTrue(calendar.isHoliday(LocalDate.of(2026, 11, 15)));
-        assertFalse(calendar.isHoliday(LocalDate.of(2026, 10, 14)));
-        assertFalse(calendar.isHoliday(LocalDate.of(2026, 11, 16)));
+        assertTrue(calendar.isHoliday(LocalDate.of(2026, 10, 29)), "Diwali");
+        assertFalse(calendar.isHoliday(LocalDate.of(2026, 10, 28)));
+        assertFalse(calendar.isHoliday(LocalDate.of(2026, 10, 30)));
 
         assertTrue(calendar.isHoliday(LocalDate.of(2026, 1, 1)));
         assertFalse(calendar.isHoliday(LocalDate.of(2026, 1, 2)));
@@ -80,9 +81,8 @@ class HolidaySupportTest {
         assertTrue(calendar.isHoliday(LocalDate.of(2026, 6, 21)));
         assertTrue(calendar.isHoliday(LocalDate.of(2026, 7, 20)));
         assertTrue(calendar.isHoliday(LocalDate.of(2026, 8, 12)));
-        assertTrue(calendar.isHoliday(LocalDate.of(2026, 9, 12)), "leap-year Programmer's Day");
         assertTrue(calendar.isHoliday(LocalDate.of(2026, 9, 13)));
-        assertFalse(calendar.isHoliday(LocalDate.of(2026, 9, 14)));
+        assertFalse(calendar.isHoliday(LocalDate.of(2026, 9, 12)));
         assertTrue(calendar.isHoliday(LocalDate.of(2026, 10, 31)));
         assertTrue(calendar.isHoliday(LocalDate.of(2026, 11, 3)));
         assertTrue(calendar.isHoliday(LocalDate.of(2026, 11, 23)));
@@ -90,68 +90,34 @@ class HolidaySupportTest {
         assertTrue(calendar.isHoliday(LocalDate.of(2026, 12, 21)));
         assertTrue(calendar.isHoliday(LocalDate.of(2026, 12, 23)));
 
-        assertEquals(2, calendar.themesOn(LocalDate.of(2026, 10, 31)).size(),
-                "Halloween overlaps Diwali");
-        assertEquals(2, calendar.themesOn(LocalDate.of(2026, 12, 10)).size(),
-                "Ada Lovelace Day overlaps Christmas");
-
-        assertTrue(calendar.isHoliday(LocalDate.of(2027, 11, 26)), "ranges repeat each year");
+        assertEquals(1, calendar.themesOn(LocalDate.of(2026, 10, 31)).size(),
+                "each date belongs to one holiday");
+        assertTrue(calendar.isHoliday(LocalDate.of(2027, 11, 26)), "dates repeat each year");
         assertFalse(calendar.isHoliday(LocalDate.of(2026, 7, 15)));
     }
 
     @Test
-    void aRangeMayWrapAcrossNewYear() {
-        HolidaySupport calendar = new HolidaySupport(2, 60, List.of(
-                new HolidaySupport.Theme(MonthDay.of(12, 28), MonthDay.of(1, 3), "Happy New Year",
-                        List.of("ny.svg"))));
-
-        assertTrue(calendar.isHoliday(LocalDate.of(2027, 1, 1)));
-        assertTrue(calendar.isHoliday(LocalDate.of(2026, 12, 31)));
-        assertFalse(calendar.isHoliday(LocalDate.of(2027, 1, 4)));
-        assertFalse(calendar.isHoliday(LocalDate.of(2026, 12, 27)));
-    }
-
-    @Test
-    void celebrationUsesAConfiguredHolidayAndIcon() {
+    void celebrationUsesTheDaysHolidayAndIcon() {
         HolidaySupport calendar = HolidaySupport.loadDefault();
-        LocalDate thanksgiving = LocalDate.of(2026, 11, 27);
+        LocalDate thanksgiving = LocalDate.of(2026, 11, 26);
 
-        HolidaySupport.Celebration celebration = calendar.celebrationFor(thanksgiving, 0, 42L);
+        HolidaySupport.Celebration celebration = calendar.celebrationFor(thanksgiving, 42L);
         assertNotNull(celebration);
         assertEquals("Happy Thanksgiving", celebration.greeting());
         assertTrue(THANKSGIVING_ICONS.contains(celebration.iconName()));
 
-        assertEquals(celebration, calendar.celebrationFor(thanksgiving, 0, 42L),
-                "the same session and index keep the same choice");
-        assertNull(calendar.celebrationFor(LocalDate.of(2026, 7, 15), 0, 42L));
+        assertEquals(celebration, calendar.celebrationFor(thanksgiving, 42L),
+                "the same session keeps the same choice");
+        assertNull(calendar.celebrationFor(LocalDate.of(2026, 7, 15), 42L));
     }
 
     @Test
-    void overlappingHolidaysReachEveryCandidateAcrossSessions() {
-        HolidaySupport calendar = new HolidaySupport(2, 60, List.of(
-                new HolidaySupport.Theme(MonthDay.of(1, 1), MonthDay.of(12, 31),
-                        "Holiday A", List.of("a1.svg", "a2.svg", "a3.svg")),
-                new HolidaySupport.Theme(MonthDay.of(1, 1), MonthDay.of(12, 31),
-                        "Holiday B", List.of("b1.svg", "b2.svg"))));
-        LocalDate day = LocalDate.of(2026, 1, 15);
-
-        Set<String> greetings = new HashSet<>();
-        Set<String> icons = new HashSet<>();
-        for (long seed = 0; seed < 40; seed++) {
-            for (int index = 0; index < 2; index++) {
-                HolidaySupport.Celebration celebration = calendar.celebrationFor(day, index, seed);
-                assertNotNull(celebration);
-                greetings.add(celebration.greeting());
-                icons.add(celebration.iconName());
-                Set<String> allowed = celebration.greeting().equals("Holiday A")
-                        ? Set.of("a1.svg", "a2.svg", "a3.svg")
-                        : Set.of("b1.svg", "b2.svg");
-                assertTrue(allowed.contains(celebration.iconName()),
-                        "icon must belong to the chosen holiday");
-            }
-        }
-        assertEquals(Set.of("Holiday A", "Holiday B"), greetings);
-        assertTrue(icons.size() >= 3, "several icons are reachable");
+    void duplicateHolidayDatesAreRejected() {
+        assertThrows(IllegalArgumentException.class, () -> HolidaySupport.parse("""
+                {"celebrationMinutes":60,"holidays":[
+                  {"greeting":"A","date":"01-01","icons":["a.svg"]},
+                  {"greeting":"B","date":"01-01","icons":["b.svg"]}]}
+                """));
     }
 
     @Test
@@ -190,21 +156,21 @@ class HolidaySupportTest {
     void emptyCalendarNeverCelebrates() {
         HolidaySupport empty = HolidaySupport.empty();
 
+        assertTrue(empty.themes().isEmpty());
         assertFalse(empty.isHoliday(LocalDate.of(2026, 12, 25)));
-        assertNull(empty.celebrationFor(LocalDate.of(2026, 12, 25), 0, 1L));
-        assertEquals(0, empty.celebrationsPerDay());
+        assertNull(empty.celebrationFor(LocalDate.of(2026, 12, 25), 1L));
     }
 
     @Test
     void parseReadsCountsAndHolidays() {
         HolidaySupport calendar = HolidaySupport.parse("""
-                {"celebrationsPerDay":2,"celebrationMinutes":45,
-                 "holidays":[{"greeting":"Test","start":"03-01","end":"03-02","icons":["a.svg"]}]}
+                {"celebrationMinutes":45,
+                 "holidays":[{"greeting":"Test","date":"03-01","icons":["a.svg"]}]}
                 """);
 
-        assertEquals(2, calendar.celebrationsPerDay());
         assertEquals(45, calendar.celebrationMinutes());
         assertTrue(calendar.isHoliday(LocalDate.of(2026, 3, 1)));
+        assertFalse(calendar.isHoliday(LocalDate.of(2026, 3, 2)));
     }
 
     @Test
@@ -215,29 +181,31 @@ class HolidaySupportTest {
                 {"celebrationMinutes":60,"holidays":[]}
                 """));
         assertThrows(IllegalArgumentException.class, () -> HolidaySupport.parse("""
-                {"celebrationsPerDay":0,"celebrationMinutes":60,"holidays":[]}
+                {"celebrationMinutes":0,"holidays":[]}
                 """));
         assertThrows(IllegalArgumentException.class, () -> HolidaySupport.parse("""
-                {"celebrationsPerDay":2,"celebrationMinutes":0,"holidays":[]}
+                {"celebrationMinutes":60,"holidays":[
+                  {"date":"12-01","icons":["a.svg"]}]}
                 """));
         assertThrows(IllegalArgumentException.class, () -> HolidaySupport.parse("""
-                {"celebrationsPerDay":2,"celebrationMinutes":60,"holidays":[]}
+                {"celebrationMinutes":60,"holidays":[
+                  {"greeting":"Test","icons":["a.svg"]}]}
                 """));
         assertThrows(IllegalArgumentException.class, () -> HolidaySupport.parse("""
-                {"celebrationsPerDay":2,"celebrationMinutes":60,"holidays":[
-                  {"start":"12-01","end":"12-02","icons":["a.svg"]}]}
+                {"celebrationMinutes":60,"holidays":[
+                  {"greeting":"Test","date":"12-01","icons":[]}]}
                 """));
         assertThrows(IllegalArgumentException.class, () -> HolidaySupport.parse("""
-                {"celebrationsPerDay":2,"celebrationMinutes":60,"holidays":[
-                  {"greeting":"Test","start":"12-01","end":"12-02","icons":[]}]}
+                {"celebrationMinutes":60,"holidays":[
+                  {"greeting":"Test","date":"13-01","icons":["a.svg"]}]}
                 """));
         assertThrows(IllegalArgumentException.class, () -> HolidaySupport.parse("""
-                {"celebrationsPerDay":2,"celebrationMinutes":60,"holidays":[
-                  {"greeting":"Test","start":"13-01","end":"12-02","icons":["a.svg"]}]}
+                {"celebrationMinutes":60,"holidays":[
+                  {"greeting":"Test","date":"12/01","icons":["a.svg"]}]}
                 """));
         assertThrows(IllegalArgumentException.class, () -> HolidaySupport.parse("""
-                {"celebrationsPerDay":2,"celebrationMinutes":60,"holidays":[
-                  {"greeting":"Test","start":"12/01","end":"12-02","icons":["a.svg"]}]}
+                {"celebrationMinutes":60,"holidays":[
+                  {"greeting":"Test","start":"12-01","end":"12-02","icons":["a.svg"]}]}
                 """));
     }
 }

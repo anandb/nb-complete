@@ -1,11 +1,9 @@
 {
-  "celebrationsPerDay": 2,
   "celebrationMinutes": 60,
   "holidays": [
     {
       "greeting": "Happy New Year",
-      "start": "01-01",
-      "end": "01-01",
+      "date": "01-01",
       "icons": [
         "holidays/newyear-fireworks.svg",
         "holidays/newyear-popper.svg",
@@ -15,8 +13,7 @@
     },
     {
       "greeting": "Happy Pongal",
-      "start": "01-14",
-      "end": "01-14",
+      "date": "01-14",
       "icons": [
         "holidays/pongal-sun.svg",
         "holidays/pongal-pot.svg",
@@ -25,9 +22,18 @@
       ]
     },
     {
+      "greeting": "Happy Australia Day",
+      "date": "01-26",
+      "icons": [
+        "holidays/australia-kangaroo.svg",
+        "holidays/australia-boomerang.svg",
+        "holidays/australia-flag.svg",
+        "holidays/australia-sun.svg"
+      ]
+    },
+    {
       "greeting": "Happy Valentine's Day",
-      "start": "02-14",
-      "end": "02-14",
+      "date": "02-14",
       "icons": [
         "holidays/valentine-heart.svg",
         "holidays/valentine-letter.svg",
@@ -36,9 +42,28 @@
       ]
     },
     {
+      "greeting": "Happy Carnival",
+      "date": "02-16",
+      "icons": [
+        "holidays/carnival-popper.svg",
+        "holidays/carnival-confetti.svg",
+        "holidays/carnival-mask.svg",
+        "holidays/carnival-drum.svg"
+      ]
+    },
+    {
+      "greeting": "Happy Lunar New Year",
+      "date": "02-17",
+      "icons": [
+        "holidays/lunar-lantern.svg",
+        "holidays/lunar-firecracker.svg",
+        "holidays/lunar-envelope.svg",
+        "holidays/lunar-dragon.svg"
+      ]
+    },
+    {
       "greeting": "Happy Pi Day",
-      "start": "03-14",
-      "end": "03-14",
+      "date": "03-14",
       "icons": [
         "holidays/pi-symbol.svg",
         "holidays/pi-compass.svg",
@@ -47,9 +72,28 @@
       ]
     },
     {
+      "greeting": "Happy St. Patrick's Day",
+      "date": "03-17",
+      "icons": [
+        "holidays/patrick-shamrock.svg",
+        "holidays/patrick-clover.svg",
+        "holidays/patrick-rainbow.svg",
+        "holidays/patrick-mug.svg"
+      ]
+    },
+    {
+      "greeting": "Happy Nowruz",
+      "date": "03-20",
+      "icons": [
+        "holidays/nowruz-tulip.svg",
+        "holidays/nowruz-sprout.svg",
+        "holidays/nowruz-fire.svg",
+        "holidays/nowruz-egg.svg"
+      ]
+    },
+    {
       "greeting": "Happy Tolkien Reading Day",
-      "start": "03-25",
-      "end": "03-25",
+      "date": "03-25",
       "icons": [
         "holidays/tolkien-door.svg",
         "holidays/tolkien-books.svg",
@@ -58,9 +102,18 @@
       ]
     },
     {
+      "greeting": "Happy Songkran",
+      "date": "04-13",
+      "icons": [
+        "holidays/songkran-droplet.svg",
+        "holidays/songkran-wave.svg",
+        "holidays/songkran-pistol.svg",
+        "holidays/songkran-splash.svg"
+      ]
+    },
+    {
       "greeting": "Happy Earth Day",
-      "start": "04-22",
-      "end": "04-22",
+      "date": "04-22",
       "icons": [
         "holidays/earth-globe-americas.svg",
         "holidays/earth-globe-europe-africa.svg",
@@ -70,8 +123,7 @@
     },
     {
       "greeting": "Happy Labor Day",
-      "start": "05-01",
-      "end": "05-01",
+      "date": "05-01",
       "icons": [
         "holidays/labor-tools.svg",
         "holidays/labor-toolbox.svg",
@@ -81,8 +133,7 @@
     },
     {
       "greeting": "May the Fourth Be With You",
-      "start": "05-04",
-      "end": "05-04",
+      "date": "05-04",
       "icons": [
         "holidays/starwars-comet.svg",
         "holidays/starwars-robot.svg",
@@ -91,9 +142,18 @@
       ]
     },
     {
+      "greeting": "Happy Africa Day",
+      "date": "05-25",
+      "icons": [
+        "holidays/africa-globe.svg",
+        "holidays/africa-lion.svg",
+        "holidays/africa-palm.svg",
+        "holidays/africa-elephant.svg"
+      ]
+    },
+    {
       "greeting": "Happy Summer Solstice",
-      "start": "06-21",
-      "end": "06-21",
+      "date": "06-21",
       "icons": [
         "holidays/summer-sun.svg",
         "holidays/summer-sunflower.svg",
@@ -104,8 +164,7 @@
     },
     {
       "greeting": "Happy Moon Landing Day",
-      "start": "07-20",
-      "end": "07-20",
+      "date": "07-20",
       "icons": [
         "holidays/moon-full.svg",
         "holidays/moon-rocket.svg",
@@ -115,8 +174,7 @@
     },
     {
       "greeting": "Happy World Elephant Day",
-      "start": "08-12",
-      "end": "08-12",
+      "date": "08-12",
       "icons": [
         "holidays/elephant.svg",
         "holidays/elephant-blue.svg",
@@ -126,30 +184,37 @@
     },
     {
       "greeting": "Happy Programmer's Day",
-      "start": "09-12",
-      "end": "09-13",
+      "date": "09-13",
       "icons": [
         "holidays/programmer-keyboard.svg",
         "holidays/programmer-laptop.svg",
-        "holidays/programmer-mug.svg",
+        "holidays/programmer-bug.svg",
         "holidays/programmer-mouse.svg"
       ]
     },
     {
-      "greeting": "Happy Diwali",
-      "start": "10-15",
-      "end": "11-15",
+      "greeting": "Happy Oktoberfest",
+      "date": "09-20",
       "icons": [
-        "holidays/diwali-diya.svg",
-        "holidays/diwali-candle.svg",
-        "holidays/diwali-firecracker.svg",
-        "holidays/diwali-sparkler.svg"
+        "holidays/oktoberfest-beer.svg",
+        "holidays/oktoberfest-cheers.svg",
+        "holidays/oktoberfest-pretzel.svg",
+        "holidays/oktoberfest-accordion.svg"
+      ]
+    },
+    {
+      "greeting": "Happy Mid-Autumn Festival",
+      "date": "09-25",
+      "icons": [
+        "holidays/midautumn-mooncake.svg",
+        "holidays/midautumn-moon.svg",
+        "holidays/midautumn-rabbit.svg",
+        "holidays/midautumn-lantern.svg"
       ]
     },
     {
       "greeting": "Happy Halloween",
-      "start": "10-31",
-      "end": "10-31",
+      "date": "10-31",
       "icons": [
         "holidays/halloween-pumpkin.svg",
         "holidays/halloween-ghost.svg",
@@ -158,9 +223,18 @@
       ]
     },
     {
+      "greeting": "Happy Día de los Muertos",
+      "date": "11-01",
+      "icons": [
+        "holidays/muertos-skull.svg",
+        "holidays/muertos-pumpkin.svg",
+        "holidays/muertos-candle.svg",
+        "holidays/muertos-bouquet.svg"
+      ]
+    },
+    {
       "greeting": "Happy Godzilla Day",
-      "start": "11-03",
-      "end": "11-03",
+      "date": "11-03",
       "icons": [
         "holidays/godzilla.svg",
         "holidays/godzilla-ghidorah.svg",
@@ -169,9 +243,18 @@
       ]
     },
     {
+      "greeting": "Happy Diwali",
+      "date": "10-29",
+      "icons": [
+        "holidays/diwali-diya.svg",
+        "holidays/diwali-candle.svg",
+        "holidays/diwali-firecracker.svg",
+        "holidays/diwali-sparkler.svg"
+      ]
+    },
+    {
       "greeting": "Happy Fibonacci Day",
-      "start": "11-23",
-      "end": "11-23",
+      "date": "11-23",
       "icons": [
         "holidays/fibonacci-shell.svg",
         "holidays/fibonacci-doughnut.svg",
@@ -181,8 +264,7 @@
     },
     {
       "greeting": "Happy Thanksgiving",
-      "start": "11-26",
-      "end": "11-29",
+      "date": "11-26",
       "icons": [
         "holidays/thanksgiving-pumpkin.svg",
         "holidays/thanksgiving-turkey.svg",
@@ -193,24 +275,8 @@
       ]
     },
     {
-      "greeting": "Merry Christmas",
-      "start": "12-05",
-      "end": "12-25",
-      "icons": [
-        "holidays/christmas-tree.svg",
-        "holidays/christmas-gift.svg",
-        "holidays/christmas-snowflake.svg",
-        "holidays/christmas-bell.svg",
-        "holidays/christmas-santa.svg",
-        "holidays/christmas-snowman.svg",
-        "holidays/christmas-star.svg",
-        "holidays/christmas-candy.svg"
-      ]
-    },
-    {
       "greeting": "Happy Ada Lovelace Day",
-      "start": "12-10",
-      "end": "12-10",
+      "date": "12-10",
       "icons": [
         "holidays/ada-notepad.svg",
         "holidays/ada-quill.svg",
@@ -220,8 +286,7 @@
     },
     {
       "greeting": "Happy Winter Solstice",
-      "start": "12-21",
-      "end": "12-21",
+      "date": "12-21",
       "icons": [
         "holidays/winter-snowglobe.svg",
         "holidays/winter-snowman.svg",
@@ -231,13 +296,26 @@
     },
     {
       "greeting": "Happy Festivus",
-      "start": "12-23",
-      "end": "12-23",
+      "date": "12-23",
       "icons": [
         "holidays/festivus-pole.svg",
         "holidays/festivus-dinner.svg",
         "holidays/festivus-wrestling.svg",
         "holidays/festivus-grievances.svg"
+      ]
+    },
+    {
+      "greeting": "Merry Christmas",
+      "date": "12-25",
+      "icons": [
+        "holidays/christmas-tree.svg",
+        "holidays/christmas-gift.svg",
+        "holidays/christmas-snowflake.svg",
+        "holidays/christmas-bell.svg",
+        "holidays/christmas-santa.svg",
+        "holidays/christmas-snowman.svg",
+        "holidays/christmas-star.svg",
+        "holidays/christmas-candy.svg"
       ]
     }
   ]
